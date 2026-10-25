@@ -217,9 +217,8 @@ export default ({ mode }) => {
       strictPort: true,
       proxy: {
         '/api-qs': {
-          target: `http://127.0.0.1:8080`,
+          target: `http://silianpan.cn`,
           changeOrigin: true,
-          rewrite: path => path.replace(/^\/api\-qs/, ''),
           configure: onProxyError
         },
         // 流程设计
