@@ -1,0 +1,35 @@
+package com.seal.oa.auth;
+
+public final class AuthContext {
+
+    private static final ThreadLocal<CurrentUser> CURRENT = new ThreadLocal<>();
+
+    private AuthContext() {
+    }
+
+    public static void set(CurrentUser user) {
+        CURRENT.set(user);
+    }
+
+    public static CurrentUser get() {
+        return CURRENT.get();
+    }
+
+    public static Long userId() {
+        CurrentUser user = CURRENT.get();
+        return user == null ? 1L : user.userId();
+    }
+
+    public static String username() {
+        CurrentUser user = CURRENT.get();
+        return user == null ? "admin" : user.username();
+    }
+
+    public static void clear() {
+        CURRENT.remove();
+    }
+
+    public record CurrentUser(Long userId, String username) {
+    }
+}
+

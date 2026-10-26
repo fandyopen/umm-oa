@@ -1,0 +1,38 @@
+server:
+  port: ${SERVER_PORT:8080}
+  shutdown: graceful
+
+spring:
+  application:
+    name: umm-oa-back
+  datasource:
+    url: ${DB_URL:jdbc:h2:mem:umm_oa;MODE=MySQL;DATABASE_TO_LOWER=TRUE;CASE_INSENSITIVE_IDENTIFIERS=TRUE;DB_CLOSE_DELAY=-1}
+    username: ${DB_USERNAME:sa}
+    password: ${DB_PASSWORD:}
+    driver-class-name: ${DB_DRIVER:org.h2.Driver}
+  sql:
+    init:
+      mode: always
+      encoding: UTF-8
+  jackson:
+    default-property-inclusion: non_null
+    time-zone: Asia/Shanghai
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 100MB
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:umm-oa-local-development-secret-change-before-production-2026}
+    ttl-seconds: ${JWT_TTL_SECONDS:604800}
+  captcha:
+    include-code: ${CAPTCHA_INCLUDE_CODE:true}
+    validate: ${CAPTCHA_VALIDATE:false}
+    ttl-seconds: 120
+  upload-dir: ${UPLOAD_DIR:./data/uploads}
+
+logging:
+  level:
+    com.seal.oa: info
+

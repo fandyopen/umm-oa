@@ -1,0 +1,6500 @@
+[
+  {
+    "module": "activiti/definition",
+    "function": "convert2Model",
+    "method": "POST",
+    "url": "/activiti/definition/convert2Model",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/activiti/definition.js"
+  },
+  {
+    "module": "activiti/definition",
+    "function": "listDefinition",
+    "method": "GET",
+    "url": "/activiti/definition/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/activiti/definition.js"
+  },
+  {
+    "module": "activiti/definition",
+    "function": "delDefinition",
+    "method": "DELETE",
+    "url": "/activiti/definition/remove/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/activiti/definition.js"
+  },
+  {
+    "module": "activiti/definition",
+    "function": "suspendOrActiveDefinition",
+    "method": "POST",
+    "url": "/activiti/definition/suspendOrActiveDefinition",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/activiti/definition.js"
+  },
+  {
+    "module": "activiti/modeler",
+    "function": "addModeler",
+    "method": "POST",
+    "url": "/activiti/modeler/create",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/activiti/modeler.js"
+  },
+  {
+    "module": "activiti/modeler",
+    "function": "deployModeler",
+    "method": "GET",
+    "url": "/activiti/modeler/deploy/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/activiti/modeler.js"
+  },
+  {
+    "module": "activiti/modeler",
+    "function": "exportModeler",
+    "method": "GET",
+    "url": "/activiti/modeler/export/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/activiti/modeler.js"
+  },
+  {
+    "module": "activiti/modeler",
+    "function": "listModeler",
+    "method": "GET",
+    "url": "/activiti/modeler/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/activiti/modeler.js"
+  },
+  {
+    "module": "activiti/modeler",
+    "function": "delModeler",
+    "method": "DELETE",
+    "url": "/activiti/modeler/remove/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/activiti/modeler.js"
+  },
+  {
+    "module": "activiti/process",
+    "function": "listFlowElements",
+    "method": "GET",
+    "url": "/activiti/process/listFlowElements",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/activiti/process.js"
+  },
+  {
+    "module": "activiti/process",
+    "function": "listFlowElementsValid",
+    "method": "GET",
+    "url": "/activiti/process/listFlowElementsValid",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/activiti/process.js"
+  },
+  {
+    "module": "activiti/process",
+    "function": "listFlowIds",
+    "method": "GET",
+    "url": "/activiti/process/listFlowIds",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/activiti/process.js"
+  },
+  {
+    "module": "activiti/process",
+    "function": "listHistory",
+    "method": "POST",
+    "url": "/activiti/process/listHistory",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/activiti/process.js"
+  },
+  {
+    "module": "activiti/process",
+    "function": "findProcessBusInfo",
+    "method": "GET",
+    "url": "/project/{dynamic}/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/activiti/process.js"
+  },
+  {
+    "module": "activiti/process",
+    "function": "rejectTask",
+    "method": "POST",
+    "url": "/project/activity/back",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/activiti/process.js"
+  },
+  {
+    "module": "activiti/process",
+    "function": "completeTask",
+    "method": "POST",
+    "url": "/project/activity/complete",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/activiti/process.js"
+  },
+  {
+    "module": "activiti/process",
+    "function": "finishTask",
+    "method": "POST",
+    "url": "/project/activity/end/process",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/activiti/process.js"
+  },
+  {
+    "module": "activiti/process",
+    "function": "findProcessStarted",
+    "method": "GET",
+    "url": "/project/activity/started",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/activiti/process.js"
+  },
+  {
+    "module": "activiti/process",
+    "function": "findTaskCopyList",
+    "method": "GET",
+    "url": "/project/activity/taskCopyList",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/activiti/process.js"
+  },
+  {
+    "module": "activiti/process",
+    "function": "listDone",
+    "method": "GET",
+    "url": "/project/activity/taskDoneList",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/activiti/process.js"
+  },
+  {
+    "module": "activiti/process",
+    "function": "listTodo",
+    "method": "GET",
+    "url": "/project/activity/taskWaitList",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/activiti/process.js"
+  },
+  {
+    "module": "activiti/workflow",
+    "function": "addWorkflow",
+    "method": "POST",
+    "url": "/activiti/workflow",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/activiti/workflow.js"
+  },
+  {
+    "module": "activiti/workflow",
+    "function": "updateWorkflow",
+    "method": "PUT",
+    "url": "/activiti/workflow",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/activiti/workflow.js"
+  },
+  {
+    "module": "activiti/workflow",
+    "function": "delWorkflow",
+    "method": "DELETE",
+    "url": "/activiti/workflow/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/activiti/workflow.js"
+  },
+  {
+    "module": "activiti/workflow",
+    "function": "getWorkflow",
+    "method": "GET",
+    "url": "/activiti/workflow/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/activiti/workflow.js"
+  },
+  {
+    "module": "activiti/workflow",
+    "function": "exportWorkflow",
+    "method": "GET",
+    "url": "/activiti/workflow/export",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/activiti/workflow.js"
+  },
+  {
+    "module": "activiti/workflow",
+    "function": "listWorkflow",
+    "method": "GET",
+    "url": "/activiti/workflow/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/activiti/workflow.js"
+  },
+  {
+    "module": "activiti/workflow",
+    "function": "updateReadUsers",
+    "method": "GET",
+    "url": "/activiti/workflow/read/{dynamic}/{dynamic}/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/activiti/workflow.js"
+  },
+  {
+    "module": "dashboard/Employee",
+    "function": "ProjectProgressOfEmployee",
+    "method": "GET",
+    "url": "/project/analysis/project/staff/project/process",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/dashboard/Employee.js"
+  },
+  {
+    "module": "dashboard/Employee",
+    "function": "projectChart",
+    "method": "GET",
+    "url": "/project/analysis/project/staff/project/type",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/dashboard/Employee.js"
+  },
+  {
+    "module": "dashboard/Employee",
+    "function": "employeesTitle",
+    "method": "GET",
+    "url": "/project/analysis/project/top/staff",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/dashboard/Employee.js"
+  },
+  {
+    "module": "dashboard/PM",
+    "function": "PMProjectTable",
+    "method": "GET",
+    "url": "/project/analysis/project/purchase/table",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/dashboard/PM.js"
+  },
+  {
+    "module": "dashboard/PM",
+    "function": "PMTopInfo",
+    "method": "GET",
+    "url": "/project/analysis/project/purchase/top",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/dashboard/PM.js"
+  },
+  {
+    "module": "dashboard/PM",
+    "function": "PMProjectGroup",
+    "method": "GET",
+    "url": "/project/analysis/project/purchase/type",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/dashboard/PM.js"
+  },
+  {
+    "module": "dashboard/PM",
+    "function": "WareHouseIndex",
+    "method": "GET",
+    "url": "/project/warehouse/statistic/byProject",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/dashboard/PM.js"
+  },
+  {
+    "module": "dashboard/PM",
+    "function": "PMProjectType",
+    "method": "GET",
+    "url": "project/analysis/project/purchase",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/dashboard/PM.js"
+  },
+  {
+    "module": "dashboard/SalesExecutive",
+    "function": "opportunitiesToFollowUp",
+    "method": "GET",
+    "url": "/project/analysis/business/sale",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/dashboard/SalesExecutive.js"
+  },
+  {
+    "module": "dashboard/SalesExecutive",
+    "function": "RevenueContractInvoicing",
+    "method": "GET",
+    "url": "/project/analysis/project/sale/invoice",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/dashboard/SalesExecutive.js"
+  },
+  {
+    "module": "dashboard/SalesExecutive",
+    "function": "projectPayment",
+    "method": "GET",
+    "url": "/project/analysis/project/sale/total?projectName",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/dashboard/SalesExecutive.js"
+  },
+  {
+    "module": "dashboard/SalesExecutive",
+    "function": "infoRmation",
+    "method": "GET",
+    "url": "/project/analysis/top/sale",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/dashboard/SalesExecutive.js"
+  },
+  {
+    "module": "dashboard/SalesExecutive",
+    "function": "ProjectStatusClassiFication",
+    "method": "GET",
+    "url": "project/analysis/project/sale",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/dashboard/SalesExecutive.js"
+  },
+  {
+    "module": "enterprise/index",
+    "function": "getAppSystemList",
+    "method": "GET",
+    "url": "/app/system/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/enterprise/index.js"
+  },
+  {
+    "module": "enterprise/index",
+    "function": "addMenuPerm",
+    "method": "POST",
+    "url": "/app/user/addModule",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/enterprise/index.js"
+  },
+  {
+    "module": "enterprise/index",
+    "function": "deleteAppItem",
+    "method": "DELETE",
+    "url": "/app/user/delete/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/enterprise/index.js"
+  },
+  {
+    "module": "enterprise/index",
+    "function": "getAppList",
+    "method": "GET",
+    "url": "/app/user/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/enterprise/index.js"
+  },
+  {
+    "module": "enterprise/index",
+    "function": "queryAppByTenantAppId",
+    "method": "GET",
+    "url": "/app/user/module/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/enterprise/index.js"
+  },
+  {
+    "module": "enterprise/index",
+    "function": "getModuleByPath",
+    "method": "GET",
+    "url": "/app/user/module/path",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/enterprise/index.js"
+  },
+  {
+    "module": "enterprise/index",
+    "function": "createdNewApp",
+    "method": "POST",
+    "url": "/app/user/self/app",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/enterprise/index.js"
+  },
+  {
+    "module": "enterprise/index",
+    "function": "updateApp",
+    "method": "PUT",
+    "url": "/app/user/update",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/enterprise/index.js"
+  },
+  {
+    "module": "enterprise/index",
+    "function": "getUserInfo",
+    "method": "GET",
+    "url": "/crm/user/get_user_info",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/enterprise/index.js"
+  },
+  {
+    "module": "enterprise/index",
+    "function": "addAdminStstemGroup",
+    "method": "POST",
+    "url": "/system/admin/addAdmin",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/enterprise/index.js"
+  },
+  {
+    "module": "enterprise/index",
+    "function": "addAdminGroup",
+    "method": "POST",
+    "url": "/system/admin/addGroup",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/enterprise/index.js"
+  },
+  {
+    "module": "enterprise/index",
+    "function": "queryNormalAdminDetail",
+    "method": "GET",
+    "url": "/system/admin/adminGroup/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/enterprise/index.js"
+  },
+  {
+    "module": "enterprise/index",
+    "function": "editGroupName",
+    "method": "POST",
+    "url": "/system/admin/edit",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/enterprise/index.js"
+  },
+  {
+    "module": "enterprise/index",
+    "function": "queryStstemAdmin",
+    "method": "GET",
+    "url": "/system/admin/query/admin",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/enterprise/index.js"
+  },
+  {
+    "module": "enterprise/index",
+    "function": "queryAdminGroup",
+    "method": "GET",
+    "url": "/system/admin/query/adminGroup",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/enterprise/index.js"
+  },
+  {
+    "module": "enterprise/index",
+    "function": "adminGroupDelete",
+    "method": "DELETE",
+    "url": "/system/admin/remove/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/enterprise/index.js"
+  },
+  {
+    "module": "enterprise/index",
+    "function": "adminUpdatePre",
+    "method": "POST",
+    "url": "/system/admin/update",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/enterprise/index.js"
+  },
+  {
+    "module": "enterprise/index",
+    "function": "addSystemDepchild",
+    "method": "POST",
+    "url": "/system/dept",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/enterprise/index.js"
+  },
+  {
+    "module": "enterprise/index",
+    "function": "editDeptName",
+    "method": "PUT",
+    "url": "/system/dept",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/enterprise/index.js"
+  },
+  {
+    "module": "enterprise/index",
+    "function": "addDeptPrincipal",
+    "method": "GET",
+    "url": "/system/dept/add/principal",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/enterprise/index.js"
+  },
+  {
+    "module": "enterprise/index",
+    "function": "addDeptPrincipalLeader",
+    "method": "GET",
+    "url": "/system/dept/add/principal/leader",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/enterprise/index.js"
+  },
+  {
+    "module": "enterprise/index",
+    "function": "adjustDeptUser",
+    "method": "GET",
+    "url": "/system/dept/addUser",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/enterprise/index.js"
+  },
+  {
+    "module": "enterprise/index",
+    "function": "getTreeMenu",
+    "method": "GET",
+    "url": "/system/dept/admin/tree",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/enterprise/index.js"
+  },
+  {
+    "module": "enterprise/index",
+    "function": "deptLeaderList",
+    "method": "GET",
+    "url": "/system/dept/dept/leader",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/enterprise/index.js"
+  },
+  {
+    "module": "enterprise/index",
+    "function": "deptPrincipalList",
+    "method": "GET",
+    "url": "/system/dept/dept/principal",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/enterprise/index.js"
+  },
+  {
+    "module": "enterprise/index",
+    "function": "deptsort",
+    "method": "GET",
+    "url": "/system/dept/sort",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/enterprise/index.js"
+  },
+  {
+    "module": "enterprise/index",
+    "function": "getRoleListClass",
+    "method": "GET",
+    "url": "/system/role_group/group_list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/enterprise/index.js"
+  },
+  {
+    "module": "enterprise/index",
+    "function": "updateRoleGroup",
+    "method": "POST",
+    "url": "/system/role_group/group_update",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/enterprise/index.js"
+  },
+  {
+    "module": "enterprise/index",
+    "function": "addRoleinMember",
+    "method": "POST",
+    "url": "/system/role/add_member",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/enterprise/index.js"
+  },
+  {
+    "module": "enterprise/index",
+    "function": "getRoleByAdmin",
+    "method": "GET",
+    "url": "/system/role/admin/list",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/enterprise/index.js"
+  },
+  {
+    "module": "enterprise/index",
+    "function": "insertRole",
+    "method": "POST",
+    "url": "/system/role/insert",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/enterprise/index.js"
+  },
+  {
+    "module": "enterprise/index",
+    "function": "getRoleMemberList",
+    "method": "GET",
+    "url": "/system/role/list_member",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/enterprise/index.js"
+  },
+  {
+    "module": "enterprise/index",
+    "function": "deleteRoleinMember",
+    "method": "DELETE",
+    "url": "/system/role/remove_member",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/enterprise/index.js"
+  },
+  {
+    "module": "enterprise/index",
+    "function": "updateRole",
+    "method": "POST",
+    "url": "/system/role/update",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/enterprise/index.js"
+  },
+  {
+    "module": "enterprise/index",
+    "function": "addRole",
+    "method": "POST",
+    "url": "/system/user/add",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/enterprise/index.js"
+  },
+  {
+    "module": "enterprise/index",
+    "function": "addUserDismiss",
+    "method": "GET",
+    "url": "/system/user/dismiss",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/enterprise/index.js"
+  },
+  {
+    "module": "enterprise/index",
+    "function": "getDismissList",
+    "method": "GET",
+    "url": "/system/user/dismiss_list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/enterprise/index.js"
+  },
+  {
+    "module": "enterprise/index",
+    "function": "roleImport",
+    "method": "POST",
+    "url": "/system/user/excel_import",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/enterprise/index.js"
+  },
+  {
+    "module": "enterprise/index",
+    "function": "getUserList",
+    "method": "GET",
+    "url": "/system/user/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/enterprise/index.js"
+  },
+  {
+    "module": "enterprise/index",
+    "function": "queryUserList",
+    "method": "GET",
+    "url": "/system/user/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/enterprise/index.js"
+  },
+  {
+    "module": "eos/analysis/analyst",
+    "function": "businessSale",
+    "method": "GET",
+    "url": "/project/analysis/business/sale",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/analysis/analyst.js"
+  },
+  {
+    "module": "eos/analysis/analyst",
+    "function": "firstInOut",
+    "method": "GET",
+    "url": "/project/analysis/first/in/out",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/analysis/analyst.js"
+  },
+  {
+    "module": "eos/analysis/analyst",
+    "function": "statistics",
+    "method": "GET",
+    "url": "/project/analysis/first/page",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/analysis/analyst.js"
+  },
+  {
+    "module": "eos/analysis/analyst",
+    "function": "managerCost",
+    "method": "GET",
+    "url": "/project/analysis/manager/cost",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/analysis/analyst.js"
+  },
+  {
+    "module": "eos/analysis/analyst",
+    "function": "subject",
+    "method": "GET",
+    "url": "/project/contract/subject/analysis",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/analysis/analyst.js"
+  },
+  {
+    "module": "eos/analysis/analyst",
+    "function": "subjectExport",
+    "method": "GET",
+    "url": "/project/contract/subject/analysis/export",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/analysis/analyst.js"
+  },
+  {
+    "module": "eos/analysis/analyst",
+    "function": "subjectCtc",
+    "method": "GET",
+    "url": "/project/contract/subject/FindSubjectCtc",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/analysis/analyst.js"
+  },
+  {
+    "module": "eos/analysis/analyst",
+    "function": "subjectCtcExport",
+    "method": "GET",
+    "url": "/project/contract/subject/FindSubjectCtc/export",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/analysis/analyst.js"
+  },
+  {
+    "module": "eos/analysis/analyst",
+    "function": "AnalystProjectFundPie",
+    "method": "GET",
+    "url": "/project/fund/analystFund",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/analysis/analyst.js"
+  },
+  {
+    "module": "eos/analysis/analyst",
+    "function": "AnalystProjectFundTotal",
+    "method": "GET",
+    "url": "/project/fund/analystFundTotal",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/analysis/analyst.js"
+  },
+  {
+    "module": "eos/analysis/analyst",
+    "function": "AnalystProjectFundIn",
+    "method": "GET",
+    "url": "/project/income/analystFundIn",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/analysis/analyst.js"
+  },
+  {
+    "module": "eos/analysis/analyst",
+    "function": "AnalystProjectLabor",
+    "method": "GET",
+    "url": "/project/labor/analystLabor",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/analysis/analyst.js"
+  },
+  {
+    "module": "eos/analysis/analyst",
+    "function": "AnalystProjectLaborPie",
+    "method": "GET",
+    "url": "/project/labor/analystLaborPie",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/analysis/analyst.js"
+  },
+  {
+    "module": "eos/analysis/analyst",
+    "function": "AnalystProjectLaborTotal",
+    "method": "GET",
+    "url": "/project/labor/analystTotalLabor",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/analysis/analyst.js"
+  },
+  {
+    "module": "eos/analysis/analyst",
+    "function": "AnalystProjectLoan",
+    "method": "GET",
+    "url": "/project/loan/total/loanAnalyst",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/analysis/analyst.js"
+  },
+  {
+    "module": "eos/analysis/analyst",
+    "function": "AnalystProjectFundOut",
+    "method": "GET",
+    "url": "/project/outcome/analystFundOut",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/analysis/analyst.js"
+  },
+  {
+    "module": "eos/analysis/analyst",
+    "function": "analysisInOutCome",
+    "method": "GET",
+    "url": "/project/project/analysis/income",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/analysis/analyst.js"
+  },
+  {
+    "module": "eos/analysis/analyst",
+    "function": "analysisInComeLeft",
+    "method": "GET",
+    "url": "/project/project/analysis/income/left",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/analysis/analyst.js"
+  },
+  {
+    "module": "eos/analysis/analyst",
+    "function": "analystList",
+    "method": "GET",
+    "url": "/project/project/analyst",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/analysis/analyst.js"
+  },
+  {
+    "module": "eos/analysis/analyst",
+    "function": "ProjectRegion",
+    "method": "GET",
+    "url": "/project/project/analyst/project/region",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/analysis/analyst.js"
+  },
+  {
+    "module": "eos/analysis/analyst",
+    "function": "ProjectType",
+    "method": "GET",
+    "url": "/project/project/analyst/project/type",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/analysis/analyst.js"
+  },
+  {
+    "module": "eos/analysis/analyst",
+    "function": "AnalystProjectPaymentOut",
+    "method": "GET",
+    "url": "/project/project/analyst/realOut",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/analysis/analyst.js"
+  },
+  {
+    "module": "eos/analysis/analyst",
+    "function": "AnalystProjectPaymentTotal",
+    "method": "GET",
+    "url": "/project/project/analyst/total",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/analysis/analyst.js"
+  },
+  {
+    "module": "eos/analysis/analyst",
+    "function": "companyLaborBie",
+    "method": "GET",
+    "url": "/project/project/company/area/bie",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/analysis/analyst.js"
+  },
+  {
+    "module": "eos/analysis/analyst",
+    "function": "companyLaborTableBie",
+    "method": "GET",
+    "url": "/project/project/company/area/labor/table/bie",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/analysis/analyst.js"
+  },
+  {
+    "module": "eos/analysis/analyst",
+    "function": "companyLaborTablePie",
+    "method": "GET",
+    "url": "/project/project/company/area/labor/table/pie",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/analysis/analyst.js"
+  },
+  {
+    "module": "eos/analysis/analyst",
+    "function": "companyLaborPie",
+    "method": "GET",
+    "url": "/project/project/company/area/pie",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/analysis/analyst.js"
+  },
+  {
+    "module": "eos/analysis/analyst",
+    "function": "companyPlanTablePie",
+    "method": "GET",
+    "url": "/project/project/company/fund/pie",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/analysis/analyst.js"
+  },
+  {
+    "module": "eos/analysis/analyst",
+    "function": "companyPlanTable",
+    "method": "GET",
+    "url": "/project/project/company/plan/table",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/analysis/analyst.js"
+  },
+  {
+    "module": "eos/analysis/analyst",
+    "function": "companyPlanBie",
+    "method": "GET",
+    "url": "/project/project/company/plan/table/bie",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/analysis/analyst.js"
+  },
+  {
+    "module": "eos/analysis/analyst",
+    "function": "exportAllOut",
+    "method": "GET",
+    "url": "/project/project/export/project/allOut/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/analysis/analyst.js"
+  },
+  {
+    "module": "eos/analysis/analyst",
+    "function": "projectAnalyst",
+    "method": "GET",
+    "url": "/project/project/export/projectAnalyst",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/analysis/analyst.js"
+  },
+  {
+    "module": "eos/analysis/analyst",
+    "function": "areaList",
+    "method": "GET",
+    "url": "/project/project/getArea",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/analysis/analyst.js"
+  },
+  {
+    "module": "eos/analysis/analyst",
+    "function": "getBarAnasylt",
+    "method": "GET",
+    "url": "/project/project/getBar",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/analysis/analyst.js"
+  },
+  {
+    "module": "eos/analysis/analyst",
+    "function": "getBarTotalAnasylt",
+    "method": "GET",
+    "url": "/project/project/getBarTotal",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/analysis/analyst.js"
+  },
+  {
+    "module": "eos/analysis/analyst",
+    "function": "getExcelAnasylt",
+    "method": "GET",
+    "url": "/project/project/getExcelAnalyst",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/analysis/analyst.js"
+  },
+  {
+    "module": "eos/analysis/analyst",
+    "function": "getLineAnasylt",
+    "method": "GET",
+    "url": "/project/project/getLine",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/analysis/analyst.js"
+  },
+  {
+    "module": "eos/analysis/analyst",
+    "function": "AnalystProjectPaymentIn",
+    "method": "GET",
+    "url": "/project/real/analystReal",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/analysis/analyst.js"
+  },
+  {
+    "module": "eos/bid/bid",
+    "function": "addBid",
+    "method": "POST",
+    "url": "/project/bid",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/bid/bid.js"
+  },
+  {
+    "module": "eos/bid/bid",
+    "function": "updateBid",
+    "method": "PUT",
+    "url": "/project/bid",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/bid/bid.js"
+  },
+  {
+    "module": "eos/bid/bid",
+    "function": "delBid",
+    "method": "DELETE",
+    "url": "/project/bid/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/bid/bid.js"
+  },
+  {
+    "module": "eos/bid/bid",
+    "function": "getBid",
+    "method": "GET",
+    "url": "/project/bid/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/bid/bid.js"
+  },
+  {
+    "module": "eos/bid/bid",
+    "function": "exportBid",
+    "method": "GET",
+    "url": "/project/bid/export",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/bid/bid.js"
+  },
+  {
+    "module": "eos/bid/bid",
+    "function": "listBid",
+    "method": "GET",
+    "url": "/project/bid/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/bid/bid.js"
+  },
+  {
+    "module": "eos/budget/apply",
+    "function": "addApply",
+    "method": "POST",
+    "url": "/project/apply",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/budget/apply.js"
+  },
+  {
+    "module": "eos/budget/apply",
+    "function": "delBudget",
+    "method": "DELETE",
+    "url": "/project/apply/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/budget/apply.js"
+  },
+  {
+    "module": "eos/budget/apply",
+    "function": "budgetPass",
+    "method": "GET",
+    "url": "/project/apply/budget/pass",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/budget/apply.js"
+  },
+  {
+    "module": "eos/budget/apply",
+    "function": "budgetPassDept",
+    "method": "GET",
+    "url": "/project/apply/budget/pass/dept",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/budget/apply.js"
+  },
+  {
+    "module": "eos/budget/apply",
+    "function": "budgetPassOne",
+    "method": "GET",
+    "url": "/project/apply/budget/pass/one",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/budget/apply.js"
+  },
+  {
+    "module": "eos/budget/apply",
+    "function": "budgetType",
+    "method": "GET",
+    "url": "/project/apply/budgetType/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/budget/apply.js"
+  },
+  {
+    "module": "eos/budget/apply",
+    "function": "applyEdit",
+    "method": "PUT",
+    "url": "/project/apply/edit",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/budget/apply.js"
+  },
+  {
+    "module": "eos/budget/apply",
+    "function": "getList",
+    "method": "GET",
+    "url": "/project/apply/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/budget/apply.js"
+  },
+  {
+    "module": "eos/budget/apply",
+    "function": "listSelf",
+    "method": "GET",
+    "url": "/project/apply/list/personal",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/budget/apply.js"
+  },
+  {
+    "module": "eos/budget/apply",
+    "function": "resMoney",
+    "method": "GET",
+    "url": "/project/apply/resMoney/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/budget/apply.js"
+  },
+  {
+    "module": "eos/budget/apply",
+    "function": "submitApply",
+    "method": "POST",
+    "url": "/project/apply/submitApply",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/budget/apply.js"
+  },
+  {
+    "module": "eos/budget/apply",
+    "function": "exportBudget",
+    "method": "GET",
+    "url": "/project/budget/export",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/budget/apply.js"
+  },
+  {
+    "module": "eos/budget/apply",
+    "function": "reApply",
+    "method": "POST",
+    "url": "project/apply/reApply",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/budget/apply.js"
+  },
+  {
+    "module": "eos/budget/budget",
+    "function": "getOneApply",
+    "method": "GET",
+    "url": "/project/apply/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/budget/budget.js"
+  },
+  {
+    "module": "eos/budget/budget",
+    "function": "getProjectList",
+    "method": "GET",
+    "url": "/project/apply/budget/getProject/",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/budget/budget.js"
+  },
+  {
+    "module": "eos/budget/budget",
+    "function": "getProjectMoney",
+    "method": "GET",
+    "url": "/project/apply/budget/project/money/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/budget/budget.js"
+  },
+  {
+    "module": "eos/budget/budget",
+    "function": "personalDeptBudget",
+    "method": "GET",
+    "url": "/project/apply/list/personal/dept",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/budget/budget.js"
+  },
+  {
+    "module": "eos/budget/budget",
+    "function": "allDeptBudget",
+    "method": "GET",
+    "url": "/project/apply/list/personal/dept/all",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/budget/budget.js"
+  },
+  {
+    "module": "eos/budget/budget",
+    "function": "addBudget",
+    "method": "POST",
+    "url": "/project/budget",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/budget/budget.js"
+  },
+  {
+    "module": "eos/budget/budget",
+    "function": "updateBudget",
+    "method": "PUT",
+    "url": "/project/budget",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/budget/budget.js"
+  },
+  {
+    "module": "eos/budget/budget",
+    "function": "delBudget",
+    "method": "DELETE",
+    "url": "/project/budget/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/budget/budget.js"
+  },
+  {
+    "module": "eos/budget/budget",
+    "function": "getBudget",
+    "method": "GET",
+    "url": "/project/budget/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/budget/budget.js"
+  },
+  {
+    "module": "eos/budget/budget",
+    "function": "exportBudget",
+    "method": "GET",
+    "url": "/project/budget/export",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/budget/budget.js"
+  },
+  {
+    "module": "eos/budget/budget",
+    "function": "listBudget",
+    "method": "GET",
+    "url": "/project/budget/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/budget/budget.js"
+  },
+  {
+    "module": "eos/budget/budgetModify",
+    "function": "delBudgetModify",
+    "method": "DELETE",
+    "url": "/project/apply/budget/change/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/budget/budgetModify.js"
+  },
+  {
+    "module": "eos/budget/budgetModify",
+    "function": "saveTypeList",
+    "method": "GET",
+    "url": "/project/apply/budget/getApply",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/budget/budgetModify.js"
+  },
+  {
+    "module": "eos/budget/budgetModify",
+    "function": "saveBudgetType",
+    "method": "GET",
+    "url": "/project/apply/budget/getType/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/budget/budgetModify.js"
+  },
+  {
+    "module": "eos/budget/budgetModify",
+    "function": "getBudgetModify",
+    "method": "GET",
+    "url": "/project/apply/budget/listChange",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/budget/budgetModify.js"
+  },
+  {
+    "module": "eos/budget/budgetModify",
+    "function": "saveBudgetModify",
+    "method": "POST",
+    "url": "/project/apply/budget/saveChange",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/budget/budgetModify.js"
+  },
+  {
+    "module": "eos/budget/budgetModify",
+    "function": "submitApply",
+    "method": "POST",
+    "url": "/project/apply/submitApply/change/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/budget/budgetModify.js"
+  },
+  {
+    "module": "eos/budget/type",
+    "function": "addType",
+    "method": "POST",
+    "url": "/project/type",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/budget/type.js"
+  },
+  {
+    "module": "eos/budget/type",
+    "function": "updateType",
+    "method": "PUT",
+    "url": "/project/type",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/budget/type.js"
+  },
+  {
+    "module": "eos/budget/type",
+    "function": "delType",
+    "method": "DELETE",
+    "url": "/project/type/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/budget/type.js"
+  },
+  {
+    "module": "eos/budget/type",
+    "function": "getType",
+    "method": "GET",
+    "url": "/project/type/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/budget/type.js"
+  },
+  {
+    "module": "eos/budget/type",
+    "function": "exportType",
+    "method": "GET",
+    "url": "/project/type/export",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/budget/type.js"
+  },
+  {
+    "module": "eos/budget/type",
+    "function": "TypeGetType",
+    "method": "GET",
+    "url": "/project/type/getType/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/budget/type.js"
+  },
+  {
+    "module": "eos/budget/type",
+    "function": "listType",
+    "method": "GET",
+    "url": "/project/type/list/select/like",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/budget/type.js"
+  },
+  {
+    "module": "eos/budget/type",
+    "function": "BigType",
+    "method": "GET",
+    "url": "/project/type/select/budget/type",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/budget/type.js"
+  },
+  {
+    "module": "eos/business/business",
+    "function": "addBusiness",
+    "method": "POST",
+    "url": "/project/business",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/business/business.js"
+  },
+  {
+    "module": "eos/business/business",
+    "function": "updateBusiness",
+    "method": "PUT",
+    "url": "/project/business",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/business/business.js"
+  },
+  {
+    "module": "eos/business/business",
+    "function": "delBusiness",
+    "method": "DELETE",
+    "url": "/project/business/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/business/business.js"
+  },
+  {
+    "module": "eos/business/business",
+    "function": "getBusiness",
+    "method": "GET",
+    "url": "/project/business/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/business/business.js"
+  },
+  {
+    "module": "eos/business/business",
+    "function": "listBusiness",
+    "method": "GET",
+    "url": "/project/business/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/business/business.js"
+  },
+  {
+    "module": "eos/business/business",
+    "function": "deleteBusinessStage",
+    "method": "DELETE",
+    "url": "/project/business/stage/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/business/business.js"
+  },
+  {
+    "module": "eos/business/business",
+    "function": "addBusinessStage",
+    "method": "POST",
+    "url": "/project/business/stage/insert",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/business/business.js"
+  },
+  {
+    "module": "eos/business/business",
+    "function": "deleteBusinessUser",
+    "method": "DELETE",
+    "url": "/project/business/user/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/business/business.js"
+  },
+  {
+    "module": "eos/change/history",
+    "function": "listHistory",
+    "method": "GET",
+    "url": "/project/apply/change/history",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/change/history.js"
+  },
+  {
+    "module": "eos/change/history",
+    "function": "addHistory",
+    "method": "POST",
+    "url": "/project/history",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/change/history.js"
+  },
+  {
+    "module": "eos/change/history",
+    "function": "updateHistory",
+    "method": "PUT",
+    "url": "/project/history",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/change/history.js"
+  },
+  {
+    "module": "eos/change/history",
+    "function": "delHistory",
+    "method": "DELETE",
+    "url": "/project/history/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/change/history.js"
+  },
+  {
+    "module": "eos/change/history",
+    "function": "getHistory",
+    "method": "GET",
+    "url": "/project/history/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/change/history.js"
+  },
+  {
+    "module": "eos/change/history",
+    "function": "exportHistory",
+    "method": "GET",
+    "url": "/project/history/export",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/change/history.js"
+  },
+  {
+    "module": "eos/contract/contract",
+    "function": "addContract",
+    "method": "POST",
+    "url": "/project/contract",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/contract/contract.js"
+  },
+  {
+    "module": "eos/contract/contract",
+    "function": "updateContract",
+    "method": "PUT",
+    "url": "/project/contract",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/contract/contract.js"
+  },
+  {
+    "module": "eos/contract/contract",
+    "function": "delContract",
+    "method": "DELETE",
+    "url": "/project/contract/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/contract/contract.js"
+  },
+  {
+    "module": "eos/contract/contract",
+    "function": "getContract",
+    "method": "GET",
+    "url": "/project/contract/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/contract/contract.js"
+  },
+  {
+    "module": "eos/contract/contract",
+    "function": "exportContract",
+    "method": "GET",
+    "url": "/project/contract/export",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/contract/contract.js"
+  },
+  {
+    "module": "eos/contract/contract",
+    "function": "listContract",
+    "method": "GET",
+    "url": "/project/contract/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/contract/contract.js"
+  },
+  {
+    "module": "eos/contract/contract",
+    "function": "listContractApply",
+    "method": "GET",
+    "url": "/project/contract/list/apply",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/contract/contract.js"
+  },
+  {
+    "module": "eos/contract/contract",
+    "function": "listByProject",
+    "method": "GET",
+    "url": "/project/contract/list/by/project",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/contract/contract.js"
+  },
+  {
+    "module": "eos/contract/contract",
+    "function": "listInContractPersonal",
+    "method": "GET",
+    "url": "/project/contract/list/in/personal",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/contract/contract.js"
+  },
+  {
+    "module": "eos/contract/contract",
+    "function": "listByProjectIdOnly",
+    "method": "GET",
+    "url": "/project/contract/list/only",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/contract/contract.js"
+  },
+  {
+    "module": "eos/contract/contract",
+    "function": "listContractPersonal",
+    "method": "GET",
+    "url": "/project/contract/list/personal",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/contract/contract.js"
+  },
+  {
+    "module": "eos/contract/contract",
+    "function": "queryContract",
+    "method": "GET",
+    "url": "/project/contract/list/qc",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/contract/contract.js"
+  },
+  {
+    "module": "eos/contract/contract",
+    "function": "reApply",
+    "method": "POST",
+    "url": "/project/contract/reApply",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/contract/contract.js"
+  },
+  {
+    "module": "eos/contract/contract",
+    "function": "submitApply",
+    "method": "POST",
+    "url": "/project/contract/submitApply",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/contract/contract.js"
+  },
+  {
+    "module": "eos/contract/contract",
+    "function": "delContractDetailList",
+    "method": "DELETE",
+    "url": "/project/list/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/contract/contract.js"
+  },
+  {
+    "module": "eos/contract/contractModify",
+    "function": "getContractList",
+    "method": "GET",
+    "url": "/project/contract/list/only",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/contract/contractModify.js"
+  },
+  {
+    "module": "eos/contract/contractModify",
+    "function": "getContractModify",
+    "method": "GET",
+    "url": "/project/contract/temporary/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/contract/contractModify.js"
+  },
+  {
+    "module": "eos/contract/contractModify",
+    "function": "deleteContractModify",
+    "method": "DELETE",
+    "url": "/project/contract/temporary/remove/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/contract/contractModify.js"
+  },
+  {
+    "module": "eos/contract/contractModify",
+    "function": "contractSaveChange",
+    "method": "POST",
+    "url": "/project/contract/temporary/saveChange",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/contract/contractModify.js"
+  },
+  {
+    "module": "eos/contract/contractModify",
+    "function": "submitApplyContractModify",
+    "method": "POST",
+    "url": "/project/contract/temporary/submitApply",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/contract/contractModify.js"
+  },
+  {
+    "module": "eos/contract/list",
+    "function": "addList",
+    "method": "POST",
+    "url": "/project/list",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/contract/list.js"
+  },
+  {
+    "module": "eos/contract/list",
+    "function": "updateList",
+    "method": "PUT",
+    "url": "/project/list",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/contract/list.js"
+  },
+  {
+    "module": "eos/contract/list",
+    "function": "delList",
+    "method": "DELETE",
+    "url": "/project/list/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/contract/list.js"
+  },
+  {
+    "module": "eos/contract/list",
+    "function": "getList",
+    "method": "GET",
+    "url": "/project/list/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/contract/list.js"
+  },
+  {
+    "module": "eos/contract/list",
+    "function": "exportList",
+    "method": "GET",
+    "url": "/project/list/export",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/contract/list.js"
+  },
+  {
+    "module": "eos/contract/list",
+    "function": "listList",
+    "method": "GET",
+    "url": "/project/list/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/contract/list.js"
+  },
+  {
+    "module": "eos/contract/list",
+    "function": "getAmountListByContract",
+    "method": "GET",
+    "url": "/project/list/list/contract",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/contract/list.js"
+  },
+  {
+    "module": "eos/contract/stage",
+    "function": "addStage",
+    "method": "POST",
+    "url": "/project/stage",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/contract/stage.js"
+  },
+  {
+    "module": "eos/contract/stage",
+    "function": "updateStage",
+    "method": "PUT",
+    "url": "/project/stage",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/contract/stage.js"
+  },
+  {
+    "module": "eos/contract/stage",
+    "function": "delStage",
+    "method": "DELETE",
+    "url": "/project/stage/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/contract/stage.js"
+  },
+  {
+    "module": "eos/contract/stage",
+    "function": "getStage",
+    "method": "GET",
+    "url": "/project/stage/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/contract/stage.js"
+  },
+  {
+    "module": "eos/contract/stage",
+    "function": "exportStage",
+    "method": "GET",
+    "url": "/project/stage/export",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/contract/stage.js"
+  },
+  {
+    "module": "eos/contract/stage",
+    "function": "listStage",
+    "method": "GET",
+    "url": "/project/stage/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/contract/stage.js"
+  },
+  {
+    "module": "eos/cost/labor",
+    "function": "addLabor",
+    "method": "POST",
+    "url": "/project/cost",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/cost/labor.js"
+  },
+  {
+    "module": "eos/cost/labor",
+    "function": "updateLabor",
+    "method": "PUT",
+    "url": "/project/cost",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/cost/labor.js"
+  },
+  {
+    "module": "eos/cost/labor",
+    "function": "delLabor",
+    "method": "DELETE",
+    "url": "/project/cost/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/cost/labor.js"
+  },
+  {
+    "module": "eos/cost/labor",
+    "function": "getLabor",
+    "method": "GET",
+    "url": "/project/cost/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/cost/labor.js"
+  },
+  {
+    "module": "eos/cost/labor",
+    "function": "listLabor",
+    "method": "GET",
+    "url": "/project/cost/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/cost/labor.js"
+  },
+  {
+    "module": "eos/cost/labor",
+    "function": "reApply",
+    "method": "POST",
+    "url": "/project/cost/reApply",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/cost/labor.js"
+  },
+  {
+    "module": "eos/cost/labor",
+    "function": "delOnbusDetail",
+    "method": "DELETE",
+    "url": "/project/labor/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/cost/labor.js"
+  },
+  {
+    "module": "eos/cost/labor",
+    "function": "exportLabor",
+    "method": "GET",
+    "url": "/project/labor/export/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/cost/labor.js"
+  },
+  {
+    "module": "eos/cost/labor",
+    "function": "listLaborDetail",
+    "method": "GET",
+    "url": "/project/labor/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/cost/labor.js"
+  },
+  {
+    "module": "eos/cost/labor",
+    "function": "projectLabor",
+    "method": "GET",
+    "url": "/project/labor/project/labor",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/cost/labor.js"
+  },
+  {
+    "module": "eos/cost/onbus",
+    "function": "addOnbus",
+    "method": "POST",
+    "url": "/project/cost",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/cost/onbus.js"
+  },
+  {
+    "module": "eos/cost/onbus",
+    "function": "updateOnbus",
+    "method": "PUT",
+    "url": "/project/cost",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/cost/onbus.js"
+  },
+  {
+    "module": "eos/cost/onbus",
+    "function": "delOnbus",
+    "method": "DELETE",
+    "url": "/project/cost/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/cost/onbus.js"
+  },
+  {
+    "module": "eos/cost/onbus",
+    "function": "getOnbus",
+    "method": "GET",
+    "url": "/project/cost/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/cost/onbus.js"
+  },
+  {
+    "module": "eos/cost/onbus",
+    "function": "listOnbus",
+    "method": "GET",
+    "url": "/project/cost/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/cost/onbus.js"
+  },
+  {
+    "module": "eos/cost/onbus",
+    "function": "reApply",
+    "method": "POST",
+    "url": "/project/cost/reApply",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/cost/onbus.js"
+  },
+  {
+    "module": "eos/cost/onbus",
+    "function": "delOnbusDetail",
+    "method": "DELETE",
+    "url": "/project/onbus/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/cost/onbus.js"
+  },
+  {
+    "module": "eos/cost/onbus",
+    "function": "exportOnbus",
+    "method": "GET",
+    "url": "/project/onbus/export/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/cost/onbus.js"
+  },
+  {
+    "module": "eos/cost/onbus",
+    "function": "listOnbusDetail",
+    "method": "GET",
+    "url": "/project/onbus/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/cost/onbus.js"
+  },
+  {
+    "module": "eos/cost/onbus",
+    "function": "listPlaneSimple",
+    "method": "GET",
+    "url": "/project/plane/list/simple",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/cost/onbus.js"
+  },
+  {
+    "module": "eos/earnest/earnestMoney",
+    "function": "addApply",
+    "method": "POST",
+    "url": "/project/earnestMoney",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/earnest/earnestMoney.js"
+  },
+  {
+    "module": "eos/earnest/earnestMoney",
+    "function": "updateApply",
+    "method": "PUT",
+    "url": "/project/earnestMoney",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/earnest/earnestMoney.js"
+  },
+  {
+    "module": "eos/earnest/earnestMoney",
+    "function": "delApply",
+    "method": "DELETE",
+    "url": "/project/earnestMoney/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/earnest/earnestMoney.js"
+  },
+  {
+    "module": "eos/earnest/earnestMoney",
+    "function": "getApply",
+    "method": "GET",
+    "url": "/project/earnestMoney/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/earnest/earnestMoney.js"
+  },
+  {
+    "module": "eos/earnest/earnestMoney",
+    "function": "dingdingMSG",
+    "method": "GET",
+    "url": "/project/earnestMoney/dingMsg",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/earnest/earnestMoney.js"
+  },
+  {
+    "module": "eos/earnest/earnestMoney",
+    "function": "exportApply",
+    "method": "GET",
+    "url": "/project/earnestMoney/export",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/earnest/earnestMoney.js"
+  },
+  {
+    "module": "eos/earnest/earnestMoney",
+    "function": "listApply",
+    "method": "GET",
+    "url": "/project/earnestMoney/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/earnest/earnestMoney.js"
+  },
+  {
+    "module": "eos/earnest/earnestMoney",
+    "function": "listApplySimple",
+    "method": "GET",
+    "url": "/project/earnestMoney/simpleList",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/earnest/earnestMoney.js"
+  },
+  {
+    "module": "eos/earnest/earnestMoney",
+    "function": "submitApply",
+    "method": "POST",
+    "url": "/project/earnestMoney/submitApply",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/earnest/earnestMoney.js"
+  },
+  {
+    "module": "eos/earnest/earnestMoney",
+    "function": "reApply",
+    "method": "POST",
+    "url": "project/earnestMoney/reApply",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/earnest/earnestMoney.js"
+  },
+  {
+    "module": "eos/earnest/earnestReturn",
+    "function": "addReturn",
+    "method": "POST",
+    "url": "/project/earnestReturn",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/earnest/earnestReturn.js"
+  },
+  {
+    "module": "eos/earnest/earnestReturn",
+    "function": "updateReturn",
+    "method": "PUT",
+    "url": "/project/earnestReturn/",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/earnest/earnestReturn.js"
+  },
+  {
+    "module": "eos/earnest/earnestReturn",
+    "function": "delReturn",
+    "method": "DELETE",
+    "url": "/project/earnestReturn/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/earnest/earnestReturn.js"
+  },
+  {
+    "module": "eos/earnest/earnestReturn",
+    "function": "getReturn",
+    "method": "GET",
+    "url": "/project/earnestReturn/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/earnest/earnestReturn.js"
+  },
+  {
+    "module": "eos/earnest/earnestReturn",
+    "function": "exportReturn",
+    "method": "GET",
+    "url": "/project/earnestReturn/export",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/earnest/earnestReturn.js"
+  },
+  {
+    "module": "eos/earnest/earnestReturn",
+    "function": "listReturn",
+    "method": "GET",
+    "url": "/project/earnestReturn/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/earnest/earnestReturn.js"
+  },
+  {
+    "module": "eos/expense/detail",
+    "function": "addDetail",
+    "method": "POST",
+    "url": "/project/detail",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/expense/detail.js"
+  },
+  {
+    "module": "eos/expense/detail",
+    "function": "updateDetail",
+    "method": "PUT",
+    "url": "/project/detail",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/expense/detail.js"
+  },
+  {
+    "module": "eos/expense/detail",
+    "function": "delDetail",
+    "method": "DELETE",
+    "url": "/project/detail/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/expense/detail.js"
+  },
+  {
+    "module": "eos/expense/detail",
+    "function": "getDetail",
+    "method": "GET",
+    "url": "/project/detail/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/expense/detail.js"
+  },
+  {
+    "module": "eos/expense/detail",
+    "function": "exportDetail",
+    "method": "GET",
+    "url": "/project/detail/export",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/expense/detail.js"
+  },
+  {
+    "module": "eos/expense/detail",
+    "function": "exportProjectDetail",
+    "method": "GET",
+    "url": "/project/detail/getProjectExcel",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/expense/detail.js"
+  },
+  {
+    "module": "eos/expense/detail",
+    "function": "listDetail",
+    "method": "GET",
+    "url": "/project/detail/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/expense/detail.js"
+  },
+  {
+    "module": "eos/expense/expense",
+    "function": "deletDetail",
+    "method": "DELETE",
+    "url": "/project/detail/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/expense/expense.js"
+  },
+  {
+    "module": "eos/expense/expense",
+    "function": "exportDetail",
+    "method": "GET",
+    "url": "/project/detail/export",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/expense/expense.js"
+  },
+  {
+    "module": "eos/expense/expense",
+    "function": "listExpenseDetail",
+    "method": "GET",
+    "url": "/project/detail/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/expense/expense.js"
+  },
+  {
+    "module": "eos/expense/expense",
+    "function": "addExpense",
+    "method": "POST",
+    "url": "/project/expense",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/expense/expense.js"
+  },
+  {
+    "module": "eos/expense/expense",
+    "function": "updateExpense",
+    "method": "PUT",
+    "url": "/project/expense",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/expense/expense.js"
+  },
+  {
+    "module": "eos/expense/expense",
+    "function": "delExpense",
+    "method": "DELETE",
+    "url": "/project/expense/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/expense/expense.js"
+  },
+  {
+    "module": "eos/expense/expense",
+    "function": "getExpense",
+    "method": "GET",
+    "url": "/project/expense/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/expense/expense.js"
+  },
+  {
+    "module": "eos/expense/expense",
+    "function": "exportExpense",
+    "method": "GET",
+    "url": "/project/expense/export",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/expense/expense.js"
+  },
+  {
+    "module": "eos/expense/expense",
+    "function": "expensegetOne",
+    "method": "GET",
+    "url": "/project/expense/getOne",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/expense/expense.js"
+  },
+  {
+    "module": "eos/expense/expense",
+    "function": "listProjectSimple",
+    "method": "GET",
+    "url": "/project/expense/getProject",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/expense/expense.js"
+  },
+  {
+    "module": "eos/expense/expense",
+    "function": "listExpense",
+    "method": "GET",
+    "url": "/project/expense/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/expense/expense.js"
+  },
+  {
+    "module": "eos/expense/expense",
+    "function": "listExpensePersonal",
+    "method": "GET",
+    "url": "/project/expense/list/personal",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/expense/expense.js"
+  },
+  {
+    "module": "eos/expense/expense",
+    "function": "submitApply",
+    "method": "POST",
+    "url": "/project/expense/submitApply",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/expense/expense.js"
+  },
+  {
+    "module": "eos/expense/expense",
+    "function": "budgetType",
+    "method": "GET",
+    "url": "/project/expense/type/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/expense/expense.js"
+  },
+  {
+    "module": "eos/expense/expense",
+    "function": "deleteInvoice",
+    "method": "DELETE",
+    "url": "/project/invoice/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/expense/expense.js"
+  },
+  {
+    "module": "eos/expense/expense",
+    "function": "exportInvoice",
+    "method": "GET",
+    "url": "/project/invoice/download/zip/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/expense/expense.js"
+  },
+  {
+    "module": "eos/expense/expense",
+    "function": "getResidueMoney",
+    "method": "GET",
+    "url": "/project/type/list/select/like",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/expense/expense.js"
+  },
+  {
+    "module": "eos/expense/expense",
+    "function": "getExpenseList",
+    "method": "GET",
+    "url": "project/expense/list/getExpense/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/expense/expense.js"
+  },
+  {
+    "module": "eos/expense/expense",
+    "function": "reApply",
+    "method": "POST",
+    "url": "project/expense/reApply",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/expense/expense.js"
+  },
+  {
+    "module": "eos/fundPlan/fund",
+    "function": "addFund",
+    "method": "POST",
+    "url": "/project/fund",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/fundPlan/fund.js"
+  },
+  {
+    "module": "eos/fundPlan/fund",
+    "function": "updateFund",
+    "method": "PUT",
+    "url": "/project/fund",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/fundPlan/fund.js"
+  },
+  {
+    "module": "eos/fundPlan/fund",
+    "function": "delFund",
+    "method": "DELETE",
+    "url": "/project/fund/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/fundPlan/fund.js"
+  },
+  {
+    "module": "eos/fundPlan/fund",
+    "function": "getFund",
+    "method": "GET",
+    "url": "/project/fund/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/fundPlan/fund.js"
+  },
+  {
+    "module": "eos/fundPlan/fund",
+    "function": "LaborProject",
+    "method": "GET",
+    "url": "/project/fund/approval",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/fundPlan/fund.js"
+  },
+  {
+    "module": "eos/fundPlan/fund",
+    "function": "fundContract",
+    "method": "GET",
+    "url": "/project/fund/contract/",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/fundPlan/fund.js"
+  },
+  {
+    "module": "eos/fundPlan/fund",
+    "function": "exportFund",
+    "method": "GET",
+    "url": "/project/fund/export",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/fundPlan/fund.js"
+  },
+  {
+    "module": "eos/fundPlan/fund",
+    "function": "listFund",
+    "method": "GET",
+    "url": "/project/fund/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/fundPlan/fund.js"
+  },
+  {
+    "module": "eos/fundPlan/fund",
+    "function": "fundProjectIn",
+    "method": "GET",
+    "url": "/project/fund/project",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/fundPlan/fund.js"
+  },
+  {
+    "module": "eos/fundPlan/fund",
+    "function": "fundProjectOut",
+    "method": "GET",
+    "url": "/project/fund/project",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/fundPlan/fund.js"
+  },
+  {
+    "module": "eos/fundPlan/fund",
+    "function": "submitAudit",
+    "method": "POST",
+    "url": "/project/fund/submitApply/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/fundPlan/fund.js"
+  },
+  {
+    "module": "eos/fundPlan/income",
+    "function": "addIncome",
+    "method": "POST",
+    "url": "/project/income",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/fundPlan/income.js"
+  },
+  {
+    "module": "eos/fundPlan/income",
+    "function": "updateIncome",
+    "method": "PUT",
+    "url": "/project/income",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/fundPlan/income.js"
+  },
+  {
+    "module": "eos/fundPlan/income",
+    "function": "delIncome",
+    "method": "DELETE",
+    "url": "/project/income/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/fundPlan/income.js"
+  },
+  {
+    "module": "eos/fundPlan/income",
+    "function": "getIncome",
+    "method": "GET",
+    "url": "/project/income/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/fundPlan/income.js"
+  },
+  {
+    "module": "eos/fundPlan/income",
+    "function": "exportIncome",
+    "method": "GET",
+    "url": "/project/income/export",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/fundPlan/income.js"
+  },
+  {
+    "module": "eos/fundPlan/income",
+    "function": "listIncome",
+    "method": "GET",
+    "url": "/project/income/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/fundPlan/income.js"
+  },
+  {
+    "module": "eos/fundPlan/outcome",
+    "function": "addOutcome",
+    "method": "POST",
+    "url": "/project/outcome",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/fundPlan/outcome.js"
+  },
+  {
+    "module": "eos/fundPlan/outcome",
+    "function": "updateOutcome",
+    "method": "PUT",
+    "url": "/project/outcome",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/fundPlan/outcome.js"
+  },
+  {
+    "module": "eos/fundPlan/outcome",
+    "function": "delOutcome",
+    "method": "DELETE",
+    "url": "/project/outcome/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/fundPlan/outcome.js"
+  },
+  {
+    "module": "eos/fundPlan/outcome",
+    "function": "getOutcome",
+    "method": "GET",
+    "url": "/project/outcome/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/fundPlan/outcome.js"
+  },
+  {
+    "module": "eos/fundPlan/outcome",
+    "function": "exportOutcome",
+    "method": "GET",
+    "url": "/project/outcome/export",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/fundPlan/outcome.js"
+  },
+  {
+    "module": "eos/fundPlan/outcome",
+    "function": "listOutcome",
+    "method": "GET",
+    "url": "/project/outcome/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/fundPlan/outcome.js"
+  },
+  {
+    "module": "eos/fundPlan/summary",
+    "function": "fundApproval",
+    "method": "GET",
+    "url": "/project/fund/approval",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/fundPlan/summary.js"
+  },
+  {
+    "module": "eos/invoice/baidu_invoice",
+    "function": "getAccessToken",
+    "method": "POST",
+    "url": "/oauth/2.0/token",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/invoice/baidu_invoice.js"
+  },
+  {
+    "module": "eos/invoice/baidu_invoice",
+    "function": "getVatInvoice",
+    "method": "POST",
+    "url": "/rest/2.0/ocr/v1/vat_invoice?access_token={dynamic}",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/invoice/baidu_invoice.js"
+  },
+  {
+    "module": "eos/invoice/baidu_invoice",
+    "function": "OCRTextinBillsCrop",
+    "method": "POST",
+    "url": "/robot/v1.0/api/bills_crop",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/invoice/baidu_invoice.js"
+  },
+  {
+    "module": "eos/invoice/get",
+    "function": "addGet",
+    "method": "POST",
+    "url": "/project/get",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/invoice/get.js"
+  },
+  {
+    "module": "eos/invoice/get",
+    "function": "updateGet",
+    "method": "PUT",
+    "url": "/project/get",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/invoice/get.js"
+  },
+  {
+    "module": "eos/invoice/get",
+    "function": "delGet",
+    "method": "DELETE",
+    "url": "/project/get/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/invoice/get.js"
+  },
+  {
+    "module": "eos/invoice/get",
+    "function": "getGet",
+    "method": "GET",
+    "url": "/project/get/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/invoice/get.js"
+  },
+  {
+    "module": "eos/invoice/get",
+    "function": "exportGet",
+    "method": "GET",
+    "url": "/project/get/export",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/invoice/get.js"
+  },
+  {
+    "module": "eos/invoice/get",
+    "function": "listGet",
+    "method": "GET",
+    "url": "/project/get/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/invoice/get.js"
+  },
+  {
+    "module": "eos/invoice/history",
+    "function": "exportMake",
+    "method": "GET",
+    "url": "/project/make/export/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/invoice/history.js"
+  },
+  {
+    "module": "eos/invoice/history",
+    "function": "getHistory",
+    "method": "GET",
+    "url": "project/make/list/personal",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/invoice/history.js"
+  },
+  {
+    "module": "eos/invoice/invoice",
+    "function": "addInvoice",
+    "method": "POST",
+    "url": "/project/invoice",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/invoice/invoice.js"
+  },
+  {
+    "module": "eos/invoice/invoice",
+    "function": "updateInvoice",
+    "method": "PUT",
+    "url": "/project/invoice",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/invoice/invoice.js"
+  },
+  {
+    "module": "eos/invoice/invoice",
+    "function": "delInvoice",
+    "method": "DELETE",
+    "url": "/project/invoice/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/invoice/invoice.js"
+  },
+  {
+    "module": "eos/invoice/invoice",
+    "function": "getInvoice",
+    "method": "GET",
+    "url": "/project/invoice/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/invoice/invoice.js"
+  },
+  {
+    "module": "eos/invoice/invoice",
+    "function": "exportInvoice",
+    "method": "GET",
+    "url": "/project/invoice/export",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/invoice/invoice.js"
+  },
+  {
+    "module": "eos/invoice/invoice",
+    "function": "listInvoice",
+    "method": "GET",
+    "url": "/project/invoice/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/invoice/invoice.js"
+  },
+  {
+    "module": "eos/invoice/make",
+    "function": "addMake",
+    "method": "POST",
+    "url": "/project/make",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/invoice/make.js"
+  },
+  {
+    "module": "eos/invoice/make",
+    "function": "updateMake",
+    "method": "PUT",
+    "url": "/project/make",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/invoice/make.js"
+  },
+  {
+    "module": "eos/invoice/make",
+    "function": "delMake",
+    "method": "DELETE",
+    "url": "/project/make/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/invoice/make.js"
+  },
+  {
+    "module": "eos/invoice/make",
+    "function": "getMake",
+    "method": "GET",
+    "url": "/project/make/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/invoice/make.js"
+  },
+  {
+    "module": "eos/invoice/make",
+    "function": "exportMake",
+    "method": "GET",
+    "url": "/project/make/export/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/invoice/make.js"
+  },
+  {
+    "module": "eos/invoice/make",
+    "function": "listMake",
+    "method": "GET",
+    "url": "/project/make/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/invoice/make.js"
+  },
+  {
+    "module": "eos/invoice/make",
+    "function": "makeContractSum",
+    "method": "GET",
+    "url": "/project/make/real/make/sum/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/invoice/make.js"
+  },
+  {
+    "module": "eos/invoice/make",
+    "function": "reApply",
+    "method": "POST",
+    "url": "/project/make/reApply",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/invoice/make.js"
+  },
+  {
+    "module": "eos/invoice/make",
+    "function": "submitApply",
+    "method": "POST",
+    "url": "/project/make/submitApply",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/invoice/make.js"
+  },
+  {
+    "module": "eos/invoice/real",
+    "function": "bankList",
+    "method": "GET",
+    "url": "/project/merchant/merchant/bank",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/invoice/real.js"
+  },
+  {
+    "module": "eos/invoice/real",
+    "function": "addReal",
+    "method": "POST",
+    "url": "/project/real",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/invoice/real.js"
+  },
+  {
+    "module": "eos/invoice/real",
+    "function": "updateReal",
+    "method": "PUT",
+    "url": "/project/real",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/invoice/real.js"
+  },
+  {
+    "module": "eos/invoice/real",
+    "function": "delReal",
+    "method": "DELETE",
+    "url": "/project/real/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/invoice/real.js"
+  },
+  {
+    "module": "eos/invoice/real",
+    "function": "getReal",
+    "method": "GET",
+    "url": "/project/real/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/invoice/real.js"
+  },
+  {
+    "module": "eos/invoice/real",
+    "function": "dingdingMSG",
+    "method": "GET",
+    "url": "/project/real/dingMsg",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/invoice/real.js"
+  },
+  {
+    "module": "eos/invoice/real",
+    "function": "exportReal",
+    "method": "GET",
+    "url": "/project/real/export",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/invoice/real.js"
+  },
+  {
+    "module": "eos/invoice/real",
+    "function": "listReal",
+    "method": "GET",
+    "url": "/project/real/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/invoice/real.js"
+  },
+  {
+    "module": "eos/invoice/real",
+    "function": "contractReal",
+    "method": "GET",
+    "url": "/project/real/list/paymentReal",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/invoice/real.js"
+  },
+  {
+    "module": "eos/merchant/merchant",
+    "function": "addMerchant",
+    "method": "POST",
+    "url": "/project/merchant",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/merchant/merchant.js"
+  },
+  {
+    "module": "eos/merchant/merchant",
+    "function": "updateMerchant",
+    "method": "PUT",
+    "url": "/project/merchant",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/merchant/merchant.js"
+  },
+  {
+    "module": "eos/merchant/merchant",
+    "function": "delMerchant",
+    "method": "DELETE",
+    "url": "/project/merchant/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/merchant/merchant.js"
+  },
+  {
+    "module": "eos/merchant/merchant",
+    "function": "getMerchant",
+    "method": "GET",
+    "url": "/project/merchant/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/merchant/merchant.js"
+  },
+  {
+    "module": "eos/merchant/merchant",
+    "function": "deleteMerchatAccount",
+    "method": "DELETE",
+    "url": "/project/merchant/account/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/merchant/merchant.js"
+  },
+  {
+    "module": "eos/merchant/merchant",
+    "function": "getMerchanAccountInfo",
+    "method": "GET",
+    "url": "/project/merchant/account/query",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/merchant/merchant.js"
+  },
+  {
+    "module": "eos/merchant/merchant",
+    "function": "exportMerchant",
+    "method": "GET",
+    "url": "/project/merchant/export",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/merchant/merchant.js"
+  },
+  {
+    "module": "eos/merchant/merchant",
+    "function": "listMerchant",
+    "method": "GET",
+    "url": "/project/merchant/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/merchant/merchant.js"
+  },
+  {
+    "module": "eos/merchant/merchant",
+    "function": "deleteMerchatUser",
+    "method": "DELETE",
+    "url": "/project/merchant/user/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/merchant/merchant.js"
+  },
+  {
+    "module": "eos/project/mem",
+    "function": "addMem",
+    "method": "POST",
+    "url": "/project/mem",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/project/mem.js"
+  },
+  {
+    "module": "eos/project/mem",
+    "function": "delMem",
+    "method": "DELETE",
+    "url": "/project/mem/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/project/mem.js"
+  },
+  {
+    "module": "eos/project/mem",
+    "function": "getMem",
+    "method": "GET",
+    "url": "/project/mem/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/project/mem.js"
+  },
+  {
+    "module": "eos/project/mem",
+    "function": "exportMem",
+    "method": "GET",
+    "url": "/project/mem/export",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/project/mem.js"
+  },
+  {
+    "module": "eos/project/mem",
+    "function": "exportPM",
+    "method": "GET",
+    "url": "/project/mem/exportPM/{dynamic}",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/project/mem.js"
+  },
+  {
+    "module": "eos/project/mem",
+    "function": "listMem",
+    "method": "GET",
+    "url": "/project/mem/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/project/mem.js"
+  },
+  {
+    "module": "eos/project/mem",
+    "function": "listMemAll",
+    "method": "GET",
+    "url": "/project/mem/list/all",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/project/mem.js"
+  },
+  {
+    "module": "eos/project/mem",
+    "function": "listMemRole",
+    "method": "GET",
+    "url": "/project/mem/rolelist",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/project/mem.js"
+  },
+  {
+    "module": "eos/project/memApply",
+    "function": "addMemApply",
+    "method": "POST",
+    "url": "/project/mem/apply",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/project/memApply.js"
+  },
+  {
+    "module": "eos/project/memApply",
+    "function": "updateMemApply",
+    "method": "PUT",
+    "url": "/project/mem/apply",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/project/memApply.js"
+  },
+  {
+    "module": "eos/project/memApply",
+    "function": "delMemApply",
+    "method": "DELETE",
+    "url": "/project/mem/apply/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/project/memApply.js"
+  },
+  {
+    "module": "eos/project/memApply",
+    "function": "getMemApply",
+    "method": "GET",
+    "url": "/project/mem/apply/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/project/memApply.js"
+  },
+  {
+    "module": "eos/project/memApply",
+    "function": "exportMemApply",
+    "method": "GET",
+    "url": "/project/mem/apply/export",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/project/memApply.js"
+  },
+  {
+    "module": "eos/project/memApply",
+    "function": "listMemApply",
+    "method": "GET",
+    "url": "/project/mem/apply/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/project/memApply.js"
+  },
+  {
+    "module": "eos/project/memApply",
+    "function": "reApply",
+    "method": "POST",
+    "url": "/project/mem/apply/reApply",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/project/memApply.js"
+  },
+  {
+    "module": "eos/project/memApply",
+    "function": "submitApply",
+    "method": "POST",
+    "url": "/project/mem/apply/submitApply",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/project/memApply.js"
+  },
+  {
+    "module": "eos/project/project",
+    "function": "myBudgetProjectList",
+    "method": "GET",
+    "url": "/project/apply/pass/budget/project",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/project/project.js"
+  },
+  {
+    "module": "eos/project/project",
+    "function": "addProject",
+    "method": "POST",
+    "url": "/project/project",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/project/project.js"
+  },
+  {
+    "module": "eos/project/project",
+    "function": "updateProject",
+    "method": "PUT",
+    "url": "/project/project",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/project/project.js"
+  },
+  {
+    "module": "eos/project/project",
+    "function": "delProject",
+    "method": "DELETE",
+    "url": "/project/project/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/project/project.js"
+  },
+  {
+    "module": "eos/project/project",
+    "function": "getProject",
+    "method": "GET",
+    "url": "/project/project/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/project/project.js"
+  },
+  {
+    "module": "eos/project/project",
+    "function": "addChildProject",
+    "method": "POST",
+    "url": "/project/project/add/children/project",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/project/project.js"
+  },
+  {
+    "module": "eos/project/project",
+    "function": "exportProject",
+    "method": "GET",
+    "url": "/project/project/export",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/project/project.js"
+  },
+  {
+    "module": "eos/project/project",
+    "function": "exportProjectApply",
+    "method": "GET",
+    "url": "/project/project/exportProject/{dynamic}",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/project/project.js"
+  },
+  {
+    "module": "eos/project/project",
+    "function": "listProject",
+    "method": "GET",
+    "url": "/project/project/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/project/project.js"
+  },
+  {
+    "module": "eos/project/project",
+    "function": "listProjectAllAndCildren",
+    "method": "GET",
+    "url": "/project/project/list/all",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/project/project.js"
+  },
+  {
+    "module": "eos/project/project",
+    "function": "listIn",
+    "method": "GET",
+    "url": "/project/project/list/in",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/project/project.js"
+  },
+  {
+    "module": "eos/project/project",
+    "function": "listInProjectPersonal",
+    "method": "GET",
+    "url": "/project/project/list/in/personal",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/project/project.js"
+  },
+  {
+    "module": "eos/project/project",
+    "function": "treePlanProject",
+    "method": "GET",
+    "url": "/project/project/list/in/personal/tree",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/project/project.js"
+  },
+  {
+    "module": "eos/project/project",
+    "function": "listProjectManager",
+    "method": "GET",
+    "url": "/project/project/list/manager",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/project/project.js"
+  },
+  {
+    "module": "eos/project/project",
+    "function": "personal",
+    "method": "GET",
+    "url": "/project/project/list/personal",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/project/project.js"
+  },
+  {
+    "module": "eos/project/project",
+    "function": "getChildProjectById",
+    "method": "GET",
+    "url": "/project/project/query/children/project",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/project/project.js"
+  },
+  {
+    "module": "eos/project/project",
+    "function": "reApply",
+    "method": "POST",
+    "url": "/project/project/reApply",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/project/project.js"
+  },
+  {
+    "module": "eos/project/project",
+    "function": "treeSelect",
+    "method": "GET",
+    "url": "/project/project/select/tree",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/project/project.js"
+  },
+  {
+    "module": "eos/project/project",
+    "function": "submitApply",
+    "method": "POST",
+    "url": "/project/project/submitApply",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/project/project.js"
+  },
+  {
+    "module": "eos/project/projectModify",
+    "function": "queryProjectDetail",
+    "method": "GET",
+    "url": "/project/project/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/project/projectModify.js"
+  },
+  {
+    "module": "eos/project/projectModify",
+    "function": "submitProject",
+    "method": "POST",
+    "url": "/project/project/addChange",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/project/projectModify.js"
+  },
+  {
+    "module": "eos/project/projectModify",
+    "function": "projectModifyList",
+    "method": "GET",
+    "url": "/project/project/list/change",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/project/projectModify.js"
+  },
+  {
+    "module": "eos/project/projectModify",
+    "function": "HanderDelProject",
+    "method": "DELETE",
+    "url": "/project/project/project/change/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/project/projectModify.js"
+  },
+  {
+    "module": "eos/project/projectModify",
+    "function": "submitApplyProject",
+    "method": "POST",
+    "url": "/project/project/submitApply/change/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/project/projectModify.js"
+  },
+  {
+    "module": "eos/purchase/payment",
+    "function": "addPayment",
+    "method": "POST",
+    "url": "/project/payment",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/purchase/payment.js"
+  },
+  {
+    "module": "eos/purchase/payment",
+    "function": "updatePayment",
+    "method": "PUT",
+    "url": "/project/payment",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/purchase/payment.js"
+  },
+  {
+    "module": "eos/purchase/payment",
+    "function": "delPayment",
+    "method": "DELETE",
+    "url": "/project/payment/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/purchase/payment.js"
+  },
+  {
+    "module": "eos/purchase/payment",
+    "function": "getPayment",
+    "method": "GET",
+    "url": "/project/payment/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/purchase/payment.js"
+  },
+  {
+    "module": "eos/purchase/payment",
+    "function": "exportPayment",
+    "method": "GET",
+    "url": "/project/payment/export/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/purchase/payment.js"
+  },
+  {
+    "module": "eos/purchase/payment",
+    "function": "exportPaymentExcel",
+    "method": "GET",
+    "url": "/project/payment/getPaymentExcel",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/purchase/payment.js"
+  },
+  {
+    "module": "eos/purchase/payment",
+    "function": "exportPaymentListExcel",
+    "method": "GET",
+    "url": "/project/payment/getPaymentExcel/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/purchase/payment.js"
+  },
+  {
+    "module": "eos/purchase/payment",
+    "function": "listPayment",
+    "method": "GET",
+    "url": "/project/payment/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/purchase/payment.js"
+  },
+  {
+    "module": "eos/purchase/payment",
+    "function": "listPaymentApply",
+    "method": "GET",
+    "url": "/project/payment/list/apply",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/purchase/payment.js"
+  },
+  {
+    "module": "eos/purchase/payment",
+    "function": "notStore",
+    "method": "GET",
+    "url": "/project/payment/list/notStore",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/purchase/payment.js"
+  },
+  {
+    "module": "eos/purchase/payment",
+    "function": "contractPayment",
+    "method": "GET",
+    "url": "/project/payment/list/payment",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/purchase/payment.js"
+  },
+  {
+    "module": "eos/purchase/payment",
+    "function": "queryUsed",
+    "method": "GET",
+    "url": "/project/payment/queryUsed",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/purchase/payment.js"
+  },
+  {
+    "module": "eos/purchase/payment",
+    "function": "reApply",
+    "method": "POST",
+    "url": "/project/payment/reApply",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/purchase/payment.js"
+  },
+  {
+    "module": "eos/purchase/payment",
+    "function": "submitApply",
+    "method": "POST",
+    "url": "/project/payment/submitApply",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/purchase/payment.js"
+  },
+  {
+    "module": "eos/purchase/paymentApply",
+    "function": "addApply",
+    "method": "POST",
+    "url": "/project/apply/payment",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/purchase/paymentApply.js"
+  },
+  {
+    "module": "eos/purchase/paymentApply",
+    "function": "updateApply",
+    "method": "PUT",
+    "url": "/project/apply/payment",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/purchase/paymentApply.js"
+  },
+  {
+    "module": "eos/purchase/paymentApply",
+    "function": "delApply",
+    "method": "DELETE",
+    "url": "/project/apply/payment/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/purchase/paymentApply.js"
+  },
+  {
+    "module": "eos/purchase/paymentApply",
+    "function": "getApply",
+    "method": "GET",
+    "url": "/project/apply/payment/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/purchase/paymentApply.js"
+  },
+  {
+    "module": "eos/purchase/paymentApply",
+    "function": "exportApply",
+    "method": "GET",
+    "url": "/project/apply/payment/export",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/purchase/paymentApply.js"
+  },
+  {
+    "module": "eos/purchase/paymentApply",
+    "function": "listApply",
+    "method": "GET",
+    "url": "/project/apply/payment/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/purchase/paymentApply.js"
+  },
+  {
+    "module": "eos/purchase/paymentApply",
+    "function": "listApplyAll",
+    "method": "GET",
+    "url": "/project/apply/payment/list/all",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/purchase/paymentApply.js"
+  },
+  {
+    "module": "eos/purchase/paymentApply",
+    "function": "submitApply",
+    "method": "POST",
+    "url": "/project/apply/payment/submitApply",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/purchase/paymentApply.js"
+  },
+  {
+    "module": "eos/purchase/paymentApply",
+    "function": "reApply",
+    "method": "POST",
+    "url": "project/apply/payment/reApply",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/purchase/paymentApply.js"
+  },
+  {
+    "module": "eos/purchase/paymentDetail",
+    "function": "delPaymentDetail",
+    "method": "DELETE",
+    "url": "/project/payment/detail/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/purchase/paymentDetail.js"
+  },
+  {
+    "module": "eos/purchase/purchase",
+    "function": "addPurchase",
+    "method": "POST",
+    "url": "/project/apply/payment",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/purchase/purchase.js"
+  },
+  {
+    "module": "eos/purchase/purchase",
+    "function": "editPurchase",
+    "method": "PUT",
+    "url": "/project/apply/payment",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/purchase/purchase.js"
+  },
+  {
+    "module": "eos/purchase/purchase",
+    "function": "delPurchase",
+    "method": "DELETE",
+    "url": "/project/apply/payment/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/purchase/purchase.js"
+  },
+  {
+    "module": "eos/purchase/purchase",
+    "function": "getDetail",
+    "method": "GET",
+    "url": "/project/apply/payment/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/purchase/purchase.js"
+  },
+  {
+    "module": "eos/purchase/purchase",
+    "function": "purchaseList",
+    "method": "GET",
+    "url": "/project/apply/payment/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/purchase/purchase.js"
+  },
+  {
+    "module": "eos/purchase/purchase",
+    "function": "listAll",
+    "method": "GET",
+    "url": "/project/apply/payment/list/all",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/purchase/purchase.js"
+  },
+  {
+    "module": "eos/purchase/purchase",
+    "function": "notPay",
+    "method": "GET",
+    "url": "/project/apply/payment/list/notPay",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/purchase/purchase.js"
+  },
+  {
+    "module": "eos/purchase/purchase",
+    "function": "reApply",
+    "method": "POST",
+    "url": "/project/apply/payment/reApply",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/purchase/purchase.js"
+  },
+  {
+    "module": "eos/purchase/purchase",
+    "function": "submitApply",
+    "method": "POST",
+    "url": "/project/apply/payment/submitApply",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/purchase/purchase.js"
+  },
+  {
+    "module": "eos/purchase/purchase",
+    "function": "delDetail",
+    "method": "DELETE",
+    "url": "/project/payment/apply/detail/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/purchase/purchase.js"
+  },
+  {
+    "module": "eos/purchase/refund",
+    "function": "getContractList",
+    "method": "GET",
+    "url": "/project/contract/list/only",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/purchase/refund.js"
+  },
+  {
+    "module": "eos/purchase/refund",
+    "function": "deleteRefund",
+    "method": "DELETE",
+    "url": "/project/payment/refund/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/purchase/refund.js"
+  },
+  {
+    "module": "eos/purchase/refund",
+    "function": "refundDetail",
+    "method": "GET",
+    "url": "/project/payment/refund/detail/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/purchase/refund.js"
+  },
+  {
+    "module": "eos/purchase/refund",
+    "function": "changeRefund",
+    "method": "PUT",
+    "url": "/project/payment/reFund/editChange",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/purchase/refund.js"
+  },
+  {
+    "module": "eos/purchase/refund",
+    "function": "reFundList",
+    "method": "GET",
+    "url": "/project/payment/reFund/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/purchase/refund.js"
+  },
+  {
+    "module": "eos/purchase/refund",
+    "function": "saveRefund",
+    "method": "POST",
+    "url": "/project/payment/reFund/saveRefund",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/purchase/refund.js"
+  },
+  {
+    "module": "eos/repayment/loan",
+    "function": "addLoan",
+    "method": "POST",
+    "url": "/project/loan",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/repayment/loan.js"
+  },
+  {
+    "module": "eos/repayment/loan",
+    "function": "updateLoan",
+    "method": "PUT",
+    "url": "/project/loan",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/repayment/loan.js"
+  },
+  {
+    "module": "eos/repayment/loan",
+    "function": "delLoan",
+    "method": "DELETE",
+    "url": "/project/loan/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/repayment/loan.js"
+  },
+  {
+    "module": "eos/repayment/loan",
+    "function": "getLoan",
+    "method": "GET",
+    "url": "/project/loan/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/repayment/loan.js"
+  },
+  {
+    "module": "eos/repayment/loan",
+    "function": "delLoanDetail",
+    "method": "DELETE",
+    "url": "/project/loan/detail/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/repayment/loan.js"
+  },
+  {
+    "module": "eos/repayment/loan",
+    "function": "exportLoan",
+    "method": "GET",
+    "url": "/project/loan/export",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/repayment/loan.js"
+  },
+  {
+    "module": "eos/repayment/loan",
+    "function": "getProject",
+    "method": "GET",
+    "url": "/project/loan/getProject",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/repayment/loan.js"
+  },
+  {
+    "module": "eos/repayment/loan",
+    "function": "listLoan",
+    "method": "GET",
+    "url": "/project/loan/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/repayment/loan.js"
+  },
+  {
+    "module": "eos/repayment/loan",
+    "function": "listLoanAll",
+    "method": "GET",
+    "url": "/project/loan/list/all",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/repayment/loan.js"
+  },
+  {
+    "module": "eos/repayment/loan",
+    "function": "reApply",
+    "method": "POST",
+    "url": "/project/loan/reApply",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/repayment/loan.js"
+  },
+  {
+    "module": "eos/repayment/loan",
+    "function": "submitApply",
+    "method": "POST",
+    "url": "/project/loan/submitApply",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/repayment/loan.js"
+  },
+  {
+    "module": "eos/repayment/loan",
+    "function": "getUserMoney",
+    "method": "GET",
+    "url": "/project/repay/getUserMoney",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/repayment/loan.js"
+  },
+  {
+    "module": "eos/repayment/payBackConfirm",
+    "function": "confirmRepay",
+    "method": "GET",
+    "url": "/project/repay/confirmRepay/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/repayment/payBackConfirm.js"
+  },
+  {
+    "module": "eos/repayment/payBackConfirm",
+    "function": "unPayMoney",
+    "method": "GET",
+    "url": "/project/repay/unconfirm",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/repayment/payBackConfirm.js"
+  },
+  {
+    "module": "eos/repayment/repay",
+    "function": "addRepay",
+    "method": "POST",
+    "url": "/project/repay",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/repayment/repay.js"
+  },
+  {
+    "module": "eos/repayment/repay",
+    "function": "updateRepay",
+    "method": "PUT",
+    "url": "/project/repay",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/repayment/repay.js"
+  },
+  {
+    "module": "eos/repayment/repay",
+    "function": "delRepay",
+    "method": "DELETE",
+    "url": "/project/repay/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/repayment/repay.js"
+  },
+  {
+    "module": "eos/repayment/repay",
+    "function": "getRepay",
+    "method": "GET",
+    "url": "/project/repay/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/repayment/repay.js"
+  },
+  {
+    "module": "eos/repayment/repay",
+    "function": "exportRepay",
+    "method": "GET",
+    "url": "/project/repay/export",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/repayment/repay.js"
+  },
+  {
+    "module": "eos/repayment/repay",
+    "function": "getUserMoney",
+    "method": "GET",
+    "url": "/project/repay/getUserMoney",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/repayment/repay.js"
+  },
+  {
+    "module": "eos/repayment/repay",
+    "function": "listRepay",
+    "method": "GET",
+    "url": "/project/repay/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/repayment/repay.js"
+  },
+  {
+    "module": "eos/repayment/search",
+    "function": "getIntegratedQuery",
+    "method": "GET",
+    "url": "/project/loan/getAll",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/repayment/search.js"
+  },
+  {
+    "module": "eos/repayment/search",
+    "function": "getRepay",
+    "method": "GET",
+    "url": "/project/loan/getAll",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/repayment/search.js"
+  },
+  {
+    "module": "eos/repayment/search",
+    "function": "getLoanList",
+    "method": "GET",
+    "url": "/project/loan/getLoan",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/repayment/search.js"
+  },
+  {
+    "module": "eos/repayment/search",
+    "function": "getRepayList",
+    "method": "GET",
+    "url": "project/repay/getRepay/",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/repayment/search.js"
+  },
+  {
+    "module": "eos/repayment/search",
+    "function": "repayPress",
+    "method": "GET",
+    "url": "project/repay/repayPress/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/repayment/search.js"
+  },
+  {
+    "module": "eos/schedule/process",
+    "function": "updateProcess",
+    "method": "PUT",
+    "url": "/project/process",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/schedule/process.js"
+  },
+  {
+    "module": "eos/schedule/process",
+    "function": "delProcess",
+    "method": "DELETE",
+    "url": "/project/process/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/schedule/process.js"
+  },
+  {
+    "module": "eos/schedule/process",
+    "function": "exportProcess",
+    "method": "GET",
+    "url": "/project/process/export",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/schedule/process.js"
+  },
+  {
+    "module": "eos/schedule/process",
+    "function": "processProject",
+    "method": "GET",
+    "url": "/project/process/process/project",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/schedule/process.js"
+  },
+  {
+    "module": "eos/schedule/process",
+    "function": "addProcess",
+    "method": "POST",
+    "url": "/project/processWrite",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/schedule/process.js"
+  },
+  {
+    "module": "eos/schedule/process",
+    "function": "delProcessWrite",
+    "method": "DELETE",
+    "url": "/project/processWrite/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/schedule/process.js"
+  },
+  {
+    "module": "eos/schedule/process",
+    "function": "getProcess",
+    "method": "GET",
+    "url": "/project/processWrite/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/schedule/process.js"
+  },
+  {
+    "module": "eos/schedule/process",
+    "function": "listProcess",
+    "method": "GET",
+    "url": "/project/processWrite/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/schedule/process.js"
+  },
+  {
+    "module": "eos/schedule/process",
+    "function": "ProjectScheduleList",
+    "method": "GET",
+    "url": "/project/schedule/getProject",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/schedule/process.js"
+  },
+  {
+    "module": "eos/schedule/progressSummary",
+    "function": "ExportFile",
+    "method": "GET",
+    "url": "/project/schedule/export/processTotal",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/schedule/progressSummary.js"
+  },
+  {
+    "module": "eos/schedule/progressSummary",
+    "function": "getRegionList",
+    "method": "GET",
+    "url": "/project/schedule/getRegion",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/schedule/progressSummary.js"
+  },
+  {
+    "module": "eos/schedule/progressSummary",
+    "function": "getPeopleList",
+    "method": "GET",
+    "url": "/project/schedule/labor/processTotal",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/schedule/progressSummary.js"
+  },
+  {
+    "module": "eos/schedule/progressSummary",
+    "function": "getProjectList",
+    "method": "GET",
+    "url": "/project/schedule/project/processTotal",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/schedule/progressSummary.js"
+  },
+  {
+    "module": "eos/schedule/schedule",
+    "function": "addSchedule",
+    "method": "POST",
+    "url": "/project/schedule",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/schedule/schedule.js"
+  },
+  {
+    "module": "eos/schedule/schedule",
+    "function": "updateSchedule",
+    "method": "PUT",
+    "url": "/project/schedule",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/schedule/schedule.js"
+  },
+  {
+    "module": "eos/schedule/schedule",
+    "function": "delSchedule",
+    "method": "DELETE",
+    "url": "/project/schedule/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/schedule/schedule.js"
+  },
+  {
+    "module": "eos/schedule/schedule",
+    "function": "getSchedule",
+    "method": "GET",
+    "url": "/project/schedule/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/schedule/schedule.js"
+  },
+  {
+    "module": "eos/schedule/schedule",
+    "function": "exportSchedule",
+    "method": "GET",
+    "url": "/project/schedule/export",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/schedule/schedule.js"
+  },
+  {
+    "module": "eos/schedule/schedule",
+    "function": "listSchedule",
+    "method": "GET",
+    "url": "/project/schedule/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/schedule/schedule.js"
+  },
+  {
+    "module": "eos/schedule/schedule",
+    "function": "planProject",
+    "method": "GET",
+    "url": "/project/schedule/plan/project",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/schedule/schedule.js"
+  },
+  {
+    "module": "eos/schedule/schedule",
+    "function": "deleteScheduleStage",
+    "method": "DELETE",
+    "url": "/project/scheduleStage/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/schedule/schedule.js"
+  },
+  {
+    "module": "eos/schedule/schedule-stage",
+    "function": "addStage",
+    "method": "POST",
+    "url": "/project/scheduleStage",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/schedule/schedule-stage.js"
+  },
+  {
+    "module": "eos/schedule/schedule-stage",
+    "function": "updateStage",
+    "method": "PUT",
+    "url": "/project/scheduleStage",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/schedule/schedule-stage.js"
+  },
+  {
+    "module": "eos/schedule/schedule-stage",
+    "function": "delStage",
+    "method": "DELETE",
+    "url": "/project/scheduleStage/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/schedule/schedule-stage.js"
+  },
+  {
+    "module": "eos/schedule/schedule-stage",
+    "function": "getStage",
+    "method": "GET",
+    "url": "/project/scheduleStage/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/schedule/schedule-stage.js"
+  },
+  {
+    "module": "eos/schedule/schedule-stage",
+    "function": "exportStage",
+    "method": "GET",
+    "url": "/project/scheduleStage/export",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/schedule/schedule-stage.js"
+  },
+  {
+    "module": "eos/schedule/schedule-stage",
+    "function": "listStage",
+    "method": "GET",
+    "url": "/project/scheduleStage/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/schedule/schedule-stage.js"
+  },
+  {
+    "module": "eos/subcontract/employee",
+    "function": "addEmployee",
+    "method": "POST",
+    "url": "/project/employee",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/subcontract/employee.js"
+  },
+  {
+    "module": "eos/subcontract/employee",
+    "function": "updateEmployee",
+    "method": "PUT",
+    "url": "/project/employee",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/subcontract/employee.js"
+  },
+  {
+    "module": "eos/subcontract/employee",
+    "function": "delEmployee",
+    "method": "DELETE",
+    "url": "/project/employee/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/subcontract/employee.js"
+  },
+  {
+    "module": "eos/subcontract/employee",
+    "function": "getEmployee",
+    "method": "GET",
+    "url": "/project/employee/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/subcontract/employee.js"
+  },
+  {
+    "module": "eos/subcontract/employee",
+    "function": "delEmployeeDetail",
+    "method": "DELETE",
+    "url": "/project/employee/detail/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/subcontract/employee.js"
+  },
+  {
+    "module": "eos/subcontract/employee",
+    "function": "exportEmployee",
+    "method": "GET",
+    "url": "/project/employee/export",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/subcontract/employee.js"
+  },
+  {
+    "module": "eos/subcontract/employee",
+    "function": "submitReApply",
+    "method": "POST",
+    "url": "/project/employee/reApply",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/subcontract/employee.js"
+  },
+  {
+    "module": "eos/subcontract/employee",
+    "function": "submitApply",
+    "method": "POST",
+    "url": "/project/employee/submitApply",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/subcontract/employee.js"
+  },
+  {
+    "module": "eos/subcontract/employee",
+    "function": "listEmployee",
+    "method": "GET",
+    "url": "project/employee/list/personal",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/subcontract/employee.js"
+  },
+  {
+    "module": "eos/subcontract/exec",
+    "function": "addExec",
+    "method": "POST",
+    "url": "/project/exec",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/subcontract/exec.js"
+  },
+  {
+    "module": "eos/subcontract/exec",
+    "function": "updateExec",
+    "method": "PUT",
+    "url": "/project/exec",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/subcontract/exec.js"
+  },
+  {
+    "module": "eos/subcontract/exec",
+    "function": "delExec",
+    "method": "DELETE",
+    "url": "/project/exec/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/subcontract/exec.js"
+  },
+  {
+    "module": "eos/subcontract/exec",
+    "function": "getExec",
+    "method": "GET",
+    "url": "/project/exec/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/subcontract/exec.js"
+  },
+  {
+    "module": "eos/subcontract/exec",
+    "function": "delExecDetail",
+    "method": "DELETE",
+    "url": "/project/exec/detail/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/subcontract/exec.js"
+  },
+  {
+    "module": "eos/subcontract/exec",
+    "function": "exportExec",
+    "method": "GET",
+    "url": "/project/exec/export",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/subcontract/exec.js"
+  },
+  {
+    "module": "eos/subcontract/exec",
+    "function": "listExec",
+    "method": "GET",
+    "url": "/project/exec/list/personal",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/subcontract/exec.js"
+  },
+  {
+    "module": "eos/subcontract/exec",
+    "function": "submitReApply",
+    "method": "POST",
+    "url": "/project/exec/reApply",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/subcontract/exec.js"
+  },
+  {
+    "module": "eos/subcontract/exec",
+    "function": "submitApply",
+    "method": "POST",
+    "url": "/project/exec/submitApply",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/subcontract/exec.js"
+  },
+  {
+    "module": "eos/subcontract/quantities",
+    "function": "addApply",
+    "method": "POST",
+    "url": "/project/quantities",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/subcontract/quantities.js"
+  },
+  {
+    "module": "eos/subcontract/quantities",
+    "function": "updateApply",
+    "method": "PUT",
+    "url": "/project/quantities",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/subcontract/quantities.js"
+  },
+  {
+    "module": "eos/subcontract/quantities",
+    "function": "delApply",
+    "method": "DELETE",
+    "url": "/project/quantities/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/subcontract/quantities.js"
+  },
+  {
+    "module": "eos/subcontract/quantities",
+    "function": "getApply",
+    "method": "GET",
+    "url": "/project/quantities/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/subcontract/quantities.js"
+  },
+  {
+    "module": "eos/subcontract/quantities",
+    "function": "exportApply",
+    "method": "GET",
+    "url": "/project/quantities/export",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/subcontract/quantities.js"
+  },
+  {
+    "module": "eos/subcontract/quantities",
+    "function": "listApply",
+    "method": "GET",
+    "url": "/project/quantities/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/subcontract/quantities.js"
+  },
+  {
+    "module": "eos/warehouse/warehouse",
+    "function": "addWarehouse",
+    "method": "POST",
+    "url": "/project/warehouse",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/warehouse/warehouse.js"
+  },
+  {
+    "module": "eos/warehouse/warehouse",
+    "function": "updateWarehouse",
+    "method": "PUT",
+    "url": "/project/warehouse",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/warehouse/warehouse.js"
+  },
+  {
+    "module": "eos/warehouse/warehouse",
+    "function": "delWarehouse",
+    "method": "DELETE",
+    "url": "/project/warehouse/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/warehouse/warehouse.js"
+  },
+  {
+    "module": "eos/warehouse/warehouse",
+    "function": "getWarehouse",
+    "method": "GET",
+    "url": "/project/warehouse/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/warehouse/warehouse.js"
+  },
+  {
+    "module": "eos/warehouse/warehouse",
+    "function": "exportWarehouse",
+    "method": "GET",
+    "url": "/project/warehouse/export",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/warehouse/warehouse.js"
+  },
+  {
+    "module": "eos/warehouse/warehouse",
+    "function": "getStore",
+    "method": "GET",
+    "url": "/project/warehouse/getStore",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/warehouse/warehouse.js"
+  },
+  {
+    "module": "eos/warehouse/warehouse",
+    "function": "listWarehouse",
+    "method": "GET",
+    "url": "/project/warehouse/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/warehouse/warehouse.js"
+  },
+  {
+    "module": "eos/warehouse/warehouse",
+    "function": "warehouseByProject",
+    "method": "GET",
+    "url": "/project/warehouse/list/byProject",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/warehouse/warehouse.js"
+  },
+  {
+    "module": "eos/warehouse/warehouse",
+    "function": "projectInStore",
+    "method": "GET",
+    "url": "/project/warehouse/project/in",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/warehouse/warehouse.js"
+  },
+  {
+    "module": "eos/warehouse/warehouse",
+    "function": "queryWarehouse",
+    "method": "GET",
+    "url": "/project/warehouse/query",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/warehouse/warehouse.js"
+  },
+  {
+    "module": "eos/warehouse/warehouse",
+    "function": "storeByProject",
+    "method": "GET",
+    "url": "/project/warehouse/store/list/byProject",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/warehouse/warehouse.js"
+  },
+  {
+    "module": "eos/warehouse/warehouse",
+    "function": "storeByWarehouse",
+    "method": "GET",
+    "url": "/project/warehouse/store/list/byWarehouse",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/warehouse/warehouse.js"
+  },
+  {
+    "module": "eos/warehouse/warehouseInApply",
+    "function": "addWarehouseInApply",
+    "method": "POST",
+    "url": "/project/warehouseInApply",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/warehouse/warehouseInApply.js"
+  },
+  {
+    "module": "eos/warehouse/warehouseInApply",
+    "function": "updateWarehouseInApply",
+    "method": "PUT",
+    "url": "/project/warehouseInApply",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/warehouse/warehouseInApply.js"
+  },
+  {
+    "module": "eos/warehouse/warehouseInApply",
+    "function": "delWarehouseInApply",
+    "method": "DELETE",
+    "url": "/project/warehouseInApply/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/warehouse/warehouseInApply.js"
+  },
+  {
+    "module": "eos/warehouse/warehouseInApply",
+    "function": "getWarehouseInApply",
+    "method": "GET",
+    "url": "/project/warehouseInApply/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/warehouse/warehouseInApply.js"
+  },
+  {
+    "module": "eos/warehouse/warehouseInApply",
+    "function": "queryInDetail",
+    "method": "GET",
+    "url": "/project/warehouseInApply/detail/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/warehouse/warehouseInApply.js"
+  },
+  {
+    "module": "eos/warehouse/warehouseInApply",
+    "function": "exportWarehouseInApply",
+    "method": "GET",
+    "url": "/project/warehouseInApply/export",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/warehouse/warehouseInApply.js"
+  },
+  {
+    "module": "eos/warehouse/warehouseInApply",
+    "function": "listWarehouseInApply",
+    "method": "GET",
+    "url": "/project/warehouseInApply/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/warehouse/warehouseInApply.js"
+  },
+  {
+    "module": "eos/warehouse/warehouseInApply",
+    "function": "getByProject",
+    "method": "GET",
+    "url": "/project/warehouseInApply/list/byProject",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/warehouse/warehouseInApply.js"
+  },
+  {
+    "module": "eos/warehouse/warehouseInApply",
+    "function": "getByProjectAndWarehouse",
+    "method": "GET",
+    "url": "/project/warehouseInApply/list/byProject/byWarehouse",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/warehouse/warehouseInApply.js"
+  },
+  {
+    "module": "eos/warehouse/warehouseInApply",
+    "function": "reApply",
+    "method": "POST",
+    "url": "/project/warehouseInApply/reApply",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/warehouse/warehouseInApply.js"
+  },
+  {
+    "module": "eos/warehouse/warehouseInApply",
+    "function": "submitApply",
+    "method": "POST",
+    "url": "/project/warehouseInApply/submitApply",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/warehouse/warehouseInApply.js"
+  },
+  {
+    "module": "eos/warehouse/warehouseInDetail",
+    "function": "addWarehouseInDetail",
+    "method": "POST",
+    "url": "/project/warehouseInDetail",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/warehouse/warehouseInDetail.js"
+  },
+  {
+    "module": "eos/warehouse/warehouseInDetail",
+    "function": "updateWarehouseInDetail",
+    "method": "PUT",
+    "url": "/project/warehouseInDetail",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/warehouse/warehouseInDetail.js"
+  },
+  {
+    "module": "eos/warehouse/warehouseInDetail",
+    "function": "delWarehouseInDetail",
+    "method": "DELETE",
+    "url": "/project/warehouseInDetail/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/warehouse/warehouseInDetail.js"
+  },
+  {
+    "module": "eos/warehouse/warehouseInDetail",
+    "function": "getWarehouseInDetail",
+    "method": "GET",
+    "url": "/project/warehouseInDetail/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/warehouse/warehouseInDetail.js"
+  },
+  {
+    "module": "eos/warehouse/warehouseInDetail",
+    "function": "exportWarehouseInDetail",
+    "method": "GET",
+    "url": "/project/warehouseInDetail/export",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/warehouse/warehouseInDetail.js"
+  },
+  {
+    "module": "eos/warehouse/warehouseInDetail",
+    "function": "listWarehouseInDetail",
+    "method": "GET",
+    "url": "/project/warehouseInDetail/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/warehouse/warehouseInDetail.js"
+  },
+  {
+    "module": "eos/warehouse/warehouseOutapply",
+    "function": "addWarehouseOutapply",
+    "method": "POST",
+    "url": "/project/warehouseOutapply",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/warehouse/warehouseOutapply.js"
+  },
+  {
+    "module": "eos/warehouse/warehouseOutapply",
+    "function": "updateWarehouseOutapply",
+    "method": "PUT",
+    "url": "/project/warehouseOutapply",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/warehouse/warehouseOutapply.js"
+  },
+  {
+    "module": "eos/warehouse/warehouseOutapply",
+    "function": "delWarehouseOutapply",
+    "method": "DELETE",
+    "url": "/project/warehouseOutapply/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/warehouse/warehouseOutapply.js"
+  },
+  {
+    "module": "eos/warehouse/warehouseOutapply",
+    "function": "getWarehouseOutapply",
+    "method": "GET",
+    "url": "/project/warehouseOutapply/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/warehouse/warehouseOutapply.js"
+  },
+  {
+    "module": "eos/warehouse/warehouseOutapply",
+    "function": "queryOutDetail",
+    "method": "GET",
+    "url": "/project/warehouseOutapply/detail/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/warehouse/warehouseOutapply.js"
+  },
+  {
+    "module": "eos/warehouse/warehouseOutapply",
+    "function": "exportWarehouseOutapply",
+    "method": "GET",
+    "url": "/project/warehouseOutapply/export",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/warehouse/warehouseOutapply.js"
+  },
+  {
+    "module": "eos/warehouse/warehouseOutapply",
+    "function": "listWarehouseOutapply",
+    "method": "GET",
+    "url": "/project/warehouseOutapply/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/warehouse/warehouseOutapply.js"
+  },
+  {
+    "module": "eos/warehouse/warehouseOutapply",
+    "function": "reApply",
+    "method": "POST",
+    "url": "/project/warehouseOutapply/reApply",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/warehouse/warehouseOutapply.js"
+  },
+  {
+    "module": "eos/warehouse/warehouseOutapply",
+    "function": "submitApply",
+    "method": "POST",
+    "url": "/project/warehouseOutapply/submitApply",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/warehouse/warehouseOutapply.js"
+  },
+  {
+    "module": "eos/warehouse/warehouseOutDetail",
+    "function": "addWarehouseOutDetail",
+    "method": "POST",
+    "url": "/project/warehouseOutDetail",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/warehouse/warehouseOutDetail.js"
+  },
+  {
+    "module": "eos/warehouse/warehouseOutDetail",
+    "function": "updateWarehouseOutDetail",
+    "method": "PUT",
+    "url": "/project/warehouseOutDetail",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/warehouse/warehouseOutDetail.js"
+  },
+  {
+    "module": "eos/warehouse/warehouseOutDetail",
+    "function": "delWarehouseOutDetail",
+    "method": "DELETE",
+    "url": "/project/warehouseOutDetail/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/warehouse/warehouseOutDetail.js"
+  },
+  {
+    "module": "eos/warehouse/warehouseOutDetail",
+    "function": "getWarehouseOutDetail",
+    "method": "GET",
+    "url": "/project/warehouseOutDetail/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/warehouse/warehouseOutDetail.js"
+  },
+  {
+    "module": "eos/warehouse/warehouseOutDetail",
+    "function": "exportWarehouseOutDetail",
+    "method": "GET",
+    "url": "/project/warehouseOutDetail/export",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/warehouse/warehouseOutDetail.js"
+  },
+  {
+    "module": "eos/warehouse/warehouseOutDetail",
+    "function": "listWarehouseOutDetail",
+    "method": "GET",
+    "url": "/project/warehouseOutDetail/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/warehouse/warehouseOutDetail.js"
+  },
+  {
+    "module": "eos/warehouse/warehouseTransferApply",
+    "function": "addWarehouseTransferApply",
+    "method": "POST",
+    "url": "/project/warehouseTransferApply",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/warehouse/warehouseTransferApply.js"
+  },
+  {
+    "module": "eos/warehouse/warehouseTransferApply",
+    "function": "updateWarehouseTransferApply",
+    "method": "PUT",
+    "url": "/project/warehouseTransferApply",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/warehouse/warehouseTransferApply.js"
+  },
+  {
+    "module": "eos/warehouse/warehouseTransferApply",
+    "function": "delWarehouseTransferApply",
+    "method": "DELETE",
+    "url": "/project/warehouseTransferApply/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/warehouse/warehouseTransferApply.js"
+  },
+  {
+    "module": "eos/warehouse/warehouseTransferApply",
+    "function": "getWarehouseTransferApply",
+    "method": "GET",
+    "url": "/project/warehouseTransferApply/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/warehouse/warehouseTransferApply.js"
+  },
+  {
+    "module": "eos/warehouse/warehouseTransferApply",
+    "function": "queryTransInDetail",
+    "method": "GET",
+    "url": "/project/warehouseTransferApply/detail/in",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/warehouse/warehouseTransferApply.js"
+  },
+  {
+    "module": "eos/warehouse/warehouseTransferApply",
+    "function": "queryTransOutDetail",
+    "method": "GET",
+    "url": "/project/warehouseTransferApply/detail/out",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/warehouse/warehouseTransferApply.js"
+  },
+  {
+    "module": "eos/warehouse/warehouseTransferApply",
+    "function": "exportWarehouseTransferApply",
+    "method": "GET",
+    "url": "/project/warehouseTransferApply/export",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/warehouse/warehouseTransferApply.js"
+  },
+  {
+    "module": "eos/warehouse/warehouseTransferApply",
+    "function": "listWarehouseTransferApply",
+    "method": "GET",
+    "url": "/project/warehouseTransferApply/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/warehouse/warehouseTransferApply.js"
+  },
+  {
+    "module": "eos/warehouse/warehouseTransferApply",
+    "function": "reApply",
+    "method": "POST",
+    "url": "/project/warehouseTransferApply/reApply",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/warehouse/warehouseTransferApply.js"
+  },
+  {
+    "module": "eos/warehouse/warehouseTransferApply",
+    "function": "submitApply",
+    "method": "POST",
+    "url": "/project/warehouseTransferApply/submitApply",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/warehouse/warehouseTransferApply.js"
+  },
+  {
+    "module": "eos/warehouse/warehouseTransferDetail",
+    "function": "addWarehouseTransferDetail",
+    "method": "POST",
+    "url": "/project/warehouseTransferDetail",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/warehouse/warehouseTransferDetail.js"
+  },
+  {
+    "module": "eos/warehouse/warehouseTransferDetail",
+    "function": "updateWarehouseTransferDetail",
+    "method": "PUT",
+    "url": "/project/warehouseTransferDetail",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/eos/warehouse/warehouseTransferDetail.js"
+  },
+  {
+    "module": "eos/warehouse/warehouseTransferDetail",
+    "function": "delWarehouseTransferDetail",
+    "method": "DELETE",
+    "url": "/project/warehouseTransferDetail/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/warehouse/warehouseTransferDetail.js"
+  },
+  {
+    "module": "eos/warehouse/warehouseTransferDetail",
+    "function": "getWarehouseTransferDetail",
+    "method": "GET",
+    "url": "/project/warehouseTransferDetail/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/warehouse/warehouseTransferDetail.js"
+  },
+  {
+    "module": "eos/warehouse/warehouseTransferDetail",
+    "function": "exportWarehouseTransferDetail",
+    "method": "GET",
+    "url": "/project/warehouseTransferDetail/export",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/warehouse/warehouseTransferDetail.js"
+  },
+  {
+    "module": "eos/warehouse/warehouseTransferDetail",
+    "function": "listWarehouseTransferDetail",
+    "method": "GET",
+    "url": "/project/warehouseTransferDetail/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/eos/warehouse/warehouseTransferDetail.js"
+  },
+  {
+    "module": "eos/warn/warn",
+    "function": "contractStage",
+    "method": "GET",
+    "url": "/project/contract/warnContractStage",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/warn/warn.js"
+  },
+  {
+    "module": "eos/warn/warn",
+    "function": "earnestList",
+    "method": "GET",
+    "url": "/project/contract/warnEarnest",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/warn/warn.js"
+  },
+  {
+    "module": "eos/warn/warn",
+    "function": "planOut",
+    "method": "GET",
+    "url": "/project/contract/warnPayment",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/warn/warn.js"
+  },
+  {
+    "module": "eos/warn/warn",
+    "function": "planIn",
+    "method": "GET",
+    "url": "/project/contract/warnPaymentReal",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/warn/warn.js"
+  },
+  {
+    "module": "eos/warn/warn",
+    "function": "warnTotal",
+    "method": "GET",
+    "url": "/project/contract/warnTotal",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/eos/warn/warn.js"
+  },
+  {
+    "module": "processDesign/form",
+    "function": "getFormPerms",
+    "method": "GET",
+    "url": "/form_perms/find/auth_group",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/processDesign/form.js"
+  },
+  {
+    "module": "processDesign/index",
+    "function": "detailProcess",
+    "method": "POST",
+    "url": "/activiti/mongo/detailProcess",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/processDesign/index.js"
+  },
+  {
+    "module": "processDesign/index",
+    "function": "setProcess",
+    "method": "POST",
+    "url": "/activiti/mongo/setProcess",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/processDesign/index.js"
+  },
+  {
+    "module": "processDesign/index",
+    "function": "subumitProcess",
+    "method": "POST",
+    "url": "/activiti/mongo/submitProcess",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/processDesign/index.js"
+  },
+  {
+    "module": "processDesign/index",
+    "function": "getTaskCopyList",
+    "method": "GET",
+    "url": "/activiti/mongoWorkflow/taskCopyList",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/processDesign/index.js"
+  },
+  {
+    "module": "processDesign/index",
+    "function": "getTaskDoneList",
+    "method": "GET",
+    "url": "/activiti/mongoWorkflow/taskDoneList",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/processDesign/index.js"
+  },
+  {
+    "module": "processDesign/index",
+    "function": "getMongoWorkflowList",
+    "method": "GET",
+    "url": "/activiti/mongoWorkflow/taskStartList",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/processDesign/index.js"
+  },
+  {
+    "module": "processDesign/index",
+    "function": "getTaskListCount",
+    "method": "GET",
+    "url": "/activiti/mongoWorkflow/taskWaitCount",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/processDesign/index.js"
+  },
+  {
+    "module": "processDesign/index",
+    "function": "getTaskList",
+    "method": "GET",
+    "url": "/activiti/mongoWorkflow/taskWaitList",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/processDesign/index.js"
+  },
+  {
+    "module": "processDesign/index",
+    "function": "activitiProcess",
+    "method": "POST",
+    "url": "/activiti/process/complete",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/processDesign/index.js"
+  },
+  {
+    "module": "processDesign/index",
+    "function": "dataCreate",
+    "method": "POST",
+    "url": "/data/create",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/processDesign/index.js"
+  },
+  {
+    "module": "processDesign/index",
+    "function": "getFormDataDetail",
+    "method": "POST",
+    "url": "/data/detail",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/processDesign/index.js"
+  },
+  {
+    "module": "processDesign/index",
+    "function": "createDataFind",
+    "method": "POST",
+    "url": "/data/find",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/processDesign/index.js"
+  },
+  {
+    "module": "processDesign/index",
+    "function": "deleteFormItem",
+    "method": "POST",
+    "url": "/data/remove",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/processDesign/index.js"
+  },
+  {
+    "module": "processDesign/index",
+    "function": "createdFrom",
+    "method": "POST",
+    "url": "/form/create",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/processDesign/index.js"
+  },
+  {
+    "module": "processDesign/index",
+    "function": "getFormDetail",
+    "method": "POST",
+    "url": "/form/detail",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/processDesign/index.js"
+  },
+  {
+    "module": "processDesign/index",
+    "function": "getFormMenuList",
+    "method": "GET",
+    "url": "/form/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/processDesign/index.js"
+  },
+  {
+    "module": "processDesign/index",
+    "function": "deleteForm",
+    "method": "POST",
+    "url": "/form/remove",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/processDesign/index.js"
+  },
+  {
+    "module": "processDesign/index",
+    "function": "updateForm",
+    "method": "POST",
+    "url": "/form/update",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/processDesign/index.js"
+  },
+  {
+    "module": "system/config",
+    "function": "addConfig",
+    "method": "POST",
+    "url": "/system/config",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/system/config.js"
+  },
+  {
+    "module": "system/config",
+    "function": "updateConfig",
+    "method": "PUT",
+    "url": "/system/config",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/system/config.js"
+  },
+  {
+    "module": "system/config",
+    "function": "delConfig",
+    "method": "DELETE",
+    "url": "/system/config/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/system/config.js"
+  },
+  {
+    "module": "system/config",
+    "function": "getConfig",
+    "method": "GET",
+    "url": "/system/config/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/system/config.js"
+  },
+  {
+    "module": "system/config",
+    "function": "clearCache",
+    "method": "DELETE",
+    "url": "/system/config/clearCache",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/system/config.js"
+  },
+  {
+    "module": "system/config",
+    "function": "getConfigKey",
+    "method": "GET",
+    "url": "/system/config/configKey/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/system/config.js"
+  },
+  {
+    "module": "system/config",
+    "function": "exportConfig",
+    "method": "GET",
+    "url": "/system/config/export",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/system/config.js"
+  },
+  {
+    "module": "system/config",
+    "function": "listConfig",
+    "method": "GET",
+    "url": "/system/config/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/system/config.js"
+  },
+  {
+    "module": "system/dept",
+    "function": "addDept",
+    "method": "POST",
+    "url": "/system/dept",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/system/dept.js"
+  },
+  {
+    "module": "system/dept",
+    "function": "updateDept",
+    "method": "PUT",
+    "url": "/system/dept",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/system/dept.js"
+  },
+  {
+    "module": "system/dept",
+    "function": "delDept",
+    "method": "DELETE",
+    "url": "/system/dept/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/system/dept.js"
+  },
+  {
+    "module": "system/dept",
+    "function": "getDept",
+    "method": "GET",
+    "url": "/system/dept/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/system/dept.js"
+  },
+  {
+    "module": "system/dept",
+    "function": "allTree",
+    "method": "GET",
+    "url": "/system/dept/allTree",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/system/dept.js"
+  },
+  {
+    "module": "system/dept",
+    "function": "listDept",
+    "method": "GET",
+    "url": "/system/dept/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/system/dept.js"
+  },
+  {
+    "module": "system/dept",
+    "function": "listDeptExcludeChild",
+    "method": "GET",
+    "url": "/system/dept/list/exclude/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/system/dept.js"
+  },
+  {
+    "module": "system/dept",
+    "function": "listDeptPage",
+    "method": "GET",
+    "url": "/system/dept/list/page",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/system/dept.js"
+  },
+  {
+    "module": "system/dept",
+    "function": "roleDeptTreeselect",
+    "method": "GET",
+    "url": "/system/dept/roleDeptTreeselect/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/system/dept.js"
+  },
+  {
+    "module": "system/dept",
+    "function": "treeselect",
+    "method": "GET",
+    "url": "/system/dept/treeselect",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/system/dept.js"
+  },
+  {
+    "module": "system/dict/data",
+    "function": "addData",
+    "method": "POST",
+    "url": "/system/dict/data",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/system/dict/data.js"
+  },
+  {
+    "module": "system/dict/data",
+    "function": "updateData",
+    "method": "PUT",
+    "url": "/system/dict/data",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/system/dict/data.js"
+  },
+  {
+    "module": "system/dict/data",
+    "function": "delData",
+    "method": "DELETE",
+    "url": "/system/dict/data/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/system/dict/data.js"
+  },
+  {
+    "module": "system/dict/data",
+    "function": "getData",
+    "method": "GET",
+    "url": "/system/dict/data/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/system/dict/data.js"
+  },
+  {
+    "module": "system/dict/data",
+    "function": "exportData",
+    "method": "GET",
+    "url": "/system/dict/data/export",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/system/dict/data.js"
+  },
+  {
+    "module": "system/dict/data",
+    "function": "listData",
+    "method": "GET",
+    "url": "/system/dict/data/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/system/dict/data.js"
+  },
+  {
+    "module": "system/dict/data",
+    "function": "getDicts",
+    "method": "GET",
+    "url": "/system/dict/data/type/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/system/dict/data.js"
+  },
+  {
+    "module": "system/dict/type",
+    "function": "addType",
+    "method": "POST",
+    "url": "/system/dict/type",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/system/dict/type.js"
+  },
+  {
+    "module": "system/dict/type",
+    "function": "updateType",
+    "method": "PUT",
+    "url": "/system/dict/type",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/system/dict/type.js"
+  },
+  {
+    "module": "system/dict/type",
+    "function": "delType",
+    "method": "DELETE",
+    "url": "/system/dict/type/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/system/dict/type.js"
+  },
+  {
+    "module": "system/dict/type",
+    "function": "getType",
+    "method": "GET",
+    "url": "/system/dict/type/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/system/dict/type.js"
+  },
+  {
+    "module": "system/dict/type",
+    "function": "clearCache",
+    "method": "DELETE",
+    "url": "/system/dict/type/clearCache",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/system/dict/type.js"
+  },
+  {
+    "module": "system/dict/type",
+    "function": "exportType",
+    "method": "GET",
+    "url": "/system/dict/type/export",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/system/dict/type.js"
+  },
+  {
+    "module": "system/dict/type",
+    "function": "listType",
+    "method": "GET",
+    "url": "/system/dict/type/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/system/dict/type.js"
+  },
+  {
+    "module": "system/dict/type",
+    "function": "optionselect",
+    "method": "GET",
+    "url": "/system/dict/type/optionselect",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/system/dict/type.js"
+  },
+  {
+    "module": "system/log/logininfor",
+    "function": "delLogininfor",
+    "method": "DELETE",
+    "url": "/monitor/logininfor/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/system/log/logininfor.js"
+  },
+  {
+    "module": "system/log/logininfor",
+    "function": "cleanLogininfor",
+    "method": "DELETE",
+    "url": "/monitor/logininfor/clean",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/system/log/logininfor.js"
+  },
+  {
+    "module": "system/log/logininfor",
+    "function": "exportLogininfor",
+    "method": "GET",
+    "url": "/monitor/logininfor/export",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/system/log/logininfor.js"
+  },
+  {
+    "module": "system/log/logininfor",
+    "function": "list",
+    "method": "GET",
+    "url": "/monitor/logininfor/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/system/log/logininfor.js"
+  },
+  {
+    "module": "system/log/operlog",
+    "function": "delOperlog",
+    "method": "DELETE",
+    "url": "/monitor/operlog/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/system/log/operlog.js"
+  },
+  {
+    "module": "system/log/operlog",
+    "function": "cleanOperlog",
+    "method": "DELETE",
+    "url": "/monitor/operlog/clean",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/system/log/operlog.js"
+  },
+  {
+    "module": "system/log/operlog",
+    "function": "exportOperlog",
+    "method": "GET",
+    "url": "/monitor/operlog/export",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/system/log/operlog.js"
+  },
+  {
+    "module": "system/log/operlog",
+    "function": "list",
+    "method": "GET",
+    "url": "/monitor/operlog/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/system/log/operlog.js"
+  },
+  {
+    "module": "system/menu",
+    "function": "deptMenuTree",
+    "method": "GET",
+    "url": "/app/user/deptMenuTree",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/system/menu.js"
+  },
+  {
+    "module": "system/menu",
+    "function": "roleMenuTree",
+    "method": "GET",
+    "url": "/app/user/roleMenuTree",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/system/menu.js"
+  },
+  {
+    "module": "system/menu",
+    "function": "userMenuTree",
+    "method": "GET",
+    "url": "/app/user/userMenuTree",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/system/menu.js"
+  },
+  {
+    "module": "system/menu",
+    "function": "addUserMenu",
+    "method": "POST",
+    "url": "/project/regular/menu",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/system/menu.js"
+  },
+  {
+    "module": "system/menu",
+    "function": "deleteUserMenu",
+    "method": "DELETE",
+    "url": "/project/regular/menu/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/system/menu.js"
+  },
+  {
+    "module": "system/menu",
+    "function": "listUserMenus",
+    "method": "GET",
+    "url": "/project/regular/menu/list/build",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/system/menu.js"
+  },
+  {
+    "module": "system/menu",
+    "function": "addMenu",
+    "method": "POST",
+    "url": "/system/menu",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/system/menu.js"
+  },
+  {
+    "module": "system/menu",
+    "function": "updateMenu",
+    "method": "PUT",
+    "url": "/system/menu",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/system/menu.js"
+  },
+  {
+    "module": "system/menu",
+    "function": "delMenu",
+    "method": "DELETE",
+    "url": "/system/menu/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/system/menu.js"
+  },
+  {
+    "module": "system/menu",
+    "function": "getMenu",
+    "method": "GET",
+    "url": "/system/menu/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/system/menu.js"
+  },
+  {
+    "module": "system/menu",
+    "function": "listMenu",
+    "method": "GET",
+    "url": "/system/menu/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/system/menu.js"
+  },
+  {
+    "module": "system/menu",
+    "function": "roleMenuTreeselect",
+    "method": "GET",
+    "url": "/system/menu/roleMenuTreeselect/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/system/menu.js"
+  },
+  {
+    "module": "system/menu",
+    "function": "treeselect",
+    "method": "GET",
+    "url": "/system/menu/treeselect",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/system/menu.js"
+  },
+  {
+    "module": "system/notice",
+    "function": "saveMessage",
+    "method": "POST",
+    "url": "/system/message",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/system/notice.js"
+  },
+  {
+    "module": "system/notice",
+    "function": "addNotice",
+    "method": "POST",
+    "url": "/system/notice",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/system/notice.js"
+  },
+  {
+    "module": "system/notice",
+    "function": "updateNotice",
+    "method": "PUT",
+    "url": "/system/notice",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/system/notice.js"
+  },
+  {
+    "module": "system/notice",
+    "function": "delNotice",
+    "method": "DELETE",
+    "url": "/system/notice/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/system/notice.js"
+  },
+  {
+    "module": "system/notice",
+    "function": "getNotice",
+    "method": "GET",
+    "url": "/system/notice/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/system/notice.js"
+  },
+  {
+    "module": "system/notice",
+    "function": "listNotice",
+    "method": "GET",
+    "url": "/system/notice/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/system/notice.js"
+  },
+  {
+    "module": "system/post",
+    "function": "addPost",
+    "method": "POST",
+    "url": "/system/post",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/system/post.js"
+  },
+  {
+    "module": "system/post",
+    "function": "updatePost",
+    "method": "PUT",
+    "url": "/system/post",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/system/post.js"
+  },
+  {
+    "module": "system/post",
+    "function": "delPost",
+    "method": "DELETE",
+    "url": "/system/post/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/system/post.js"
+  },
+  {
+    "module": "system/post",
+    "function": "getPost",
+    "method": "GET",
+    "url": "/system/post/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/system/post.js"
+  },
+  {
+    "module": "system/post",
+    "function": "addPostMember",
+    "method": "POST",
+    "url": "/system/post/add_member",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/system/post.js"
+  },
+  {
+    "module": "system/post",
+    "function": "exportPost",
+    "method": "GET",
+    "url": "/system/post/export",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/system/post.js"
+  },
+  {
+    "module": "system/post",
+    "function": "listPost",
+    "method": "GET",
+    "url": "/system/post/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/system/post.js"
+  },
+  {
+    "module": "system/post",
+    "function": "listPostAll",
+    "method": "GET",
+    "url": "/system/post/list/all",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/system/post.js"
+  },
+  {
+    "module": "system/post",
+    "function": "deletePostMember",
+    "method": "DELETE",
+    "url": "/system/post/remove_member",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/system/post.js"
+  },
+  {
+    "module": "system/role",
+    "function": "addRole",
+    "method": "POST",
+    "url": "/system/role",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/system/role.js"
+  },
+  {
+    "module": "system/role",
+    "function": "updateRole",
+    "method": "PUT",
+    "url": "/system/role",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/system/role.js"
+  },
+  {
+    "module": "system/role",
+    "function": "delRoleGroup",
+    "method": "DELETE",
+    "url": "/system/role_group/group_remove/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/system/role.js"
+  },
+  {
+    "module": "system/role",
+    "function": "delRole",
+    "method": "DELETE",
+    "url": "/system/role/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/system/role.js"
+  },
+  {
+    "module": "system/role",
+    "function": "getRole",
+    "method": "GET",
+    "url": "/system/role/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/system/role.js"
+  },
+  {
+    "module": "system/role",
+    "function": "changeRoleStatus",
+    "method": "PUT",
+    "url": "/system/role/changeStatus",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/system/role.js"
+  },
+  {
+    "module": "system/role",
+    "function": "dataScope",
+    "method": "PUT",
+    "url": "/system/role/dataScope",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/system/role.js"
+  },
+  {
+    "module": "system/role",
+    "function": "exportRole",
+    "method": "GET",
+    "url": "/system/role/export",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/system/role.js"
+  },
+  {
+    "module": "system/role",
+    "function": "listRole",
+    "method": "GET",
+    "url": "/system/role/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/system/role.js"
+  },
+  {
+    "module": "system/role",
+    "function": "listRoleAll",
+    "method": "GET",
+    "url": "/system/role/list/all",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/system/role.js"
+  },
+  {
+    "module": "system/role",
+    "function": "delSaasRole",
+    "method": "DELETE",
+    "url": "/system/role/remove/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/system/role.js"
+  },
+  {
+    "module": "system/user",
+    "function": "commonUpload",
+    "method": "POST",
+    "url": "/common/upload",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/system/user.js"
+  },
+  {
+    "module": "system/user",
+    "function": "importdingding",
+    "method": "GET",
+    "url": "/dingDing/auth/insertUsers",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/system/user.js"
+  },
+  {
+    "module": "system/user",
+    "function": "addUser",
+    "method": "POST",
+    "url": "/system/user",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/system/user.js"
+  },
+  {
+    "module": "system/user",
+    "function": "updateUser",
+    "method": "PUT",
+    "url": "/system/user",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/system/user.js"
+  },
+  {
+    "module": "system/user",
+    "function": "delUser",
+    "method": "DELETE",
+    "url": "/system/user/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/system/user.js"
+  },
+  {
+    "module": "system/user",
+    "function": "getUser",
+    "method": "GET",
+    "url": "/system/user/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/system/user.js"
+  },
+  {
+    "module": "system/user",
+    "function": "changeUserStatus",
+    "method": "PUT",
+    "url": "/system/user/changeStatus",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/system/user.js"
+  },
+  {
+    "module": "system/user",
+    "function": "editUser",
+    "method": "PUT",
+    "url": "/system/user/edit",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/system/user.js"
+  },
+  {
+    "module": "system/user",
+    "function": "excelImport",
+    "method": "POST",
+    "url": "/system/user/excel_import",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/system/user.js"
+  },
+  {
+    "module": "system/user",
+    "function": "exportUser",
+    "method": "GET",
+    "url": "/system/user/export",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/system/user.js"
+  },
+  {
+    "module": "system/user",
+    "function": "getByUsername",
+    "method": "GET",
+    "url": "/system/user/getByUsername",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/system/user.js"
+  },
+  {
+    "module": "system/user",
+    "function": "importTemplate",
+    "method": "GET",
+    "url": "/system/user/importTemplate",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/system/user.js"
+  },
+  {
+    "module": "system/user",
+    "function": "listUser",
+    "method": "GET",
+    "url": "/system/user/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/system/user.js"
+  },
+  {
+    "module": "system/user",
+    "function": "queryAll",
+    "method": "GET",
+    "url": "/system/user/list/queryAll",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/system/user.js"
+  },
+  {
+    "module": "system/user",
+    "function": "getUserProfile",
+    "method": "GET",
+    "url": "/system/user/profile",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/system/user.js"
+  },
+  {
+    "module": "system/user",
+    "function": "updateUserProfile",
+    "method": "PUT",
+    "url": "/system/user/profile",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/system/user.js"
+  },
+  {
+    "module": "system/user",
+    "function": "uploadAvatar",
+    "method": "POST",
+    "url": "/system/user/profile/avatar",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/system/user.js"
+  },
+  {
+    "module": "system/user",
+    "function": "updateUserPwd",
+    "method": "PUT",
+    "url": "/system/user/profile/updatePwd",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/system/user.js"
+  },
+  {
+    "module": "system/user",
+    "function": "resetUserPwd",
+    "method": "PUT",
+    "url": "/system/user/resetPwd",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/system/user.js"
+  },
+  {
+    "module": "user/app",
+    "function": "getAppSystemList",
+    "method": "GET",
+    "url": "/app/system/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/user/app.js"
+  },
+  {
+    "module": "user/app",
+    "function": "addMenuPerm",
+    "method": "POST",
+    "url": "/app/user/addModule",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/user/app.js"
+  },
+  {
+    "module": "user/app",
+    "function": "deleteAppItem",
+    "method": "DELETE",
+    "url": "/app/user/delete/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/user/app.js"
+  },
+  {
+    "module": "user/app",
+    "function": "getAppList",
+    "method": "GET",
+    "url": "/app/user/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/user/app.js"
+  },
+  {
+    "module": "user/app",
+    "function": "queryAppByTenantAppId",
+    "method": "GET",
+    "url": "/app/user/module/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/user/app.js"
+  },
+  {
+    "module": "user/app",
+    "function": "createdNewApp",
+    "method": "POST",
+    "url": "/app/user/self/app",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/user/app.js"
+  },
+  {
+    "module": "user/app",
+    "function": "updateApp",
+    "method": "PUT",
+    "url": "/app/user/update",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/user/app.js"
+  },
+  {
+    "module": "user/app",
+    "function": "getUserInfo",
+    "method": "GET",
+    "url": "/crm/user/get_user_info",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/user/app.js"
+  },
+  {
+    "module": "user/app",
+    "function": "addAdminStstemGroup",
+    "method": "POST",
+    "url": "/system/admin/addAdmin",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/user/app.js"
+  },
+  {
+    "module": "user/app",
+    "function": "addAdminGroup",
+    "method": "POST",
+    "url": "/system/admin/addGroup",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/user/app.js"
+  },
+  {
+    "module": "user/app",
+    "function": "queryNormalAdminDetail",
+    "method": "GET",
+    "url": "/system/admin/adminGroup/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/user/app.js"
+  },
+  {
+    "module": "user/app",
+    "function": "editGroupName",
+    "method": "POST",
+    "url": "/system/admin/edit",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/user/app.js"
+  },
+  {
+    "module": "user/app",
+    "function": "queryStstemAdmin",
+    "method": "GET",
+    "url": "/system/admin/query/admin",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/user/app.js"
+  },
+  {
+    "module": "user/app",
+    "function": "queryAdminGroup",
+    "method": "GET",
+    "url": "/system/admin/query/adminGroup",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/user/app.js"
+  },
+  {
+    "module": "user/app",
+    "function": "adminGroupDelete",
+    "method": "DELETE",
+    "url": "/system/admin/remove/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/user/app.js"
+  },
+  {
+    "module": "user/app",
+    "function": "adminUpdatePre",
+    "method": "POST",
+    "url": "/system/admin/update",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/user/app.js"
+  },
+  {
+    "module": "user/app",
+    "function": "addSystemDepchild",
+    "method": "POST",
+    "url": "/system/dept",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/user/app.js"
+  },
+  {
+    "module": "user/app",
+    "function": "editDeptName",
+    "method": "PUT",
+    "url": "/system/dept",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/user/app.js"
+  },
+  {
+    "module": "user/app",
+    "function": "addDeptPrincipal",
+    "method": "GET",
+    "url": "/system/dept/add/principal",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/user/app.js"
+  },
+  {
+    "module": "user/app",
+    "function": "adjustDeptUser",
+    "method": "GET",
+    "url": "/system/dept/addUser",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/user/app.js"
+  },
+  {
+    "module": "user/app",
+    "function": "getTreeMenu",
+    "method": "GET",
+    "url": "/system/dept/admin/tree",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/user/app.js"
+  },
+  {
+    "module": "user/app",
+    "function": "deptsort",
+    "method": "GET",
+    "url": "/system/dept/sort",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/user/app.js"
+  },
+  {
+    "module": "user/app",
+    "function": "getRoleListClass",
+    "method": "GET",
+    "url": "/system/role_group/group_list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/user/app.js"
+  },
+  {
+    "module": "user/app",
+    "function": "updateRoleGroup",
+    "method": "POST",
+    "url": "/system/role_group/group_update",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/user/app.js"
+  },
+  {
+    "module": "user/app",
+    "function": "addRoleinMember",
+    "method": "POST",
+    "url": "/system/role/add_member",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/user/app.js"
+  },
+  {
+    "module": "user/app",
+    "function": "getRoleByAdmin",
+    "method": "GET",
+    "url": "/system/role/admin/list",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/user/app.js"
+  },
+  {
+    "module": "user/app",
+    "function": "insertRole",
+    "method": "POST",
+    "url": "/system/role/insert",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/user/app.js"
+  },
+  {
+    "module": "user/app",
+    "function": "getRoleMemberList",
+    "method": "GET",
+    "url": "/system/role/list_member",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/user/app.js"
+  },
+  {
+    "module": "user/app",
+    "function": "deleteRoleinMember",
+    "method": "DELETE",
+    "url": "/system/role/remove_member",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/user/app.js"
+  },
+  {
+    "module": "user/app",
+    "function": "updateRole",
+    "method": "POST",
+    "url": "/system/role/update",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/user/app.js"
+  },
+  {
+    "module": "user/app",
+    "function": "addRole",
+    "method": "POST",
+    "url": "/system/user/add",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/user/app.js"
+  },
+  {
+    "module": "user/app",
+    "function": "addUserDismiss",
+    "method": "GET",
+    "url": "/system/user/dismiss",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/user/app.js"
+  },
+  {
+    "module": "user/app",
+    "function": "getDismissList",
+    "method": "GET",
+    "url": "/system/user/dismiss_list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/user/app.js"
+  },
+  {
+    "module": "user/app",
+    "function": "roleImport",
+    "method": "POST",
+    "url": "/system/user/excel_import",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/user/app.js"
+  },
+  {
+    "module": "user/app",
+    "function": "getUserList",
+    "method": "GET",
+    "url": "/system/user/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/user/app.js"
+  },
+  {
+    "module": "user/app",
+    "function": "queryUserList",
+    "method": "GET",
+    "url": "/system/user/list",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/user/app.js"
+  },
+  {
+    "module": "user/enterprise",
+    "function": "addEnterprise",
+    "method": "POST",
+    "url": "/crm/company/add",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/user/enterprise.js"
+  },
+  {
+    "module": "user/enterprise",
+    "function": "toggleEnterprise",
+    "method": "GET",
+    "url": "/crm/company/change/{dynamic}",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/user/enterprise.js"
+  },
+  {
+    "module": "user/enterprise",
+    "function": "getEnterprise",
+    "method": "GET",
+    "url": "/crm/company/getCompany",
+    "hasParams": true,
+    "hasData": false,
+    "file": "src/api/user/enterprise.js"
+  },
+  {
+    "module": "user/login",
+    "function": "getCodeImg",
+    "method": "GET",
+    "url": "/captchaImage",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/user/login.js"
+  },
+  {
+    "module": "user/module",
+    "function": "getRouters",
+    "method": "GET",
+    "url": "/getRouters",
+    "hasParams": false,
+    "hasData": false,
+    "file": "src/api/user/module.js"
+  },
+  {
+    "module": "user/registered",
+    "function": "registered",
+    "method": "POST",
+    "url": "/crm/user/register",
+    "hasParams": false,
+    "hasData": true,
+    "file": "src/api/user/registered.js"
+  }
+]
