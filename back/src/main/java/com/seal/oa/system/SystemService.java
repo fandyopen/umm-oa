@@ -119,17 +119,14 @@ public class SystemService {
         return rows.isEmpty() ? Map.of() : rows.get(0);
     }
 
-    public List<Map<String, Object>> posts(Long userId) {
-        return jdbc.query("""
-                SELECT p.post_id, p.post_code, p.post_name
+    public List<String> posts(Long userId) {
+        return jdbc.queryForList("""
+                SELECT p.post_code
                 FROM sys_post p
                 JOIN sys_user_post up ON up.post_id = p.post_id
                 WHERE up.user_id = ?
-                """, (resultSet, rowNumber) -> Map.of(
-                "postId", resultSet.getLong("post_id"),
-                "postCode", resultSet.getString("post_code"),
-                "postName", resultSet.getString("post_name")
-        ), userId);
+                ORDER BY p.post_sort
+                """, String.class, userId);
     }
 
     private UserAccount mapUser(ResultSet resultSet, int rowNumber) throws SQLException {
