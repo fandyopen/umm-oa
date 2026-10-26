@@ -68,6 +68,14 @@ class AuthFlowIntegrationTest {
                 .andExpect(jsonPath("$.total").value(1))
                 .andExpect(jsonPath("$.rows[0].name").value("企业数字化办公平台"));
 
+        mockMvc.perform(get("/project/contract/warnTotal").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.contract").isNumber())
+                .andExpect(jsonPath("$.data.earnest").isNumber())
+                .andExpect(jsonPath("$.data.planIn").isNumber())
+                .andExpect(jsonPath("$.data.planOut").isNumber());
+
         mockMvc.perform(get("/project/analysis/project/sale").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))

@@ -14,7 +14,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.sql.Date;
 import java.sql.Timestamp;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -204,7 +206,50 @@ public class OaController {
         return ApiResult.page(rows, total == null ? 0 : total);
     }
 
-    @GetMapping("/project/contract/{id}")
+    @GetMapping("/project/contract/warnTotal")
+    public Map<String, Object> contractWarnings() {
+        Date deadline = java.sql.Date.valueOf(LocalDate.now().plusDays(30));
+        Integer contract = jdbc.queryForObject("""
+                SELECT COUNT(*) FROM oa_contract
+                WHERE end_date BETWEEN CURRENT_DATE AND ?
+                """, Integer.class, deadline);
+        Integer planIn = jdbc.queryForObject("""
+                SELECT COUNT(*) FROM oa_fund_plan
+                WHERE plan_type = 'in' AND plan_date BETWEEN CURRENT_DATE AND ?
+                """, Integer.class, deadline);
+        Integer planOut = jdbc.queryForObject("""
+                SELECT COUNT(*) FROM oa_fund_plan
+                WHERE plan_type = 'out' AND plan_date BETWEEN CURRENT_DATE AND ?
+                """, Integer.class, deadline);
+        return ApiResult.ok(Map.of(
+                "contract", contract == null ? 0 : contract,
+                "earnest", 0,
+                "planIn", planIn == null ? 0 : planIn,
+                "planOut", planOut == null ? 0 : planOut
+        ));
+    }
+
+    @GetMapping("/project/contract/warnContractStage")
+    public Map<String, Object> contractStageWarnings() {
+        return ApiResult.page(List.of(), 0);
+    }
+
+    @GetMapping("/project/contract/warnEarnest")
+    public Map<String, Object> earnestWarnings() {
+        return ApiResult.page(List.of(), 0);
+    }
+
+    @GetMapping("/project/contract/warnPaymentReal")
+    public Map<String, Object> planInWarnings() {
+        return ApiResult.page(List.of(), 0);
+    }
+
+    @GetMapping("/project/contract/warnPayment")
+    public Map<String, Object> planOutWarnings() {
+        return ApiResult.page(List.of(), 0);
+    }
+
+    @GetMapping("/project/contract/{id:\\d+}")
     public Map<String, Object> contract(@PathVariable Long id) {
         List<Map<String, Object>> rows = JdbcMaps.camelCase(jdbc.queryForList(
                 "SELECT * FROM oa_contract WHERE id = ?", id));
