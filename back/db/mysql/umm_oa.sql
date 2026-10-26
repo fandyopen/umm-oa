@@ -23,6 +23,8 @@ DROP TABLE IF EXISTS oa_warehouse;
 DROP TABLE IF EXISTS oa_fund_plan;
 DROP TABLE IF EXISTS oa_budget_item;
 DROP TABLE IF EXISTS oa_budget;
+DROP TABLE IF EXISTS oa_repayment;
+DROP TABLE IF EXISTS oa_loan_detail;
 DROP TABLE IF EXISTS oa_loan;
 DROP TABLE IF EXISTS oa_expense_invoice;
 DROP TABLE IF EXISTS oa_expense_item;
@@ -417,12 +419,33 @@ CREATE TABLE oa_loan (
     apply_user_id BIGINT,
     apply_user_name VARCHAR(64),
     project_id BIGINT,
+    loan_type VARCHAR(64),
     amount DECIMAL(18, 2) NOT NULL DEFAULT 0,
     loan_date DATE,
     expected_repay_date DATE,
     actual_repay_amount DECIMAL(18, 2) NOT NULL DEFAULT 0,
     process_status VARCHAR(32) NOT NULL DEFAULT 'draft',
     remark VARCHAR(1000),
+    attachment TEXT,
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE oa_loan_detail (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    loan_id BIGINT NOT NULL,
+    loan_name VARCHAR(200) NOT NULL,
+    sum DECIMAL(18, 2) NOT NULL DEFAULT 0,
+    remark VARCHAR(500)
+);
+
+CREATE TABLE oa_repayment (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    loan_id BIGINT NOT NULL,
+    user_id BIGINT,
+    amount DECIMAL(18, 2) NOT NULL DEFAULT 0,
+    repay_date DATE,
+    status VARCHAR(32) NOT NULL DEFAULT 'pending',
+    remark VARCHAR(500),
     create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -611,6 +634,8 @@ INSERT INTO sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order
 VALUES (102, 1, 100, '0,100', '财务部', 2, '财务负责人', '15685266238', '0');
 INSERT INTO sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, leader, phone, status)
 VALUES (103, 1, 100, '0,100', '项目管理部', 3, '项目负责人', '15650389435', '0');
+INSERT INTO sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, leader, phone, status)
+VALUES (104, 1, 100, '0,100', '采购部', 4, '采购负责人', '15609825919', '0');
 
 INSERT INTO sys_user (
     user_id, tenant_id, dept_id, user_name, nick_name, password, email, phonenumber,
@@ -620,19 +645,87 @@ INSERT INTO sys_user (
     '$2b$12$nopR.IbdlsiAu1H9PE9MbeCgKM2Px8B87NDujHm1Fst/VYPwl6Ivy',
     'admin@example.com', '17630135660', '0', '', '0', 'system', '本地演示管理员'
 );
+INSERT INTO sys_user (
+    user_id, tenant_id, dept_id, user_name, nick_name, password, email, phonenumber,
+    sex, avatar, status, create_by, remark
+) VALUES
+    (2, 1, 100, '17673605591', '总经理',
+     '$2b$12$nopR.IbdlsiAu1H9PE9MbeCgKM2Px8B87NDujHm1Fst/VYPwl6Ivy',
+     '', '17673605591', '0', '', '0', 'system', '总经理演示账号'),
+    (3, 1, 102, '15685266238', '财务会计',
+     '$2b$12$nopR.IbdlsiAu1H9PE9MbeCgKM2Px8B87NDujHm1Fst/VYPwl6Ivy',
+     '', '15685266238', '0', '', '0', 'system', '财务会计/财务部经理演示账号'),
+    (4, 1, 102, '17689037697', '财务出纳',
+     '$2b$12$nopR.IbdlsiAu1H9PE9MbeCgKM2Px8B87NDujHm1Fst/VYPwl6Ivy',
+     '', '17689037697', '0', '', '0', 'system', '财务出纳/合同归档演示账号'),
+    (5, 1, 103, '15646844893', '副总（销售）',
+     '$2b$12$nopR.IbdlsiAu1H9PE9MbeCgKM2Px8B87NDujHm1Fst/VYPwl6Ivy',
+     '', '15646844893', '0', '', '0', 'system', '销售副总演示账号'),
+    (6, 1, 103, '13689213154', '副总（生产）',
+     '$2b$12$nopR.IbdlsiAu1H9PE9MbeCgKM2Px8B87NDujHm1Fst/VYPwl6Ivy',
+     '', '13689213154', '0', '', '0', 'system', '生产副总演示账号'),
+    (7, 1, 103, '15650389435', '项目总管',
+     '$2b$12$nopR.IbdlsiAu1H9PE9MbeCgKM2Px8B87NDujHm1Fst/VYPwl6Ivy',
+     '', '15650389435', '0', '', '0', 'system', '项目总管演示账号'),
+    (8, 1, 104, '15609825919', '采购负责人',
+     '$2b$12$nopR.IbdlsiAu1H9PE9MbeCgKM2Px8B87NDujHm1Fst/VYPwl6Ivy',
+     '', '15609825919', '0', '', '0', 'system', '采购负责人演示账号'),
+    (9, 1, 101, '17655872713', '综合部经理',
+     '$2b$12$nopR.IbdlsiAu1H9PE9MbeCgKM2Px8B87NDujHm1Fst/VYPwl6Ivy',
+     '', '17655872713', '0', '', '0', 'system', '综合部经理/盖章确认演示账号');
 
 INSERT INTO sys_role (role_id, tenant_id, role_name, role_key, role_sort, data_scope, status, remark)
 VALUES (1, 1, '超级管理员', 'admin', 1, '1', '0', '拥有全部权限');
 INSERT INTO sys_role (role_id, tenant_id, role_name, role_key, role_sort, data_scope, status, remark)
 VALUES (2, 1, '普通员工', 'employee', 2, '5', '0', '本人数据');
+INSERT INTO sys_role (role_id, tenant_id, role_name, role_key, role_sort, data_scope, status, remark)
+VALUES (3, 1, '总经理', 'general_manager', 3, '1', '0', '高管工作台');
+INSERT INTO sys_role (role_id, tenant_id, role_name, role_key, role_sort, data_scope, status, remark)
+VALUES (4, 1, '财务主管', 'finance_manager', 4, '1', '0', '财务主管工作台');
+INSERT INTO sys_role (role_id, tenant_id, role_name, role_key, role_sort, data_scope, status, remark)
+VALUES (5, 1, '销售副总', 'sales_vp', 5, '1', '0', '销售主管工作台');
+INSERT INTO sys_role (role_id, tenant_id, role_name, role_key, role_sort, data_scope, status, remark)
+VALUES (6, 1, '项目经理', 'project_manager', 6, '1', '0', '项目总管工作台');
 
 INSERT INTO sys_user_role (user_id, role_id) VALUES (1, 1);
+INSERT INTO sys_user_role (user_id, role_id) VALUES
+    (2, 3),
+    (3, 4),
+    (4, 2),
+    (5, 5),
+    (6, 2),
+    (7, 6),
+    (8, 2),
+    (9, 2);
 
 INSERT INTO sys_post (post_id, post_code, post_name, post_sort, status)
 VALUES (1, 'ceo', '总经理', 1, '0');
 INSERT INTO sys_post (post_id, post_code, post_name, post_sort, status)
 VALUES (2, 'ptyg', '普通员工', 2, '0');
+INSERT INTO sys_post (post_id, post_code, post_name, post_sort, status) VALUES
+    (3, 'finance_accountant', '财务会计', 3, '0'),
+    (4, 'cashier', '财务出纳', 4, '0'),
+    (5, 'sales_vp', '副总（销售）', 5, '0'),
+    (6, 'production_vp', '副总（生产）', 6, '0'),
+    (7, 'project_manager', '项目总管', 7, '0'),
+    (8, 'purchasing_manager', '采购负责人', 8, '0'),
+    (9, 'admin_manager', '综合部经理', 9, '0'),
+    (10, 'finance_manager', '财务部经理', 10, '0'),
+    (11, 'seal_confirm', '盖章确认', 11, '0'),
+    (12, 'contract_archive', '合同归档', 12, '0');
 INSERT INTO sys_user_post (user_id, post_id) VALUES (1, 1);
+INSERT INTO sys_user_post (user_id, post_id) VALUES
+    (2, 1),
+    (3, 3),
+    (3, 10),
+    (4, 4),
+    (4, 12),
+    (5, 5),
+    (6, 6),
+    (7, 7),
+    (8, 8),
+    (9, 9),
+    (9, 11);
 
 INSERT INTO sys_menu (menu_id, menu_name, parent_id, order_num, path, component, menu_type, visible, status, perms, icon) VALUES
 (1, '工作台', 0, 1, '/todo', 'eos/todoItem/todo/index', 'C', '0', '0', 'project:todo:list', 'iconfont-shouye'),
@@ -647,11 +740,24 @@ INSERT INTO sys_menu (menu_id, menu_name, parent_id, order_num, path, component,
 (10, '系统管理', 0, 10, '/system', 'system/user/index', 'M', '0', '0', NULL, 'iconfont-shezhi'),
 (11, '用户管理', 10, 1, 'user', 'system/user/index', 'C', '0', '0', 'system:user:list', 'iconfont-user'),
 (12, '角色管理', 10, 2, 'role', 'system/role/index', 'C', '0', '0', 'system:role:list', 'iconfont-role'),
-(13, '部门管理', 10, 3, 'dept', 'system/dept/index', 'C', '0', '0', 'system:dept:list', 'iconfont-dept'),
-(14, '菜单管理', 10, 4, 'menu', 'system/menu/index', 'C', '0', '0', 'system:menu:list', 'iconfont-menu');
+    (13, '部门管理', 10, 3, 'dept', 'system/dept/index', 'C', '0', '0', 'system:dept:list', 'iconfont-dept'),
+    (14, '菜单管理', 10, 4, 'menu', 'system/menu/index', 'C', '0', '0', 'system:menu:list', 'iconfont-menu'),
+    (15, '高管工作台', 0, 20, '', '', 'F', '1', '0', 'eos:gzt:gg', ''),
+    (16, '项目总管工作台', 0, 21, '', '', 'F', '1', '0', 'eos:gzt:xmzg', ''),
+    (17, '财务主管工作台', 0, 22, '', '', 'F', '1', '0', 'eos:gzt:cwzg', ''),
+    (18, '销售主管工作台', 0, 23, '', '', 'F', '1', '0', 'eos:gzt:xszg', '');
 
 INSERT INTO sys_role_menu (role_id, menu_id)
 SELECT 1, menu_id FROM sys_menu;
+INSERT INTO sys_role_menu (role_id, menu_id)
+SELECT r.role_id, m.menu_id
+FROM sys_role r, sys_menu m
+WHERE r.role_id IN (2, 3, 4, 5, 6) AND m.menu_id BETWEEN 1 AND 9;
+INSERT INTO sys_role_menu (role_id, menu_id) VALUES
+    (3, 15),
+    (4, 17),
+    (5, 18),
+    (6, 16);
 
 INSERT INTO sys_dict_type (dict_id, dict_name, dict_type, status) VALUES
 (1, '项目类型', 'project_type', '0'),
@@ -735,6 +841,17 @@ INSERT INTO oa_expense (
 
 INSERT INTO oa_expense_item (expense_id, budget_id, detail, sum, replaced, remark)
 VALUES (1, NULL, '高铁及住宿', 1260.00, 'N', '项目现场支持');
+
+INSERT INTO oa_loan (
+    id, tenant_id, code, apply_user_id, apply_user_name, project_id, loan_type, amount,
+    loan_date, expected_repay_date, actual_repay_amount, process_status, remark
+) VALUES (
+    1, 1, 'JK-DEMO-001', 1, '系统管理员', 1, 'cash', 5000.00,
+    CURRENT_DATE, DATEADD('DAY', 30, CURRENT_DATE), 0.00, 'approved', '项目备用金'
+);
+INSERT INTO oa_loan_detail (loan_id, loan_name, sum, remark) VALUES
+    (1, '现场交通', 1200.00, '项目现场往返'),
+    (1, '临时采购', 3800.00, '办公耗材');
 
 INSERT INTO oa_budget (id, tenant_id, project_id, code, name, budget_year, total_amount, used_amount, status)
 VALUES (1, 1, 1, 'YS-DEMO-001', '数字化平台年度预算', 2026, 500000.00, 1260.00, 'approved');

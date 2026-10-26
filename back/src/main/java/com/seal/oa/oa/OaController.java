@@ -535,11 +535,30 @@ public class OaController {
         return ApiResult.ok(id);
     }
 
-    @GetMapping({"/project/warehouse/list", "/project/warehouse/statistic/byProject"})
+    @GetMapping("/project/warehouse/list")
     public Map<String, Object> warehouses() {
         List<Map<String, Object>> rows = JdbcMaps.camelCase(jdbc.queryForList(
                 "SELECT * FROM oa_warehouse ORDER BY id"));
         return ApiResult.page(rows, rows.size());
+    }
+
+    @GetMapping("/project/warehouse/statistic/byProject")
+    public Map<String, Object> warehouseStatistics() {
+        List<Map<String, Object>> rows = new ArrayList<>();
+        for (Map<String, Object> warehouse : JdbcMaps.camelCase(jdbc.queryForList(
+                "SELECT id, name, code FROM oa_warehouse ORDER BY id"))) {
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("name", warehouse.get("name"));
+            row.put("spec", "");
+            row.put("unit", "");
+            row.put("leftNum", 0);
+            row.put("projectName", null);
+            row.put("warehouseName", warehouse.get("name"));
+            row.put("warehouseId", warehouse.get("id"));
+            row.put("warehouseCode", warehouse.get("code"));
+            rows.add(row);
+        }
+        return ApiResult.ok(rows);
     }
 
     @GetMapping({"/project/warehouse/in/list", "/project/warehouse/out/list"})
@@ -549,18 +568,41 @@ public class OaController {
         return ApiResult.page(rows, rows.size());
     }
 
-    @GetMapping({
-            "/project/activity/taskWaitList",
-            "/project/activity/taskDoneList",
-            "/project/activity/taskCopyList",
-            "/project/activity/started"
-    })
-    public Map<String, Object> todo(@RequestParam Map<String, String> query) {
+    @GetMapping("/project/activity/taskWaitList")
+    public Map<String, Object> waitingTasks() {
+        return tasksByStatus("todo");
+    }
+
+    @GetMapping("/project/activity/taskDoneList")
+    public Map<String, Object> completedTasks() {
+        return tasksByStatus("done");
+    }
+
+    @GetMapping("/project/activity/taskCopyList")
+    public Map<String, Object> copiedTasks() {
+        return tasksByStatus("copy");
+    }
+
+    @GetMapping("/project/activity/started")
+    public Map<String, Object> startedTasks() {
         List<Map<String, Object>> rows = JdbcMaps.camelCase(jdbc.queryForList("""
                 SELECT id, tenant_id, user_id, title, business_type, business_id,
                        process_instance_id, task_id, status, create_time
-                FROM oa_todo WHERE user_id = ? ORDER BY id DESC
+                FROM oa_todo
+                WHERE user_id = ? AND process_instance_id IS NOT NULL
+                ORDER BY id DESC
                 """, AuthContext.userId()));
+        return ApiResult.page(rows, rows.size());
+    }
+
+    private Map<String, Object> tasksByStatus(String status) {
+        List<Map<String, Object>> rows = JdbcMaps.camelCase(jdbc.queryForList("""
+                SELECT id, tenant_id, user_id, title, business_type, business_id,
+                       process_instance_id, task_id, status, create_time
+                FROM oa_todo
+                WHERE user_id = ? AND status = ?
+                ORDER BY id DESC
+                """, AuthContext.userId(), status));
         return ApiResult.page(rows, rows.size());
     }
 

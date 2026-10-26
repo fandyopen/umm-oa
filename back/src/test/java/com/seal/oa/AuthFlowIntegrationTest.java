@@ -76,6 +76,28 @@ class AuthFlowIntegrationTest {
                 .andExpect(jsonPath("$.data.planIn").isNumber())
                 .andExpect(jsonPath("$.data.planOut").isNumber());
 
+        mockMvc.perform(get("/project/analysis/first/page").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.length()").value(5))
+                .andExpect(jsonPath("$.data[0].name").value("利润"));
+
+        mockMvc.perform(get("/project/analysis/project/purchase/table").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.rows[0].contractName").value("办公平台实施合同"));
+
+        mockMvc.perform(get("/project/loan/list").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.total").value(1))
+                .andExpect(jsonPath("$.rows[0].projectName").value("企业数字化办公平台"));
+
+        mockMvc.perform(get("/project/warehouse/statistic/byProject").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data").isArray());
+
         mockMvc.perform(get("/project/analysis/project/sale").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))

@@ -11,6 +11,8 @@ DROP TABLE IF EXISTS oa_warehouse;
 DROP TABLE IF EXISTS oa_fund_plan;
 DROP TABLE IF EXISTS oa_budget_item;
 DROP TABLE IF EXISTS oa_budget;
+DROP TABLE IF EXISTS oa_repayment;
+DROP TABLE IF EXISTS oa_loan_detail;
 DROP TABLE IF EXISTS oa_loan;
 DROP TABLE IF EXISTS oa_expense_invoice;
 DROP TABLE IF EXISTS oa_expense_item;
@@ -405,12 +407,33 @@ CREATE TABLE oa_loan (
     apply_user_id BIGINT,
     apply_user_name VARCHAR(64),
     project_id BIGINT,
+    loan_type VARCHAR(64),
     amount DECIMAL(18, 2) NOT NULL DEFAULT 0,
     loan_date DATE,
     expected_repay_date DATE,
     actual_repay_amount DECIMAL(18, 2) NOT NULL DEFAULT 0,
     process_status VARCHAR(32) NOT NULL DEFAULT 'draft',
     remark VARCHAR(1000),
+    attachment TEXT,
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE oa_loan_detail (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    loan_id BIGINT NOT NULL,
+    loan_name VARCHAR(200) NOT NULL,
+    sum DECIMAL(18, 2) NOT NULL DEFAULT 0,
+    remark VARCHAR(500)
+);
+
+CREATE TABLE oa_repayment (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    loan_id BIGINT NOT NULL,
+    user_id BIGINT,
+    amount DECIMAL(18, 2) NOT NULL DEFAULT 0,
+    repay_date DATE,
+    status VARCHAR(32) NOT NULL DEFAULT 'pending',
+    remark VARCHAR(500),
     create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 

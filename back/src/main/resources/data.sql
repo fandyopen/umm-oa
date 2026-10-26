@@ -217,6 +217,17 @@ INSERT INTO oa_expense (
 INSERT INTO oa_expense_item (expense_id, budget_id, detail, sum, replaced, remark)
 VALUES (1, NULL, '高铁及住宿', 1260.00, 'N', '项目现场支持');
 
+INSERT INTO oa_loan (
+    id, tenant_id, code, apply_user_id, apply_user_name, project_id, loan_type, amount,
+    loan_date, expected_repay_date, actual_repay_amount, process_status, remark
+) VALUES (
+    1, 1, 'JK-DEMO-001', 1, '系统管理员', 1, 'cash', 5000.00,
+    CURRENT_DATE, DATEADD('DAY', 30, CURRENT_DATE), 0.00, 'approved', '项目备用金'
+);
+INSERT INTO oa_loan_detail (loan_id, loan_name, sum, remark) VALUES
+    (1, '现场交通', 1200.00, '项目现场往返'),
+    (1, '临时采购', 3800.00, '办公耗材');
+
 INSERT INTO oa_budget (id, tenant_id, project_id, code, name, budget_year, total_amount, used_amount, status)
 VALUES (1, 1, 1, 'YS-DEMO-001', '数字化平台年度预算', 2026, 500000.00, 1260.00, 'approved');
 
