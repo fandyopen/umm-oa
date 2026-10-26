@@ -92,6 +92,7 @@ $env:JWT_SECRET = "replace-with-a-random-secret-at-least-32-bytes"
 - [实现状态](docs/implementation-status.md)：真实实现与兼容层边界
 - [UI 证据](docs/ui-evidence.md)：截图、页面字段和数据库表的对应关系
 - [源码比对](docs/source-comparison.md)：与 `lavieAll/qs-web` 的接口和截图差异结果
+- `deploy/`：Linux systemd 服务配置和环境变量模板
 - `tools/extract-api-inventory.mjs`：重新扫描前端接口
 - `tools/build-mysql-sql.mjs`：从开发库脚本生成 MySQL 初始化 SQL
 

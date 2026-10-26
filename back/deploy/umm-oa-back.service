@@ -1,0 +1,20 @@
+[Unit]
+Description=UMM OA Spring Boot Backend
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=www
+Group=www
+WorkingDirectory=/data/www/umm-oa/back
+EnvironmentFile=/etc/umm-oa/back.env
+ExecStart=/data/runtime/jdk-17/bin/java -Xms64m -Xmx256m -XX:MaxMetaspaceSize=128m -XX:+UseSerialGC -jar /data/www/umm-oa/back/umm-oa-back.jar
+SuccessExitStatus=143
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target
+
