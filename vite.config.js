@@ -85,6 +85,13 @@ const onProxyError = proxy => {
 
 export default ({ mode }) => {
   const env = loadEnv(mode, process.cwd())
+  const proxyUrl = (env.VITE_APP_PROXY_URL || 'https://oa.ouopen.com').replace(/\/+$/, '')
+  const isLocalProxy = /^https?:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?(?:\/|$)/.test(proxyUrl)
+  const websocketProxyUrl = proxyUrl.replace(/^http/, 'ws')
+  const rewriteLocalApiPrefix = path => {
+    return isLocalProxy ? path.replace(/^\/(?:api-qs|flow-api)/, '') : path
+  }
+
   return defineConfig({
     define: {
       'process.env': { ...env }
@@ -217,29 +224,29 @@ export default ({ mode }) => {
       strictPort: true,
       proxy: {
         '/api-qs': {
-          target: `http://silianpan.cn`,
+          target: proxyUrl,
           changeOrigin: true,
+          rewrite: rewriteLocalApiPrefix,
           configure: onProxyError
         },
         // 流程设计
         '/flow-api': {
-          target: `http://127.0.0.1:8080`,
+          target: proxyUrl,
           changeOrigin: true,
-          rewrite: path => path.replace(/^\/flow\-api/, ''),
+          rewrite: rewriteLocalApiPrefix,
           configure: onProxyError
         },
         // 文档资源访问
         '/profile': {
-          target: `http://127.0.0.1:8080`,
+          target: proxyUrl,
           changeOrigin: true,
           configure: onProxyError
         },
         // websocket
         '/websocket': {
-          target: `ws://127.0.0.1:8087`,
+          target: websocketProxyUrl,
           changeOrigin: true,
-          ws: true,
-          rewrite: path => path.replace(/^\/websocket/, '')
+          ws: true
         },
         // pdfjs-viewer
         '/pdfjs': {
