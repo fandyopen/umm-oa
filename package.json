@@ -3,9 +3,9 @@
   "private": true,
   "version": "0.0.0",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build --base=/",
-    "preview": "vite preview"
+    "dev": "node --no-deprecation node_modules/vite/bin/vite.js",
+    "build": "node --no-deprecation node_modules/vite/bin/vite.js build --base=/",
+    "preview": "node --no-deprecation node_modules/vite/bin/vite.js preview"
   },
   "devDependencies": {
     "@ljharb/eslint-config": "^21.0.0",
