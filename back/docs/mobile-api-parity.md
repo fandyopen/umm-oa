@@ -1,0 +1,76 @@
+# Mobile API Parity
+
+Mobile API paths: **68**
+
+Missing exact mappings: **0**
+
+| API | Status |
+| --- | --- |
+| `/WX/authLogin` | mapped |
+| `/WX/wxlogin` | mapped |
+| `/activiti/process/listFlowElementsValid` | mapped |
+| `/activiti/process/listHistory` | mapped |
+| `/activiti/workflow/list/start` | mapped |
+| `/captcha/check` | mapped |
+| `/captcha/get` | mapped |
+| `/captchaImage` | mapped |
+| `/dingDing/auth/getConfig` | mapped |
+| `/getAppRouters` | mapped |
+| `/getInfo` | mapped |
+| `/login/pwd` | mapped |
+| `/logout` | mapped |
+| `/project/activity/back` | mapped |
+| `/project/activity/complete` | mapped |
+| `/project/activity/delegate` | mapped |
+| `/project/activity/started` | mapped |
+| `/project/activity/taskCopyList` | mapped |
+| `/project/activity/taskDoneList` | mapped |
+| `/project/activity/taskWaitList` | mapped |
+| `/project/apply/budget/pass` | mapped |
+| `/project/apply/budget/pass/` | mapped |
+| `/project/apply/list` | mapped |
+| `/project/apply/list/personal` | mapped |
+| `/project/apply/list/personal/dept` | mapped |
+| `/project/apply/list/personal/dept/all` | mapped |
+| `/project/apply/payment/list/all` | mapped |
+| `/project/contract/list` | mapped |
+| `/project/contract/list/in/personal` | mapped |
+| `/project/detail/list` | mapped |
+| `/project/earnestMoney/list` | mapped |
+| `/project/earnestReturn/list` | mapped |
+| `/project/expense/getOne` | mapped |
+| `/project/expense/list` | mapped |
+| `/project/expense/list/personal` | mapped |
+| `/project/goods/getAll` | mapped |
+| `/project/invoice/list` | mapped |
+| `/project/labor/list` | mapped |
+| `/project/loan/getAll` | mapped |
+| `/project/loan/getLoan` | mapped |
+| `/project/loan/list` | mapped |
+| `/project/make/list/personal` | mapped |
+| `/project/mem/list` | mapped |
+| `/project/mem/list/all` | mapped |
+| `/project/merchant/list` | mapped |
+| `/project/onbus/list` | mapped |
+| `/project/payment/list` | mapped |
+| `/project/payment/list/apply` | mapped |
+| `/project/plane` | mapped |
+| `/project/plane/continue/submit` | mapped |
+| `/project/plane/getProjectType` | mapped |
+| `/project/project/analysis/income` | mapped |
+| `/project/project/analysis/income/left` | mapped |
+| `/project/project/analyst` | mapped |
+| `/project/project/deptUser` | mapped |
+| `/project/project/getBar` | mapped |
+| `/project/project/getLine` | mapped |
+| `/project/project/list` | mapped |
+| `/project/project/list/in/personal` | mapped |
+| `/project/project/list/personal` | mapped |
+| `/project/quantities/list` | mapped |
+| `/project/real/list` | mapped |
+| `/project/regular/menu` | mapped |
+| `/project/regular/menu/list` | mapped |
+| `/project/repay/getRepay` | mapped |
+| `/project/repay/list` | mapped |
+| `/project/repay/unconfirm` | mapped |
+| `/system/message/list` | mapped |

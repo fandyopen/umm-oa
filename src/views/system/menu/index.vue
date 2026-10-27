@@ -28,7 +28,10 @@
       </div>
       <!-- 操作 -->
       <div class="table-operations">
-        <a-button type="primary" @click="$refs.createForm.handleAdd()" v-hasPermi="['system:menu:add']"> <a-icon type="plus" />新增 </a-button>
+        <a-button type="primary" @click="$refs.createForm.handleAdd()" v-hasPermi="['sys:module']"> <a-icon type="plus" />新增 </a-button>
+        <a-button icon="setting" v-hasPermi="['sys:module']" @click="handleModuleActions">
+          动作管理
+        </a-button>
         <a-button type="dashed" shape="circle" :loading="loading" :style="{ float: 'right' }" icon="reload" @click="getList" />
       </div>
       <!-- 增加修改 -->
@@ -48,10 +51,11 @@
         <span slot="operation" slot-scope="text, record">
           <!-- todo: 修改主要添加流程条件 -->
           <!-- <a @click="$refs.createForm.handleUpdate(record)"><a-icon type="edit" />修改</a> -->
-          <a-divider type="vertical" v-hasPermi="['system:menu:add']" />
-          <a @click="$refs.createForm.handleAdd(record)" v-hasPermi="['system:menu:add']"> <a-icon type="plus" />新增 </a>
-          <a-divider type="vertical" v-if="record.moduleId != 0" v-hasPermi="['system:menu:remove']" />
-          <a @click="handleDelete(record)" v-if="record.moduleId != 0" v-hasPermi="['system:menu:remove']"> <a-icon type="delete" />删除 </a>
+          <a-divider type="vertical" v-hasPermi="['sys:module']" />
+          <a @click="$refs.createForm.handleUpdate(record)" v-hasPermi="['sys:module']"> <a-icon type="edit" />&#20462;&#25913;</a>
+          <a @click="$refs.createForm.handleAdd(record)" v-hasPermi="['sys:module']"> <a-icon type="plus" />新增 </a>
+          <a-divider type="vertical" v-if="record.moduleId != 0" v-hasPermi="['sys:module']" />
+          <a @click="handleDelete(record)" v-if="record.moduleId != 0" v-hasPermi="['sys:module']"> <a-icon type="delete" />删除 </a>
           <a @click="handleFlowDesign(record)" v-if="record.moduleId != 0 && record.hasFlow != 1"><icon-font style="margin-right: 4px" type="iconfont-liucheng4" />流程设计</a>
         </span>
       </a-table>
@@ -60,7 +64,7 @@
 </template>
 
 <script>
-// import { listMenu, delMenu } from '/src/api/system/menu.js'
+import { delMenu } from '/src/api/system/menu.js'
 import { getRouters } from '/src/api/user/module.js'
 import CreateForm from './modules/CreateForm.vue'
 
@@ -100,7 +104,7 @@ export default {
         },
         {
           title: '排序',
-          dataIndex: 'orderNum',
+          dataIndex: 'moduleSort',
           width: '5%',
           align: 'center'
         },
@@ -195,10 +199,12 @@ export default {
     /** 删除按钮操作 */
     handleDelete(row) {
       const menuId = row.menuId
+      const that = this
       this.$antdconfirm({
         title: '确认删除所选中数据?',
         content: '当前选中编号为' + menuId + '的数据',
         onOk() {
+          return delMenu(menuId).then(() => that.getList())
           // return delMenu(menuId)
           //   .then(() => {
           //     that.getList()
@@ -222,6 +228,9 @@ export default {
           conditions: record.meta.flowConditions
         }
       })
+    },
+    handleModuleActions() {
+      this.$router.push({ path: '/system/moduleActions' })
     }
   }
 }

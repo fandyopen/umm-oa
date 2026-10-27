@@ -1,13 +1,9 @@
 import Vue from 'vue'
 import VueI18n from 'vue-i18n'
 import storage from 'store'
-import moment from 'moment'
 
 // default lang
 import zhCn from './lang/zh-CN'
-
-import 'moment/dist/locale/zh-cn'
-moment.locale('zh-cn')
 
 Vue.use(VueI18n)
 
@@ -54,7 +50,9 @@ export function loadLanguageAsync(lang = defaultLang) {
             const locale = modules[path].default
             i18n.setLocaleMessage(lang, locale)
             loadedLanguages.push(lang)
-            moment.updateLocale(locale.momentName, locale.momentLocale)
+            import('moment').then(module => {
+              module.default.updateLocale(locale.momentName, locale.momentLocale)
+            })
             return setI18nLanguage(lang)
           }
         }

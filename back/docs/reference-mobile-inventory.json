@@ -1,0 +1,299 @@
+{
+  "scriptUrl": "http://silianpan.cn/qs-h5/static/js/index.577d2901.js",
+  "pages": [
+    {
+      "route": "/",
+      "title": "啓思"
+    },
+    {
+      "route": "/pages/login/login",
+      "title": "项目信息"
+    },
+    {
+      "route": "/pages/mine/mine",
+      "title": "我的"
+    },
+    {
+      "route": "/pagesA/pages/menuAll/menuAll",
+      "title": "全部应用"
+    },
+    {
+      "route": "/pagesA/pages/menus/budget/budgetDetail/budgetDetail",
+      "title": "预算明细"
+    },
+    {
+      "route": "/pagesA/pages/menus/contract-list/contractListDetail/contractListDetail",
+      "title": "合同详情"
+    },
+    {
+      "route": "/pagesA/pages/menus/contract/contractDataList/contractDataList",
+      "title": "合同详情"
+    },
+    {
+      "route": "/pagesA/pages/menus/dept_budget_all/dept_budget_all",
+      "title": "项目预算综合查询"
+    },
+    {
+      "route": "/pagesA/pages/menus/dept_budget_all/dept_budgetAllDetail/dept_budgetAllDetail",
+      "title": "部门预算综合查询详情"
+    },
+    {
+      "route": "/pagesA/pages/menus/dept_budget/dept_budgetDetail/dept_budgetDetail",
+      "title": "部门预算查询详情"
+    },
+    {
+      "route": "/pagesA/pages/menus/done/done",
+      "title": "机票申请"
+    },
+    {
+      "route": "/pagesA/pages/menus/earnestSelect/earnestSelectDetail/earnestSelectDetail",
+      "title": "保证金详情"
+    },
+    {
+      "route": "/pagesA/pages/menus/eos/budget/deptbudget/myDeptBudget",
+      "title": "部门预算"
+    },
+    {
+      "route": "/pagesA/pages/menus/eos/budget/index",
+      "title": "预算制订"
+    },
+    {
+      "route": "/pagesA/pages/menus/eos/contract/index",
+      "title": "合同查询"
+    },
+    {
+      "route": "/pagesA/pages/menus/eos/contract/list",
+      "title": "合同综合查询"
+    },
+    {
+      "route": "/pagesA/pages/menus/eos/earnest/search/index",
+      "title": "保证金查询"
+    },
+    {
+      "route": "/pagesA/pages/menus/eos/expense/index",
+      "title": "个人报销"
+    },
+    {
+      "route": "/pagesA/pages/menus/eos/expense/search",
+      "title": "报销综合查询"
+    },
+    {
+      "route": "/pagesA/pages/menus/eos/invoice/make/history",
+      "title": "开票历史"
+    },
+    {
+      "route": "/pagesA/pages/menus/eos/invoice/search/index",
+      "title": "票据综合查询"
+    },
+    {
+      "route": "/pagesA/pages/menus/eos/project/index",
+      "title": "项目查询"
+    },
+    {
+      "route": "/pagesA/pages/menus/eos/project/list",
+      "title": "项目综合查询"
+    },
+    {
+      "route": "/pagesA/pages/menus/eos/purchase/apply/list",
+      "title": "采购查询"
+    },
+    {
+      "route": "/pagesA/pages/menus/eos/purchase/payment/list",
+      "title": "付款综合查询"
+    },
+    {
+      "route": "/pagesA/pages/menus/eos/repayment/backConfirm/index",
+      "title": "还款确认"
+    },
+    {
+      "route": "/pagesA/pages/menus/eos/repayment/loan/index",
+      "title": "借款申请"
+    },
+    {
+      "route": "/pagesA/pages/menus/eos/repayment/repay/index",
+      "title": "直接还款"
+    },
+    {
+      "route": "/pagesA/pages/menus/eos/repayment/search/index",
+      "title": "借还款综合查询"
+    },
+    {
+      "route": "/pagesA/pages/menus/eos/subcontract/search/index",
+      "title": "分包综合查询"
+    },
+    {
+      "route": "/pagesA/pages/menus/expense-list/expenseListDetail/expenseListDetail",
+      "title": "报销综合查询详情"
+    },
+    {
+      "route": "/pagesA/pages/menus/expense/expenseDetail/expenseDetail",
+      "title": "个人报销"
+    },
+    {
+      "route": "/pagesA/pages/menus/IntegratedQuery/IntegratedQueryDetail/IntegratedQueryDetail",
+      "title": "借还款综合查询详情"
+    },
+    {
+      "route": "/pagesA/pages/menus/invoice/invoiceDetail/invoiceDetail",
+      "title": "发票查询详情"
+    },
+    {
+      "route": "/pagesA/pages/menus/loan/loanDetail/loanDetail",
+      "title": "借款详情"
+    },
+    {
+      "route": "/pagesA/pages/menus/nameAudit/auditDetail/auditDetail",
+      "title": "审批详情"
+    },
+    {
+      "route": "/pagesA/pages/menus/nameAudit/nameAudit",
+      "title": "我的审批"
+    },
+    {
+      "route": "/pagesA/pages/menus/payBackConfirm/payBackConfirm",
+      "title": "还款确认"
+    },
+    {
+      "route": "/pagesA/pages/menus/payment-list/paymentDetails/paymentDetails",
+      "title": "付款详情"
+    },
+    {
+      "route": "/pagesA/pages/menus/payment-list/paymentListDetail/paymentListDetail",
+      "title": "采购详情"
+    },
+    {
+      "route": "/pagesA/pages/menus/payment/payment",
+      "title": "采购付款"
+    },
+    {
+      "route": "/pagesA/pages/menus/payment/paymentDetail/paymentDetail",
+      "title": "采购付款"
+    },
+    {
+      "route": "/pagesA/pages/menus/project-list/projectListDetail/projectListDetail",
+      "title": "项目详情"
+    },
+    {
+      "route": "/pagesA/pages/menus/project/project",
+      "title": "立项"
+    },
+    {
+      "route": "/pagesA/pages/menus/project/project-domList/project-list",
+      "title": "立项详情"
+    },
+    {
+      "route": "/pagesA/pages/menus/subcontract/subcontractDetall",
+      "title": "分包详情"
+    },
+    {
+      "route": "/pagesA/pages/menus/todo/todo",
+      "title": "我的待办"
+    },
+    {
+      "route": "/pagesA/pages/menus/todo/todoDetail/todoDetail",
+      "title": "待办详情"
+    },
+    {
+      "route": "/pagesA/pages/menus/toggleSeedBudgetDetail/toggleSeedBudgetDetail",
+      "title": "预算执行明细"
+    },
+    {
+      "route": "/pagesA/pages/menus/type/type",
+      "title": "预算科目"
+    },
+    {
+      "route": "/pagesA/pages/mine/myInitiation/myInitiation",
+      "title": "我的发起"
+    },
+    {
+      "route": "/pagesA/pages/mine/myProcess/myProcess",
+      "title": "我的流程"
+    },
+    {
+      "route": "/pagesA/pages/mine/nameCcContent/ccContent",
+      "title": "抄送内容"
+    },
+    {
+      "route": "/pagesA/pages/mine/setting/setting",
+      "title": "设置"
+    },
+    {
+      "route": "/pagesA/pages/process/process",
+      "title": "审批进度"
+    },
+    {
+      "route": "/pagesA/pages/project/projectDtail/projectProcess/projectProcess",
+      "title": "项目流程"
+    }
+  ],
+  "apis": [
+    "/WX/authLogin",
+    "/WX/wxlogin",
+    "/activiti/process/listFlowElementsValid",
+    "/activiti/process/listHistory",
+    "/activiti/workflow/list/start",
+    "/captcha/check",
+    "/captcha/get",
+    "/captchaImage",
+    "/dingDing/auth/getConfig",
+    "/getAppRouters",
+    "/getInfo",
+    "/login/pwd",
+    "/logout",
+    "/project/activity/back",
+    "/project/activity/complete",
+    "/project/activity/delegate",
+    "/project/activity/started",
+    "/project/activity/taskCopyList",
+    "/project/activity/taskDoneList",
+    "/project/activity/taskWaitList",
+    "/project/apply/budget/pass",
+    "/project/apply/budget/pass/",
+    "/project/apply/list",
+    "/project/apply/list/personal",
+    "/project/apply/list/personal/dept",
+    "/project/apply/list/personal/dept/all",
+    "/project/apply/payment/list/all",
+    "/project/contract/list",
+    "/project/contract/list/in/personal",
+    "/project/detail/list",
+    "/project/earnestMoney/list",
+    "/project/earnestReturn/list",
+    "/project/expense/getOne",
+    "/project/expense/list",
+    "/project/expense/list/personal",
+    "/project/goods/getAll",
+    "/project/invoice/list",
+    "/project/labor/list",
+    "/project/loan/getAll",
+    "/project/loan/getLoan",
+    "/project/loan/list",
+    "/project/make/list/personal",
+    "/project/mem/list",
+    "/project/mem/list/all",
+    "/project/merchant/list",
+    "/project/onbus/list",
+    "/project/payment/list",
+    "/project/payment/list/apply",
+    "/project/plane",
+    "/project/plane/continue/submit",
+    "/project/plane/getProjectType",
+    "/project/project/analysis/income",
+    "/project/project/analysis/income/left",
+    "/project/project/analyst",
+    "/project/project/deptUser",
+    "/project/project/getBar",
+    "/project/project/getLine",
+    "/project/project/list",
+    "/project/project/list/in/personal",
+    "/project/project/list/personal",
+    "/project/quantities/list",
+    "/project/real/list",
+    "/project/regular/menu",
+    "/project/regular/menu/list",
+    "/project/repay/getRepay",
+    "/project/repay/list",
+    "/project/repay/unconfirm",
+    "/system/message/list"
+  ]
+}

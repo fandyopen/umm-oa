@@ -46,7 +46,7 @@
       <div class="table-operations">
         <a-button type="danger" :disabled="multiple" @click="handleDelete" v-hasPermi="['monitor:logininfor:remove']"> <a-icon type="delete" />删除 </a-button>
         <a-button type="danger" @click="handleClean" v-hasPermi="['monitor:logininfor:remove']"> <a-icon type="delete" />清空 </a-button>
-        <a-button type="primary" @click="handleExport" v-hasPermi="['system:logininfor:export']"> <a-icon type="download" />导出 </a-button>
+        <a-button type="primary" @click="handleExport" v-hasPermi="['monitor:logininfor:export']"> <a-icon type="download" />导出 </a-button>
         <a-button type="dashed" shape="circle" :loading="loading" :style="{ float: 'right' }" icon="reload" @click="getList" />
       </div>
       <!-- 数据展示 -->

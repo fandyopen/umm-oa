@@ -6,7 +6,6 @@ import { createHtmlPlugin } from 'vite-plugin-html'
 import styleImport from 'vite-plugin-style-import'
 import replace from '@rollup/plugin-replace'
 import eslintPlugin from 'vite-plugin-eslint'
-import cesium from 'vite-plugin-cesium'
 // import resolveExternalsPlugin from 'vite-plugin-resolve-externals'
 
 export const hash = Math.floor(Math.random() * 90000) + 10000
@@ -100,7 +99,6 @@ export default ({ mode }) => {
       // resolveExternalsPlugin({
       //   Cesium: 'Cesium'
       // }),
-      cesium(),
       createVuePlugin({
         jsx: true
       }),

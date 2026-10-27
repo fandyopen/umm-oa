@@ -18,10 +18,16 @@ public class SystemService {
 
     private final JdbcTemplate jdbc;
     private final PasswordEncoder passwordEncoder;
+    private final ModuleActionService moduleActionService;
 
-    public SystemService(JdbcTemplate jdbc, PasswordEncoder passwordEncoder) {
+    public SystemService(
+            JdbcTemplate jdbc,
+            PasswordEncoder passwordEncoder,
+            ModuleActionService moduleActionService
+    ) {
         this.jdbc = jdbc;
         this.passwordEncoder = passwordEncoder;
+        this.moduleActionService = moduleActionService;
     }
 
     public Optional<UserAccount> findLoginUser(String loginName) {
@@ -66,6 +72,8 @@ public class SystemService {
         result.put("avatar", user.avatar());
         result.put("status", user.status());
         result.put("delFlag", "0");
+        result.put("isAdmin", isAdmin(user.userId()) ? "1" : "0");
+        result.put("isOwner", isOwner(user.userId()) ? "1" : "0");
         result.put("deptId", user.deptId());
         result.put("dept", dept(user.deptId()));
         result.put("roles", roleKeys(user.userId()));
@@ -73,25 +81,100 @@ public class SystemService {
     }
 
     public List<String> roleKeys(Long userId) {
+        if (isSystemAdmin(userId)) {
+            return List.of("admin");
+        }
         return jdbc.queryForList("""
                 SELECT DISTINCT r.role_key
                 FROM sys_role r
                 JOIN sys_user_role ur ON ur.role_id = r.role_id
-                WHERE ur.user_id = ? AND r.status = '0'
+                WHERE ur.user_id = ? AND r.status = '0' AND r.del_flag = '0'
                 """, String.class, userId);
     }
 
     public List<String> permissions(Long userId) {
-        List<String> permissions = jdbc.queryForList("""
+        if (roleKeys(userId).contains("admin")) {
+            return List.of("*:*:*");
+        }
+        List<String> modulePermissions = jdbc.queryForList("""
                 SELECT DISTINCT m.perms
-                FROM sys_menu m
-                JOIN sys_role_menu rm ON rm.menu_id = m.menu_id
+                FROM sys_role_module rm
+                JOIN sys_module m ON m.module_id = rm.module_id
+                JOIN sys_role r ON r.role_id = rm.role_id
                 JOIN sys_user_role ur ON ur.role_id = rm.role_id
-                WHERE ur.user_id = ? AND m.perms IS NOT NULL AND m.perms <> ''
+                WHERE ur.user_id = ? AND r.status = '0' AND r.del_flag = '0'
+                  AND m.status = '0'
+                  AND m.perms IS NOT NULL
+                  AND m.perms <> ''
+                  AND m.perms LIKE '%:list'
                 """, String.class, userId);
-        return permissions.isEmpty() && roleKeys(userId).contains("admin")
-                ? List.of("*:*:*")
-                : permissions;
+        List<String> actionPermissions = jdbc.queryForList("""
+                SELECT DISTINCT ma.permission_code
+                FROM sys_role_module_action rma
+                JOIN sys_module_action ma
+                  ON ma.module_id = rma.module_id AND ma.action_code = rma.action_code
+                JOIN sys_user_role ur ON ur.role_id = rma.role_id
+                JOIN sys_role r ON r.role_id = rma.role_id
+                WHERE ur.user_id = ? AND r.status = '0' AND r.del_flag = '0'
+                  AND ma.permission_code IS NOT NULL
+                  AND ma.permission_code <> ''
+                ORDER BY ma.permission_code
+                """, String.class, userId);
+        return java.util.stream.Stream.concat(
+                        modulePermissions.stream(),
+                        actionPermissions.stream()
+                )
+                .filter(permission -> permission != null && !permission.isBlank())
+                .distinct()
+                .sorted()
+                .toList();
+    }
+
+    /**
+     * 是否不受授权过滤：角色 admin、系统管理员身份，或持有通配权限。
+     * 菜单下发与组织权限判定统一走这里，避免各处自行拼装 admin 判断。
+     */
+    public boolean isUnrestricted(Long userId) {
+        return roleKeys(userId).contains("admin");
+    }
+
+    public boolean hasModuleAction(Long userId, long moduleId, String actionCode) {
+        return isUnrestricted(userId)
+                || moduleActionService.hasAction(userId, moduleId, actionCode)
+                || (!"manage".equals(actionCode)
+                    && moduleActionService.hasAction(userId, moduleId, "manage"));
+    }
+
+    public boolean hasModuleAccess(Long userId, long moduleId) {
+        return isUnrestricted(userId)
+                || moduleActionService.hasModule(userId, moduleId);
+    }
+
+    public boolean isAdmin(Long userId) {
+        return flag(userId, "is_admin");
+    }
+
+    public boolean isOwner(Long userId) {
+        return flag(userId, "is_owner");
+    }
+
+    public boolean isSystemAdmin(Long userId) {
+        Long count = jdbc.queryForObject("""
+                SELECT COUNT(*)
+                FROM sys_admin_identity identity
+                JOIN sys_user u ON u.user_name = identity.user_name
+                WHERE u.user_id = ? AND u.del_flag = '0'
+                """, Long.class, userId);
+        return count != null && count > 0L;
+    }
+
+    private boolean flag(Long userId, String column) {
+        List<String> values = jdbc.queryForList(
+                "SELECT " + column + " FROM sys_user WHERE user_id = ? AND del_flag = '0'",
+                String.class,
+                userId
+        );
+        return !values.isEmpty() && "1".equals(values.get(0));
     }
 
     public Map<String, Object> dept(Long deptId) {

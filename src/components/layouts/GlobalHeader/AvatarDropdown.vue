@@ -18,6 +18,10 @@
       <template v-slot:overlay>
         <a-menu class="ant-pro-drop-down menu" :selected-keys="[]">
           <template v-if="menu">
+            <a-menu-item key="apps" @click="$router.push('/app/appCenter')">
+              <a-icon type="appstore" />
+              应用中心
+            </a-menu-item>
             <a-menu-item key="team" @click="handleToContacts">
               <a-icon type="team" />
               团队管理

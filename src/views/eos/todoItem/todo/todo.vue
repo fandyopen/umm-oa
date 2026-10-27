@@ -13,7 +13,6 @@
           slot="actions"
           v-if="item && item.taskId"
           :todoItem="item"
-          @handleReApply="handleReApply"
           @getList="refresh"
           @markUnread="handleMarkUnread(item)"
         />
@@ -31,7 +30,6 @@ import Ellipsis from '/src/components/Ellipsis/Ellipsis.vue'
 import STable from '/src/components/Table/index.jsx'
 import SSearch from '/src/components/Form/Search.vue'
 import ActivitiApply from '/src/components/Activiti/index.vue'
-import BusReApply from './busReApply.vue'
 import BusDetail from './busDetail.vue'
 import storage from 'store'
 
@@ -101,7 +99,7 @@ export default {
           dataIndex: 'processName',
           align: 'center',
           customRender: (text, record) => {
-            const { processName } = busFlowMap[record.businessType]
+            const processName = record.processName || busFlowMap[record.businessType]?.processName || '审批流程'
             return <span class={this.isReadTask(record)}>{processName}</span>
           },
           width: 110
@@ -183,29 +181,6 @@ export default {
     },
     // 查看审批历史
     handleProcessHistory,
-    handleReApply(todoItem) {
-      const busItem = busFlowMap[todoItem.businessType]
-      this.$createAntdDrawer({
-        stopPropagation: true,
-        drawerProps: {
-          title: todoItem.taskName,
-          width: '85%',
-          maskClosable: true
-        },
-        content: {
-          template: BusReApply,
-          props: {
-            todoItem,
-            busReApplyCompName: busItem.busReApplyCompName
-          },
-          on: {
-            ok: () => {
-              this.refresh()
-            }
-          }
-        }
-      })
-    },
     // 已读事件
     handleReadClick(item) {
       updateReadUsers(item.workflowId, item.taskId, 1).then(res => {

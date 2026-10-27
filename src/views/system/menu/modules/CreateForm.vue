@@ -58,6 +58,15 @@
       <a-form-model-item label="权限标识" prop="perms" v-if="form.menuType != 'M'">
         <a-input v-model="form.perms" placeholder="请输入" />
       </a-form-model-item>
+      <a-form-model-item label="流程设计" prop="hasFlow" v-if="form.menuType == 'C'">
+        <a-radio-group v-model="form.hasFlow" button-style="solid">
+          <a-radio-button :value="0">启用</a-radio-button>
+          <a-radio-button :value="1">不启用</a-radio-button>
+        </a-radio-group>
+      </a-form-model-item>
+      <a-form-model-item label="流程条件" prop="flowConditions" v-if="form.menuType == 'C' && form.hasFlow === 0">
+        <a-textarea v-model="form.flowConditions" :rows="7" placeholder="请输入 JSON 数组" />
+      </a-form-model-item>
       <a-form-model-item label="是否显示" prop="visible" v-if="form.menuType != 'F'">
         <a-radio-group v-model="form.visible" button-style="solid">
           <a-radio-button v-for="(d, index) in visibleOptions" :key="index" :value="d.dictValue">{{ d.dictLabel }}</a-radio-button>
@@ -126,6 +135,8 @@ export default {
         isFrame: '1',
         isCache: '0',
         isApp: '1',
+        hasFlow: 1,
+        flowConditions: '',
         visible: '0',
         status: '0'
       },
@@ -174,6 +185,8 @@ export default {
         isFrame: '1',
         isCache: '0',
         isApp: '1',
+        hasFlow: 1,
+        flowConditions: '',
         visible: '0',
         status: '0'
       }
@@ -195,7 +208,11 @@ export default {
       this.reset()
       this.$emit('select-tree')
       getMenu(row.menuId).then(response => {
-        this.form = response.data
+        this.form = {
+          ...response.data,
+          hasFlow: Number(response.data.hasFlow ?? 1),
+          flowConditions: response.data.flowConditions || ''
+        }
         this.open = true
         this.formTitle = '修改菜单'
       })
@@ -204,6 +221,9 @@ export default {
     submitForm: function () {
       this.$refs.form.validate(valid => {
         if (valid) {
+          if (!this.validateFlowConditions()) {
+            return
+          }
           if (this.form.menuId !== undefined) {
             updateMenu(this.form).then(response => {
               this.$message.success('修改成功', 3)
@@ -223,6 +243,22 @@ export default {
           return false
         }
       })
+    },
+    validateFlowConditions() {
+      const value = (this.form.flowConditions || '').trim()
+      if (this.form.menuType !== 'C' || this.form.hasFlow !== 0 || !value) {
+        return true
+      }
+      try {
+        if (!Array.isArray(JSON.parse(value))) {
+          this.$message.error('流程条件必须是 JSON 数组')
+          return false
+        }
+        return true
+      } catch (error) {
+        this.$message.error('流程条件不是有效的 JSON')
+        return false
+      }
     },
     handleIconChange(icon) {
       this.iconVisible = false

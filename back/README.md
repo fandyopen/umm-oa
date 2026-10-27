@@ -27,9 +27,41 @@ cd E:\www\umm-oa\back
 
 本地演示账号：
 
-- 用户名：`17630135660`
-- 密码：`admin123123`
+- 用户名：`17630135660`（超级管理员）
+- 用户名：`17600000001`（人事经理，独立管理组织架构与成员）
+- 密码均为 `admin123123`
 - 验证码校验默认关闭，开发时 `debugCode` 会随验证码接口返回
+
+### 模块与动作权限
+
+系统唯一授权来源是：
+
+- `sys_role_module`：角色可访问的页面模块
+- `sys_module_action`：模块支持的按钮动作字典
+- `sys_role_module_action`：角色在模块内被授予的具体动作
+- `sys_role.data_scope`：组织数据范围
+
+模块授权本身代表可以进入页面、查看列表和详情。角色权限树只在普通业务模块下增加
+“新增、修改、删除、导出”动作；组织、角色和流程设置使用“管理”动作。
+商机管理按实际页面提供“新增、修改、删除、跟踪、转化项目”五个动作。
+人事管理使用独立一级菜单，成员管理复用组织架构的邀请成员、调整部门、转为离职公共组件。
+`/getInfo.permissions` 同时包含模块读取权限和已勾选的动作权限，后端接口通过
+`@RequiresModuleAction` 校验同一套授权。
+
+`sys_menu` / `sys_role_menu` 不再参与登录后的业务鉴权。
+组织权限诊断接口为 `GET /system/permission/organization`。
+
+业务接口的读取操作只要求模块访问权限，删除、新增、修改分别校验对应动作；提交审批复用新增或修改权限。
+`list:all`、`list:apply` 不再生成角色动作，数据范围和“仅本人”过滤统一由后端查询执行。
+角色被停用或软删除后，其模块授权和按钮权限立即失效。
+流程设置接口读取要求模块 `340771` 访问权限，修改要求 `manage` 动作。
+模块授权入口统一为角色；原部门、成员模块树接口返回 `410`，避免保存不会生效的授权。
+业务按钮通过统一的 `POST /workflow/action/execute` 执行。流程设计按
+`moduleId + actionCode` 绑定，未启用审批时直接执行，启用后自动创建审批待办，
+审批通过再执行原业务动作。具体规则见
+[动作级流程绑定](docs/workflow-action-binding.md)。
+自定义动作通过“系统 -> 流程设置 -> 动作管理”维护，执行逻辑由 `handlerKey`
+注册表解析；可复用的动作不需要重新修改 Java。
 
 接口示例：
 
@@ -90,11 +122,11 @@ $env:JWT_SECRET = "replace-with-a-random-secret-at-least-32-bytes"
 
 - [接口清单](docs/api-inventory.md)：从 `src/api` 自动提取的 722 个调用
 - [实现状态](docs/implementation-status.md)：真实实现与兼容层边界
-- [UI 证据](docs/ui-evidence.md)：截图、页面字段和数据库表的对应关系
-- [源码比对](docs/source-comparison.md)：与 `lavieAll/qs-web` 的接口和截图差异结果
+- [模块动作目录](docs/module-action-catalog.md)：按实际页面按钮维护的模块动作清单
+- [参考数据与比对](docs/reference-audit.md)：线上参考数据、页面和接口差异说明
+- [文档索引](docs/README.md)：当前维护文档和生成数据说明
 - `deploy/`：Linux systemd 服务配置和环境变量模板
-- `tools/extract-api-inventory.mjs`：重新扫描前端接口
-- `tools/build-mysql-sql.mjs`：从开发库脚本生成 MySQL 初始化 SQL
+- [开发工具说明](tools/README.md)：数据构建、采集、比对和部署脚本
 
 ## 重要边界
 

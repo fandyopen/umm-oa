@@ -8,3 +8,7 @@ spring:
     init:
       mode: never
 
+app:
+  database:
+    bootstrap-enabled: false
+

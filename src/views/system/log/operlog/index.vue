@@ -53,7 +53,7 @@
       <div class="table-operations">
         <a-button type="danger" :disabled="multiple" @click="handleDelete" v-hasPermi="['monitor:operlog:remove']"> <a-icon type="delete" />删除 </a-button>
         <a-button type="danger" @click="handleClean" v-hasPermi="['monitor:operlog:remove']"> <a-icon type="delete" />清空 </a-button>
-        <a-button type="primary" @click="handleExport" v-hasPermi="['system:config:export']"> <a-icon type="download" />导出 </a-button>
+        <a-button type="primary" @click="handleExport" v-hasPermi="['monitor:operlog:export']"> <a-icon type="download" />导出 </a-button>
         <a-button type="dashed" shape="circle" :loading="loading" :style="{ float: 'right' }" icon="reload" @click="getList" />
       </div>
       <!-- 详细信息 -->
@@ -67,7 +67,7 @@
           {{ statusFormat(record) }}
         </span>
         <span slot="operation" slot-scope="text, record">
-          <a @click="$refs.viewForm.handleView(record)" v-hasPermi="['monitor:operlog:query']"> <a-icon type="eye" />详细 </a>
+          <a @click="$refs.viewForm.handleView(record)" v-hasPermi="['monitor:operlog:list']"> <a-icon type="eye" />详细 </a>
         </span>
       </a-table>
       <!-- 分页 -->

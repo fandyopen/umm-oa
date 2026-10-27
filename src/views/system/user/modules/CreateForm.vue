@@ -134,7 +134,7 @@ export default {
   filters: {},
   created() {
     this.getConfigKey('sys.user.initPassword').then(response => {
-      this.initPassword = response.msg
+      this.initPassword = response.data || 'admin123123'
     })
   },
   computed: {},

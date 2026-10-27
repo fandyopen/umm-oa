@@ -7,30 +7,10 @@
 </template>
 
 <script>
-import ProjectDetail from '/src/views/eos/project/detail.vue'
-import ProjectMemDetail from '/src/views/eos/project/mem/detail.vue'
-import ContractDetail from '/src/views/eos/contract/detail.vue'
-import BudgetDetail from '/src/views/eos/budget/details.vue'
-import ExpenseDetail from '/src/views/eos/expense/details.vue'
-import PaymentDetail from '/src/views/eos/purchase/payment/detail.vue'
-import LoanDetail from '/src/views/eos/repayment/loan/details.vue'
-import MakeFormDetail from '/src/views/eos/invoice/make/details.vue'
-import ExecDetail from '/src/views/eos/subcontract/exec/modules/ExecDetail.vue'
-import EmployeeDetail from '/src/views/eos/subcontract/employee/modules/EmployeeDetail.vue'
-import BudgetModifyDetail from '/src/views/eos/budget/modify/details.vue'
-import ProjectModifyDetail from '/src/views/eos/project/modify/details.vue'
-import PurchaseApplyDetail from '/src/views/eos/purchase/apply/detail.vue'
-import ContractModifyDetail from '/src/views/eos/contract/modify/details.vue'
-// import FreightInDetail from '/src/views/project/freightIn/detail'
-import EarnestDetail from '/src/views/eos/earnest/apply/modules/ApplyDetail.vue'
-
 import ViewVerify from '/src/components/Activiti/ViewVerify/index.vue'
 import UserSelect from '/src/components/Activiti/UserSelect'
-import LaborDetail from '/src/views/eos/cost/labor/details.vue'
-import OnbusDetail from '/src/views/eos/cost/onbus/details.vue'
-import WarehouseInApplyDetail from '/src/views/eos/warehouse/warehouseInApply/modules/WarehouseInApplyDetail.vue'
-import WarehouseOutapplyDetail from '/src/views/eos/warehouse/warehouseOutapply/modules/WarehouseOutapplyDetail.vue'
-import WarehouseTransferApplyDetail from '/src/views/eos/warehouse/warehouseTransferApply/modules/WarehouseTransferApplyDetail'
+import LowCodeTodoDetail from '/src/views/lowCode/todoDetail.vue'
+import WorkflowActionTodoDetail from '/src/views/workflow/todoDetail.vue'
 
 export default {
   props: {
@@ -63,27 +43,8 @@ export default {
   },
   components: {
     ViewVerify,
-    ProjectDetail,
-    ContractDetail,
-    ProjectMemDetail,
-    BudgetDetail,
-    ExpenseDetail,
-    PaymentDetail,
-    LoanDetail,
-    MakeFormDetail,
-    ExecDetail,
-    EmployeeDetail,
-    LaborDetail,
-    OnbusDetail,
-    BudgetModifyDetail,
-    ProjectModifyDetail,
-    PurchaseApplyDetail,
-    EarnestDetail,
-    // ViewVerify,
-    ContractModifyDetail,
-    WarehouseInApplyDetail,
-    WarehouseOutapplyDetail,
-    WarehouseTransferApplyDetail
+    LowCodeTodoDetail,
+    WorkflowActionTodoDetail
   },
   methods: {
     handleGetList() {

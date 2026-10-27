@@ -6,16 +6,16 @@
           <img class="logo" :src="bigLogo" alt="logo" />
           <img class="leftWrap" :src="imgLoginBg" alt="" />
           <div class="phone">
-            <a-icon type="phone" class="p-icon" />
+            <span class="p-icon">&#9742;</span>
             <span class="num">XXX-XXXXXXXX</span>
           </div>
           <div class="mail">
-            <a-icon type="mail" class="m-icon" />
+            <span class="m-icon">&#9993;</span>
             <span class="url">qs@seals.com</span>
           </div>
         </div>
         <div class="verticalContainer">
-          <a-divider type="vertical" class="vertical" />
+          <span class="vertical"></span>
         </div>
         <!-- 分割线 -->
         <div class="FormRight">
@@ -36,8 +36,8 @@
 <script>
 import { deviceMixin } from '/src/store/device-mixin'
 import gonganImg from '/src/assets/img/ga.png'
-import bigLogo from '/src/assets/img/home-logo.png'
-import imgLoginBg from '/src/assets/img/login-bg.png'
+import bigLogo from '/src/assets/img/home-logo-optimized.png'
+import imgLoginBg from '/src/assets/img/login-bg-optimized.png'
 
 export default {
   name: 'UserLayout',
@@ -122,6 +122,7 @@ export default {
         box-sizing: border-box;
         padding: 30px 0;
         .vertical {
+          display: block;
           width: 2px;
           height: 100%;
           margin-right: 0;

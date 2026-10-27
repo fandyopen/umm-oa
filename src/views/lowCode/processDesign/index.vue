@@ -13,6 +13,27 @@
       </div>
       <el-button size="small" class="publish-btn" @click="publish">发布</el-button>
     </header>
+    <div class="workflow-actions">
+      <span class="workflow-actions__label">
+        {{ $route.query.menuName || '当前模块' }} · 审批触发动作
+      </span>
+      <a-radio-group
+        :value="actionCode"
+        button-style="solid"
+        @change="event => handleActionChange(event.target.value)"
+      >
+        <a-radio-button v-for="item in actionOptions" :key="item.code" :value="item.code">
+          {{ item.name }}
+        </a-radio-button>
+      </a-radio-group>
+      <div v-if="actionCode !== 'page'" class="workflow-actions__switch">
+        <span>启用审批</span>
+        <a-switch v-model="approvalEnabled" size="small" />
+      </div>
+      <a-button size="small" icon="setting" @click="openActionManager">
+        管理动作
+      </a-button>
+    </div>
     <div v-if="mockData" class="page__content">
       <Process ref="processDesign" :conf="mockData.processData" tabName="processDesign" v-show="activeStep === 'processDesign'" />
     </div>
@@ -23,6 +44,7 @@
 import Process from '../components/Process/index.vue'
 import { GET_MOCK_CONF } from '/src/api/processDesign/index.js'
 import { setProcess, detailProcess } from '/src/api/processDesign/index.js'
+import { getModuleActions } from '/src/api/system/menu.js'
 
 const beforeUnload = function (e) {
   var confirmationMessage = '离开网站可能会丢失您编辑得内容'
@@ -40,7 +62,21 @@ export default {
       formItems: [],
       activeStep: 'processDesign', // 激活的步骤面板
       steps: [{ label: '流程设计', key: 'processDesign' }],
-      mockData: null // 可选择诸如 $route.param，Ajax获取数据等方式自行注入
+      mockData: null, // 可选择诸如 $route.param，Ajax获取数据等方式自行注入
+      actionCode: 'page',
+      approvalEnabled: true,
+      workflowActions: []
+    }
+  },
+  computed: {
+    actionOptions() {
+      return [
+        { code: 'page', name: '页面默认审批' },
+        ...this.workflowActions.map(item => ({
+          code: item.actionCode,
+          name: item.actionName
+        }))
+      ]
     }
   },
   methods: {
@@ -53,7 +89,9 @@ export default {
       Promise.all([p3])
         .then(res => {
           const param = {
-            processData: res[0].formData
+            processData: res[0].formData,
+            actionCode: this.actionCode,
+            approvalEnabled: this.approvalEnabled
           }
           this.sendToServer(param)
         })
@@ -72,7 +110,9 @@ export default {
           tenantAppId: tenantAppIdInt,
           menuId: menuIdInt,
           menuName,
-          processData: param.processData
+          processData: param.processData,
+          actionCode: param.actionCode,
+          approvalEnabled: param.approvalEnabled
         }
         setProcess(data).then(res => {
           if (res.code === 200) {
@@ -87,6 +127,8 @@ export default {
           menuId: menuIdInt,
           menuName,
           processData: param.processData,
+          actionCode: param.actionCode,
+          approvalEnabled: param.approvalEnabled,
           _id: this.mockData._id
         }
         setProcess(data).then(res => {
@@ -137,24 +179,53 @@ export default {
       this.$store.commit('clearPCondition')
       this.$store.commit('initPConditions', this.formItems)
     },
+    handleActionChange(actionCode) {
+      this.$router.replace({
+        query: {
+          ...this.$route.query,
+          actionCode
+        }
+      })
+    },
+    openActionManager() {
+      this.$router.push({
+        path: '/system/moduleActions',
+        query: {
+          moduleId: this.$route.query.menuId
+        }
+      })
+    },
     initFlowData() {
       // 处理formItems
       this.handleFormItem()
-      const { menuId, tenantAppId } = this.$route.query
-      detailProcess({
-        tenantAppId: parseInt(tenantAppId),
-        menuId: parseInt(menuId)
-      }).then(res => {
+      const { menuId, tenantAppId, actionCode } = this.$route.query
+      this.actionCode = actionCode || 'page'
+      this.spinning = true
+      const moduleId = parseInt(menuId)
+      Promise.all([
+        getModuleActions(moduleId, { workflowOnly: true }).catch(error => {
+          this.$message.error(String(error || '审批动作加载失败'))
+          return { data: [] }
+        }),
+        detailProcess({
+          tenantAppId: parseInt(tenantAppId),
+          menuId: moduleId,
+          actionCode: this.actionCode
+        })
+      ]).then(([actionsRes, res]) => {
+        this.workflowActions = actionsRes.data || []
         // 为空就做新增操作
-        if (this.isEmpty(res)) {
+        if (!res || !res._id) {
           GET_MOCK_CONF().then(data => {
             this.mockData = data
+            this.approvalEnabled = true
             this.spinning = false
           })
         } else {
           // 否则就是修改
           // 回显
           this.mockData = res
+          this.approvalEnabled = res.approvalEnabled !== false
           this.spinning = false
         }
       })
@@ -264,10 +335,37 @@ $header-height = 54px;
 
   .page__content {
     width: 100%;
-    height: 90%;
+    height: calc(100% - 108px);
     overflow: hidden;
     box-sizing: border-box;
     background: #f5f5f7;
+  }
+}
+
+.workflow-actions {
+  min-height: 54px;
+  padding: 0 18px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  box-sizing: border-box;
+  background: #fff;
+  border-bottom: 1px solid #e8e8e8;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+
+  &__label {
+    color: #333;
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  &__switch {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #595959;
+    font-size: 13px;
   }
 }
 

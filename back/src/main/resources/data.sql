@@ -1,10 +1,10 @@
 INSERT INTO sys_tenant (tenant_id, tenant_name, contact_name, contact_phone, status)
-VALUES (1, '示例企业', '系统管理员', '17630135660', '0');
+VALUES (1, '示例企业', '方铭渴', '17630135660', '0');
 
 INSERT INTO sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, leader, phone, status)
-VALUES (100, 1, 0, '0', '示例企业', 0, '系统管理员', '17630135660', '0');
+VALUES (100, 1, 0, '0', '示例企业', 0, '方铭渴', '17630135660', '0');
 INSERT INTO sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, leader, phone, status)
-VALUES (101, 1, 100, '0,100', '综合管理部', 1, '系统管理员', '17630135660', '0');
+VALUES (101, 1, 100, '0,100', '综合管理部', 1, '方铭渴', '17630135660', '0');
 INSERT INTO sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, leader, phone, status)
 VALUES (102, 1, 100, '0,100', '财务部', 2, '财务负责人', '15685266238', '0');
 INSERT INTO sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, leader, phone, status)
@@ -16,7 +16,7 @@ INSERT INTO sys_user (
     user_id, tenant_id, dept_id, user_name, nick_name, password, email, phonenumber,
     sex, avatar, status, create_by, remark
 ) VALUES (
-    1, 1, 101, '17630135660', '系统管理员',
+    1, 1, 101, '17630135660', '方铭渴',
     '$2b$12$nopR.IbdlsiAu1H9PE9MbeCgKM2Px8B87NDujHm1Fst/VYPwl6Ivy',
     'admin@example.com', '17630135660', '0', '', '0', 'system', '本地演示管理员'
 );
@@ -24,30 +24,32 @@ INSERT INTO sys_user (
     user_id, tenant_id, dept_id, user_name, nick_name, password, email, phonenumber,
     sex, avatar, status, create_by, remark
 ) VALUES
-    (2, 1, 100, '17673605591', '总经理',
+    (2, 1, 100, '17673605591', '孟声怎',
      '$2b$12$nopR.IbdlsiAu1H9PE9MbeCgKM2Px8B87NDujHm1Fst/VYPwl6Ivy',
      '', '17673605591', '0', '', '0', 'system', '总经理演示账号'),
-    (3, 1, 102, '15685266238', '财务会计',
+    (3, 1, 102, '15685266238', '曹好疲',
      '$2b$12$nopR.IbdlsiAu1H9PE9MbeCgKM2Px8B87NDujHm1Fst/VYPwl6Ivy',
      '', '15685266238', '0', '', '0', 'system', '财务会计/财务部经理演示账号'),
-    (4, 1, 102, '17689037697', '财务出纳',
+    (4, 1, 102, '17689037697', '卞在重',
      '$2b$12$nopR.IbdlsiAu1H9PE9MbeCgKM2Px8B87NDujHm1Fst/VYPwl6Ivy',
      '', '17689037697', '0', '', '0', 'system', '财务出纳/合同归档演示账号'),
-    (5, 1, 103, '15646844893', '副总（销售）',
+    (5, 1, 103, '15646844893', '费有感',
      '$2b$12$nopR.IbdlsiAu1H9PE9MbeCgKM2Px8B87NDujHm1Fst/VYPwl6Ivy',
      '', '15646844893', '0', '', '0', 'system', '销售副总演示账号'),
-    (6, 1, 103, '13689213154', '副总（生产）',
+    (6, 1, 103, '13689213154', '雷记那',
      '$2b$12$nopR.IbdlsiAu1H9PE9MbeCgKM2Px8B87NDujHm1Fst/VYPwl6Ivy',
      '', '13689213154', '0', '', '0', 'system', '生产副总演示账号'),
-    (7, 1, 103, '15650389435', '项目总管',
+    (7, 1, 103, '15650389435', '昌空紧',
      '$2b$12$nopR.IbdlsiAu1H9PE9MbeCgKM2Px8B87NDujHm1Fst/VYPwl6Ivy',
      '', '15650389435', '0', '', '0', 'system', '项目总管演示账号'),
-    (8, 1, 104, '15609825919', '采购负责人',
+    (8, 1, 104, '15609825919', '吕听敢',
      '$2b$12$nopR.IbdlsiAu1H9PE9MbeCgKM2Px8B87NDujHm1Fst/VYPwl6Ivy',
      '', '15609825919', '0', '', '0', 'system', '采购负责人演示账号'),
-    (9, 1, 101, '17655872713', '综合部经理',
+    (9, 1, 101, '17655872713', '苏记勇',
      '$2b$12$nopR.IbdlsiAu1H9PE9MbeCgKM2Px8B87NDujHm1Fst/VYPwl6Ivy',
      '', '17655872713', '0', '', '0', 'system', '综合部经理/盖章确认演示账号');
+
+UPDATE sys_user SET is_admin = '1', is_owner = '0' WHERE user_id = 1;
 
 INSERT INTO sys_role (role_id, tenant_id, role_name, role_key, role_sort, data_scope, status, remark)
 VALUES (1, 1, '超级管理员', 'admin', 1, '1', '0', '拥有全部权限');
@@ -134,34 +136,6 @@ INSERT INTO sys_role_menu (role_id, menu_id) VALUES
     (5, 18),
     (6, 16);
 
-INSERT INTO sys_dict_type (dict_id, dict_name, dict_type, status) VALUES
-(1, '项目类型', 'project_type', '0'),
-(2, '项目状态', 'project_status', '0'),
-(3, '合同状态', 'contract_status', '0'),
-(4, '报销状态', 'expense_status', '0'),
-(5, '审批状态', 'process_status', '0'),
-(6, '费用类型', 'expense_type', '0');
-
-INSERT INTO sys_dict_data (dict_sort, dict_label, dict_value, dict_type, css_class, list_class, is_default, status) VALUES
-(1, '施工项目', '1', 'project_type', NULL, 'default', 'Y', '0'),
-(2, '服务项目', '2', 'project_type', NULL, 'success', 'N', '0'),
-(3, '投资项目', '3', 'project_type', NULL, 'warning', 'N', '0'),
-(1, '在建', '在建', 'project_status', NULL, 'processing', 'Y', '0'),
-(2, '已完成', '已完成', 'project_status', NULL, 'success', 'N', '0'),
-(3, '已暂停', '已暂停', 'project_status', NULL, 'default', 'N', '0'),
-(1, '草稿', 'draft', 'process_status', NULL, 'default', 'Y', '0'),
-(2, '审批中', 'running', 'process_status', NULL, 'processing', 'N', '0'),
-(3, '已通过', 'approved', 'process_status', NULL, 'success', 'N', '0'),
-(4, '已驳回', 'rejected', 'process_status', NULL, 'error', 'N', '0'),
-(1, '差旅费', 'travel', 'expense_type', NULL, 'default', 'Y', '0'),
-(2, '办公费', 'office', 'expense_type', NULL, 'default', 'N', '0'),
-(3, '招待费', 'entertainment', 'expense_type', NULL, 'default', 'N', '0');
-
-INSERT INTO sys_config (config_name, config_key, config_value, config_type, remark) VALUES
-('登录验证码开关', 'sys.account.captchaEnabled', 'false', 'Y', '本地开发默认关闭验证码校验'),
-('系统名称', 'sys.app.name', '啓思 OA', 'Y', '页面标题'),
-('用户初始密码', 'sys.user.initPassword', 'admin123123', 'Y', '仅用于本地演示');
-
 INSERT INTO sys_notice (notice_title, notice_type, notice_content, status, create_by) VALUES
 ('系统初始化完成', '1', '本地 Spring Boot 后端已启动，默认管理员账号为 17630135660。', '0', 'system');
 
@@ -175,18 +149,29 @@ INSERT INTO sys_app_module (tenant_app_id, module_name, module_path, component, 
 (1, '费用报销', '/expense/index', 'eos/expense/indexOp', 'iconfont-baoxiao', 3, '0'),
 (1, '采购申请', '/purchase/index', 'eos/purchase/apply/indexOp', 'iconfont-caigou', 4, '0');
 
-INSERT INTO sys_admin_group (group_id, group_name, tenant_id) VALUES (1, '系统管理员组', 1);
-INSERT INTO sys_admin_group_member (group_id, user_id) VALUES (1, 1);
+INSERT INTO sys_admin_group (
+    group_id, group_name, tenant_id, is_add, role_read, role_manage,
+    dept_read, dept_manage, sort
+) VALUES (26, '企业管理', 1, '0', '0', '0', '0', '0', 0);
+INSERT INTO sys_admin_group_member (group_id, user_id) VALUES
+    (26, 17),
+    (26, 14);
+
+INSERT INTO sys_admin_identity (user_id, user_name, nick_name, email, phonenumber, sex, status, sort) VALUES
+    (109960376, '13686621113', '严音泪', NULL, NULL, NULL, NULL, 0),
+    (220440149, '15646021885', '张为骄', NULL, NULL, NULL, NULL, 1),
+    (1756143678, '17603686635', '倪所力', NULL, NULL, NULL, NULL, 2),
+    (2090571137, '13671476794', '奚哭芬', NULL, NULL, NULL, NULL, 3);
 
 INSERT INTO oa_project (
     id, tenant_id, code, name, nick_name, dept_id, type, owner_unit, sketch, status, process_status, create_by
 ) VALUES (
-    1, 1, 'QS-DEMO-001', '企业数字化办公平台', '系统管理员', 103, '1',
+    1, 1, 'QS-DEMO-001', '企业数字化办公平台', '方铭渴', 103, '1',
     '示例客户', '用于验证项目管理、合同、采购和报销流程的演示项目。', '在建', 'approved', '17630135660'
 );
 
 INSERT INTO oa_project_member (project_id, user_id, user_name, nick_name, role_name, phone)
-VALUES (1, 1, '17630135660', '系统管理员', '项目经理', '17630135660');
+VALUES (1, 1, '17630135660', '方铭渴', '项目经理', '17630135660');
 
 INSERT INTO oa_contract (
     id, tenant_id, project_id, code, name, type, party_a, party_b, money, tax_rate,
@@ -204,7 +189,7 @@ VALUES (1, 2, '验收尾款', '验收通过后支付', 51200.00, 40.0000);
 INSERT INTO oa_purchase_apply (
     id, tenant_id, project_id, code, apply_user_id, apply_user_name, dept_id,
     purpose, total_amount, process_status
-) VALUES (1, 1, 1, 'CG-DEMO-001', 1, '系统管理员', 103, '采购办公设备', 6800.00, 'approved');
+) VALUES (1, 1, 1, 'CG-DEMO-001', 1, '方铭渴', 103, '采购办公设备', 6800.00, 'approved');
 
 INSERT INTO oa_purchase_apply_item (apply_id, name, spec, unit, amount, price, total_price, description)
 VALUES (1, '笔记本电脑', '14 英寸/32G/1T', '台', 2, 3400.00, 6800.00, '研发办公使用');
@@ -212,7 +197,7 @@ VALUES (1, '笔记本电脑', '14 英寸/32G/1T', '台', 2, 3400.00, 6800.00, '�
 INSERT INTO oa_expense (
     id, tenant_id, project_id, code, apply_user_id, apply_user_name, dept_id,
     expense_type, total_amount, process_status, remark
-) VALUES (1, 1, 1, 'BX-DEMO-001', 1, '系统管理员', 103, 'travel', 1260.00, 'running', '项目现场差旅');
+) VALUES (1, 1, 1, 'BX-DEMO-001', 1, '方铭渴', 103, 'travel', 1260.00, 'running', '项目现场差旅');
 
 INSERT INTO oa_expense_item (expense_id, budget_id, detail, sum, replaced, remark)
 VALUES (1, NULL, '高铁及住宿', 1260.00, 'N', '项目现场支持');
@@ -221,7 +206,7 @@ INSERT INTO oa_loan (
     id, tenant_id, code, apply_user_id, apply_user_name, project_id, loan_type, amount,
     loan_date, expected_repay_date, actual_repay_amount, process_status, remark
 ) VALUES (
-    1, 1, 'JK-DEMO-001', 1, '系统管理员', 1, 'cash', 5000.00,
+    1, 1, 'JK-DEMO-001', 1, '方铭渴', 1, 'cash', 5000.00,
     CURRENT_DATE, DATEADD('DAY', 30, CURRENT_DATE), 0.00, 'approved', '项目备用金'
 );
 INSERT INTO oa_loan_detail (loan_id, loan_name, sum, remark) VALUES
@@ -237,13 +222,13 @@ INSERT INTO oa_budget_item (budget_id, subject_name, subject_code, amount, used_
 VALUES (1, '设备采购', 'DEVICE', 180000.00, 6800.00, '研发设备');
 
 INSERT INTO oa_warehouse (id, tenant_id, code, name, address, manager_id, manager_name, status)
-VALUES (1, 1, 'CK-DEMO-001', '项目现场仓', '项目现场 A 区', 1, '系统管理员', '0');
+VALUES (1, 1, 'CK-DEMO-001', '项目现场仓', '项目现场 A 区', 1, '方铭渴', '0');
 
 INSERT INTO oa_business_opportunity (
     id, tenant_id, name, customer_name, owner_user_id, owner_user_name,
     stage, expected_amount, expected_close_date, status
 ) VALUES (
-    1, 1, '企业协同办公升级', '示例客户', 1, '系统管理员',
+    1, 1, '企业协同办公升级', '示例客户', 1, '方铭渴',
     '需求确认', 260000.00, DATEADD('DAY', 60, CURRENT_DATE), 'running'
 );
 

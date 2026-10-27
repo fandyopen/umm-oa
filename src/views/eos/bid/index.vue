@@ -3,7 +3,7 @@
   <page-header-wrapper :breadcrumb="$store.getters.breadcrumb">
     <a-card :bordered="false">
       <div class="table-header-btns">
-        <a-button ghost type="primary" @click="handleAdd">新增</a-button>
+        <a-button ghost type="primary" @click="handleAdd" v-hasModuleAction="'add'">新增</a-button>
         <!-- 查询表单，若无数据，不展示 -->
         <s-search placeholder="搜索此列表..." clickTips="搜索标（包）名称/编号、创建人" @onSearch="onSearch" />
       </div>

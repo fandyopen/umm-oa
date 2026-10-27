@@ -1,10 +1,7 @@
 package com.seal.oa.web;
 
 import com.seal.oa.auth.AuthInterceptor;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
@@ -13,14 +10,17 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 public class WebConfig implements WebMvcConfigurer {
 
     private final AuthInterceptor authInterceptor;
+    private final ModuleActionInterceptor moduleActionInterceptor;
+    private final OperationLogInterceptor operationLogInterceptor;
 
-    public WebConfig(AuthInterceptor authInterceptor) {
+    public WebConfig(
+            AuthInterceptor authInterceptor,
+            ModuleActionInterceptor moduleActionInterceptor,
+            OperationLogInterceptor operationLogInterceptor
+    ) {
         this.authInterceptor = authInterceptor;
-    }
-
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
+        this.moduleActionInterceptor = moduleActionInterceptor;
+        this.operationLogInterceptor = operationLogInterceptor;
     }
 
     @Override
@@ -38,6 +38,10 @@ public class WebConfig implements WebMvcConfigurer {
                         "/actuator/health",
                         "/favicon.ico"
                 );
+        registry.addInterceptor(moduleActionInterceptor)
+                .addPathPatterns("/**");
+        registry.addInterceptor(operationLogInterceptor)
+                .addPathPatterns("/**");
     }
 
     @Override

@@ -1,5 +1,5 @@
 // eslint-disable-next-line
-import { UserLayout } from '/src/components/layouts/index.js'
+import UserLayout from '/src/components/layouts/UserLayout.vue'
 
 /**
  * 首页
@@ -18,6 +18,13 @@ export const indexRouterMap = [
     hidden: true,
     component: 'processDesign',
     meta: { title: '流程设计', keepAlive: true }
+  },
+  {
+    path: '/system/moduleActions',
+    name: 'moduleActions',
+    hidden: true,
+    component: 'ModuleActions',
+    meta: { title: '动作管理', keepAlive: true }
   },
   {
     path: '/app/appCenter',
@@ -149,7 +156,7 @@ export const constantRouterMap = [
       },
       // 流程表单设计器
       {
-        path: '/saas/process/formDesign/:id',
+        path: '/saas/process/formDesign/:id/:formid?',
         name: 'processFormDesign',
         hidden: true,
         component: () => import('/src/views/lowCode/processFormDesign/index.vue')

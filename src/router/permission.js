@@ -3,11 +3,17 @@ import store from '/src/store/index.js'
 import storage from 'store'
 import NProgress from 'nprogress'
 import '/src/assets/style/nprogress.less'
-import notification from 'ant-design-vue/es/notification'
 import { setDocumentTitle, domTitle } from '/src/utils/common/domUtil'
 import { ACCESS_TOKEN } from '/src/store/mutation-types.js'
 
 NProgress.configure({ showSpinner: false }) // NProgress Configuration
+const notification = {
+  error: options => {
+    import('ant-design-vue/es/notification').then(module => {
+      module.default.error(options)
+    })
+  }
+}
 
 const allowList = ['login'] // no redirect allowList
 const loginRoutePath = '/user/login'

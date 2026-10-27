@@ -71,7 +71,9 @@
       </a-layout-content>
       <a-layout-footer>
         <el-button-group v-if="isSubmit">
-          <el-button type="primary" @click="submitFrom">提交</el-button>
+          <el-button type="primary" :loading="submitting" @click="submitFrom">
+            {{ selectedForm && selectedForm.type === 'flow' ? '提交并发起流程' : '提交' }}
+          </el-button>
           <el-button @click="resetForm">重置</el-button>
         </el-button-group>
       </a-layout-footer>
@@ -82,7 +84,7 @@
 <script>
 // import STreeNodeList from './TreeNodeList.jsx'
 import FromElement from '../components/formElement/index.jsx'
-import { getFormMenuList, getFormDetail, deleteForm, dataCreate, createdFrom, updateForm } from '/src/api/processDesign/index.js'
+import { getFormMenuList, getFormDetail, deleteForm, dataCreate, createdFrom, subumitProcess, updateForm } from '/src/api/processDesign/index.js'
 const req = import.meta.globEager('/src/assets/img/lowCode/approverIcon/*.png')
 const iconList = Object.keys(req).map((t, idx) => ({ src: req[t].default, id: idx }))
 
@@ -136,6 +138,8 @@ export default {
       /* 图标 */
       iconList,
       formData: {},
+      selectedForm: null,
+      submitting: false,
       isSetting: false,
       isSubmit: true,
       tformId: null,
@@ -232,7 +236,7 @@ export default {
     },
     // 跳转后台管理页面
     toManage() {
-      this.$router.push('/saas/formBackGround/' + this.$route.params.id)
+      this.$router.push('/app/appCenter')
     },
     // 新建表单、流程表单事件
     handleClickNewMenu(menuInfo) {
@@ -295,6 +299,7 @@ export default {
     hanlderMenu(item) {
       this.selectedKeys = item.keyPath ? item.keyPath : item
       this.tformId = this.selectedKeys[0]
+      this.selectedForm = this.entryList.find(form => form.id === this.tformId) || null
       if (!this.isEmpty(this.selectedKeys[0])) {
         getFormDetail({ formId: this.selectedKeys[0], tenantAppId: this.$route.params.id }).then(res => {
           this.formData = res.formData
@@ -309,10 +314,27 @@ export default {
     /* 提交 */
     submitFrom() {
       this.$refs.formElement.submitForm(formData => {
-        dataCreate({ tenantAppId: this.$route.params.id, formId: this.selectedKeys[0], fields: formData }).then(res => {
-          if (res.code === 200) {
-            this.$message.success('提交成功')
+        if (this.submitting) return
+        this.submitting = true
+        const formId = this.selectedKeys[0]
+        return dataCreate({ tenantAppId: this.$route.params.id, formId, fields: formData }).then(res => {
+          if (res.code !== 200) return
+          if (this.selectedForm && this.selectedForm.type === 'flow') {
+            return subumitProcess({
+              tenantAppId: this.$route.params.id,
+              formId,
+              dataId: res.data
+            }).then(process => {
+              if (process.code === 200) {
+                this.$message.success(`提交成功，已发送给 ${process.data.assigneeName} 审批`)
+                this.$refs.formElement.resetForm()
+              }
+            })
           }
+          this.$message.success('提交成功')
+          this.$refs.formElement.resetForm()
+        }).finally(() => {
+          this.submitting = false
         })
       })
     },

@@ -3,7 +3,7 @@
   <div>
     <!-- <a-button-group>
       <a-button ghost type="primary" @click="handleUpdate(text, record, index)">编辑</a-button>
-      <a-button ghost type="danger" @click="handleDelete(text, record, index)">删除</a-button>
+      <a-button ghost type="danger" @click="handleDelete(text, record, index)" v-hasModuleAction="'remove'">删除</a-button>
     </a-button-group> -->
     <s-descriptions title="基本信息" :formItems="formItems" :formData="formData" />
     <a-card :bordered="false" size="small">

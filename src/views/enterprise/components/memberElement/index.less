@@ -6,7 +6,27 @@
   justify-content: space-between;
   align-items: center;
   .depart-name {
+    min-width: 0;
+    display: flex;
+    align-items: center;
     font-weight: 700;
+    .depart-title {
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+    .member-count {
+      flex-shrink: 0;
+      margin-left: 8px;
+      padding: 1px 8px;
+      border: 1px solid #91d5ff;
+      border-radius: 10px;
+      background: #e6f7ff;
+      color: #1890ff;
+      font-size: 12px;
+      font-weight: 400;
+      line-height: 18px;
+    }
   }
   .depart-operate {
     display: flex;

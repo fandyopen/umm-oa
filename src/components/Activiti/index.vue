@@ -34,7 +34,6 @@ import { handleProcessHistory } from '/src/views/eos/config/busUtil.js'
 import { busFlowState } from './flow.js'
 import ViewVerify from './ViewVerify/index.vue'
 import UserSelect from './UserSelect.vue'
-import MemSelect from '/src/views/eos/project/mem/modules/MemSelect.vue'
 import request from '/src/utils/axios/request.js'
 
 export default {
@@ -120,10 +119,7 @@ export default {
           maskClosable: true
         },
         content: {
-          template: MemSelect,
-          props: {
-            selectType: 'radio'
-          },
+          template: UserSelect,
           on: {
             // 注意，这里的close事件内部组件传递不出来
             // close: () => {}

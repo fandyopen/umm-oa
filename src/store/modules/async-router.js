@@ -1,8 +1,6 @@
 /**
  * 向后端请求用户的菜单，动态生成路由
  */
-import { generatorDynamicRouter } from '/src/router/generator-routers.js'
-
 const permission = {
   state: {
     routers: [],
@@ -17,9 +15,11 @@ const permission = {
   actions: {
     GenerateRoutes({ commit }, data) {
       return new Promise(resolve => {
-        generatorDynamicRouter(data).then(routers => {
-          commit('SET_ROUTERS', routers)
-          resolve()
+        import('/src/router/generator-routers.js').then(({ generatorDynamicRouter }) => {
+          generatorDynamicRouter(data).then(routers => {
+            commit('SET_ROUTERS', routers)
+            resolve()
+          })
         })
       })
     }

@@ -1,5 +1,3 @@
-import moment from 'moment'
-
 export function timeFix() {
   const time = new Date()
   const hour = time.getHours()

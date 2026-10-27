@@ -1,0 +1,911 @@
+{
+  "totals": {
+    "areas": 8,
+    "modules": 85,
+    "leaves": 68,
+    "missingComponents": 0
+  },
+  "byArea": [
+    {
+      "title": "待办",
+      "modules": 5,
+      "leaves": 4,
+      "missingComponents": 0
+    },
+    {
+      "title": "营销",
+      "modules": 4,
+      "leaves": 3,
+      "missingComponents": 0
+    },
+    {
+      "title": "项目",
+      "modules": 22,
+      "leaves": 17,
+      "missingComponents": 0
+    },
+    {
+      "title": "合同与采购",
+      "modules": 7,
+      "leaves": 5,
+      "missingComponents": 0
+    },
+    {
+      "title": "钱票收支",
+      "modules": 35,
+      "leaves": 29,
+      "missingComponents": 0
+    },
+    {
+      "title": "系统",
+      "modules": 10,
+      "leaves": 8,
+      "missingComponents": 0
+    },
+    {
+      "title": "工作台",
+      "modules": 1,
+      "leaves": 1,
+      "missingComponents": 0
+    },
+    {
+      "title": "综合查询权限",
+      "modules": 1,
+      "leaves": 1,
+      "missingComponents": 0
+    }
+  ],
+  "modules": [
+    {
+      "moduleId": 340340,
+      "title": "待办",
+      "path": "/todoItem",
+      "component": "Layout",
+      "topLevel": "待办",
+      "hasChildren": true,
+      "componentExists": true,
+      "componentFile": ""
+    },
+    {
+      "moduleId": 340341,
+      "title": "我的待办",
+      "path": "todo",
+      "component": "eos/todoItem/todo/index",
+      "topLevel": "待办",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/eos/todoItem/todo/index.vue"
+    },
+    {
+      "moduleId": 340342,
+      "title": "我的已办",
+      "path": "done",
+      "component": "eos/todoItem/done/index",
+      "topLevel": "待办",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/eos/todoItem/done/index.vue"
+    },
+    {
+      "moduleId": 340527,
+      "title": "我的发起",
+      "path": "my-process-start",
+      "component": "eos/todoItem/todo/processStartedPage",
+      "topLevel": "待办",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/eos/todoItem/todo/processStartedPage.vue"
+    },
+    {
+      "moduleId": 340785,
+      "title": "抄送我的",
+      "path": "copy",
+      "component": "eos/todoItem/copy/index",
+      "topLevel": "待办",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/eos/todoItem/copy/index.vue"
+    },
+    {
+      "moduleId": 340310,
+      "title": "营销",
+      "path": "/sale",
+      "component": "Layout",
+      "topLevel": "营销",
+      "hasChildren": true,
+      "componentExists": true,
+      "componentFile": ""
+    },
+    {
+      "moduleId": 340590,
+      "title": "商机管理",
+      "path": "business-mange",
+      "component": "eos/business/index",
+      "topLevel": "营销",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/eos/business/index.vue"
+    },
+    {
+      "moduleId": 340644,
+      "title": "招标投标",
+      "path": "bid",
+      "component": "eos/bid/index",
+      "topLevel": "营销",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/eos/bid/index.vue"
+    },
+    {
+      "moduleId": 340352,
+      "title": "客商管理",
+      "path": "merchant",
+      "component": "eos/merchant/index",
+      "topLevel": "营销",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/eos/merchant/index.vue"
+    },
+    {
+      "moduleId": 340774,
+      "title": "项目",
+      "path": "/projectt",
+      "component": "Layout",
+      "topLevel": "项目",
+      "hasChildren": true,
+      "componentExists": true,
+      "componentFile": ""
+    },
+    {
+      "moduleId": 340350,
+      "title": "转化/登记",
+      "path": "project-manage",
+      "component": "ParentView",
+      "topLevel": "项目",
+      "hasChildren": true,
+      "componentExists": true,
+      "componentFile": ""
+    },
+    {
+      "moduleId": 340343,
+      "title": "项目登记",
+      "path": "project",
+      "component": "eos/project/index",
+      "topLevel": "项目",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/eos/project/index.vue"
+    },
+    {
+      "moduleId": 340504,
+      "title": "项目变更",
+      "path": "projectModify",
+      "component": "eos/project/modify/index",
+      "topLevel": "项目",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/eos/project/modify/index.vue"
+    },
+    {
+      "moduleId": 340351,
+      "title": "项目综合查询",
+      "path": "project-list1",
+      "component": "eos/project/list",
+      "topLevel": "项目",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/eos/project/list.vue"
+    },
+    {
+      "moduleId": 340445,
+      "title": "人员安排",
+      "path": "mem",
+      "component": "eos/project/mem/index",
+      "topLevel": "项目",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/eos/project/mem/index.vue"
+    },
+    {
+      "moduleId": 340634,
+      "title": "劳务分包",
+      "path": "work-branch",
+      "component": "ParentView",
+      "topLevel": "项目",
+      "hasChildren": true,
+      "componentExists": true,
+      "componentFile": ""
+    },
+    {
+      "moduleId": 340776,
+      "title": "甲方报量",
+      "path": "jfbl",
+      "component": "system/common/inDev",
+      "topLevel": "项目",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/system/common/inDev.vue"
+    },
+    {
+      "moduleId": 340598,
+      "title": "报量结算",
+      "path": "exec",
+      "component": "eos/subcontract/exec/index",
+      "topLevel": "项目",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/eos/subcontract/exec/index.vue"
+    },
+    {
+      "moduleId": 340636,
+      "title": "零星用工",
+      "path": "employee",
+      "component": "eos/subcontract/employee/index",
+      "topLevel": "项目",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/eos/subcontract/employee/index.vue"
+    },
+    {
+      "moduleId": 340605,
+      "title": "分包综合查询",
+      "path": "quantities-all",
+      "component": "eos/subcontract/search/index",
+      "topLevel": "项目",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/eos/subcontract/search/index.vue"
+    },
+    {
+      "moduleId": 340548,
+      "title": "任务进度",
+      "path": "schedule-manage",
+      "component": "ParentView",
+      "topLevel": "项目",
+      "hasChildren": true,
+      "componentExists": true,
+      "componentFile": ""
+    },
+    {
+      "moduleId": 340549,
+      "title": "任务计划",
+      "path": "schedule",
+      "component": "eos/schedule/schedule/index",
+      "topLevel": "项目",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/eos/schedule/schedule/index.vue"
+    },
+    {
+      "moduleId": 340556,
+      "title": "工作量填报",
+      "path": "process",
+      "component": "eos/schedule/process/index",
+      "topLevel": "项目",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/eos/schedule/process/index.vue"
+    },
+    {
+      "moduleId": 340563,
+      "title": "任务综合查询",
+      "path": "projectprogress/summary",
+      "component": "eos/schedule/progressSummary/index",
+      "topLevel": "项目",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/eos/schedule/progressSummary/index.vue"
+    },
+    {
+      "moduleId": 340777,
+      "title": "质量管控",
+      "path": "zlgk",
+      "component": "system/common/inDev",
+      "topLevel": "项目",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/system/common/inDev.vue"
+    },
+    {
+      "moduleId": 340792,
+      "title": "库存管理",
+      "path": "kcgl",
+      "component": "ParentView",
+      "topLevel": "项目",
+      "hasChildren": true,
+      "componentExists": true,
+      "componentFile": ""
+    },
+    {
+      "moduleId": 340606,
+      "title": "库房管理",
+      "path": "warehouse",
+      "component": "eos/warehouse/warehouse/index",
+      "topLevel": "项目",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/eos/warehouse/warehouse/index.vue"
+    },
+    {
+      "moduleId": 340613,
+      "title": "入库申请",
+      "path": "warehouseInApply",
+      "component": "eos/warehouse/warehouseInApply/index",
+      "topLevel": "项目",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/eos/warehouse/warehouseInApply/index.vue"
+    },
+    {
+      "moduleId": 340620,
+      "title": "出库申请",
+      "path": "warehouseOutapply",
+      "component": "eos/warehouse/warehouseOutapply/index",
+      "topLevel": "项目",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/eos/warehouse/warehouseOutapply/index.vue"
+    },
+    {
+      "moduleId": 340627,
+      "title": "划拨申请",
+      "path": "warehouseTransferApply",
+      "component": "eos/warehouse/warehouseTransferApply/index",
+      "topLevel": "项目",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/eos/warehouse/warehouseTransferApply/index.vue"
+    },
+    {
+      "moduleId": 340635,
+      "title": "库存盘点",
+      "path": "goods-all",
+      "component": "eos/warehouse/warehouseCheck/index",
+      "topLevel": "项目",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/eos/warehouse/warehouseCheck/index.vue"
+    },
+    {
+      "moduleId": 340367,
+      "title": "合同与采购",
+      "path": "/contract-manage",
+      "component": "Layout",
+      "topLevel": "合同与采购",
+      "hasChildren": true,
+      "componentExists": true,
+      "componentFile": ""
+    },
+    {
+      "moduleId": 340360,
+      "title": "合同拟定",
+      "path": "contract3",
+      "component": "eos/contract/index",
+      "topLevel": "合同与采购",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/eos/contract/index.vue"
+    },
+    {
+      "moduleId": 340531,
+      "title": "合同变更",
+      "path": "contractModify",
+      "component": "eos/contract/modify/index",
+      "topLevel": "合同与采购",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/eos/contract/modify/index.vue"
+    },
+    {
+      "moduleId": 340762,
+      "title": "合同综合查询",
+      "path": "contract-list",
+      "component": "eos/contract/list",
+      "topLevel": "合同与采购",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/eos/contract/list.vue"
+    },
+    {
+      "moduleId": 340775,
+      "title": "物料采购",
+      "path": "item-purchase",
+      "component": "ParentView",
+      "topLevel": "合同与采购",
+      "hasChildren": true,
+      "componentExists": true,
+      "componentFile": ""
+    },
+    {
+      "moduleId": 340516,
+      "title": "采购申请",
+      "path": "purchase-apply",
+      "component": "eos/purchase/apply/index",
+      "topLevel": "合同与采购",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/eos/purchase/apply/index.vue"
+    },
+    {
+      "moduleId": 340517,
+      "title": "采购综合查询",
+      "path": "purchase-apply-list",
+      "component": "eos/purchase/apply/list",
+      "topLevel": "合同与采购",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/eos/purchase/apply/list.vue"
+    },
+    {
+      "moduleId": 340695,
+      "title": "钱票收支",
+      "path": "/sale-payment1",
+      "component": "Layout",
+      "topLevel": "钱票收支",
+      "hasChildren": true,
+      "componentExists": true,
+      "componentFile": ""
+    },
+    {
+      "moduleId": 340474,
+      "title": "资金计划",
+      "path": "fund-plan",
+      "component": "ParentView",
+      "topLevel": "钱票收支",
+      "hasChildren": true,
+      "componentExists": true,
+      "componentFile": ""
+    },
+    {
+      "moduleId": 340396,
+      "title": "资金计划",
+      "path": "fund",
+      "component": "eos/fundPlan/index",
+      "topLevel": "钱票收支",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/eos/fundPlan/index.vue"
+    },
+    {
+      "moduleId": 340475,
+      "title": "资金计划综合查询",
+      "path": "fund-summary",
+      "component": "eos/fundPlan/summary",
+      "topLevel": "钱票收支",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/eos/fundPlan/summary.vue"
+    },
+    {
+      "moduleId": 340410,
+      "title": "资金计划收入",
+      "path": "income",
+      "component": "project/income/index",
+      "topLevel": "钱票收支",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/project/income/index.vue"
+    },
+    {
+      "moduleId": 340459,
+      "title": "资金计划支出",
+      "path": "outcome",
+      "component": "project/outcome/index",
+      "topLevel": "钱票收支",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/project/outcome/index.vue"
+    },
+    {
+      "moduleId": 340746,
+      "title": "应收应付查询",
+      "path": "analysis-subject",
+      "component": "eos/analysis/subject",
+      "topLevel": "钱票收支",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/eos/analysis/subject.vue"
+    },
+    {
+      "moduleId": 340567,
+      "title": "保证金退付",
+      "path": "earnestmoney",
+      "component": "ParentView",
+      "topLevel": "钱票收支",
+      "hasChildren": true,
+      "componentExists": true,
+      "componentFile": ""
+    },
+    {
+      "moduleId": 340568,
+      "title": "保证金申请",
+      "path": "earnestMoney",
+      "component": "eos/earnest/apply/index",
+      "topLevel": "钱票收支",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/eos/earnest/apply/index.vue"
+    },
+    {
+      "moduleId": 340569,
+      "title": "保证金退还",
+      "path": "earnestReturn",
+      "component": "eos/earnest/return/index",
+      "topLevel": "钱票收支",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/eos/earnest/return/index.vue"
+    },
+    {
+      "moduleId": 340570,
+      "title": "保证金查询",
+      "path": "earnestSelect",
+      "component": "eos/earnest/search/index",
+      "topLevel": "钱票收支",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/eos/earnest/search/index.vue"
+    },
+    {
+      "moduleId": 340359,
+      "title": "预算制订",
+      "path": "data-manage",
+      "component": "ParentView",
+      "topLevel": "钱票收支",
+      "hasChildren": true,
+      "componentExists": true,
+      "componentFile": ""
+    },
+    {
+      "moduleId": 340703,
+      "title": "预算科目",
+      "path": "type",
+      "component": "eos/budget/type/index",
+      "topLevel": "钱票收支",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/eos/budget/type/index.vue"
+    },
+    {
+      "moduleId": 340369,
+      "title": "预算制订",
+      "path": "budget",
+      "component": "eos/budget/index",
+      "topLevel": "钱票收支",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/eos/budget/index.vue"
+    },
+    {
+      "moduleId": 340778,
+      "title": "预算综合查询",
+      "path": "yszhcx",
+      "component": "eos/budget/list",
+      "topLevel": "钱票收支",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/eos/budget/list.vue"
+    },
+    {
+      "moduleId": 340503,
+      "title": "预算变更",
+      "path": "budgetModify",
+      "component": "eos/budget/modify/index",
+      "topLevel": "钱票收支",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/eos/budget/modify/index.vue"
+    },
+    {
+      "moduleId": 340492,
+      "title": "报销综合查询",
+      "path": "expense-list",
+      "component": "eos/expense/search",
+      "topLevel": "钱票收支",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/eos/expense/search.vue"
+    },
+    {
+      "moduleId": 340748,
+      "title": "备用金借还",
+      "path": "petty-cash-manage",
+      "component": "ParentView",
+      "topLevel": "钱票收支",
+      "hasChildren": true,
+      "componentExists": true,
+      "componentFile": ""
+    },
+    {
+      "moduleId": 340431,
+      "title": "借款申请",
+      "path": "loan",
+      "component": "eos/repayment/loan/index",
+      "topLevel": "钱票收支",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/eos/repayment/loan/index.vue"
+    },
+    {
+      "moduleId": 340466,
+      "title": "直接还款",
+      "path": "repay",
+      "component": "eos/repayment/repay/index",
+      "topLevel": "钱票收支",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/eos/repayment/repay/index.vue"
+    },
+    {
+      "moduleId": 340480,
+      "title": "借还款综合查询",
+      "path": "IntegratedQuery",
+      "component": "eos/repayment/search/index",
+      "topLevel": "钱票收支",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/eos/repayment/search/index.vue"
+    },
+    {
+      "moduleId": 340481,
+      "title": "还款确认",
+      "path": "payBackConfirm",
+      "component": "eos/repayment/backConfirm/index",
+      "topLevel": "钱票收支",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/eos/repayment/backConfirm/index.vue"
+    },
+    {
+      "moduleId": 340494,
+      "title": "付款综合查询",
+      "path": "payment-list",
+      "component": "eos/purchase/payment/list",
+      "topLevel": "钱票收支",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/eos/purchase/payment/list.vue"
+    },
+    {
+      "moduleId": 340382,
+      "title": "个人报销",
+      "path": "expense",
+      "component": "eos/expense/index",
+      "topLevel": "钱票收支",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/eos/expense/index.vue"
+    },
+    {
+      "moduleId": 340483,
+      "title": "业务支付",
+      "path": "payment",
+      "component": "eos/purchase/payment/index",
+      "topLevel": "钱票收支",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/eos/purchase/payment/index.vue"
+    },
+    {
+      "moduleId": 340389,
+      "title": "成本上报",
+      "path": "cost-manage",
+      "component": "eos/cost/index",
+      "topLevel": "钱票收支",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/eos/cost/index.vue"
+    },
+    {
+      "moduleId": 340496,
+      "title": "收款登记",
+      "path": "payment-real",
+      "component": "eos/invoice/paymentReal/index",
+      "topLevel": "钱票收支",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/eos/invoice/paymentReal/index.vue"
+    },
+    {
+      "moduleId": 340539,
+      "title": "退款登记",
+      "path": "refund",
+      "component": "eos/purchase/refund/index",
+      "topLevel": "钱票收支",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/eos/purchase/refund/index.vue"
+    },
+    {
+      "moduleId": 340780,
+      "title": "支付综合查询",
+      "path": "zfzhcx",
+      "component": "eos/paymentQuery/index",
+      "topLevel": "钱票收支",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/eos/paymentQuery/index.vue"
+    },
+    {
+      "moduleId": 77777,
+      "title": "业务支付",
+      "path": "zf",
+      "component": "eos/purchase/pay/index",
+      "topLevel": "钱票收支",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/eos/purchase/pay/index.vue"
+    },
+    {
+      "moduleId": 340710,
+      "title": "票据",
+      "path": "invoice-manage",
+      "component": "ParentView",
+      "topLevel": "钱票收支",
+      "hasChildren": true,
+      "componentExists": true,
+      "componentFile": ""
+    },
+    {
+      "moduleId": 340687,
+      "title": "开票申请",
+      "path": "make1",
+      "component": "eos/invoice/make/index",
+      "topLevel": "钱票收支",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/eos/invoice/make/index.vue"
+    },
+    {
+      "moduleId": 340711,
+      "title": "票据登记",
+      "path": "get1",
+      "component": "eos/invoice/get/index",
+      "topLevel": "钱票收支",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/eos/invoice/get/index.vue"
+    },
+    {
+      "moduleId": 340417,
+      "title": "票据综合查询",
+      "path": "invoice",
+      "component": "eos/invoice/search/index",
+      "topLevel": "钱票收支",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/eos/invoice/search/index.vue"
+    },
+    {
+      "moduleId": 340403,
+      "title": "变更历史",
+      "path": "history",
+      "component": "eos/change/history/index",
+      "topLevel": "钱票收支",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/eos/change/history/index.vue"
+    },
+    {
+      "moduleId": 340309,
+      "title": "系统",
+      "path": "/system",
+      "component": "Layout",
+      "topLevel": "系统",
+      "hasChildren": true,
+      "componentExists": true,
+      "componentFile": ""
+    },
+    {
+      "moduleId": 340782,
+      "title": "组织机构",
+      "path": "zzjg",
+      "component": "enterprise/Contacts/contactsOp",
+      "topLevel": "系统",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/enterprise/Contacts/contactsOp.vue"
+    },
+    {
+      "moduleId": 340597,
+      "title": "角色权限",
+      "path": "menu-perms",
+      "component": "enterprise/modulePerms/index",
+      "topLevel": "系统",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/enterprise/modulePerms/index.vue"
+    },
+    {
+      "moduleId": 340314,
+      "title": "基础数据",
+      "path": "dict",
+      "component": "system/dict/index",
+      "topLevel": "系统",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/system/dict/index.vue"
+    },
+    {
+      "moduleId": 340771,
+      "title": "流程设置",
+      "path": "module_manage",
+      "component": "system/menu/index",
+      "topLevel": "系统",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/system/menu/index.vue"
+    },
+    {
+      "moduleId": 340315,
+      "title": "参数设置",
+      "path": "config",
+      "component": "system/config/index",
+      "topLevel": "系统",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/system/config/index.vue"
+    },
+    {
+      "moduleId": 340316,
+      "title": "通知公告",
+      "path": "notice",
+      "component": "system/notice/index",
+      "topLevel": "系统",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/system/notice/index.vue"
+    },
+    {
+      "moduleId": 340317,
+      "title": "日志管理",
+      "path": "log",
+      "component": "ParentView",
+      "topLevel": "系统",
+      "hasChildren": true,
+      "componentExists": true,
+      "componentFile": ""
+    },
+    {
+      "moduleId": 340318,
+      "title": "操作日志",
+      "path": "operlog",
+      "component": "system/log/operlog/index",
+      "topLevel": "系统",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/system/log/operlog/index.vue"
+    },
+    {
+      "moduleId": 340319,
+      "title": "登录日志",
+      "path": "logininfor",
+      "component": "system/log/logininfor/index",
+      "topLevel": "系统",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": "src/views/system/log/logininfor/index.vue"
+    },
+    {
+      "moduleId": 340786,
+      "title": "工作台",
+      "path": "/gzt",
+      "component": "Layout",
+      "topLevel": "工作台",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": ""
+    },
+    {
+      "moduleId": 343098,
+      "title": "综合查询权限",
+      "path": "/#",
+      "component": "Layout",
+      "topLevel": "综合查询权限",
+      "hasChildren": false,
+      "componentExists": true,
+      "componentFile": ""
+    }
+  ],
+  "missingComponents": []
+}

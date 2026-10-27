@@ -4,7 +4,12 @@ import storage from 'store'
 import { VueAxios } from './axios.js'
 import errorCode from './errorCode.js'
 import { ACCESS_TOKEN } from '/src/store/mutation-types.js'
-import notification from 'ant-design-vue/es/notification'
+
+const notifyError = options => {
+  import('ant-design-vue/es/notification').then(module => {
+    module.default.error(options)
+  })
+}
 
 // 创建 axios 实例
 const request = axios.create({
@@ -24,7 +29,7 @@ const errorHandler = error => {
   } else if (message.includes('Request failed with status code')) {
     message = '系统接口' + message.substr(message.length - 3) + '异常'
   }
-  notification.error({
+  notifyError({
     message: message,
     duration: 5
   })
@@ -111,13 +116,13 @@ request.interceptors.response.use(res => {
     })
   } else if (code === 500) {
     if (requestUrl !== '/login') {
-      notification.error({
+      notifyError({
         message: msg,
         description: msg
       })
     }
   } else if (code !== 200) {
-    notification.error({
+    notifyError({
       message: msg
     })
   } else {

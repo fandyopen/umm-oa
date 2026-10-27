@@ -243,9 +243,9 @@ const user = {
       })
     },
     // 获取单个App（默认QS应用）
-    getTenantAppId({ commit }) {
+    getTenantAppId({ commit, state }) {
       getAppList().then(res => {
-        if (res.data.apps.length === 1) {
+        if (!state.tenantAppId && res.data.apps.length > 0) {
           commit('SET_TENANT_APP_ID', res.data.apps[0].tenantAppId)
         }
       })

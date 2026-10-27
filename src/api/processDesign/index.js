@@ -147,7 +147,7 @@ export function activitiProcess(params) {
   return request({
     url: '/activiti/process/complete',
     method: 'post',
-    params
+    data: params
   })
 }
 

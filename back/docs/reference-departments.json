@@ -1,0 +1,70 @@
+{
+  "msg": "操作成功",
+  "code": 200,
+  "data": [
+    {
+      "id": 322,
+      "label": "海豹科技有限公司",
+      "deptKey": null,
+      "children": [
+        {
+          "id": 323,
+          "label": "总经办",
+          "deptKey": "dept_zjb"
+        },
+        {
+          "id": 324,
+          "label": "综合部",
+          "deptKey": "dept_zhb"
+        },
+        {
+          "id": 325,
+          "label": "财务部",
+          "deptKey": "dept_cwb"
+        },
+        {
+          "id": 326,
+          "label": "销售部",
+          "deptKey": "dept_xsb"
+        },
+        {
+          "id": 327,
+          "label": "北京分公司",
+          "deptKey": "dept_bjfgs"
+        },
+        {
+          "id": 328,
+          "label": "上海分公司",
+          "deptKey": "dept_shfgs"
+        },
+        {
+          "id": 329,
+          "label": "软件开发部",
+          "deptKey": "dept_rjkfb"
+        },
+        {
+          "id": 330,
+          "label": "项目管理部",
+          "deptKey": "dept_xmglb",
+          "children": [
+            {
+              "id": 332,
+              "label": "四川项目组",
+              "deptKey": "dept_cdxmz"
+            },
+            {
+              "id": 333,
+              "label": "云南项目组",
+              "deptKey": "dept_cdxmz"
+            },
+            {
+              "id": 334,
+              "label": "湖北项目组",
+              "deptKey": "dept_lsxmz"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

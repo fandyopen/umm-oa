@@ -50,6 +50,21 @@
 </template>
 
 <script>
+import store from '/src/store/index.js'
+import { hasModuleAction } from '/src/utils/modulePermission.js'
+
+const ACTION_BY_LABEL = {
+  新增: 'add',
+  修改: 'edit',
+  删除: 'remove',
+  导出: 'export',
+  跟踪: 'track',
+  转化项目: 'transfer',
+  项目拆分: 'split',
+  通知: 'notify',
+  确认还款: 'confirm'
+}
+
 export default {
   name: 'SActionColumns',
   props: {
@@ -64,13 +79,22 @@ export default {
     }
   },
   computed: {
+    visibleActions() {
+      const permissions = store.getters.permissions || []
+      return this.actions.filter(item => {
+        const action = item.actionCode || ACTION_BY_LABEL[item.label]
+        return !action || hasModuleAction(permissions, this.$route.meta, action)
+      })
+    },
     // 操作列第一个按钮，是对象
     actionFirst() {
-      return !this.isEmpty(this.actions) ? this.actions[0] : null
+      return !this.isEmpty(this.visibleActions) ? this.visibleActions[0] : null
     },
     // 操作列更多按钮，是数组
     actionMore() {
-      return !this.isEmpty(this.actions) && this.actions.length > 1 ? this.actions.slice(1) : null
+      return !this.isEmpty(this.visibleActions) && this.visibleActions.length > 1
+        ? this.visibleActions.slice(1)
+        : null
     }
   },
   methods: {

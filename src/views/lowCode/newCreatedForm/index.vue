@@ -6,7 +6,7 @@
         <a class="right">了解表单和仪表盘</a>
       </div>
       <div class="template">
-        <div class="t-item">
+        <div class="t-item" @click="createFlowForm">
           <div class="entry-icon-flow">
             <div class="entry-create-icon flow"></div>
             <div class="entry-name">新建流程表单</div>
@@ -40,7 +40,21 @@ export default {
   },
   methods: {
     createForm() {
-      this.$router.push('/saas/formDesign')
+      this.$router.push({
+        name: 'formDesign',
+        params: {
+          id: this.$route.params.id || this.$store.getters.tenantAppId,
+          formid: 'null'
+        }
+      })
+    },
+    createFlowForm() {
+      this.$router.push({
+        name: 'processFormDesign',
+        params: {
+          id: this.$route.params.id || this.$store.getters.tenantAppId
+        }
+      })
     }
   }
 }

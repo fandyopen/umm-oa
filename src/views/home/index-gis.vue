@@ -52,10 +52,35 @@ export default {
       // }
     }
   },
-  mounted() {
+  async mounted() {
+    await this.ensureCesium()
     this.ready()
   },
   methods: {
+    ensureCesium() {
+      if (window.Cesium) {
+        return Promise.resolve(window.Cesium)
+      }
+      if (!document.querySelector('link[data-cesium-widgets]')) {
+        const stylesheet = document.createElement('link')
+        stylesheet.rel = 'stylesheet'
+        stylesheet.href = '/cesium/Widgets/widgets.css'
+        stylesheet.dataset.cesiumWidgets = 'true'
+        document.head.appendChild(stylesheet)
+      }
+      if (window.__cesiumLoader) {
+        return window.__cesiumLoader
+      }
+      window.__cesiumLoader = new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = '/cesium/Cesium.js'
+        script.async = true
+        script.onload = () => resolve(window.Cesium)
+        script.onerror = () => reject(new Error('Unable to load Cesium'))
+        document.body.appendChild(script)
+      })
+      return window.__cesiumLoader
+    },
     ready(cesiumInstance) {
       // const { Cesium, viewer } = cesiumInstance
       // eslint-disable-next-line no-undef

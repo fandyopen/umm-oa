@@ -260,30 +260,38 @@ export default {
     },
     // 根据权限去掉相应模块 => 更新optionList里面的内容
     toshow() {
-      const perms = this.$store.getters.userPermission
+      const perms = this.$store.getters.userPermission || {}
+      const globalPermissions = this.$store.getters.permissions || []
+      const isSuperAdmin =
+        (this.$store.getters.roles || []).includes('admin') ||
+        globalPermissions.includes('*:*:*') ||
+        perms.is_admin ||
+        perms.is_owner
+      const teamReadPerms = isSuperAdmin || perms.has_team_read_perms
+      const roleReadPerms = isSuperAdmin || perms.has_role_read_perms
       // 先判断有没有管理员这个模块
-      if (!perms.is_admin && !perms.is_owner) {
+      if (!isSuperAdmin) {
         this.optionList.splice(
           this.optionList.findIndex(item => item === '管理员'),
           1
         )
-        if (!perms.has_team_read_perms) {
+        if (!teamReadPerms) {
           this.optionList.splice(
             this.optionList.findIndex(item => item === '组织架构'),
             1
           )
-          if (!perms.has_role_read_perms) {
+          if (!roleReadPerms) {
             this.optionList.splice(
               this.optionList.findIndex(item => item === '角色'),
               1
             )
           }
-        } else if (!perms.has_role_read_perms) {
+        } else if (!roleReadPerms) {
           this.optionList.splice(
             this.optionList.findIndex(item => item === '角色'),
             1
           )
-          if (!perms.has_team_read_perms) {
+          if (!teamReadPerms) {
             this.optionList.splice(
               this.optionList.findIndex(item => item === '组织架构'),
               1
@@ -291,23 +299,23 @@ export default {
           }
         }
       } else {
-        if (!perms.has_team_read_perms) {
+        if (!teamReadPerms) {
           this.optionList.splice(
             this.optionList.findIndex(item => item === '组织架构'),
             1
           )
-          if (!perms.has_role_read_perms) {
+          if (!roleReadPerms) {
             this.optionList.splice(
               this.optionList.findIndex(item => item === '角色'),
               1
             )
           }
-        } else if (!perms.has_role_read_perms) {
+        } else if (!roleReadPerms) {
           this.optionList.splice(
             this.optionList.findIndex(item => item === '角色'),
             1
           )
-          if (!perms.has_team_read_perms) {
+          if (!teamReadPerms) {
             this.optionList.splice(
               this.optionList.findIndex(item => item === '组织架构'),
               1

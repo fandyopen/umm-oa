@@ -1,4 +1,13 @@
+DROP TABLE IF EXISTS sys_bootstrap_marker;
+DROP TABLE IF EXISTS oa_workflow_request;
+DROP TABLE IF EXISTS oa_module_action_flow;
 DROP TABLE IF EXISTS biz_record;
+DROP TABLE IF EXISTS oa_form_submission;
+DROP TABLE IF EXISTS oa_form_definition;
+DROP TABLE IF EXISTS oa_process_design;
+DROP TABLE IF EXISTS oa_merchant_account;
+DROP TABLE IF EXISTS oa_merchant_contact;
+DROP TABLE IF EXISTS oa_merchant;
 DROP TABLE IF EXISTS oa_process_task;
 DROP TABLE IF EXISTS oa_process_instance;
 DROP TABLE IF EXISTS oa_process_definition;
@@ -24,8 +33,12 @@ DROP TABLE IF EXISTS oa_contract_item;
 DROP TABLE IF EXISTS oa_contract;
 DROP TABLE IF EXISTS oa_project_member;
 DROP TABLE IF EXISTS oa_project;
+DROP TABLE IF EXISTS sys_admin_group_role;
+DROP TABLE IF EXISTS sys_admin_group_dept;
+DROP TABLE IF EXISTS sys_admin_group_app;
 DROP TABLE IF EXISTS sys_admin_group_member;
 DROP TABLE IF EXISTS sys_admin_group;
+DROP TABLE IF EXISTS sys_admin_identity;
 DROP TABLE IF EXISTS sys_app_module;
 DROP TABLE IF EXISTS sys_app;
 DROP TABLE IF EXISTS sys_oper_log;
@@ -35,11 +48,20 @@ DROP TABLE IF EXISTS sys_config;
 DROP TABLE IF EXISTS sys_dict_data;
 DROP TABLE IF EXISTS sys_dict_type;
 DROP TABLE IF EXISTS sys_role_menu;
+DROP TABLE IF EXISTS sys_role_module;
+DROP TABLE IF EXISTS sys_role_module_action;
+DROP TABLE IF EXISTS sys_module_action;
+DROP TABLE IF EXISTS sys_dept_module;
+DROP TABLE IF EXISTS sys_role_group_member;
+DROP TABLE IF EXISTS sys_role_group;
+DROP TABLE IF EXISTS sys_module;
 DROP TABLE IF EXISTS sys_menu;
 DROP TABLE IF EXISTS sys_user_post;
 DROP TABLE IF EXISTS sys_post;
 DROP TABLE IF EXISTS sys_user_role;
 DROP TABLE IF EXISTS sys_role;
+DROP TABLE IF EXISTS sys_dept_leader;
+DROP TABLE IF EXISTS sys_dept_principal;
 DROP TABLE IF EXISTS sys_user;
 DROP TABLE IF EXISTS sys_dept;
 DROP TABLE IF EXISTS sys_tenant;
@@ -69,6 +91,18 @@ CREATE TABLE sys_dept (
     update_time DATETIME
 );
 
+CREATE TABLE sys_dept_principal (
+    dept_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    PRIMARY KEY (dept_id, user_id)
+);
+
+CREATE TABLE sys_dept_leader (
+    dept_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    PRIMARY KEY (dept_id, user_id)
+);
+
 CREATE TABLE sys_user (
     user_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     tenant_id BIGINT NOT NULL DEFAULT 1,
@@ -82,6 +116,8 @@ CREATE TABLE sys_user (
     avatar VARCHAR(512),
     status VARCHAR(1) NOT NULL DEFAULT '0',
     del_flag VARCHAR(1) NOT NULL DEFAULT '0',
+    is_admin VARCHAR(1) NOT NULL DEFAULT '0',
+    is_owner VARCHAR(1) NOT NULL DEFAULT '0',
     login_ip VARCHAR(64),
     login_date DATETIME,
     create_by VARCHAR(64),
@@ -143,6 +179,76 @@ CREATE TABLE sys_menu (
     create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE sys_module (
+    module_id BIGINT PRIMARY KEY,
+    tenant_id BIGINT NOT NULL DEFAULT 1,
+    parent_id BIGINT NOT NULL DEFAULT 0,
+    module_name VARCHAR(200) NOT NULL,
+    route_name VARCHAR(128),
+    path VARCHAR(255),
+    component VARCHAR(255),
+    icon VARCHAR(100),
+    module_sort INT NOT NULL DEFAULT 0,
+    hidden INT NOT NULL DEFAULT 0,
+    perms VARCHAR(128),
+    has_flow INT NOT NULL DEFAULT 1,
+    flow_conditions TEXT,
+    no_cache INT NOT NULL DEFAULT 0,
+    is_app VARCHAR(1),
+    is_frame VARCHAR(1),
+    query VARCHAR(255),
+    redirect VARCHAR(255),
+    status VARCHAR(1) NOT NULL DEFAULT '0',
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE sys_module_action (
+    module_id BIGINT NOT NULL,
+    action_code VARCHAR(32) NOT NULL,
+    action_name VARCHAR(64) NOT NULL,
+    permission_code VARCHAR(128),
+    handler_key VARCHAR(128),
+    config_json TEXT,
+    builtin INT NOT NULL DEFAULT 0,
+    status VARCHAR(1) NOT NULL DEFAULT '0',
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME,
+    PRIMARY KEY (module_id, action_code)
+);
+
+CREATE TABLE sys_role_module_action (
+    role_id BIGINT NOT NULL,
+    module_id BIGINT NOT NULL,
+    action_code VARCHAR(32) NOT NULL,
+    PRIMARY KEY (role_id, module_id, action_code)
+);
+
+CREATE TABLE sys_role_module (
+    role_id BIGINT NOT NULL,
+    module_id BIGINT NOT NULL,
+    PRIMARY KEY (role_id, module_id)
+);
+
+CREATE TABLE sys_dept_module (
+    dept_id BIGINT NOT NULL,
+    module_id BIGINT NOT NULL,
+    PRIMARY KEY (dept_id, module_id)
+);
+
+CREATE TABLE sys_role_group (
+    group_id BIGINT PRIMARY KEY,
+    tenant_id BIGINT NOT NULL DEFAULT 1,
+    group_name VARCHAR(100) NOT NULL,
+    sort INT NOT NULL DEFAULT 0,
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE sys_role_group_member (
+    group_id BIGINT NOT NULL,
+    role_id BIGINT NOT NULL,
+    PRIMARY KEY (group_id, role_id)
+);
+
 CREATE TABLE sys_role_menu (
     role_id BIGINT NOT NULL,
     menu_id BIGINT NOT NULL,
@@ -154,7 +260,8 @@ CREATE TABLE sys_dict_type (
     dict_name VARCHAR(100) NOT NULL,
     dict_type VARCHAR(100) NOT NULL UNIQUE,
     status VARCHAR(1) NOT NULL DEFAULT '0',
-    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    remark VARCHAR(500)
 );
 
 CREATE TABLE sys_dict_data (
@@ -242,6 +349,12 @@ CREATE TABLE sys_admin_group (
     group_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     group_name VARCHAR(100) NOT NULL,
     tenant_id BIGINT NOT NULL DEFAULT 1,
+    is_add VARCHAR(1) NOT NULL DEFAULT '0',
+    role_read VARCHAR(1) NOT NULL DEFAULT '0',
+    role_manage VARCHAR(1) NOT NULL DEFAULT '0',
+    dept_read VARCHAR(1) NOT NULL DEFAULT '0',
+    dept_manage VARCHAR(1) NOT NULL DEFAULT '0',
+    sort INT NOT NULL DEFAULT 0,
     create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -249,6 +362,35 @@ CREATE TABLE sys_admin_group_member (
     group_id BIGINT NOT NULL,
     user_id BIGINT NOT NULL,
     PRIMARY KEY (group_id, user_id)
+);
+
+CREATE TABLE sys_admin_group_app (
+    group_id BIGINT NOT NULL,
+    tenant_app_id BIGINT NOT NULL,
+    PRIMARY KEY (group_id, tenant_app_id)
+);
+
+CREATE TABLE sys_admin_group_dept (
+    group_id BIGINT NOT NULL,
+    dept_id BIGINT NOT NULL,
+    PRIMARY KEY (group_id, dept_id)
+);
+
+CREATE TABLE sys_admin_group_role (
+    group_id BIGINT NOT NULL,
+    role_id BIGINT NOT NULL,
+    PRIMARY KEY (group_id, role_id)
+);
+
+CREATE TABLE sys_admin_identity (
+    user_id BIGINT PRIMARY KEY,
+    user_name VARCHAR(64) NOT NULL,
+    nick_name VARCHAR(64) NOT NULL,
+    email VARCHAR(128),
+    phonenumber VARCHAR(32),
+    sex VARCHAR(1) DEFAULT '0',
+    status VARCHAR(1) DEFAULT '0',
+    sort INT NOT NULL DEFAULT 0
 );
 
 CREATE TABLE oa_project (
@@ -541,6 +683,42 @@ CREATE TABLE oa_business_opportunity (
     create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE oa_merchant (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    tenant_id BIGINT NOT NULL DEFAULT 1,
+    serial VARCHAR(64),
+    name VARCHAR(200) NOT NULL,
+    type VARCHAR(64),
+    address VARCHAR(500),
+    tax_number VARCHAR(128),
+    taxpayer_type VARCHAR(64),
+    remark VARCHAR(1000),
+    attachment TEXT,
+    status VARCHAR(1) NOT NULL DEFAULT '0',
+    create_by VARCHAR(64),
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME
+);
+
+CREATE TABLE oa_merchant_contact (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    merchant_id BIGINT NOT NULL,
+    name VARCHAR(100),
+    phone VARCHAR(32),
+    email VARCHAR(128),
+    position VARCHAR(100),
+    remark VARCHAR(500)
+);
+
+CREATE TABLE oa_merchant_account (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    merchant_id BIGINT NOT NULL,
+    account VARCHAR(100),
+    account_name VARCHAR(200),
+    bank VARCHAR(200),
+    remark VARCHAR(500)
+);
+
 CREATE TABLE oa_todo (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     tenant_id BIGINT NOT NULL DEFAULT 1,
@@ -602,10 +780,86 @@ CREATE TABLE biz_record (
     update_time DATETIME
 );
 
+CREATE TABLE oa_form_definition (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    tenant_id BIGINT NOT NULL DEFAULT 1,
+    tenant_app_id BIGINT,
+    form_key VARCHAR(100) NOT NULL UNIQUE,
+    parent_key VARCHAR(100),
+    form_type VARCHAR(20) NOT NULL DEFAULT 'form',
+    flow_name VARCHAR(200) NOT NULL,
+    icon INT NOT NULL DEFAULT 0,
+    basic_setting TEXT,
+    form_data TEXT,
+    process_data TEXT,
+    status VARCHAR(32) NOT NULL DEFAULT 'published',
+    create_by VARCHAR(64),
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME
+);
+
+CREATE TABLE oa_form_submission (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    tenant_id BIGINT NOT NULL DEFAULT 1,
+    tenant_app_id BIGINT,
+    form_key VARCHAR(100) NOT NULL,
+    data_json TEXT,
+    create_by VARCHAR(64),
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE oa_process_design (
+    id VARCHAR(128) PRIMARY KEY,
+    tenant_id BIGINT NOT NULL DEFAULT 1,
+    tenant_app_id BIGINT,
+    menu_id BIGINT,
+    menu_name VARCHAR(200),
+    process_data TEXT,
+    status VARCHAR(32) NOT NULL DEFAULT 'published',
+    create_by VARCHAR(64),
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME
+);
+
+CREATE TABLE oa_module_action_flow (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    tenant_id BIGINT NOT NULL DEFAULT 1,
+    tenant_app_id BIGINT NOT NULL DEFAULT 1,
+    module_id BIGINT NOT NULL,
+    action_code VARCHAR(64) NOT NULL,
+    process_design_id VARCHAR(128) NOT NULL,
+    approval_enabled INT NOT NULL DEFAULT 1,
+    create_by VARCHAR(64),
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME,
+    UNIQUE (tenant_app_id, module_id, action_code)
+);
+
+CREATE TABLE oa_workflow_request (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    tenant_id BIGINT NOT NULL DEFAULT 1,
+    module_id BIGINT NOT NULL,
+    action_code VARCHAR(64) NOT NULL,
+    title VARCHAR(200) NOT NULL,
+    payload_json TEXT,
+    status VARCHAR(32) NOT NULL DEFAULT 'running',
+    process_instance_id VARCHAR(128),
+    process_task_id VARCHAR(128),
+    process_task_name VARCHAR(200),
+    handler_key VARCHAR(128),
+    config_json TEXT,
+    result_json TEXT,
+    create_by VARCHAR(64),
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME,
+    complete_time DATETIME
+);
+
 CREATE INDEX idx_oa_project_tenant ON oa_project (tenant_id, status);
 CREATE INDEX idx_oa_contract_project ON oa_contract (project_id);
 CREATE INDEX idx_oa_purchase_project ON oa_purchase_apply (project_id);
 CREATE INDEX idx_oa_expense_project ON oa_expense (project_id);
 CREATE INDEX idx_oa_todo_user ON oa_todo (user_id, status);
 CREATE INDEX idx_biz_record_module ON biz_record (module, business_key);
+CREATE INDEX idx_oa_workflow_request_instance ON oa_workflow_request (process_instance_id);
 

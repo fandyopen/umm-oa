@@ -16,7 +16,6 @@ import Ellipsis from '/src/components/Ellipsis/Ellipsis.vue'
 import STable from '/src/components/Table/index.jsx'
 import SSearch from '/src/components/Form/Search.vue'
 
-import BusReApply from '../todo/busReApply.vue'
 import BusDetail from '../todo/busDetail.vue'
 
 export default {
@@ -155,29 +154,6 @@ export default {
     },
     // 查看审批历史
     handleProcessHistory,
-    handleReApply(todoItem) {
-      const busItem = busFlowMap[todoItem.businessType]
-      this.$createAntdDrawer({
-        stopPropagation: true,
-        drawerProps: {
-          title: todoItem.taskName,
-          width: '85%',
-          maskClosable: true
-        },
-        content: {
-          template: BusReApply,
-          props: {
-            todoItem,
-            busReApplyCompName: busItem.busReApplyCompName
-          },
-          on: {
-            ok: () => {
-              this.$refs.table.refresh(true)
-            }
-          }
-        }
-      })
-    },
     // 已读事件
     handleReadClick(item) {
       updateReadUsers(item.workflowId, item.taskId, 1).then(res => {

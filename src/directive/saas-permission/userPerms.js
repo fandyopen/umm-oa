@@ -6,13 +6,16 @@ import store from '/src/store/index.js'
 const userPerms = {
   inserted(el, binding, vnode) {
     const { bindingPerms } = binding.value
-    const perms = store.getters.userPermission
-    const isAdmin = perms.is_admin
-    const isOwner = perms.is_owner
-    const teamReadPerms = perms.has_team_read_perms
-    const teamMangePerms = perms.has_team_manage_perms
-    const roleReadPerms = perms.has_role_read_perms
-    const roleManagePerms = perms.has_role_manage_perms
+    const perms = store.getters.userPermission || {}
+    const roles = store.getters.roles || []
+    const globalPermissions = store.getters.permissions || []
+    const isSuperAdmin = roles.includes('admin') || globalPermissions.includes('*:*:*')
+    const isAdmin = isSuperAdmin || perms.is_admin
+    const isOwner = isSuperAdmin || perms.is_owner
+    const teamReadPerms = isSuperAdmin || perms.has_team_read_perms
+    const teamMangePerms = isSuperAdmin || perms.has_team_manage_perms
+    const roleReadPerms = isSuperAdmin || perms.has_role_read_perms
+    const roleManagePerms = isSuperAdmin || perms.has_role_manage_perms
     // 存在才可设置
     if (bindingPerms && typeof String && bindingPerms.length > 0) {
       switch (bindingPerms) {

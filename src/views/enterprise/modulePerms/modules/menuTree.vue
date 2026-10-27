@@ -1,6 +1,6 @@
 <!-- 菜单树 -->
 <template>
-  <a-drawer width="35%" :label-col="4" :wrapper-col="14" :visible="open" @close="onClose">
+  <a-drawer width="42%" :label-col="4" :wrapper-col="14" :visible="open" @close="onClose">
     <a-divider orientation="left">
       <b>{{ formTitle }}</b>
     </a-divider>
@@ -53,7 +53,7 @@ export default {
         deptId: undefined,
         roleId: undefined,
         tenantModuleIds: [],
-        menuCheckStrictly: true
+        menuCheckStrictly: false
       },
       open: false,
       menuExpand: false,
@@ -198,7 +198,7 @@ export default {
         deptId: undefined,
         roleId: undefined,
         tenantModuleIds: [],
-        menuCheckStrictly: true
+        menuCheckStrictly: false
       }
     },
     /** 修改按钮操作 */

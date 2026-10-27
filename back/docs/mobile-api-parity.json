@@ -1,0 +1,278 @@
+{
+  "total": 68,
+  "missing": 0,
+  "endpoints": [
+    {
+      "api": "/WX/authLogin",
+      "mapped": true
+    },
+    {
+      "api": "/WX/wxlogin",
+      "mapped": true
+    },
+    {
+      "api": "/activiti/process/listFlowElementsValid",
+      "mapped": true
+    },
+    {
+      "api": "/activiti/process/listHistory",
+      "mapped": true
+    },
+    {
+      "api": "/activiti/workflow/list/start",
+      "mapped": true
+    },
+    {
+      "api": "/captcha/check",
+      "mapped": true
+    },
+    {
+      "api": "/captcha/get",
+      "mapped": true
+    },
+    {
+      "api": "/captchaImage",
+      "mapped": true
+    },
+    {
+      "api": "/dingDing/auth/getConfig",
+      "mapped": true
+    },
+    {
+      "api": "/getAppRouters",
+      "mapped": true
+    },
+    {
+      "api": "/getInfo",
+      "mapped": true
+    },
+    {
+      "api": "/login/pwd",
+      "mapped": true
+    },
+    {
+      "api": "/logout",
+      "mapped": true
+    },
+    {
+      "api": "/project/activity/back",
+      "mapped": true
+    },
+    {
+      "api": "/project/activity/complete",
+      "mapped": true
+    },
+    {
+      "api": "/project/activity/delegate",
+      "mapped": true
+    },
+    {
+      "api": "/project/activity/started",
+      "mapped": true
+    },
+    {
+      "api": "/project/activity/taskCopyList",
+      "mapped": true
+    },
+    {
+      "api": "/project/activity/taskDoneList",
+      "mapped": true
+    },
+    {
+      "api": "/project/activity/taskWaitList",
+      "mapped": true
+    },
+    {
+      "api": "/project/apply/budget/pass",
+      "mapped": true
+    },
+    {
+      "api": "/project/apply/budget/pass/",
+      "mapped": true
+    },
+    {
+      "api": "/project/apply/list",
+      "mapped": true
+    },
+    {
+      "api": "/project/apply/list/personal",
+      "mapped": true
+    },
+    {
+      "api": "/project/apply/list/personal/dept",
+      "mapped": true
+    },
+    {
+      "api": "/project/apply/list/personal/dept/all",
+      "mapped": true
+    },
+    {
+      "api": "/project/apply/payment/list/all",
+      "mapped": true
+    },
+    {
+      "api": "/project/contract/list",
+      "mapped": true
+    },
+    {
+      "api": "/project/contract/list/in/personal",
+      "mapped": true
+    },
+    {
+      "api": "/project/detail/list",
+      "mapped": true
+    },
+    {
+      "api": "/project/earnestMoney/list",
+      "mapped": true
+    },
+    {
+      "api": "/project/earnestReturn/list",
+      "mapped": true
+    },
+    {
+      "api": "/project/expense/getOne",
+      "mapped": true
+    },
+    {
+      "api": "/project/expense/list",
+      "mapped": true
+    },
+    {
+      "api": "/project/expense/list/personal",
+      "mapped": true
+    },
+    {
+      "api": "/project/goods/getAll",
+      "mapped": true
+    },
+    {
+      "api": "/project/invoice/list",
+      "mapped": true
+    },
+    {
+      "api": "/project/labor/list",
+      "mapped": true
+    },
+    {
+      "api": "/project/loan/getAll",
+      "mapped": true
+    },
+    {
+      "api": "/project/loan/getLoan",
+      "mapped": true
+    },
+    {
+      "api": "/project/loan/list",
+      "mapped": true
+    },
+    {
+      "api": "/project/make/list/personal",
+      "mapped": true
+    },
+    {
+      "api": "/project/mem/list",
+      "mapped": true
+    },
+    {
+      "api": "/project/mem/list/all",
+      "mapped": true
+    },
+    {
+      "api": "/project/merchant/list",
+      "mapped": true
+    },
+    {
+      "api": "/project/onbus/list",
+      "mapped": true
+    },
+    {
+      "api": "/project/payment/list",
+      "mapped": true
+    },
+    {
+      "api": "/project/payment/list/apply",
+      "mapped": true
+    },
+    {
+      "api": "/project/plane",
+      "mapped": true
+    },
+    {
+      "api": "/project/plane/continue/submit",
+      "mapped": true
+    },
+    {
+      "api": "/project/plane/getProjectType",
+      "mapped": true
+    },
+    {
+      "api": "/project/project/analysis/income",
+      "mapped": true
+    },
+    {
+      "api": "/project/project/analysis/income/left",
+      "mapped": true
+    },
+    {
+      "api": "/project/project/analyst",
+      "mapped": true
+    },
+    {
+      "api": "/project/project/deptUser",
+      "mapped": true
+    },
+    {
+      "api": "/project/project/getBar",
+      "mapped": true
+    },
+    {
+      "api": "/project/project/getLine",
+      "mapped": true
+    },
+    {
+      "api": "/project/project/list",
+      "mapped": true
+    },
+    {
+      "api": "/project/project/list/in/personal",
+      "mapped": true
+    },
+    {
+      "api": "/project/project/list/personal",
+      "mapped": true
+    },
+    {
+      "api": "/project/quantities/list",
+      "mapped": true
+    },
+    {
+      "api": "/project/real/list",
+      "mapped": true
+    },
+    {
+      "api": "/project/regular/menu",
+      "mapped": true
+    },
+    {
+      "api": "/project/regular/menu/list",
+      "mapped": true
+    },
+    {
+      "api": "/project/repay/getRepay",
+      "mapped": true
+    },
+    {
+      "api": "/project/repay/list",
+      "mapped": true
+    },
+    {
+      "api": "/project/repay/unconfirm",
+      "mapped": true
+    },
+    {
+      "api": "/system/message/list",
+      "mapped": true
+    }
+  ]
+}

@@ -3,7 +3,7 @@
   <page-header-wrapper :breadcrumb="$store.getters.breadcrumb">
     <a-card :bordered="false">
       <div class="table-header-btns">
-        <a-button ghost type="primary" @click="handleAdd">新增</a-button>
+        <a-button ghost type="primary" @click="handleAdd" v-hasPermi="['project:business:add']">新增</a-button>
         <!-- 查询表单，若无数据，不展示 -->
         <s-search placeholder="搜索此列表..." clickTips="搜索商机名称、业主单位、销售负责人" @onSearch="onSearch" />
       </div>
@@ -26,12 +26,10 @@
 </template>
 
 <script lang="jsx">
-import moment from 'moment'
-import { listBusiness, delBusiness, addBusinessStage } from '/src/api/eos/business/business.js'
+import { listBusiness, delBusiness } from '/src/api/eos/business/business.js'
 import { SSearch, SActionColumns, STable, STableColumnSearch, STableColumnSearchIcon, Ellipsis } from '/src/components/index.js'
 import BusinessForm from './modules/BusinessForm.vue'
 import BusinessDetail from './modules/BusinessDetail.vue'
-import ProjectForm from '/src/views/eos/project/modules/ProjectForm.vue'
 import BusinessStageForm from './modules/BusinessStageForm.vue'
 
 export default {
@@ -59,16 +57,19 @@ export default {
         {
           label: '跟踪',
           icon: 'iconfont-zhiyeshengyamubiao',
+          permission: 'project:business:track',
           action: this.handleTrace
         },
         {
           label: '修改',
           icon: 'iconfont-bianji',
+          permission: 'project:business:edit',
           action: this.handleUpdate
         },
         {
           label: '删除',
           icon: 'iconfont-shanchu',
+          permission: 'project:business:remove',
           action: this.handleDelete
         }
       ],
@@ -198,17 +199,11 @@ export default {
       this.queryParam[key] = value
     },
     getTableActions(record) {
-      if (record.businessState !== '转化项目') {
-        return [
-          ...this.actions,
-          {
-            label: '转化项目',
-            icon: 'iconfont-xiangmuguanli5',
-            action: this.handleTransfer
-          }
-        ]
-      }
-      return this.actions
+      return this.actions.filter(item => this.hasPermission(item.permission))
+    },
+    hasPermission(permission) {
+      const permissions = this.$store.getters.permissions || []
+      return permissions.includes('*:*:*') || permissions.includes(permission)
     },
     /** 新增按钮操作，新建表单 */
     handleAdd() {
@@ -291,44 +286,6 @@ export default {
     onSearch(data, event) {
       this.queryParam = { ...this.queryParam, queryAll: data }
       this.refresh()
-    },
-    /* 转化项目 */
-    handleTransfer(row) {
-      // 新建项目
-      const { name, ownerUnit, remark, id: businessId } = row
-      this.$createAntdDrawer({
-        stopPropagation: true,
-        drawerProps: {
-          title: '转化项目',
-          width: '50%',
-          maskClosable: true
-        },
-        content: {
-          template: ProjectForm,
-          props: {
-            updateRow: {
-              businessId,
-              name,
-              ownerUnit,
-              remark
-            }
-          },
-          on: {
-            ok: () => {
-              // 新增商机跟踪商机状态
-              addBusinessStage({
-                businessCode: row.code,
-                name: '商机转化',
-                state: '转化项目',
-                recordTime: moment().format('YYYY-MM-DD HH:mm:ss')
-              }).then(res => {
-                this.$message.success(res.msg)
-                this.refresh()
-              })
-            }
-          }
-        }
-      })
     },
     /* 商机跟踪 */
     handleTrace(row) {

@@ -3,7 +3,7 @@ import request from '/src/utils/axios/request.js'
 // 查询菜单列表
 export function listMenu(query) {
   return request({
-    url: '/system/menu/list',
+    url: '/system/module/list',
     method: 'get',
     params: query
   })
@@ -12,8 +12,40 @@ export function listMenu(query) {
 // 查询菜单详细
 export function getMenu(menuId) {
   return request({
-    url: '/system/menu/' + menuId,
+    url: '/system/module/' + menuId,
     method: 'get'
+  })
+}
+
+// 查询模块动作
+export function getModuleActions(moduleId, query = {}) {
+  return request({
+    url: '/system/module/' + moduleId + '/actions',
+    method: 'get',
+    params: query
+  })
+}
+
+export function createModuleAction(moduleId, data) {
+  return request({
+    url: '/system/module/' + moduleId + '/actions',
+    method: 'post',
+    data
+  })
+}
+
+export function updateModuleAction(moduleId, actionCode, data) {
+  return request({
+    url: '/system/module/' + moduleId + '/actions/' + actionCode,
+    method: 'put',
+    data
+  })
+}
+
+export function deleteModuleAction(moduleId, actionCode) {
+  return request({
+    url: '/system/module/' + moduleId + '/actions/' + actionCode,
+    method: 'delete'
   })
 }
 
@@ -36,7 +68,7 @@ export function roleMenuTreeselect(roleId) {
 // 新增菜单
 export function addMenu(data) {
   return request({
-    url: '/system/menu',
+    url: '/system/module',
     method: 'post',
     data: data
   })
@@ -45,7 +77,7 @@ export function addMenu(data) {
 // 修改菜单
 export function updateMenu(data) {
   return request({
-    url: '/system/menu',
+    url: '/system/module',
     method: 'put',
     data: data
   })
@@ -54,7 +86,7 @@ export function updateMenu(data) {
 // 删除菜单
 export function delMenu(menuId) {
   return request({
-    url: '/system/menu/' + menuId,
+    url: '/system/module/' + menuId,
     method: 'delete'
   })
 }

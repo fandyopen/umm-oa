@@ -1,7 +1,10 @@
 <template>
   <div>
     <div class="depart-info">
-      <div class="depart-name">{{ userTitle }}</div>
+      <div class="depart-name">
+        <span class="depart-title">{{ userTitle }}</span>
+        <span class="member-count">{{ memberCount }} 人</span>
+      </div>
       <div class="depart-operate" v-if="title === '全部成员'">
         <div class="edit-name-tip">
           <a-switch size="small" defaultChecked />
@@ -74,7 +77,7 @@
     </div>
     <div class="member-btn-pane">
       <div class="btn-group" v-if="title === '离职成员' ? false : true">
-        <a-button ghost type="primary" @click="inviteMembers"> 邀请成员 </a-button>
+        <a-button ghost type="primary" @click="inviteMembers" v-hasModuleAction="'invite'"> 邀请成员 </a-button>
         <a-popover placement="bottom" trigger="click" v-model="adjusDepVisible">
           <template slot="content">
             <div class="setDepTree">
@@ -85,9 +88,9 @@
               <a-button type="primary" @click="adjusting(1)"> 确认 </a-button>
             </div>
           </template>
-          <a-button ghost type="primary" @click="initAdjusDepTreeData">调整部门</a-button>
+          <a-button ghost type="primary" @click="initAdjusDepTreeData" v-hasModuleAction="'transfer'">调整部门</a-button>
         </a-popover>
-        <a-button ghost type="primary" @click="mitosis"> 转为离职 </a-button>
+        <a-button ghost type="primary" @click="mitosis" v-hasModuleAction="'dismiss'"> 转为离职 </a-button>
       </div>
       <div class="earch-input">
         <a-input-search placeholder="搜索成员" size="small" style="width: 200px" allow-clear @search="onSearch" />
@@ -102,7 +105,7 @@
       </div> -->
       <div class="member-table">
         <!-- 数据表格 -->
-        <s-table ref="table" size="default" rowKey="userId" :columns="columns" :data="loadData" :rowSelection="rowSelection" :customRow="customRow">
+        <s-table ref="table" size="default" rowKey="userId" :columns="visibleColumns" :data="loadData" :rowSelection="rowSelection" :customRow="customRow">
           <!-- <span slot="action" slot-scope="text, record, index">
             <a-button type="link" @click="makeInvite(text, record, index)"> 再次邀请 </a-button>
             <a-button type="link" @click="rowClick(text, record, index)"> 编辑 </a-button>
@@ -190,7 +193,6 @@ import { STable, SUpload } from '/src/components/index.js'
 import downloadUtil from '/src/utils/common/download.js'
 import { previewDoc } from '/src/components/Office/office.js'
 import {
-  addRole,
   getUserList,
   getDismissList,
   editDeptName,
@@ -198,17 +200,17 @@ import {
   addSystemDepchild,
   queryUserList,
   addDeptPrincipal,
-  adjustDeptUser,
-  addUserDismiss,
   addDeptPrincipalLeader,
   deptLeaderList,
   deptPrincipalList
 } from '/src/api/enterprise/index.js'
+import { executeWorkflowAction } from '/src/api/workflow/action.js'
 import { delDept } from '/src/api/system/dept.js'
 import { excelImport } from '/src/api/system/user.js'
 import SelectDepartmentElement from '../selectDepartmentElement/index.vue'
 import countryCodeSelector from '/src/components/CountryCodeSelector/index.vue'
 import Details from './details.vue'
+import { hasModuleAction } from '/src/utils/modulePermission.js'
 
 export default {
   components: { STable, SelectDepartmentElement, SUpload, countryCodeSelector },
@@ -226,6 +228,10 @@ export default {
       type: Object,
       require: false,
       default: () => {}
+    },
+    showRoleInfo: {
+      type: Boolean,
+      default: true
     }
   },
   data() {
@@ -242,6 +248,7 @@ export default {
         this.UserListParams = Object.assign(this.UserListParams, param)
         if (this.title === '离职成员') {
           return getDismissList(this.UserListParams).then(res => {
+            this.memberCount = Number(res.total || 0)
             return {
               data: res.rows,
               totalCount: res.total,
@@ -251,6 +258,7 @@ export default {
           })
         } else {
           return getUserList(this.UserListParams).then(res => {
+            this.memberCount = Number(res.total || 0)
             return {
               data: res.rows,
               totalCount: res.total,
@@ -279,6 +287,7 @@ export default {
         {
           title: '角色',
           dataIndex: 'roles',
+          roleRelated: true,
           align: 'center',
           customRender: (text, record) => {
             if (text.length > 1) {
@@ -297,6 +306,7 @@ export default {
         {
           title: '部门角色',
           dataIndex: 'userDept',
+          roleRelated: true,
           align: 'center',
           customRender: (text, record) => {
             let principals = '成员'
@@ -319,6 +329,8 @@ export default {
       ],
       /* 标题 */
       userTitle: '',
+      /* 当前筛选条件下的成员人数 */
+      memberCount: 0,
       /* 修改名称气泡弹窗 */
       visible: false,
       /* 添加子部门气泡 */
@@ -475,7 +487,7 @@ export default {
             if (res.code === 200) {
               this.setDepVisible = false
               this.$message.success('设置成功')
-              this.updateUserTitle(this.editNameVal, this.selectTreeNodeId)
+              this.updateUserTitle(this.treeNodeData.title || this.title, this.selectTreeNodeId)
               this.$refs.table.refresh()
             }
           })
@@ -494,7 +506,7 @@ export default {
             if (res.code === 200) {
               this.setDepLeaderVisible = false
               this.$message.success('设置成功')
-              this.updateUserTitle(this.editNameVal, this.selectTreeNodeId)
+              this.updateUserTitle(this.treeNodeData.title || this.title, this.selectTreeNodeId)
 
               this.$refs.table.refresh()
             }
@@ -554,18 +566,18 @@ export default {
     },
     updateUserTitle(deptName, deptId) {
       this.userTitle = deptName
-      let leader = ''
-      let principal = ''
       if (!this.isEmpty(deptId)) {
-        deptLeaderList({ deptId: deptId }).then(res => {
-          const leaderName = res.data.map(e => e.nickName).join(',')
-          leader = ' 分管领导: ' + leaderName
-          this.userTitle = this.userTitle + leader
-        })
-        deptPrincipalList({ deptId: deptId }).then(res => {
-          const principalName = res.data.map(e => e.nickName).join(',')
-          principal = ' 部门主管：' + principalName
-          this.userTitle = this.userTitle + principal
+        Promise.all([deptLeaderList({ deptId }), deptPrincipalList({ deptId })]).then(([leaderRes, principalRes]) => {
+          const parts = [deptName]
+          const leaderName = (leaderRes.data || []).map(e => e.nickName).join(',')
+          const principalName = (principalRes.data || []).map(e => e.nickName).join(',')
+          if (leaderName) {
+            parts.push(`分管领导: ${leaderName}`)
+          }
+          if (principalName) {
+            parts.push(`部门主管: ${principalName}`)
+          }
+          this.userTitle = parts.join(' ')
         })
       }
     },
@@ -582,13 +594,13 @@ export default {
       this.$refs.ruleForm.validate(valid => {
         if (valid) {
           const params = { ...this.form, countryCode: this.countryCode, deptId: this.rData }
-          addRole(params).then(res => {
+          this.executeAction('invite', params).then(res => {
             if (res.code === 200) {
               this.form = {}
               this.countryCode = 86
               this.isIMmodal = false
               this.$refs.table.refresh()
-              return this.$message.success('新增成功')
+              return this.$message.success(this.actionSuccessMessage(res, '新增成功'))
             }
           })
         } else {
@@ -606,9 +618,12 @@ export default {
         if (this.selectedRowKeys.length === 0) {
           return this.$message.warning('选择需要调整的部门成员')
         }
-        adjustDeptUser({ deptId: this.adjus_rData, userIds: this.selectedRowKeys.join(',') }).then(res => {
+        this.executeAction('transfer', {
+          deptId: this.adjus_rData,
+          userIds: this.selectedRowKeys
+        }).then(res => {
           if (res.code === 200) {
-            this.$message.success('调整成功')
+            this.$message.success(this.actionSuccessMessage(res, '调整成功'))
             this.adjusDepVisible = false
             this.selectedRowKeys = []
             this.$refs.table.refresh()
@@ -624,12 +639,25 @@ export default {
       if (this.selectedRowKeys.length === 0) {
         return this.$message.warning('选择需要转为离职的成员')
       }
-      addUserDismiss({ userIds: this.selectedRowKeys.join(',') }).then(res => {
+      this.executeAction('dismiss', { userIds: this.selectedRowKeys }).then(res => {
         if (res.code === 200) {
           this.selectedRowKeys = []
-          return this.$message.success('设置成功')
+          this.$refs.table.refresh()
+          return this.$message.success(this.actionSuccessMessage(res, '设置成功'))
         }
       })
+    },
+    executeAction(actionCode, payload) {
+      return executeWorkflowAction({
+        moduleId: Number(this.$route.meta.moduleId),
+        actionCode,
+        payload
+      })
+    },
+    actionSuccessMessage(response, completedMessage) {
+      return response.data?.status === 'pendingApproval'
+        ? '已提交审批，请等待审批人处理'
+        : completedMessage
     },
     /* 再次邀请 */
     makeInvite(text, record, index) {},
@@ -721,11 +749,25 @@ export default {
     }
   },
   computed: {
+    visibleColumns() {
+      return this.showRoleInfo
+        ? this.columns
+        : this.columns.filter(column => !column.roleRelated)
+    },
     rowSelection() {
+      if (!this.canManageMembers) {
+        return null
+      }
       return {
         selectedRowKeys: this.selectedRowKeys,
         onChange: this.onSelectChange
       }
+    },
+    canManageMembers() {
+      const permissions = this.$store.getters.permissions || []
+      const meta = this.$route.meta
+      return hasModuleAction(permissions, meta, 'transfer')
+        || hasModuleAction(permissions, meta, 'dismiss')
     }
   },
   created() {},

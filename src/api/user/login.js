@@ -1,5 +1,4 @@
 import request from '/src/utils/axios/request.js'
-import { encrypt } from '/src/utils/encrypt/jsencrypt.js'
 
 const userApi = {
   Login: '/login',
@@ -13,8 +12,9 @@ const userApi = {
  * @param parameter
  * @returns {*}
  */
-export function login(parameter) {
+export async function login(parameter) {
   const { username, password, code, uuid, rememberMe } = parameter
+  const { encrypt } = await import('/src/utils/encrypt/jsencrypt.js')
   return request({
     url: userApi.Login,
     method: 'post',

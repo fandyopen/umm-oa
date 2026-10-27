@@ -67,3 +67,12 @@ export function addBusinessStage(data) {
     data: data
   })
 }
+
+// 商机转化项目
+export function transferBusiness(data) {
+  return request({
+    url: '/project/business/stage/transfer',
+    method: 'post',
+    data: data
+  })
+}

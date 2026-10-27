@@ -29,9 +29,11 @@ const constantRouterComponents = {
   // 修改生成配置
   // GenEdit: () => import('@/views/tool/gen/modules/GenEdit'),
   // 应用中心
-  // AppCenter: () => import('@/views/appCenter/appCenter'),
+  AppCenter: () => import('/src/views/enterprise/saasIndex/index.vue'),
   // 流程设计器
-  processDesign: () => import('/src/views/lowCode/processDesign/index.vue')
+  processDesign: () => import('/src/views/lowCode/processDesign/index.vue'),
+  // 模块动作管理
+  ModuleActions: () => import('/src/views/system/moduleAction/index.vue')
 }
 
 // 前端未找到页面路由（固定不用改）
@@ -117,6 +119,7 @@ export const generator = (routerMap, parent) => {
       meta: {
         moduleId: item.moduleId,
         moduleName: item.moduleName,
+        perms: item.perms,
         title: title,
         icon: icon,
         hiddenHeaderContent: hiddenHeaderContent,

@@ -1,5 +1,8 @@
 <template>
-  <a-config-provider :locale="locale">
+  <div v-if="isLoginPage" id="app">
+    <router-view />
+  </div>
+  <a-config-provider v-else :locale="locale">
     <div id="app">
       <router-view />
     </div>
@@ -9,28 +12,46 @@
 <script>
 import { mapGetters } from 'vuex'
 import defaultSettings from '/src/config/defaultSettings.js'
-import watermark from '/src/utils/common/watermark.js'
-import moment from 'moment'
 import { domTitle, setDocumentTitle } from '/src/utils/common/domUtil.js'
 import { i18nRender } from '/src/locales/index.js'
 
 export default {
+  data() {
+    return {
+      watermarkTimer: null
+    }
+  },
   computed: {
     ...mapGetters(['nickname', 'defaultCompany']),
+    isLoginPage() {
+      return /\/user\/login(?:\/|$)/.test(this.$route.path)
+    },
     locale() {
       // 只是为了切换语言时，更新标题
       const { title } = this.$route.meta
       title && setDocumentTitle(`${i18nRender(title)} - ${domTitle}`)
-      return this.$i18n.getLocaleMessage(this.$store.getters.lang).antLocale
+      return this.$i18n.getLocaleMessage(this.$store.getters.lang).antLocale || undefined
     }
   },
-  mounted() {
+  async mounted() {
+    if (/\/user\/login(?:\/|$)/.test(window.location.pathname)) {
+      return
+    }
+    const modules = await Promise.all([
+      import('/src/utils/common/watermark.js'),
+      import('moment')
+    ])
+    const watermark = modules[0].default
+    const moment = modules[1].default
     // 添加水印
     if (defaultSettings.watermark) {
-      setInterval(() => {
+      this.watermarkTimer = setInterval(() => {
         watermark(`${this.defaultCompany || defaultSettings.comany}<br>${moment().format('YYYY-MM-DD HH:mm:ss')}<br>${this.nickname || ''}`)
       }, 1000)
     }
+  },
+  beforeDestroy() {
+    clearInterval(this.watermarkTimer)
   }
 }
 </script>
