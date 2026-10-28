@@ -40,6 +40,7 @@ public class LocalDatabaseBootstrap implements ApplicationRunner {
     private static final List<String> UPGRADE_SCRIPTS = List.of(
             "organization-permission.sql",
             "workflow-action.sql",
+            "docs-config.sql",
             "retire-business-modules.sql"
     );
 

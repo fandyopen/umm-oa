@@ -18,7 +18,27 @@ function sqlString(value) {
 
 const dictTypes = source.responses.dictTypes.rows
 const dictData = source.responses.dictData.rows
-const configs = source.responses.configs.rows
+const configs = [
+  ...source.responses.configs.rows,
+  {
+    configId: 100,
+    configName: '使用文档入口',
+    configKey: 'sys.docs.enabled',
+    configValue: 'true',
+    configType: 'Y',
+    createTime: '2026-10-28 21:40:00',
+    remark: '控制顶部“使用文档”入口是否显示，默认开启'
+  },
+  {
+    configId: 101,
+    configName: '使用文档标题',
+    configKey: 'sys.docs.title',
+    configValue: '使用文档',
+    configType: 'N',
+    createTime: '2026-10-28 21:40:00',
+    remark: '顶部文档入口及文档中心标题'
+  }
+]
 
 const h2 = [
   '-- Generated from public reference system settings by tools/build-system-reference-data.mjs.',

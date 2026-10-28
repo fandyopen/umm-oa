@@ -92,6 +92,27 @@ modules.push(
     query: '',
     redirect: '',
     status: '0'
+  },
+  {
+    moduleId: 341100,
+    parentId: 340309,
+    parentName: '系统',
+    moduleName: '使用文档',
+    routeName: 'Docs',
+    path: 'docs',
+    component: 'docs/index',
+    icon: 'iconfont-bangzhu',
+    moduleSort: 99,
+    hidden: 1,
+    perms: 'system:docs:list',
+    hasFlow: 0,
+    flowConditions: '',
+    noCache: 0,
+    isApp: '',
+    isFrame: '',
+    query: '',
+    redirect: '',
+    status: '0'
   }
 )
 

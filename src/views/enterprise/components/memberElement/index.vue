@@ -92,6 +92,26 @@
         </a-popover>
         <a-button ghost type="primary" @click="mitosis" v-hasModuleAction="'dismiss'"> 转为离职 </a-button>
       </div>
+      <div class="member-filter-pane" v-if="showQueryFilters">
+        <a-tree-select
+          v-model="filterDeptId"
+          :tree-data="treeData"
+          :replace-fields="deptFilterFields"
+          placeholder="全部部门"
+          allow-clear
+          show-search
+          tree-default-expand-all
+          style="width: 190px"
+          @change="handleDeptFilterChange"
+        />
+        <a-range-picker
+          v-model="addedDateRange"
+          format="YYYY-MM-DD"
+          :placeholder="['新增开始日期', '新增结束日期']"
+          style="width: 260px"
+          @change="handleAddedDateChange"
+        />
+      </div>
       <div class="earch-input">
         <a-input-search placeholder="搜索成员" size="small" style="width: 200px" allow-clear @search="onSearch" />
       </div>
@@ -240,12 +260,18 @@ export default {
       selectedRows: [],
       /* 查询参数 */
       UserListParams: {
-        // isAsc: 'desc',
-        // orderByColumn: 'create_time'
+        orderByColumn: 'create_time',
+        isAsc: 'desc'
       },
+      filterDeptId: null,
+      addedDateRange: [],
+      deptFilterFields: { children: 'children', title: 'label', label: 'label', value: 'id', key: 'id' },
       // 加载数据方法 必须为 Promise 对象
       loadData: param => {
-        this.UserListParams = Object.assign(this.UserListParams, param)
+        this.UserListParams = Object.assign({}, this.UserListParams, param, {
+          orderByColumn: 'create_time',
+          isAsc: 'desc'
+        })
         if (this.title === '离职成员') {
           return getDismissList(this.UserListParams).then(res => {
             this.memberCount = Number(res.total || 0)
@@ -283,6 +309,18 @@ export default {
           title: '邮箱',
           dataIndex: 'email',
           align: 'center'
+        },
+        {
+          title: '部门',
+          dataIndex: 'deptName',
+          align: 'center',
+          customRender: (text, record) => record.dept?.deptName || text || '-'
+        },
+        {
+          title: '新增日期',
+          dataIndex: 'createTime',
+          align: 'center',
+          customRender: text => text || '-'
         },
         {
           title: '角色',
@@ -429,8 +467,35 @@ export default {
     },
     /* 搜索成员 */
     onSearch(val) {
-      this.UserListParams.nickName = val
-      this.$refs.table.refresh()
+      if (val) {
+        this.UserListParams.nickName = val
+      } else {
+        delete this.UserListParams.nickName
+      }
+      this.$refs.table.refresh(true)
+    },
+    handleDeptFilterChange(value) {
+      if (value) {
+        this.UserListParams.deptId = value
+      } else {
+        delete this.UserListParams.deptId
+      }
+      this.$refs.table.refresh(true)
+    },
+    handleAddedDateChange(dates, dateStrings) {
+      if (dates && dates.length === 2) {
+        this.UserListParams.beginTime = dateStrings[0]
+        this.UserListParams.endTime = dateStrings[1]
+      } else {
+        delete this.UserListParams.beginTime
+        delete this.UserListParams.endTime
+      }
+      this.$refs.table.refresh(true)
+    },
+    loadFilterDepartments() {
+      getTreeMenu().then(res => {
+        this.treeData = res.data || []
+      })
     },
     /* 修改部门名称 */
     editDepName(v) {
@@ -720,6 +785,14 @@ export default {
           click: e => this.rowClick(record)
         }
       }
+    },
+    resetListFilters() {
+      this.filterDeptId = null
+      this.addedDateRange = []
+      delete this.UserListParams.nickName
+      delete this.UserListParams.deptId
+      delete this.UserListParams.beginTime
+      delete this.UserListParams.endTime
     }
   },
   watch: {
@@ -727,7 +800,7 @@ export default {
       if (data === '离职成员' || data === '全部成员') {
         this.userTitle = data
         this.$emit('clearDeptId') // 清除部门ID
-        delete this.UserListParams.deptId
+        this.resetListFilters()
         this.$refs.table.refresh()
       } else {
         this.updateUserTitle(data, this.deptId)
@@ -749,6 +822,9 @@ export default {
     }
   },
   computed: {
+    showQueryFilters() {
+      return this.title === '全部成员' || this.title === '离职成员'
+    },
     visibleColumns() {
       return this.showRoleInfo
         ? this.columns
@@ -773,6 +849,7 @@ export default {
   created() {},
   mounted() {
     this.userTitle = this.title
+    this.loadFilterDepartments()
   }
 }
 </script>

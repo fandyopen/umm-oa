@@ -15,6 +15,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -60,6 +61,88 @@ class AuthFlowIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.total").value(3));
+    }
+
+    @Test
+    void memberListSupportsDepartmentAndCreateDateFilters() throws Exception {
+        String authorization = "Bearer " + login("17630135660");
+
+        MvcResult allMembers = mockMvc.perform(get("/system/user/list")
+                        .param("pageNum", "1")
+                        .param("pageSize", "200")
+                        .header("Authorization", authorization))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andReturn();
+        JsonNode rows = objectMapper.readTree(allMembers.getResponse().getContentAsString())
+                .path("rows");
+        assertTrue(rows.size() > 1);
+
+        String previousCreateTime = "";
+        for (JsonNode row : rows) {
+            String createTime = row.path("createTime").asText();
+            assertFalse(createTime.isBlank());
+            if (!previousCreateTime.isBlank()) {
+                assertTrue(previousCreateTime.compareTo(createTime) >= 0);
+            }
+            previousCreateTime = createTime;
+        }
+
+        long deptId = rows.get(0).path("deptId").asLong();
+        String createDate = rows.get(0).path("createTime").asText().substring(0, 10);
+        MvcResult filteredMembers = mockMvc.perform(get("/system/user/list")
+                        .param("pageNum", "1")
+                        .param("pageSize", "200")
+                        .param("deptId", String.valueOf(deptId))
+                        .param("beginTime", createDate)
+                        .param("endTime", createDate)
+                        .header("Authorization", authorization))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andReturn();
+        JsonNode filteredRows = objectMapper.readTree(
+                filteredMembers.getResponse().getContentAsString()
+        ).path("rows");
+        assertTrue(filteredRows.size() > 0);
+        for (JsonNode row : filteredRows) {
+            assertEquals(deptId, row.path("deptId").asLong());
+            assertTrue(row.path("createTime").asText().startsWith(createDate));
+        }
+    }
+
+    @Test
+    void documentationModuleIsConfiguredForAdministrators() throws Exception {
+        String adminAuthorization = "Bearer " + login("17630135660");
+
+        MvcResult adminRoutersResult = mockMvc.perform(
+                        get("/getRouters").header("Authorization", adminAuthorization))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andReturn();
+        JsonNode adminRoots = objectMapper.readTree(
+                adminRoutersResult.getResponse().getContentAsString()
+        ).path("data");
+        assertTrue(containsModule(adminRoots, 341100L));
+
+        mockMvc.perform(get("/system/config/configKey/sys.docs.enabled")
+                        .header("Authorization", adminAuthorization))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").value("true"));
+        mockMvc.perform(get("/system/config/configKey/sys.docs.title")
+                        .header("Authorization", adminAuthorization))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").value("使用文档"));
+
+        String hrAuthorization = "Bearer " + login("17600000001");
+        MvcResult hrRoutersResult = mockMvc.perform(
+                        get("/getRouters").header("Authorization", hrAuthorization))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andReturn();
+        JsonNode hrRoots = objectMapper.readTree(
+                hrRoutersResult.getResponse().getContentAsString()
+        ).path("data");
+        assertFalse(containsModule(hrRoots, 341100L));
     }
 
     @Test
@@ -140,6 +223,18 @@ class AuthFlowIntegrationTest {
         return objectMapper.readTree(login.getResponse().getContentAsString())
                 .path("token")
                 .asText();
+    }
+
+    private boolean containsModule(JsonNode nodes, long moduleId) {
+        for (JsonNode node : nodes) {
+            if (node.path("moduleId").asLong() == moduleId) {
+                return true;
+            }
+            if (containsModule(node.path("children"), moduleId)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private int count(String table) {

@@ -9,6 +9,12 @@
       </a-menu>
     </div>
     <div class="header-right-content" :class="{'header-msg-bkc': layout !== 'sidemenu'}">
+      <a-tooltip v-if="canOpenDocs" :title="docsTitle">
+        <a class="docs-entry" @click="openDocs">
+          <a-icon type="book" />
+          <span v-if="!isMobile">{{ docsTitle }}</span>
+        </a>
+      </a-tooltip>
       <a-badge :count="todoTotal" class="badge" @click="gotodo">
         <a-icon type="bell" class="icon" />
       </a-badge>
@@ -95,13 +101,36 @@ export default {
       current: ['mail'],
       menuLineHeight: false,
       iconUpon: false,
-      menuNameUpon: false
+      menuNameUpon: false,
+      docsEnabled: true,
+      docsTitle: '使用文档'
     }
   },
   methods: {
     ...mapActions(['_enterprise', '_addEnterprise', '_toggleEnterprise', 'SetCurrentLevelOneMenu']),
     gotodo() {
       this.$router.push('/todoItem/todo')
+    },
+    openDocs() {
+      this.$router.push('/system/docs').catch(() => {})
+    },
+    loadDocsConfig() {
+      this.getConfigKey('sys.docs.enabled')
+        .then(response => {
+          const value = String(response.data ?? '').trim().toLowerCase()
+          if (value) {
+            this.docsEnabled = !['false', '0', 'n', 'disabled'].includes(value)
+          }
+        })
+        .catch(() => {})
+      this.getConfigKey('sys.docs.title')
+        .then(response => {
+          const value = String(response.data ?? '').trim()
+          if (value) {
+            this.docsTitle = value
+          }
+        })
+        .catch(() => {})
     },
     /* 新建企业 */
     addItem() {
@@ -164,7 +193,7 @@ export default {
     }
   },
   computed: {
-    ...mapGetters(['todoTotal', 'addRouters', 'layout']),
+    ...mapGetters(['todoTotal', 'addRouters', 'layout', 'permissions', 'roles']),
     ...mapState({
       showFirstLevelMenu: state => state.app.showFirstLevelMenu,
       menuIconHorizontal: state => state.app.menuIconHorizontal
@@ -181,9 +210,22 @@ export default {
       return this.addRouters[0].children.filter((item, index) => {
         return item.hidden !== true
       })
+    },
+    canOpenDocs() {
+      if (!this.docsEnabled) {
+        return false
+      }
+      const permissions = this.permissions || []
+      const roles = this.roles || []
+      return (
+        roles.includes('admin') ||
+        permissions.includes('*:*:*') ||
+        permissions.includes('system:docs:list')
+      )
     }
   },
   mounted() {
+    this.loadDocsConfig()
     /* 获取企业 */
     this._enterprise().then(res => {
       this.items = res.data

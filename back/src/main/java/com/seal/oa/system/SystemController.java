@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.sql.Timestamp;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -83,6 +84,14 @@ public class SystemController {
             where += " AND EXISTS (SELECT 1 FROM sys_user_post up WHERE up.user_id = u.user_id AND up.post_id = ?)";
             arguments.add(Long.parseLong(query.get("postId")));
         }
+        if (StringUtils.hasText(query.get("beginTime"))) {
+            where += " AND u.create_time >= ?";
+            arguments.add(parseDateBoundary(query.get("beginTime"), false));
+        }
+        if (StringUtils.hasText(query.get("endTime"))) {
+            where += " AND u.create_time < ?";
+            arguments.add(parseDateBoundary(query.get("endTime"), true));
+        }
         where += dataScopeService.userFilter(AuthContext.userId(), arguments);
 
         Long total = jdbc.queryForObject("SELECT COUNT(*) FROM sys_user u " + where, Long.class, arguments.toArray());
@@ -101,7 +110,7 @@ public class SystemController {
                 FROM sys_user u
                 LEFT JOIN sys_dept d ON d.dept_id = u.dept_id
                 %s
-                ORDER BY u.user_id
+                ORDER BY u.create_time DESC, u.user_id DESC
                 LIMIT ? OFFSET ?
                 """.formatted(where), pageArguments.toArray());
 
@@ -153,6 +162,18 @@ public class SystemController {
             where += " AND u.phonenumber LIKE ?";
             arguments.add("%" + query.get("phonenumber") + "%");
         }
+        if (StringUtils.hasText(query.get("deptId"))) {
+            where += " AND u.dept_id = ?";
+            arguments.add(Long.parseLong(query.get("deptId")));
+        }
+        if (StringUtils.hasText(query.get("beginTime"))) {
+            where += " AND u.create_time >= ?";
+            arguments.add(parseDateBoundary(query.get("beginTime"), false));
+        }
+        if (StringUtils.hasText(query.get("endTime"))) {
+            where += " AND u.create_time < ?";
+            arguments.add(parseDateBoundary(query.get("endTime"), true));
+        }
         where += dataScopeService.userFilter(AuthContext.userId(), arguments);
         Long total = jdbc.queryForObject(
                 "SELECT COUNT(*) FROM sys_user u " + where,
@@ -166,12 +187,13 @@ public class SystemController {
         pageArguments.add((pageNum - 1) * pageSize);
         List<Map<String, Object>> rows = JdbcMaps.camelCase(jdbc.queryForList("""
                 SELECT u.user_id, u.tenant_id, u.dept_id, u.user_name, u.nick_name,
-                       u.email, u.phonenumber, u.status, d.dept_name
+                       u.email, u.phonenumber, u.status, u.create_time, d.dept_name
                 FROM sys_user u LEFT JOIN sys_dept d ON d.dept_id = u.dept_id
-                %s ORDER BY u.user_id DESC LIMIT ? OFFSET ?
+                %s ORDER BY u.create_time DESC, u.user_id DESC LIMIT ? OFFSET ?
                 """.formatted(where), pageArguments.toArray()));
         rows.forEach(row -> {
             row.put("tenantId_", row.get("tenantId"));
+            row.put("createTime", formattedTime(row.get("createTime")));
             row.put("roles", roles(longValue(row.get("userId"), 0L)));
             row.put("dept", Map.of(
                     "deptId", row.getOrDefault("deptId", 0L),
@@ -1103,6 +1125,18 @@ public class SystemController {
                     .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
         }
         return value == null ? "" : String.valueOf(value);
+    }
+
+    private Timestamp parseDateBoundary(String value, boolean endExclusive) {
+        try {
+            LocalDate date = LocalDate.parse(value.substring(0, 10));
+            LocalDateTime boundary = endExclusive
+                    ? date.plusDays(1).atStartOfDay()
+                    : date.atStartOfDay();
+            return Timestamp.valueOf(boundary);
+        } catch (Exception exception) {
+            throw new ApiException(400, "日期格式应为 yyyy-MM-dd");
+        }
     }
 
     private void assignRoleGroup(Long roleId, Long groupId) {

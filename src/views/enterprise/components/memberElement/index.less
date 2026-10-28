@@ -48,16 +48,47 @@
   margin: 10px 0;
   padding: 0 10px;
   display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
   justify-content: flex-end;
+  align-items: center;
   .btn-group {
     margin-right: auto;
     .ant-btn {
       margin-left: 10px;
     }
   }
+  .member-filter-pane {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+  }
   .earch-input {
     ::v-deep .ant-input-search .ant-input {
       border-radius: 20px;
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .member-btn-pane {
+    .member-filter-pane,
+    .earch-input {
+      width: 100%;
+    }
+
+    .member-filter-pane {
+      ::v-deep .ant-select,
+      ::v-deep .ant-calendar-picker {
+        width: 100% !important;
+      }
+    }
+
+    .earch-input {
+      ::v-deep .ant-input-search {
+        width: 100% !important;
+      }
     }
   }
 }

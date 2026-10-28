@@ -44,7 +44,8 @@ public class ModuleActionService {
             340341L,
             340342L,
             340527L,
-            340785L
+            340785L,
+            341100L
     );
 
     private static final Map<Long, List<ActionDefinition>> MODULE_ACTIONS = Map.ofEntries(

@@ -14,6 +14,7 @@ const user = {
     welcome: '',
     avatar: '',
     roles: [],
+    permissions: [],
     info: {},
     sex: '',
     posts: '',
