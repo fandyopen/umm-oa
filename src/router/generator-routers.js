@@ -62,8 +62,17 @@ const rootRouter = {
  * @param token
  * @returns {Promise<Router>}
  */
-export const generatorDynamicRouter = token => {
+export const generatorDynamicRouter = bootstrapRouters => {
   return new Promise((resolve, reject) => {
+    if (Array.isArray(bootstrapRouters)) {
+      const menuNav = []
+      rootRouter.children = indexRouterMap.concat(bootstrapRouters)
+      menuNav.push(rootRouter)
+      const routers = generator(menuNav)
+      routers.push(notFoundRouter)
+      resolve(routers)
+      return
+    }
     // 向后端请求路由数据
     getRouters()
       .then(res => {

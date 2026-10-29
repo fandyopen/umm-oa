@@ -48,13 +48,17 @@
 | `remove` | 删除 |
 | `export` | 导出 |
 
-例如商机管理：
+例如客户管理和商机管理：
 
 ```text
+project:merchant:add
+project:merchant:edit
+project:merchant:remove
+project:merchant:track
 project:business:add
 project:business:edit
 project:business:remove
-project:business:export
+project:business:track
 ```
 
 `resetPwd`、`update`、`list`、`query`、`list:all`、`list:apply` 不再作为通用角色动作生成。
@@ -81,9 +85,9 @@ project:business:export
 | --- | --- | --- | --- |
 | `todoItem:todo` | 我的待办 | `todoItem:todo:list` | 无独立按钮权限 |
 | `todoItem:done` | 我的已办、我的发起 | `todoItem:done:list` | 无独立按钮权限 |
-| `project:business` | 商机管理 | `project:business:list` | `{add,edit,remove,track,transfer}` |
+| `project:business` | 商机管理 | `project:business:list` | `{add,edit,remove,track}` |
 | `project:bid` | 招标投标 | `project:bid:list` | `{add,edit,remove,export}` |
-| `project:merchant` | 客商管理 | `project:merchant:list` | `{add,edit,remove,export}` |
+| `project:merchant` | 客户档案 | `project:merchant:list` | `{add,edit,remove,track}` |
 | `project:project` | 项目登记、项目变更、项目查询 | `project:project:list` | `{add,edit,remove,export}` |
 | `project:mem` | 人员安排 | `project:mem:list` | `{add,edit,remove,export}` |
 | `project:exec` | 报量结算 | `project:exec:list` | `{add,edit,remove,export}` |

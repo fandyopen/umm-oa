@@ -19,12 +19,6 @@ export function getAppList(query) {
   })
 }
 // 获取用户信息
-export function getUserInfo() {
-  return request({
-    url: '/crm/user/get_user_info',
-    method: 'get'
-  })
-}
 // 查询应用商店所有应用
 export function getAppSystemList(query) {
   return request({

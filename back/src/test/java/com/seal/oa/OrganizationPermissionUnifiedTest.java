@@ -230,7 +230,7 @@ class OrganizationPermissionUnifiedTest {
                 .toList();
 
         org.junit.jupiter.api.Assertions.assertEquals(
-                List.of("add", "edit", "remove", "track", "transfer"),
+                List.of("add", "edit", "remove", "track"),
                 actionCodes
         );
         org.junit.jupiter.api.Assertions.assertTrue(
@@ -338,7 +338,7 @@ class OrganizationPermissionUnifiedTest {
 
     @Test
     @Transactional
-    void businessTrackingAndTransferUseDedicatedActions() throws Exception {
+    void businessTrackingUsesDedicatedAction() throws Exception {
         String adminAuthorization = login("17630135660");
         String userAuthorization = login("17600000001");
 
@@ -347,7 +347,7 @@ class OrganizationPermissionUnifiedTest {
                         .header("Authorization", userAuthorization)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"businessCode":"TEST","state":"需求","remark":"track"}
+                                {"businessCode":"20240125110507","state":"需求确认","remark":"track"}
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(403));
@@ -357,29 +357,11 @@ class OrganizationPermissionUnifiedTest {
                         .header("Authorization", userAuthorization)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"businessCode":"TEST","state":"需求","remark":"track"}
+                                {"businessCode":"20240125110507","state":"需求确认","remark":"track"}
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
 
-        mockMvc.perform(post("/project/business/stage/transfer")
-                        .header("Authorization", userAuthorization)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"businessCode":"TEST","state":"转化项目"}
-                                """))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(403));
-
-        grantBusinessActions(adminAuthorization, 340590L, "track", "transfer");
-        mockMvc.perform(post("/project/business/stage/transfer")
-                        .header("Authorization", userAuthorization)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"businessCode":"TEST","state":"转化项目"}
-                                """))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(200));
     }
 
     private void grantBusinessActions(

@@ -13,12 +13,12 @@ const permission = {
     }
   },
   actions: {
-    GenerateRoutes({ commit }, data) {
+    GenerateRoutes({ commit }, data = {}) {
       return new Promise(resolve => {
         import('/src/router/generator-routers.js').then(({ generatorDynamicRouter }) => {
-          generatorDynamicRouter(data).then(routers => {
+          generatorDynamicRouter(data.routers).then(routers => {
             commit('SET_ROUTERS', routers)
-            resolve()
+            resolve(routers)
           })
         })
       })

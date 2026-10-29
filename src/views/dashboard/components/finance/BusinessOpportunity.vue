@@ -30,7 +30,11 @@ export default {
     }
   },
   mounted() {
-    this.queryData()
+    if (window.requestIdleCallback) {
+      window.requestIdleCallback(() => this.queryData(), { timeout: 800 })
+    } else {
+      setTimeout(() => this.queryData(), 200)
+    }
   },
   methods: {
     queryData() {

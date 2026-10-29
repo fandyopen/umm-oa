@@ -108,6 +108,14 @@ export default {
     this.getCode()
     this.getCookie()
   },
+  mounted() {
+    const preloadRuntime = () => loadApplicationRuntime().catch(() => {})
+    if (window.requestIdleCallback) {
+      window.requestIdleCallback(preloadRuntime, { timeout: 1500 })
+    } else {
+      setTimeout(preloadRuntime, 500)
+    }
+  },
   methods: {
     ...mapActions(['Login', 'Logout', '_registered']),
     getCode() {
@@ -160,7 +168,6 @@ export default {
     },
     async loginSuccess() {
       await loadApplicationRuntime()
-      this.$store.dispatch('getTenantAppId')
       this.$router.push({ path: '/' })
       setTimeout(() => {
         this.$notification.success({

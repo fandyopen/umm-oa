@@ -123,6 +123,11 @@ const roleModules = new Map([
   [17, projectManagerModules],
   [18, managerModules]
 ])
+for (const moduleIds of roleModules.values()) {
+  if (moduleIds.has(340644)) {
+    moduleIds.add(341101)
+  }
+}
 
 function sqlString(value) {
   return `'${String(value).replaceAll('\\', '\\\\').replaceAll("'", "''")}'`

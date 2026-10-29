@@ -22,7 +22,6 @@ public class ModuleActionService {
     private static final ActionDefinition REMOVE = new ActionDefinition("remove", "删除");
     private static final ActionDefinition EXPORT = new ActionDefinition("export", "导出");
     private static final ActionDefinition TRACK = new ActionDefinition("track", "跟踪");
-    private static final ActionDefinition TRANSFER = new ActionDefinition("transfer", "转化项目");
     private static final ActionDefinition INVITE =
             new ActionDefinition("invite", "邀请成员", "hr.member.invite");
     private static final ActionDefinition HR_TRANSFER =
@@ -45,13 +44,15 @@ public class ModuleActionService {
             340342L,
             340527L,
             340785L,
-            341100L
+            341100L,
+            340644L,
+            341101L
     );
 
     private static final Map<Long, List<ActionDefinition>> MODULE_ACTIONS = Map.ofEntries(
-            Map.entry(340590L, List.of(ADD, EDIT, REMOVE, TRACK, TRANSFER)),
+            Map.entry(340590L, List.of(ADD, EDIT, REMOVE, TRACK)),
             Map.entry(340644L, ADD_EDIT_REMOVE),
-            Map.entry(340352L, CRUD_ACTIONS),
+            Map.entry(340352L, List.of(ADD, EDIT, REMOVE, EXPORT, TRACK)),
             Map.entry(340314L, CRUD_ACTIONS),
             Map.entry(340315L, CRUD_ACTIONS),
             Map.entry(340316L, ADD_EDIT_REMOVE),
@@ -115,6 +116,7 @@ public class ModuleActionService {
                 )
                 """);
         backfillRoleActions();
+        backfillLegacyCustomerExportPermission();
         applyDefaultRoleActions(
                 "hr_manager_actions_v1",
                 19L,
@@ -440,6 +442,24 @@ public class ModuleActionService {
                         """, roleId, moduleId, action.get("actionCode"));
             }
         }
+    }
+
+    private void backfillLegacyCustomerExportPermission() {
+        jdbc.update("""
+                INSERT INTO sys_role_module_action (role_id, module_id, action_code)
+                SELECT DISTINCT legacy.role_id, 340352, 'export'
+                FROM sys_role_menu legacy
+                JOIN sys_menu menu ON menu.menu_id = legacy.menu_id
+                JOIN sys_module_action action
+                  ON action.module_id = 340352 AND action.action_code = 'export' AND action.status = '0'
+                WHERE menu.perms = 'project:merchant:export'
+                  AND NOT EXISTS (
+                      SELECT 1 FROM sys_role_module_action existing
+                      WHERE existing.role_id = legacy.role_id
+                        AND existing.module_id = 340352
+                        AND existing.action_code = 'export'
+                  )
+                """);
     }
 
     private void applyDefaultRoleActions(

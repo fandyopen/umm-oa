@@ -2,11 +2,12 @@
 <template>
   <div>
     <a-steps :current="current" @change="handleStepChange">
-      <a-step title="需求" />
-      <a-step title="方案" />
-      <a-step title="报价" />
-      <a-step title="招标" />
-      <a-step title="放弃" />
+      <a-step title="初步接洽" />
+      <a-step title="需求确认" />
+      <a-step title="方案报价" />
+      <a-step title="商务谈判" />
+      <a-step title="赢单" />
+      <a-step title="输单" />
     </a-steps>
     <s-form style="margin-top: 20px" single ok :formItems="formItems" :formData="formData" :rules="formRules" @submit="handleSubmit" @cancel="handleCancel" />
   </div>
@@ -35,19 +36,21 @@ export default {
     return {
       current: 0,
       currentStateMap: {
-        需求: 0,
-        方案: 1,
-        报价: 2,
-        招标: 3,
-        放弃: 4,
+        初步接洽: 0,
+        需求确认: 1,
+        方案报价: 2,
+        商务谈判: 3,
+        赢单: 4,
+        输单: 5,
         '': 0
       },
       currentStateMapNum: {
-        0: '需求',
-        1: '方案',
-        2: '报价',
-        3: '招标',
-        4: '放弃'
+        0: '初步接洽',
+        1: '需求确认',
+        2: '方案报价',
+        3: '商务谈判',
+        4: '赢单',
+        5: '输单'
       },
       formData: {
         recordTime: moment()
@@ -113,7 +116,7 @@ export default {
         this.current = this.currentStateMap[currentState]
         this.formData.state = currentState
       } else {
-        this.formData.state = '需求'
+        this.formData.state = '初步接洽'
       }
     })
   },

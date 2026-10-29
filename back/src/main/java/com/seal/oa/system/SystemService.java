@@ -61,6 +61,10 @@ public class SystemService {
     }
 
     public Map<String, Object> userDetails(UserAccount user) {
+        return userDetails(user, roleKeys(user.userId()));
+    }
+
+    public Map<String, Object> userDetails(UserAccount user, List<String> roles) {
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("userId", user.userId());
         result.put("tenantId_", user.tenantId());
@@ -76,7 +80,7 @@ public class SystemService {
         result.put("isOwner", isOwner(user.userId()) ? "1" : "0");
         result.put("deptId", user.deptId());
         result.put("dept", dept(user.deptId()));
-        result.put("roles", roleKeys(user.userId()));
+        result.put("roles", roles);
         return result;
     }
 
@@ -93,7 +97,11 @@ public class SystemService {
     }
 
     public List<String> permissions(Long userId) {
-        if (roleKeys(userId).contains("admin")) {
+        return permissions(userId, roleKeys(userId));
+    }
+
+    public List<String> permissions(Long userId, List<String> roles) {
+        if (roles.contains("admin")) {
             return List.of("*:*:*");
         }
         List<String> modulePermissions = jdbc.queryForList("""

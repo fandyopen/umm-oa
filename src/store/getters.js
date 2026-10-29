@@ -26,7 +26,9 @@ const getters = {
   userPermission: state => state.user.userPermission,
   tenantAppId: state => state.user.tenantAppId || storage.get('TENANT_APP_ID'),
   currentFirstLevelMenu: state => state.app.currentLevelOneMenu,
-  defaultCompany: state => state.user.defaultCompany || storage.get('DEFAULT_COMPANY')
+  defaultCompany: state => state.user.defaultCompany || storage.get('DEFAULT_COMPANY'),
+  docsEnabled: state => state.user.docsEnabled,
+  docsTitle: state => state.user.docsTitle
 }
 
 export default getters

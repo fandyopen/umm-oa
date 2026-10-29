@@ -1,395 +1,231 @@
-<!-- 商机管理表单 -->
 <template>
-  <s-form ok okText="保存" formTitle="商机信息" single :formItems="formItems" :formData="formData" :rules="formRules" @submit="handleSubmit" @cancel="handleCancel">
-    <template v-slot:footer>
-      <a-button class="s-mb-6 s-mt-6" ghost type="primary" @click="handleAddLinkMan">新增重点干系人</a-button>
-      <s-table ref="tableLinkMan" size="default" :rowKey="(_, index) => index" :data="loadDataLinkMan" :columns="linkManColumns" :showPagination="false" />
+  <a-spin :spinning="loading">
+    <a-form-model ref="form" :model="form" :rules="rules" :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }">
+      <a-row :gutter="16">
+        <a-col :xs="24" :md="12">
+          <a-form-model-item label="商机名称" prop="name">
+            <a-input v-model="form.name" placeholder="请输入商机名称" />
+          </a-form-model-item>
+        </a-col>
+        <a-col :xs="24" :md="12">
+          <a-form-model-item label="商机编号">
+            <a-input v-model="form.code" placeholder="留空自动生成" />
+          </a-form-model-item>
+        </a-col>
+        <a-col :xs="24" :md="12">
+          <a-form-model-item label="关联客户" prop="customerId">
+            <a-select v-model="form.customerId" show-search :filter-option="false" placeholder="请选择客户" @search="searchCustomers" @change="handleCustomerChange">
+              <a-select-option v-for="customer in customers" :key="customer.id" :value="customer.id">
+                {{ customer.name }}
+              </a-select-option>
+            </a-select>
+          </a-form-model-item>
+        </a-col>
+        <a-col :xs="24" :md="12">
+          <a-form-model-item label="商机阶段" prop="stage">
+            <a-select v-model="form.stage">
+              <a-select-option v-for="item in stages" :key="item" :value="item">{{ item }}</a-select-option>
+            </a-select>
+          </a-form-model-item>
+        </a-col>
+        <a-col :xs="24" :md="12">
+          <a-form-model-item label="潜在合作">
+            <a-input v-model="form.potentialCooperation" placeholder="例如：年度招聘服务、岗位外包" />
+          </a-form-model-item>
+        </a-col>
+        <a-col :xs="24" :md="12">
+          <a-form-model-item label="合作意向">
+            <a-select v-model="form.cooperationIntent" allow-clear>
+              <a-select-option v-for="item in intents" :key="item" :value="item">{{ item }}</a-select-option>
+            </a-select>
+          </a-form-model-item>
+        </a-col>
+        <a-col :xs="24" :md="12">
+          <a-form-model-item label="预计成交金额">
+            <a-input-number v-model="form.expectedAmount" :min="0" :precision="2" style="width: 100%" />
+          </a-form-model-item>
+        </a-col>
+        <a-col :xs="24" :md="12">
+          <a-form-model-item label="预计成交时间">
+            <a-date-picker v-model="form.expectedCloseDate" value-format="YYYY-MM-DD" style="width: 100%" />
+          </a-form-model-item>
+        </a-col>
+        <a-col :xs="24" :md="12">
+          <a-form-model-item label="商机负责人">
+            <a-select v-model="form.ownerUserId" show-search :filter-option="false" placeholder="请选择负责人" @search="searchOwners" @change="handleOwnerChange">
+              <a-select-option v-for="owner in owners" :key="owner.userId" :value="owner.userId">
+                {{ owner.nickName }} · {{ owner.deptName || '未分配部门' }}
+              </a-select-option>
+            </a-select>
+          </a-form-model-item>
+        </a-col>
+        <a-col :xs="24" :md="12">
+          <a-form-model-item label="商机状态">
+            <a-input v-model="form.statusLabel" placeholder="例如：推进中、已赢单、已输单" />
+          </a-form-model-item>
+        </a-col>
+        <a-col :span="24">
+          <a-form-model-item label="客户需求" :label-col="{ span: 3 }" :wrapper-col="{ span: 21 }">
+            <a-textarea v-model="form.requirement" :auto-size="{ minRows: 3, maxRows: 7 }" placeholder="记录客户需求、岗位、人数、服务范围等" />
+          </a-form-model-item>
+        </a-col>
+        <a-col :span="24">
+          <a-form-model-item label="备注" :label-col="{ span: 3 }" :wrapper-col="{ span: 21 }">
+            <a-textarea v-model="form.remark" :auto-size="{ minRows: 2, maxRows: 5 }" />
+          </a-form-model-item>
+        </a-col>
+      </a-row>
 
-      <a-button class="s-mb-6 s-mt-6" ghost type="primary" @click="handleAddStage">新增跟踪阶段</a-button>
-      <s-table ref="tableStage" size="default" :rowKey="(_, index) => index" :data="loadDataStage" :columns="stageColumns" :showPagination="false" />
-    </template>
-  </s-form>
+      <div class="form-actions">
+        <a-button @click="$emit('close')">取消</a-button>
+        <a-button type="primary" :loading="saving" @click="handleSubmit">保存</a-button>
+      </div>
+    </a-form-model>
+  </a-spin>
 </template>
 
-<script lang="jsx">
-import moment from 'moment'
-import { SForm, STable } from '/src/components/index.js'
-import { handleMerchantEdit } from '/src/views/eos/config/busUtil.js'
-import { listMerchant } from '/src/api/eos/merchant/merchant.js'
-import { addBusiness, updateBusiness, deleteBusinessUser, deleteBusinessStage, getBusiness } from '/src/api/eos/business/business.js'
+<script>
+import { addBusiness, getBusiness, updateBusiness } from '/src/api/eos/business/business.js'
+import { listCustomerOptions, listCustomerOwners } from '/src/api/eos/crm/index.js'
+
+const stages = ['初步接洽', '需求确认', '方案报价', '商务谈判', '赢单', '输单']
+const intents = ['高', '中', '低', '待评估']
+
+function emptyForm() {
+  return {
+    name: '',
+    code: '',
+    customerId: null,
+    customerName: '',
+    stage: '初步接洽',
+    potentialCooperation: '',
+    requirement: '',
+    cooperationIntent: '中',
+    expectedAmount: 0,
+    expectedCloseDate: '',
+    ownerUserId: null,
+    ownerUserName: '',
+    statusLabel: '推进中',
+    remark: ''
+  }
+}
 
 export default {
-  props: {
-    // 是否更新表单
-    isUpdate: {
-      type: Boolean,
-      default: false
-    },
-    // 表单更新数据
-    updateRow: {
-      type: Object,
-      default: () => {}
-    }
-  },
   name: 'BusinessForm',
-  components: {
-    SForm,
-    STable
+  props: {
+    isUpdate: { type: Boolean, default: false },
+    updateRow: { type: Object, default: () => ({}) }
   },
   data() {
     return {
-      merchantList: [],
-      linkManList: [],
-      stageList: [],
-      loadDataLinkMan: () => {
-        return new Promise(resolve => resolve({ data: this.linkManList }))
-      },
-      loadDataStage: () => {
-        return new Promise(resolve => resolve({ data: this.stageList }))
-      },
-      dictKeys: [],
-      // 表单数据
-      formData: {
-        createBy: this.$store.getters.userName,
-        code: moment().format('YYYYMMDDHHmmss')
-      },
-      formItems: [
-        [
-          {
-            type: 'input',
-            label: '商机名称',
-            prop: 'name',
-            colspan: 12
-          },
-          {
-            type: 'text',
-            label: '编号',
-            prop: 'code',
-            colspan: 12
-          }
-        ],
-        [
-          {
-            type: 'inputTextArea',
-            label: '商机描述',
-            prop: 'remark',
-            colspan: 12
-          },
-          {
-            type: 'select',
-            label: '业主单位',
-            prop: 'ownerUnit',
-            colspan: 12,
-            options: () => this.merchantList,
-            valueAlias: 'name',
-            labelAlias: 'name',
-            renderSuffix: text => {
-              return (
-                <a-button
-                  style="height:auto;border:none"
-                  type="link"
-                  onClick={() =>
-                    handleMerchantEdit(text, this.merchantList, () => {
-                      this.getMerchantList()
-                    })
-                  }
-                >
-                  添加
-                </a-button>
-              )
-            },
-            compProps: {
-              on: {
-                select: value => {
-                  delete this.formData.ownerUnit
-                  this.$set(this.formData, 'ownerUnit', value)
-                }
-              }
-            }
-          }
-        ],
-        [
-          {
-            type: 'inputNumber',
-            label: '预估金额(元)',
-            prop: 'amount',
-            colspan: 12
-          },
-          {
-            type: 'radio',
-            label: '是否招投标',
-            prop: 'bid',
-            colspan: 12,
-            options: [
-              { dictLabel: '是', dictValue: '是' },
-              { dictLabel: '否', dictValue: '否' }
-            ]
-          }
-        ],
-        [
-          {
-            type: 'select',
-            label: '资金来源',
-            prop: 'fundSource',
-            colspan: 12,
-            options: [
-              { dictLabel: '客户自筹资金', dictValue: '客户自筹资金' },
-              { dictLabel: '中央财政预算投资', dictValue: '中央财政预算投资' },
-              { dictLabel: '地方财政预算投资', dictValue: '地方财政预算投资' },
-              { dictLabel: '银行贷款投资', dictValue: '银行贷款投资' },
-              { dictLabel: '利用外资', dictValue: '利用外资' },
-              { dictLabel: '社会融资', dictValue: '社会融资' },
-              { dictLabel: '其他', dictValue: '其他' }
-            ]
-          },
-          {
-            type: 'input',
-            label: '预期利润率',
-            prop: 'profitRate',
-            colspan: 12
-          }
-        ],
-        [
-          {
-            type: 'inputNumber',
-            label: '垫资金额(元)',
-            prop: 'loaningScale',
-            colspan: 12
-          },
-          {
-            type: 'input',
-            label: '垫资时长',
-            prop: 'loaningTime',
-            colspan: 12
-          }
-        ],
-        [
-          {
-            type: 'upload',
-            label: '上传附件',
-            prop: 'attachment',
-            colspan: 24,
-            customDefaultFileList: () => this.updateRow && this.updateRow.attachment,
-            handleChange: ret => {
-              this.formData.attachment = JSON.stringify(ret)
-            },
-            compProps: {
-              props: {
-                multiple: true
-              }
-            }
-          },
-          {}
-        ]
-      ],
-      formRules: {
-        name: { required: true, message: '请输入', trigger: 'blur' },
-        code: { required: true, message: '请输入', trigger: 'blur' }
-        // ownerUnit: { required: true, message: '请选择', trigger: 'blur' },
-        // amount: { required: true, message: '请输入', trigger: 'blur' },
-        // bid: { required: true, message: '请选择', trigger: 'blur' },
-        // fundSource: { required: true, message: '请选择', trigger: 'blur' },
-        // profitRate: { required: true, message: '请输入', trigger: 'blur' }
-      },
-      // 重点干系人
-      linkManColumns: [
-        {
-          title: '姓名',
-          dataIndex: 'name',
-          align: 'center',
-          customRender: (text, record) => {
-            return <a-input v-model={record.name} placeholder="输入姓名" />
-          }
-        },
-        {
-          title: '联系方式',
-          dataIndex: 'link',
-          align: 'center',
-          customRender: (text, record) => {
-            return <a-input v-model={record.link} placeholder="输入联系方式" />
-          }
-        },
-        {
-          title: '角色',
-          dataIndex: 'role',
-          align: 'center',
-          customRender: (text, record) => {
-            return <a-input v-model={record.role} placeholder="输入角色" />
-          }
-        },
-        {
-          title: '备注',
-          dataIndex: 'remark',
-          align: 'center',
-          customRender: (text, record) => {
-            return <a-input v-model={record.remark} placeholder="输入备注" />
-          }
-        },
-        {
-          title: '操作',
-          align: 'center',
-          width: 80,
-          customRender: (text, record, index) => {
-            return <a-button type="danger" ghost icon="delete" onClick={() => this.handleDeleteLinkMan(record, index)} />
-          }
-        }
-      ],
-      // 跟踪阶段
-      stageColumns: [
-        // {
-        //   title: '阶段名称',
-        //   dataIndex: 'name',
-        //   align: 'center',
-        //   customRender: (text, record) => {
-        //     return <a-input v-model={record.name} placeholder="输入阶段名称" />
-        //   }
-        // },
-        {
-          title: '活动时间',
-          dataIndex: 'recordTime',
-          align: 'center',
-          customRender: (text, record) => {
-            return text ? (
-              <a-date-picker value={moment(text)} onChange={(date, dateString) => (record.recordTime = dateString)} placeholder="选择日期" />
-            ) : (
-              <a-date-picker onChange={(date, dateString) => (record.recordTime = dateString)} placeholder="选择日期" />
-            )
-          }
-        },
-        {
-          title: '状态',
-          dataIndex: 'state',
-          align: 'center',
-          customRender: (text, record) => {
-            return (
-              <a-select v-model={record.state} style={{ width: '120px' }}>
-                <a-select-option value={'需求'}>需求</a-select-option>
-                <a-select-option value={'方案'}>方案</a-select-option>
-                <a-select-option value={'报价'}>报价</a-select-option>
-                <a-select-option value={'招标'}>招标</a-select-option>
-                <a-select-option value={'放弃'}>放弃</a-select-option>
-              </a-select>
-            )
-          }
-        },
-        {
-          title: '活动事件',
-          dataIndex: 'remark',
-          align: 'center',
-          customRender: (text, record) => {
-            return <a-textarea v-model={record.remark} placeholder="输入备注" />
-          }
-        },
-        {
-          title: '操作',
-          align: 'center',
-          width: 80,
-          customRender: (text, record, index) => {
-            return <a-button type="danger" ghost icon="delete" onClick={() => this.handleDeleteBusinessStage(record, index)} />
-          }
-        }
-      ]
+      loading: false,
+      saving: false,
+      form: emptyForm(),
+      customers: [],
+      owners: [],
+      stages,
+      intents,
+      rules: {
+        name: [{ required: true, message: '请输入商机名称', trigger: 'blur' }],
+        customerId: [{ required: true, message: '请选择关联客户', trigger: 'change' }],
+        stage: [{ required: true, message: '请选择商机阶段', trigger: 'change' }]
+      }
     }
   },
   mounted() {
-    // 查询客商
-    this.getMerchantList()
-    if (this.isUpdate && !this.isEmpty(this.updateRow)) {
-      // 查询明细
-      getBusiness(this.updateRow.id).then(res => {
-        this.formData = { ...res.data }
-        this.linkManList = res.data.sealBusinessUsers || []
-        this.stageList = res.data.sealBusinessStages || []
-        this.$refs.tableLinkMan.refresh(true)
-        this.$refs.tableStage.refresh(true)
-      })
+    this.loadCustomers()
+    this.loadOwners()
+    if (this.isUpdate && this.updateRow.id) {
+      this.loadBusiness(this.updateRow.id)
     }
   },
   methods: {
-    getMerchantList() {
-      listMerchant().then(res => {
-        this.merchantList = res.rows
+    loadCustomers(keyword = '') {
+      listCustomerOptions({ name: keyword }).then(res => {
+        this.customers = res.data || []
       })
     },
-    handleDeleteBusinessStage(record, index) {
-      if (record.id) {
-        deleteBusinessStage(record.id).then(_ => {
-          this.$message.success('删除成功')
+    searchCustomers(keyword) {
+      this.loadCustomers(keyword)
+    },
+    loadOwners(keyword = '') {
+      listCustomerOwners({ keyword }).then(res => {
+        this.owners = res.data || []
+        if (!this.form.ownerUserId && this.owners.length) {
+          const current = this.$store.getters.userInfo
+          const matched = this.owners.find(owner => owner.userId === current?.userId)
+          this.form.ownerUserId = matched?.userId || this.owners[0].userId
+          this.form.ownerUserName = matched?.nickName || this.owners[0].nickName
+        }
+      })
+    },
+    searchOwners(keyword) {
+      this.loadOwners(keyword)
+    },
+    handleCustomerChange(customerId) {
+      const customer = this.customers.find(item => item.id === customerId)
+      this.form.customerName = customer?.name || ''
+    },
+    handleOwnerChange(ownerUserId) {
+      const owner = this.owners.find(item => item.userId === ownerUserId)
+      this.form.ownerUserName = owner?.nickName || ''
+    },
+    loadBusiness(id) {
+      this.loading = true
+      getBusiness(id)
+        .then(res => {
+          const data = res.data || {}
+          this.form = {
+            ...emptyForm(),
+            ...data,
+            customerId: data.customerId || this.findCustomerId(data.customerName || data.ownerUnit),
+            stage: data.stage || data.businessState || '初步接洽',
+            expectedCloseDate: data.expectedCloseDate || '',
+            ownerUserId: data.ownerUserId || null
+          }
+          if (this.form.customerId) {
+            this.handleCustomerChange(this.form.customerId)
+          }
         })
-      }
-      this.stageList.splice(index, 1)
-    },
-    handleDeleteLinkMan(record, index) {
-      if (record.id) {
-        deleteBusinessUser(record.id).then(_ => {
-          this.$message.success('删除成功')
+        .finally(() => {
+          this.loading = false
         })
-      }
-      this.linkManList.splice(index, 1)
     },
-    handleAddStage() {
-      this.stageList.push({
-        recordTime: moment()
+    findCustomerId(name) {
+      return this.customers.find(customer => customer.name === name)?.id || null
+    },
+    handleSubmit() {
+      this.$refs.form.validate(valid => {
+        if (!valid) return
+        this.saving = true
+        const action = this.isUpdate ? updateBusiness : addBusiness
+        action({
+          ...this.form,
+          expectedCloseDate: this.form.expectedCloseDate || '',
+          businessState: this.form.stage,
+          remark: this.form.remark || this.form.requirement
+        })
+          .then(() => {
+            this.$message.success(this.isUpdate ? '商机已更新' : '商机已创建')
+            this.$emit('ok')
+            this.$emit('close')
+          })
+          .catch(error => this.$message.error(error.message || String(error)))
+          .finally(() => {
+            this.saving = false
+          })
       })
-    },
-    handleAddLinkMan() {
-      this.linkManList.push({})
-    },
-    async handleSubmit() {
-      let errorMsg = ''
-      this.linkManList.forEach(item => {
-        if (this.isEmpty(item.name)) {
-          errorMsg += '请填写干系人姓名。'
-        }
-      })
-      const submitStageList = [...this.stageList]
-      submitStageList.forEach(item => {
-        // if (this.isEmpty(item.name)) {
-        //   errorMsg += '请填写阶段名称。'
-        // }
-        if (this.isEmpty(item.state)) {
-          errorMsg += '请选择阶段状态。'
-        }
-        if (this.isEmpty(item.recordTime)) {
-          errorMsg += '请选择活动时间。'
-        } else {
-          item.recordTime = moment(item.recordTime).format('YYYY-MM-DD HH:mm:ss')
-        }
-      })
-      if (!this.isEmpty(errorMsg)) {
-        return this.$message.error(errorMsg)
-      }
-      const sealBusiness = { ...this.formData, sealBusinessUsers: this.linkManList, sealBusinessStages: submitStageList }
-      if (this.isUpdate && !this.isEmpty(this.updateRow)) {
-        try {
-          const modify = await updateBusiness(sealBusiness)
-          this.$emit('ok')
-          this.$emit('close')
-          if (modify.code === 200) return this.$message.success(modify.msg)
-        } catch (error) {
-          this.$message.error(error.message)
-        }
-      } else {
-        try {
-          const success = await addBusiness(sealBusiness)
-          this.$emit('ok')
-          this.$emit('close')
-          if (success.code === 200) return this.$message.success(success.msg)
-        } catch (error) {
-          this.$message.error(error.message)
-        }
-      }
-    },
-    handleCancel() {
-      this.$emit('close')
     }
   }
 }
 </script>
-<style lang="less" scoped>
-.s-border-zero {
-  font-size: 14px;
-  font-weight: bold;
-  color: rgb(0, 55, 235);
+
+<style scoped>
+.form-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  padding-top: 16px;
+  border-top: 1px solid #edf0f3;
 }
 </style>

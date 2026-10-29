@@ -7,12 +7,14 @@ import com.seal.oa.system.OrganizationPermissionService;
 import com.seal.oa.system.SystemService;
 import com.seal.oa.system.SystemService.UserAccount;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -25,6 +27,7 @@ public class AuthController {
     private final ModuleService moduleService;
     private final SystemService systemService;
     private final OrganizationPermissionService organizationPermissionService;
+    private final JdbcTemplate jdbc;
     private final boolean validateCaptcha;
 
     public AuthController(
@@ -34,6 +37,7 @@ public class AuthController {
             ModuleService moduleService,
             SystemService systemService,
             OrganizationPermissionService organizationPermissionService,
+            JdbcTemplate jdbc,
             @Value("${app.captcha.validate:false}") boolean validateCaptcha
     ) {
         this.captchaService = captchaService;
@@ -42,6 +46,7 @@ public class AuthController {
         this.moduleService = moduleService;
         this.systemService = systemService;
         this.organizationPermissionService = organizationPermissionService;
+        this.jdbc = jdbc;
         this.validateCaptcha = validateCaptcha;
     }
 
@@ -85,6 +90,33 @@ public class AuthController {
         result.put("roles", systemService.roleKeys(user.userId()));
         result.put("permissions", systemService.permissions(user.userId()));
         result.put("posts", systemService.posts(user.userId()));
+        return result;
+    }
+
+    @GetMapping("/auth/session")
+    public Map<String, Object> session() {
+        UserAccount user = systemService.requireCurrentUser();
+        List<String> roles = systemService.roleKeys(user.userId());
+        List<String> permissions = systemService.permissions(user.userId(), roles);
+
+        Map<String, Object> docs = new java.util.LinkedHashMap<>();
+        docs.put("enabled", configValue("sys.docs.enabled", "true"));
+        docs.put("title", configValue("sys.docs.title", "使用文档"));
+
+        Map<String, Object> result = ApiResult.ok();
+        result.put("user", systemService.userDetails(user, roles));
+        result.put("roles", roles);
+        result.put("permissions", permissions);
+        result.put("posts", systemService.posts(user.userId()));
+        result.put("routers", moduleService.routers(
+                user.tenantId(),
+                roles.contains("admin"),
+                Set.copyOf(permissions),
+                moduleService.roleModuleIds(user.userId())
+        ));
+        result.put("docs", docs);
+        result.put("currentCompany", currentCompany(user.tenantId()));
+        result.put("organizationPermissions", organizationPermissionService.evaluate(user.userId()));
         return result;
     }
 
@@ -140,5 +172,25 @@ public class AuthController {
 
     private String text(Object value) {
         return value == null ? "" : String.valueOf(value);
+    }
+
+    private String configValue(String key, String defaultValue) {
+        List<String> values = jdbc.queryForList(
+                "SELECT config_value FROM sys_config WHERE config_key = ?",
+                String.class,
+                key
+        );
+        return values.isEmpty() || values.get(0) == null || values.get(0).isBlank()
+                ? defaultValue
+                : values.get(0);
+    }
+
+    private String currentCompany(Long tenantId) {
+        List<String> names = jdbc.queryForList(
+                "SELECT tenant_name FROM sys_tenant WHERE tenant_id = ? AND status = '0'",
+                String.class,
+                tenantId
+        );
+        return names.isEmpty() ? "" : names.get(0);
     }
 }

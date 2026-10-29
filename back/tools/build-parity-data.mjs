@@ -14,6 +14,30 @@ const records = []
 const seenPaths = new Set()
 let nextId = 5000
 
+function normalizeBusinessPayload(payload) {
+  const stageMap = {
+    方案: '方案报价',
+    转化项目: '赢单'
+  }
+  const stage = payload.stage || stageMap[payload.businessState] || '初步接洽'
+  return {
+    ...payload,
+    customerId: payload.customerId || 1,
+    customerName: payload.customerName || '示例客户',
+    stage,
+    businessState: stage,
+    potentialCooperation:
+      payload.potentialCooperation || payload.remark || payload.name || '',
+    requirement:
+      payload.requirement || '客户需要补充技术岗位并优化招聘交付流程',
+    cooperationIntent: payload.cooperationIntent || '中',
+    expectedAmount: payload.expectedAmount ?? payload.amount ?? 0,
+    ownerUserId: payload.ownerUserId || 1,
+    ownerUserName: payload.ownerUserName || '方铭渴',
+    statusLabel: payload.statusLabel || (stage === '赢单' ? '已赢单' : '推进中')
+  }
+}
+
 for (const result of source.results) {
   const url = new URL(result.localUrl)
   if (seenPaths.has(url.pathname)) {
@@ -32,7 +56,11 @@ for (const result of source.results) {
   if (retired.bizRecordPrefixes.some(prefix => module.startsWith(prefix))) {
     continue
   }
-  for (const [index, payload] of rows.slice(0, 20).entries()) {
+  for (const [index, rawPayload] of rows.slice(0, 20).entries()) {
+    const payload =
+      module === '/project/business/list'
+        ? normalizeBusinessPayload(rawPayload)
+        : rawPayload
     records.push({
       id: nextId++,
       module,

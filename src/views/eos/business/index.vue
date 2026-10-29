@@ -1,305 +1,234 @@
-<!-- 商机管理 -->
 <template>
   <page-header-wrapper :breadcrumb="$store.getters.breadcrumb">
     <a-card :bordered="false">
-      <div class="table-header-btns">
-        <a-button ghost type="primary" @click="handleAdd" v-hasPermi="['project:business:add']">新增</a-button>
-        <!-- 查询表单，若无数据，不展示 -->
-        <s-search placeholder="搜索此列表..." clickTips="搜索商机名称、业主单位、销售负责人" @onSearch="onSearch" />
+      <div class="page-intro">
+        <div>
+          <h2>商机管理</h2>
+          <p>将客户潜在需求推进为正式合作，跟踪阶段、预计成交时间和负责人。</p>
+        </div>
+        <a-button type="primary" icon="plus" @click="handleAdd" v-hasModuleAction="'add'">新增商机</a-button>
       </div>
-      <!-- 数据表格 -->
+
+      <div class="opportunity-filter">
+        <a-input-search v-model="queryParam.queryAll" placeholder="搜索商机名称、编号或客户" allow-clear style="width: 300px" @search="refresh" />
+        <a-select v-model="queryParam.customerId" placeholder="全部客户" allow-clear show-search :filter-option="false" style="width: 220px" @search="searchCustomers" @change="refresh">
+          <a-select-option v-for="customer in customers" :key="customer.id" :value="customer.id">
+            {{ customer.name }}
+          </a-select-option>
+        </a-select>
+        <a-select v-model="queryParam.stage" placeholder="全部阶段" allow-clear style="width: 150px" @change="refresh">
+          <a-select-option v-for="stage in stages" :key="stage" :value="stage">{{ stage }}</a-select-option>
+        </a-select>
+        <a-button icon="reload" @click="resetFilters">重置</a-button>
+      </div>
+
       <no-data v-show="noData" />
       <s-table v-show="!noData" :customRow="rowClick" ref="table" size="default" rowKey="id" :columns="columns" :data="loadData">
-        <span slot="action" slot-scope="text, record">
-          <s-action-columns :actions="getTableActions(record)" :record="record" />
+        <span slot="stage" slot-scope="text, record">
+          <a-tag :color="stageColor(text || record.businessState)">{{ text || record.businessState || '未设置' }}</a-tag>
         </span>
-        <!-- 表格列搜索 -->
-        <template slot="filterDropdown" slot-scope="{ setSelectedKeys, selectedKeys, confirm, clearFilters, column }">
-          <s-table-column-search @onSearch="handleColumnSearch" v-ant-ref="c => (searchInput = c)" :setSelectedKeys="setSelectedKeys" :selectedKeys="selectedKeys" :confirm="confirm" :clearFilters="clearFilters" :column="column" />
-        </template>
-        <template slot="filterIcon" slot-scope="filtered">
-          <s-table-column-search-icon :filtered="filtered" />
-        </template>
+        <span slot="amount" slot-scope="text">
+          {{ formatMoney(text || 0) }}
+        </span>
+        <span slot="action" slot-scope="text, record">
+          <s-action-columns :actions="actions" :record="record" />
+        </span>
       </s-table>
     </a-card>
   </page-header-wrapper>
 </template>
 
 <script lang="jsx">
-import { listBusiness, delBusiness } from '/src/api/eos/business/business.js'
-import { SSearch, SActionColumns, STable, STableColumnSearch, STableColumnSearchIcon, Ellipsis } from '/src/components/index.js'
-import BusinessForm from './modules/BusinessForm.vue'
+import { delBusiness, listBusiness } from '/src/api/eos/business/business.js'
+import { listCustomerOptions } from '/src/api/eos/crm/index.js'
+import { Ellipsis, SActionColumns, STable } from '/src/components/index.js'
 import BusinessDetail from './modules/BusinessDetail.vue'
+import BusinessForm from './modules/BusinessForm.vue'
 import BusinessStageForm from './modules/BusinessStageForm.vue'
 
 export default {
   name: 'Business',
-  components: {
-    SActionColumns,
-    SSearch,
-    STable,
-    STableColumnSearch,
-    STableColumnSearchIcon
-  },
+  components: { SActionColumns, STable },
   data() {
     return {
+      noData: false,
+      customers: [],
+      stages: ['初步接洽', '需求确认', '方案报价', '商务谈判', '赢单', '输单'],
+      queryParam: {},
       rowClick: record => ({
         on: {
-          click: () => {
-            this.handleDetail(record)
-          }
+          click: () => this.handleDetail(record)
         },
-        style: {
-          cursor: 'pointer'
-        }
+        style: { cursor: 'pointer' }
       }),
       actions: [
         {
-          label: '跟踪',
+          label: '推进阶段',
           icon: 'iconfont-zhiyeshengyamubiao',
-          permission: 'project:business:track',
+          actionCode: 'track',
           action: this.handleTrace
         },
         {
           label: '修改',
           icon: 'iconfont-bianji',
-          permission: 'project:business:edit',
+          actionCode: 'edit',
           action: this.handleUpdate
         },
         {
           label: '删除',
           icon: 'iconfont-shanchu',
-          permission: 'project:business:remove',
+          actionCode: 'remove',
           action: this.handleDelete
         }
       ],
-      dictKeys: [],
-      dictMap: {},
-      // 查询参数
-      queryParam: {},
-      /* 是否有数据 */
-      noData: false,
-      // 加载数据方法 必须为 Promise 对象
       loadData: param => {
-        return listBusiness(Object.assign({}, param, this.queryParam)).then(res => {
+        return listBusiness({ ...param, ...this.queryParam }).then(res => {
           this.noData = res.total === 0
           return {
-            data: res.rows,
+            data: res.rows || [],
             totalCount: res.total,
             pageNum: param.pageNum,
             pageSize: param.pageSize
           }
         })
       },
-      searchInput: null,
       columns: [
         {
           title: '商机名称',
           dataIndex: 'name',
           align: 'left',
-          scopedSlots: {
-            filterDropdown: 'filterDropdown',
-            filterIcon: 'filterIcon'
-          },
-          sortDirections: ['descend', 'ascend'],
-          sorter: (a, b) => {
-            // 调用接口查询
-            // this.handleSortByColumn('name', a.name.length - b.name.length > 0 ? 'desc' : 'asc')
-            return a.name.length - b.name.length
-          },
-          onFilter: (value, record) => record.name.toString().toLowerCase().includes(value.toLowerCase()),
-          onFilterDropdownVisibleChange: visible => {
-            if (visible) {
-              setTimeout(() => {
-                this.searchInput.$refs.searchInput.focus()
-              }, 0)
-            }
-          }
+          customRender: (text, record) => (
+            <div>
+              <div class="opportunity-name">{text}</div>
+              <div class="opportunity-code">{record.code || '无编号'}</div>
+            </div>
+          )
         },
         {
-          title: '商机描述',
-          dataIndex: 'remark',
+          title: '客户',
+          dataIndex: 'customerName',
           align: 'left',
-          customRender: text => {
-            return text ? (
-              <Ellipsis length={20} tooltip>
+          customRender: (text, record) => text || record.ownerUnit || '-'
+        },
+        {
+          title: '阶段',
+          dataIndex: 'stage',
+          width: 120,
+          align: 'center',
+          scopedSlots: { customRender: 'stage' }
+        },
+        {
+          title: '潜在合作',
+          dataIndex: 'potentialCooperation',
+          align: 'left',
+          customRender: text =>
+            text ? (
+              <Ellipsis length={22} tooltip>
                 {text}
               </Ellipsis>
             ) : (
-              text
+              '-'
             )
-          }
         },
         {
-          title: '跟踪状态',
-          dataIndex: 'businessState',
-          align: 'left'
-        },
-        {
-          title: '业主单位',
-          dataIndex: 'ownerUnit',
-          align: 'left'
-        },
-        {
-          title: '预估金额(元)',
-          dataIndex: 'amount',
-          align: 'left',
-          customRender: (text, record) => {
-            return this.toThousandFilter(text)
-          }
-        },
-        {
-          title: '是否招投标',
-          dataIndex: 'bid',
+          title: '合作意向',
+          dataIndex: 'cooperationIntent',
+          width: 100,
           align: 'center'
         },
         {
-          title: '资金来源',
-          dataIndex: 'fundSource',
-          align: 'left'
-        },
-        {
-          title: '预期利润率',
-          dataIndex: 'profitRate',
-          align: 'left'
-        },
-        {
-          title: '销售负责人',
-          dataIndex: 'sysUser.nickName',
+          title: '预计成交时间',
+          dataIndex: 'expectedCloseDate',
+          width: 130,
           align: 'center'
         },
-        // {
-        //   title: '附件',
-        //   dataIndex: 'attachment',
-        //   align: 'center',
-        //   customRender: (text, record) => {
-        //     return <s-doc-list text={text} />
-        //   }
-        // },
+        {
+          title: '预计金额',
+          dataIndex: 'expectedAmount',
+          width: 140,
+          align: 'right',
+          scopedSlots: { customRender: 'amount' }
+        },
+        {
+          title: '负责人',
+          dataIndex: 'ownerUserName',
+          width: 120,
+          align: 'center',
+          customRender: (text, record) => text || record.sysUser?.nickName || '-'
+        },
         {
           title: '操作',
           align: 'center',
-          width: 160,
+          width: 100,
           scopedSlots: { customRender: 'action' }
         }
       ]
     }
   },
-  created() {
-    // 查询字典
-    this.dictKeys.forEach(key => {
-      this.getDicts(key).then(res => {
-        this.$set(this.dictMap, key, res.data)
-      })
-    })
+  mounted() {
+    this.loadCustomers()
   },
   methods: {
-    /* 列搜索 */
-    handleColumnSearch(key, value) {
-      this.queryParam[key] = value
+    loadCustomers(keyword = '') {
+      listCustomerOptions({ name: keyword }).then(res => {
+        this.customers = res.data || []
+      })
     },
-    getTableActions(record) {
-      return this.actions.filter(item => this.hasPermission(item.permission))
+    searchCustomers(keyword) {
+      this.loadCustomers(keyword)
     },
-    hasPermission(permission) {
-      const permissions = this.$store.getters.permissions || []
-      return permissions.includes('*:*:*') || permissions.includes(permission)
+    resetFilters() {
+      this.queryParam = {}
+      this.refresh()
     },
-    /** 新增按钮操作，新建表单 */
     handleAdd() {
-      this.$createAntdDrawer({
-        stopPropagation: true,
-        drawerProps: {
-          title: '新增商机信息',
-          width: '60%',
-          maskClosable: true
-        },
-        content: {
-          template: BusinessForm,
-          on: {
-            ok: () => {
-              this.refresh()
-            }
-          }
-        }
-      })
+      this.openForm({})
     },
-    /** 修改按钮操作 */
     handleUpdate(row) {
+      this.openForm({ isUpdate: true, updateRow: row })
+    },
+    openForm(props) {
       this.$createAntdDrawer({
         stopPropagation: true,
         drawerProps: {
-          title: '修改商机信息',
-          width: '60%',
+          title: props.isUpdate ? '修改商机' : '新增商机',
+          width: '66%',
           maskClosable: true
         },
         content: {
           template: BusinessForm,
-          props: {
-            isUpdate: true,
-            updateRow: row
-          },
+          props,
           on: {
-            ok: () => {
-              this.refresh()
-            }
+            ok: () => this.refresh(),
+            close: () => {}
           }
         }
       })
     },
-    /** 删除按钮操作 */
-    handleDelete(row) {
-      const ids = row.id
-      this.$antdconfirm({
-        title: '删除',
-        content: '是否确认删除商机信息编号为"' + ids + '"的数据项?',
-        onOk: () => {
-          return delBusiness(ids).then(() => {
-            this.refresh()
-            this.$message.success('删除成功', 3)
-          })
-        }
-      })
-    },
-    /** 详情 */
     handleDetail(row) {
       this.$createAntdDrawer({
         stopPropagation: true,
         drawerProps: {
           title: '商机详情',
-          width: '60%',
+          width: '64%',
           maskClosable: true
         },
         content: {
           template: BusinessDetail,
-          props: {
-            formId: row.id
-          }
+          props: { formId: row.id }
         }
       })
     },
-    // 刷新页面
-    refresh() {
-      this.$refs.table.refresh(true)
-    },
-    /* 查询按钮 */
-    onSearch(data, event) {
-      this.queryParam = { ...this.queryParam, queryAll: data }
-      this.refresh()
-    },
-    /* 商机跟踪 */
     handleTrace(row) {
       this.$createAntdModal({
         stopPropagation: true,
         modalProps: {
-          title: '活动',
-          width: '60%',
+          title: '推进商机阶段',
+          width: 620,
           centered: true,
           maskClosable: true
         },
-        footer: {
-          template: 'div'
-        },
+        footer: false,
         content: {
           template: BusinessStageForm,
           props: {
@@ -307,25 +236,97 @@ export default {
             businessCode: row.code
           },
           on: {
-            saveSuccess: () => {
-              this.refresh()
-            }
+            saveSuccess: () => this.refresh()
           }
         }
       })
     },
-    /* 排序，orderProps：排序列；orderType：排序方式：asc, desc*/
-    handleSortByColumn(orderProps, orderType) {
-      const { orderByColumn } = this.queryParam
-      let orderStr = null
-      if (!this.isEmpty(orderByColumn)) {
-        orderStr = `${orderByColumn}, ${orderProps} ${orderType}`
-      } else {
-        orderStr = `${orderProps} ${orderType}`
-      }
-      this.queryParam = { ...this.queryParam, orderByColumn: orderStr }
-      this.refresh()
+    handleDelete(row) {
+      this.$antdconfirm({
+        title: '删除商机',
+        content: `确认删除“${row.name}”吗？`,
+        onOk: () =>
+          delBusiness(row.id).then(() => {
+            this.refresh()
+            this.$message.success('商机已删除')
+          })
+      })
+    },
+    refresh() {
+      this.$refs.table.refresh(true)
+    },
+    stageColor(stage) {
+      return {
+        赢单: 'green',
+        输单: 'red',
+        商务谈判: 'orange',
+        方案报价: 'purple',
+        需求确认: 'blue',
+        初步接洽: 'default'
+      }[stage] || 'default'
+    },
+    formatMoney(value) {
+      return `￥${Number(value || 0).toLocaleString('zh-CN', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      })}`
     }
   }
 }
 </script>
+
+<style lang="less" scoped>
+.page-intro {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 16px;
+
+  h2 {
+    margin: 0;
+    color: #17212b;
+    font-weight: 600;
+    font-size: 22px;
+  }
+
+  p {
+    margin: 5px 0 0;
+    color: #667085;
+  }
+}
+
+.opportunity-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  align-items: center;
+  margin-bottom: 15px;
+  padding: 12px;
+  background: #f8fafb;
+  border: 1px solid #e8edf1;
+  border-radius: 6px;
+}
+
+.opportunity-name {
+  color: #1769aa;
+  font-weight: 600;
+}
+
+.opportunity-code {
+  margin-top: 2px;
+  color: #98a2b3;
+  font-size: 11px;
+}
+
+@media (max-width: 700px) {
+  .page-intro {
+    flex-direction: column;
+  }
+
+  .opportunity-filter :deep(.ant-input-search),
+  .opportunity-filter :deep(.ant-select) {
+    width: 100% !important;
+  }
+}
+</style>

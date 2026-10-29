@@ -6,6 +6,8 @@ DROP TABLE IF EXISTS oa_form_submission;
 DROP TABLE IF EXISTS oa_form_definition;
 DROP TABLE IF EXISTS oa_process_design;
 DROP TABLE IF EXISTS oa_merchant_account;
+DROP TABLE IF EXISTS oa_customer_followup;
+DROP TABLE IF EXISTS oa_merchant_collaborator;
 DROP TABLE IF EXISTS oa_merchant_contact;
 DROP TABLE IF EXISTS oa_merchant;
 DROP TABLE IF EXISTS oa_process_task;
@@ -680,6 +682,12 @@ CREATE TABLE oa_business_opportunity (
     expected_amount DECIMAL(18, 2) NOT NULL DEFAULT 0,
     expected_close_date DATE,
     status VARCHAR(32) NOT NULL DEFAULT 'draft',
+    potential_cooperation VARCHAR(500),
+    requirement TEXT,
+    cooperation_intent VARCHAR(64),
+    contract_amount DECIMAL(18, 2) NOT NULL DEFAULT 0,
+    received_amount DECIMAL(18, 2) NOT NULL DEFAULT 0,
+    last_followup_time DATETIME,
     create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -692,6 +700,24 @@ CREATE TABLE oa_merchant (
     address VARCHAR(500),
     tax_number VARCHAR(128),
     taxpayer_type VARCHAR(64),
+    industry VARCHAR(100),
+    company_scale VARCHAR(64),
+    region VARCHAR(100),
+    enterprise_nature VARCHAR(64),
+    customer_source VARCHAR(64),
+    cooperation_status VARCHAR(64),
+    owner_user_id BIGINT,
+    owner_user_name VARCHAR(64),
+    public_pool VARCHAR(1) NOT NULL DEFAULT '0',
+    assigned_at DATETIME,
+    last_followup_time DATETIME,
+    contract_expire_date DATE,
+    last_payment_date DATE,
+    cooperation_positions INT NOT NULL DEFAULT 0,
+    referral_count INT NOT NULL DEFAULT 0,
+    hire_count INT NOT NULL DEFAULT 0,
+    contract_amount DECIMAL(18, 2) NOT NULL DEFAULT 0,
+    received_amount DECIMAL(18, 2) NOT NULL DEFAULT 0,
     remark VARCHAR(1000),
     attachment TEXT,
     status VARCHAR(1) NOT NULL DEFAULT '0',
@@ -705,9 +731,35 @@ CREATE TABLE oa_merchant_contact (
     merchant_id BIGINT NOT NULL,
     name VARCHAR(100),
     phone VARCHAR(32),
+    wechat VARCHAR(64),
     email VARCHAR(128),
     position VARCHAR(100),
+    decision_role VARCHAR(64),
+    primary_contact VARCHAR(1) NOT NULL DEFAULT '0',
     remark VARCHAR(500)
+);
+
+CREATE TABLE oa_merchant_collaborator (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    merchant_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    user_name VARCHAR(64),
+    UNIQUE (merchant_id, user_id)
+);
+
+CREATE TABLE oa_customer_followup (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    tenant_id BIGINT NOT NULL DEFAULT 1,
+    merchant_id BIGINT NOT NULL,
+    followup_time DATETIME NOT NULL,
+    method VARCHAR(32),
+    content TEXT,
+    next_plan TEXT,
+    next_followup_time DATETIME,
+    owner_user_id BIGINT,
+    owner_user_name VARCHAR(64),
+    create_by VARCHAR(64),
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE oa_merchant_account (

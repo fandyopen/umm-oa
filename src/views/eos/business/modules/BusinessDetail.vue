@@ -1,176 +1,148 @@
-<!-- 商机详情 -->
 <template>
-  <div>
-    <!-- <a-button-group>
-      <a-button ghost type="primary" @click="handleUpdate(text, record, index)">编辑</a-button>
-      <a-button ghost type="danger" @click="handleDelete(text, record, index)" v-hasModuleAction="'remove'">删除</a-button>
-    </a-button-group> -->
-    <s-descriptions title="基本信息" :formItems="formItems" :formData="formData" />
-    <a-card :bordered="false" size="small">
-      <a-collapse expand-icon-position="right" :activeKey="['重要干系人','跟踪阶段']">
-        <a-collapse-panel key="重要干系人" class="custom-collapse-panel">
-          <span slot="header" class="custom-collapse-panel-header">重要干系人</span>
-          <s-table ref="tableLinkMan" size="default" rowKey="id" :columns="linkManColumns" :data="loadDataLinkMan" :show-pagination="false" />
-        </a-collapse-panel>
-        <a-collapse-panel key="跟踪阶段" class="custom-collapse-panel">
-          <span slot="header" class="custom-collapse-panel-header">跟踪阶段</span>
-          <!-- <s-table ref="tableStage" size="default" rowKey="id" :columns="stageColumns" :data="loadDataStage" :show-pagination="false" /> -->
-          <!-- 时间轴 -->
-          <BusinessStage :stageList="stageList" />
-        </a-collapse-panel>
-      </a-collapse>
-    </a-card>
-  </div>
+  <a-spin :spinning="loading">
+    <div class="opportunity-hero">
+      <div>
+        <h2>{{ data.name || '-' }}</h2>
+        <div class="hero-meta">
+          <a-tag color="blue">{{ data.customerName || data.ownerUnit || '未关联客户' }}</a-tag>
+          <a-tag :color="stageColor">{{ data.stage || data.businessState || '未设置阶段' }}</a-tag>
+          <a-tag color="gold">{{ data.cooperationIntent || '意向待评估' }}</a-tag>
+        </div>
+      </div>
+      <div class="hero-amount">
+        <span>预计金额</span>
+        <strong>{{ formatMoney(data.expectedAmount || data.amount) }}</strong>
+      </div>
+    </div>
+
+    <a-descriptions bordered :column="2" size="small">
+      <a-descriptions-item label="商机编号">{{ data.code || '-' }}</a-descriptions-item>
+      <a-descriptions-item label="预计成交时间">{{ data.expectedCloseDate || '-' }}</a-descriptions-item>
+      <a-descriptions-item label="负责人">{{ data.ownerUserName || data.sysUser?.nickName || '-' }}</a-descriptions-item>
+      <a-descriptions-item label="商机状态">{{ data.statusLabel || data.status || '-' }}</a-descriptions-item>
+      <a-descriptions-item label="潜在合作" :span="2">{{ data.potentialCooperation || '-' }}</a-descriptions-item>
+      <a-descriptions-item label="客户需求" :span="2">{{ data.requirement || data.remark || '-' }}</a-descriptions-item>
+      <a-descriptions-item label="备注" :span="2">{{ data.remark || '-' }}</a-descriptions-item>
+    </a-descriptions>
+
+    <div v-if="stages.length" class="stage-section">
+      <h3>阶段记录</h3>
+      <a-timeline>
+        <a-timeline-item v-for="item in [...stages].reverse()" :key="item.id || item.recordTime" color="blue">
+          <strong>{{ item.recordTime }}</strong>
+          <a-tag>{{ item.state }}</a-tag>
+          <div>{{ item.remark }}</div>
+        </a-timeline-item>
+      </a-timeline>
+    </div>
+  </a-spin>
 </template>
 
-<script lang="jsx">
+<script>
 import { getBusiness } from '/src/api/eos/business/business.js'
-
-import Ellipsis from '/src/components/Ellipsis/Ellipsis.vue'
-import STable from '/src/components/Table/index.jsx'
-import SDescriptions from '/src/components/Descriptions/index.jsx'
-import BusinessStage from './BusinessStage.vue'
 
 export default {
   name: 'BusinessDetail',
-  components: {
-    SDescriptions,
-    STable,
-    BusinessStage
-  },
   props: {
-    formId: {
-      type: Number,
-      required: true
-    }
+    formId: { type: Number, required: true }
   },
   data() {
     return {
-      formData: {},
-      linkManList: [],
-      stageList: [],
-      loadDataLinkMan: () => {
-        return new Promise(resolve => resolve({ data: this.linkManList }))
-      },
-      // loadDataStage: () => {
-      //   return new Promise(resolve => resolve({ data: this.stageList }))
-      // },
-      formItems: [
-        {
-          label: '商机名称',
-          prop: 'name'
-        },
-        {
-          label: '编号',
-          prop: 'code'
-        },
-        {
-          label: '商机描述',
-          prop: 'remark'
-        },
-        {
-          label: '跟踪状态',
-          prop: 'businessState',
-          customRender: text => {
-            return <a-tag color="blue">{text}</a-tag>
-          }
-        },
-        {
-          label: '业主单位',
-          prop: 'ownerUnit'
-        },
-        {
-          label: '预估金额(元)',
-          prop: 'amount',
-          customRender: (text, record) => (text ? this.toThousandFilter(text) : text)
-        },
-        {
-          label: '是否招投标',
-          prop: 'bid'
-        },
-        {
-          label: '资金来源',
-          prop: 'fundSource'
-        },
-        {
-          label: '预期利润率',
-          prop: 'profitRate'
-        },
-        {
-          label: '垫资金额(元)',
-          prop: 'loaningScale',
-          customRender: (text, record) => (text ? this.toThousandFilter(text) : text)
-        },
-        {
-          label: '垫资时长',
-          prop: 'loaningTime'
-        },
-        {
-          label: '附件',
-          prop: 'attachment',
-          customRender: text => {
-            return <s-doc-list text={text} />
-          }
-        }
-      ],
-      // 重点干系人
-      linkManColumns: [
-        {
-          title: '姓名',
-          dataIndex: 'name',
-          align: 'center'
-        },
-        {
-          title: '联系方式',
-          dataIndex: 'link',
-          align: 'center'
-        },
-        {
-          title: '角色',
-          dataIndex: 'role',
-          align: 'center'
-        },
-        {
-          title: '备注',
-          dataIndex: 'remark',
-          align: 'center'
-        }
-      ]
-      // 跟踪阶段
-      // stageColumns: [
-      //   {
-      //     title: '阶段名称',
-      //     dataIndex: 'name',
-      //     align: 'center'
-      //   },
-      //   {
-      //     title: '记录时间',
-      //     dataIndex: 'recordTime',
-      //     align: 'center',
-      //     customRender: text => moment(text).format('YYYY-MM-DD')
-      //   },
-      //   {
-      //     title: '状态',
-      //     dataIndex: 'state',
-      //     align: 'center'
-      //   },
-      //   {
-      //     title: '备注',
-      //     dataIndex: 'remark',
-      //     align: 'center'
-      //   }
-      // ]
+      loading: false,
+      data: {},
+      stages: []
+    }
+  },
+  computed: {
+    stageColor() {
+      return {
+        赢单: 'green',
+        输单: 'red',
+        商务谈判: 'orange',
+        方案报价: 'purple',
+        需求确认: 'blue'
+      }[this.data.stage || this.data.businessState] || 'default'
     }
   },
   mounted() {
-    // 查询明细
-    getBusiness(this.formId).then(res => {
-      this.formData = { ...res.data }
-      this.linkManList = res.data.sealBusinessUsers || []
-      this.stageList = res.data.sealBusinessStages || []
-      this.$refs.tableLinkMan.refresh(true)
-      // this.$refs.tableStage.refresh(true)
-    })
+    this.loading = true
+    getBusiness(this.formId)
+      .then(res => {
+        this.data = res.data || {}
+        this.stages = this.data.sealBusinessStages || []
+      })
+      .finally(() => {
+        this.loading = false
+      })
+  },
+  methods: {
+    formatMoney(value) {
+      return `￥${Number(value || 0).toLocaleString('zh-CN', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      })}`
+    }
   }
 }
 </script>
+
+<style lang="less" scoped>
+.opportunity-hero {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #edf0f3;
+
+  h2 {
+    margin: 0;
+    color: #17212b;
+    font-weight: 650;
+    font-size: 22px;
+  }
+}
+
+.hero-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 8px;
+}
+
+.hero-amount {
+  min-width: 150px;
+  text-align: right;
+
+  span {
+    display: block;
+    color: #8a96a3;
+    font-size: 12px;
+  }
+
+  strong {
+    color: #1769aa;
+    font-size: 22px;
+  }
+}
+
+.stage-section {
+  margin-top: 20px;
+
+  h3 {
+    margin-bottom: 12px;
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 600px) {
+  .opportunity-hero {
+    flex-direction: column;
+  }
+
+  .hero-amount {
+    text-align: left;
+  }
+}
+</style>

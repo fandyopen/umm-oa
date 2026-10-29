@@ -50,7 +50,6 @@
 
 <script>
 import MultiTab from './MultiTab/index.js'
-import { updateTheme } from './ProLayout/index.js'
 import { i18nRender } from '/src/locales/index.js'
 import { mapState } from 'vuex'
 import { CONTENT_WIDTH_TYPE, SIDEBAR_TYPE, TOGGLE_MOBILE_TYPE } from '/src/store/mutation-types.js'
@@ -164,10 +163,7 @@ export default {
     //   // 读取store里的primaryColor
     //   updateTheme(this.settings.primaryColor)
     // }
-    console.log('NODE_ENV', import.meta.env.MODE)
-    console.log('VITE_APP_PREVIEW', import.meta.env.VITE_APP_PREVIEW)
     // 生产环境和开发环境都具备切换颜色
-    updateTheme(this.settings.primaryColor)
   },
   methods: {
     i18nRender,

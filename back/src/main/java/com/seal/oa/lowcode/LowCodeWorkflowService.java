@@ -218,6 +218,10 @@ public class LowCodeWorkflowService {
     }
 
     public List<Map<String, Object>> tasks(String kind, Long userId) {
+        return tasks(kind, userId, 0);
+    }
+
+    public List<Map<String, Object>> tasks(String kind, Long userId, int limit) {
         if ("start".equals(kind)) {
             List<Map<String, Object>> instances = jdbc.queryForList("""
                     SELECT * FROM oa_process_instance
@@ -251,7 +255,7 @@ public class LowCodeWorkflowService {
             return List.of();
         }
 
-        List<Map<String, Object>> tasks = jdbc.queryForList("""
+        String todoSql = """
                 SELECT t.*, i.process_key, i.business_id, i.starter_id, i.starter_name,
                        i.status AS instance_status, i.start_time, i.end_time
                 FROM oa_todo td
@@ -260,7 +264,10 @@ public class LowCodeWorkflowService {
                 WHERE td.user_id = ? AND td.status = 'todo'
                   AND (i.process_key LIKE 'form:%' OR i.process_key LIKE 'business:%')
                 ORDER BY td.create_time DESC
-                """, userId);
+                """;
+        List<Map<String, Object>> tasks = limit > 0
+                ? jdbc.queryForList(todoSql + " LIMIT ?", userId, limit)
+                : jdbc.queryForList(todoSql, userId);
         List<Map<String, Object>> rows = new ArrayList<>();
         for (Map<String, Object> task : tasks) {
             rows.add(view(instance(task), task, "todo"));

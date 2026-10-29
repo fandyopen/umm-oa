@@ -50,6 +50,63 @@ function flatten(items, parentId = 0, parentName = '') {
 
 flatten(source.data)
 
+const crmModuleOverrides = new Map([
+  [340310, {
+    moduleName: '客户管理',
+    routeName: 'CRM',
+    path: '/crm',
+    component: 'Layout',
+    icon: 'iconfont-xiaoshouloudou',
+    moduleSort: 1,
+    hidden: 0,
+    perms: '',
+    hasFlow: 1,
+    redirect: 'noRedirect'
+  }],
+  [340352, {
+    moduleName: '客户档案',
+    routeName: 'Customers',
+    path: 'customers',
+    component: 'eos/crm/customer/index',
+    icon: 'iconfont-kehuguanli',
+    moduleSort: 1,
+    hidden: 0,
+    perms: 'project:merchant:list',
+    hasFlow: 1,
+    redirect: ''
+  }],
+  [340590, {
+    moduleName: '商机管理',
+    routeName: 'Business-mange',
+    path: 'opportunities',
+    component: 'eos/business/index',
+    icon: 'iconfont-shuju_shangji_shangjimingcheng_huaban1',
+    moduleSort: 2,
+    hidden: 0,
+    perms: 'project:business:list',
+    hasFlow: 1,
+    redirect: ''
+  }],
+  [340644, {
+    moduleName: '客户分析',
+    routeName: 'CrmAnalysis',
+    path: 'analysis',
+    component: 'eos/crm/analysis/index',
+    icon: 'iconfont-chengbenfenxi-',
+    moduleSort: 3,
+    hidden: 0,
+    perms: 'project:analysis:list',
+    hasFlow: 0,
+    redirect: ''
+  }]
+])
+for (const module of modules) {
+  const override = crmModuleOverrides.get(Number(module.moduleId))
+  if (override) {
+    Object.assign(module, override)
+  }
+}
+
 modules.push(
   {
     moduleId: 341000,
@@ -105,6 +162,27 @@ modules.push(
     moduleSort: 99,
     hidden: 1,
     perms: 'system:docs:list',
+    hasFlow: 0,
+    flowConditions: '',
+    noCache: 0,
+    isApp: '',
+    isFrame: '',
+    query: '',
+    redirect: '',
+    status: '0'
+  },
+  {
+    moduleId: 341101,
+    parentId: 340310,
+    parentName: '客户管理',
+    moduleName: '风险提醒',
+    routeName: 'CrmRisks',
+    path: 'risks',
+    component: 'eos/crm/risk/index',
+    icon: 'iconfont-jinggao',
+    moduleSort: 4,
+    hidden: 0,
+    perms: 'project:risk:list',
     hasFlow: 0,
     flowConditions: '',
     noCache: 0,

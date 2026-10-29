@@ -2,9 +2,7 @@ import request from '/src/utils/axios/request.js'
 
 const userApi = {
   Login: '/login',
-  Logout: '/logout',
-  // get my info
-  UserInfo: '/getInfo'
+  Logout: '/logout'
 }
 
 /**
@@ -28,13 +26,10 @@ export async function login(parameter) {
   })
 }
 
-export function getInfo() {
+export function getSession() {
   return request({
-    url: userApi.UserInfo,
-    method: 'get',
-    headers: {
-      'Content-Type': 'application/json;charset=UTF-8'
-    }
+    url: '/auth/session',
+    method: 'get'
   })
 }
 

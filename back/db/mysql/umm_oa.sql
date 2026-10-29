@@ -18,6 +18,8 @@ DROP TABLE IF EXISTS oa_form_submission;
 DROP TABLE IF EXISTS oa_form_definition;
 DROP TABLE IF EXISTS oa_process_design;
 DROP TABLE IF EXISTS oa_merchant_account;
+DROP TABLE IF EXISTS oa_customer_followup;
+DROP TABLE IF EXISTS oa_merchant_collaborator;
 DROP TABLE IF EXISTS oa_merchant_contact;
 DROP TABLE IF EXISTS oa_merchant;
 DROP TABLE IF EXISTS oa_process_task;
@@ -692,6 +694,12 @@ CREATE TABLE oa_business_opportunity (
     expected_amount DECIMAL(18, 2) NOT NULL DEFAULT 0,
     expected_close_date DATE,
     status VARCHAR(32) NOT NULL DEFAULT 'draft',
+    potential_cooperation VARCHAR(500),
+    requirement TEXT,
+    cooperation_intent VARCHAR(64),
+    contract_amount DECIMAL(18, 2) NOT NULL DEFAULT 0,
+    received_amount DECIMAL(18, 2) NOT NULL DEFAULT 0,
+    last_followup_time DATETIME,
     create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -704,6 +712,24 @@ CREATE TABLE oa_merchant (
     address VARCHAR(500),
     tax_number VARCHAR(128),
     taxpayer_type VARCHAR(64),
+    industry VARCHAR(100),
+    company_scale VARCHAR(64),
+    region VARCHAR(100),
+    enterprise_nature VARCHAR(64),
+    customer_source VARCHAR(64),
+    cooperation_status VARCHAR(64),
+    owner_user_id BIGINT,
+    owner_user_name VARCHAR(64),
+    public_pool VARCHAR(1) NOT NULL DEFAULT '0',
+    assigned_at DATETIME,
+    last_followup_time DATETIME,
+    contract_expire_date DATE,
+    last_payment_date DATE,
+    cooperation_positions INT NOT NULL DEFAULT 0,
+    referral_count INT NOT NULL DEFAULT 0,
+    hire_count INT NOT NULL DEFAULT 0,
+    contract_amount DECIMAL(18, 2) NOT NULL DEFAULT 0,
+    received_amount DECIMAL(18, 2) NOT NULL DEFAULT 0,
     remark VARCHAR(1000),
     attachment TEXT,
     status VARCHAR(1) NOT NULL DEFAULT '0',
@@ -717,9 +743,35 @@ CREATE TABLE oa_merchant_contact (
     merchant_id BIGINT NOT NULL,
     name VARCHAR(100),
     phone VARCHAR(32),
+    wechat VARCHAR(64),
     email VARCHAR(128),
     position VARCHAR(100),
+    decision_role VARCHAR(64),
+    primary_contact VARCHAR(1) NOT NULL DEFAULT '0',
     remark VARCHAR(500)
+);
+
+CREATE TABLE oa_merchant_collaborator (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    merchant_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    user_name VARCHAR(64),
+    UNIQUE (merchant_id, user_id)
+);
+
+CREATE TABLE oa_customer_followup (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    tenant_id BIGINT NOT NULL DEFAULT 1,
+    merchant_id BIGINT NOT NULL,
+    followup_time DATETIME NOT NULL,
+    method VARCHAR(32),
+    content TEXT,
+    next_plan TEXT,
+    next_followup_time DATETIME,
+    owner_user_id BIGINT,
+    owner_user_name VARCHAR(64),
+    create_by VARCHAR(64),
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE oa_merchant_account (
@@ -1342,6 +1394,7 @@ INSERT IGNORE INTO sys_role_module (role_id, module_id) VALUES (3, 340352);
 INSERT IGNORE INTO sys_role_module (role_id, module_id) VALUES (3, 340786);
 INSERT IGNORE INTO sys_role_module (role_id, module_id) VALUES (3, 340590);
 INSERT IGNORE INTO sys_role_module (role_id, module_id) VALUES (3, 340644);
+INSERT IGNORE INTO sys_role_module (role_id, module_id) VALUES (3, 341101);
 INSERT IGNORE INTO sys_role_module (role_id, module_id) VALUES (4, 340341);
 INSERT IGNORE INTO sys_role_module (role_id, module_id) VALUES (4, 340342);
 INSERT IGNORE INTO sys_role_module (role_id, module_id) VALUES (4, 340527);
@@ -1356,6 +1409,7 @@ INSERT IGNORE INTO sys_role_module (role_id, module_id) VALUES (5, 340590);
 INSERT IGNORE INTO sys_role_module (role_id, module_id) VALUES (5, 340644);
 INSERT IGNORE INTO sys_role_module (role_id, module_id) VALUES (5, 340352);
 INSERT IGNORE INTO sys_role_module (role_id, module_id) VALUES (5, 340786);
+INSERT IGNORE INTO sys_role_module (role_id, module_id) VALUES (5, 341101);
 INSERT IGNORE INTO sys_role_module (role_id, module_id) VALUES (6, 340341);
 INSERT IGNORE INTO sys_role_module (role_id, module_id) VALUES (6, 340342);
 INSERT IGNORE INTO sys_role_module (role_id, module_id) VALUES (6, 340527);
@@ -1364,6 +1418,7 @@ INSERT IGNORE INTO sys_role_module (role_id, module_id) VALUES (6, 340590);
 INSERT IGNORE INTO sys_role_module (role_id, module_id) VALUES (6, 340644);
 INSERT IGNORE INTO sys_role_module (role_id, module_id) VALUES (6, 340352);
 INSERT IGNORE INTO sys_role_module (role_id, module_id) VALUES (6, 340786);
+INSERT IGNORE INTO sys_role_module (role_id, module_id) VALUES (6, 341101);
 INSERT IGNORE INTO sys_role_module (role_id, module_id) VALUES (7, 340341);
 INSERT IGNORE INTO sys_role_module (role_id, module_id) VALUES (7, 340342);
 INSERT IGNORE INTO sys_role_module (role_id, module_id) VALUES (7, 340527);
@@ -1390,6 +1445,7 @@ INSERT IGNORE INTO sys_role_module (role_id, module_id) VALUES (10, 340590);
 INSERT IGNORE INTO sys_role_module (role_id, module_id) VALUES (10, 340644);
 INSERT IGNORE INTO sys_role_module (role_id, module_id) VALUES (10, 340352);
 INSERT IGNORE INTO sys_role_module (role_id, module_id) VALUES (10, 340786);
+INSERT IGNORE INTO sys_role_module (role_id, module_id) VALUES (10, 341101);
 INSERT IGNORE INTO sys_role_module (role_id, module_id) VALUES (11, 340341);
 INSERT IGNORE INTO sys_role_module (role_id, module_id) VALUES (11, 340342);
 INSERT IGNORE INTO sys_role_module (role_id, module_id) VALUES (11, 340527);
@@ -1425,6 +1481,7 @@ INSERT IGNORE INTO sys_role_module (role_id, module_id) VALUES (15, 340590);
 INSERT IGNORE INTO sys_role_module (role_id, module_id) VALUES (15, 340644);
 INSERT IGNORE INTO sys_role_module (role_id, module_id) VALUES (15, 340352);
 INSERT IGNORE INTO sys_role_module (role_id, module_id) VALUES (15, 340786);
+INSERT IGNORE INTO sys_role_module (role_id, module_id) VALUES (15, 341101);
 INSERT IGNORE INTO sys_role_module (role_id, module_id) VALUES (16, 340341);
 INSERT IGNORE INTO sys_role_module (role_id, module_id) VALUES (16, 340342);
 INSERT IGNORE INTO sys_role_module (role_id, module_id) VALUES (16, 340527);
@@ -1433,6 +1490,7 @@ INSERT IGNORE INTO sys_role_module (role_id, module_id) VALUES (16, 340352);
 INSERT IGNORE INTO sys_role_module (role_id, module_id) VALUES (16, 340786);
 INSERT IGNORE INTO sys_role_module (role_id, module_id) VALUES (16, 340590);
 INSERT IGNORE INTO sys_role_module (role_id, module_id) VALUES (16, 340644);
+INSERT IGNORE INTO sys_role_module (role_id, module_id) VALUES (16, 341101);
 INSERT IGNORE INTO sys_role_module (role_id, module_id) VALUES (17, 340341);
 INSERT IGNORE INTO sys_role_module (role_id, module_id) VALUES (17, 340342);
 INSERT IGNORE INTO sys_role_module (role_id, module_id) VALUES (17, 340527);
@@ -1441,6 +1499,7 @@ INSERT IGNORE INTO sys_role_module (role_id, module_id) VALUES (17, 340590);
 INSERT IGNORE INTO sys_role_module (role_id, module_id) VALUES (17, 340644);
 INSERT IGNORE INTO sys_role_module (role_id, module_id) VALUES (17, 340352);
 INSERT IGNORE INTO sys_role_module (role_id, module_id) VALUES (17, 340786);
+INSERT IGNORE INTO sys_role_module (role_id, module_id) VALUES (17, 341101);
 INSERT IGNORE INTO sys_role_module (role_id, module_id) VALUES (18, 340341);
 INSERT IGNORE INTO sys_role_module (role_id, module_id) VALUES (18, 340342);
 INSERT IGNORE INTO sys_role_module (role_id, module_id) VALUES (18, 340527);
@@ -1449,6 +1508,7 @@ INSERT IGNORE INTO sys_role_module (role_id, module_id) VALUES (18, 340352);
 INSERT IGNORE INTO sys_role_module (role_id, module_id) VALUES (18, 340786);
 INSERT IGNORE INTO sys_role_module (role_id, module_id) VALUES (18, 340590);
 INSERT IGNORE INTO sys_role_module (role_id, module_id) VALUES (18, 340644);
+INSERT IGNORE INTO sys_role_module (role_id, module_id) VALUES (18, 341101);
 INSERT IGNORE INTO sys_role_menu (role_id, menu_id) VALUES (7, 1);
 INSERT IGNORE INTO sys_role_menu (role_id, menu_id) VALUES (7, 2);
 INSERT IGNORE INTO sys_role_menu (role_id, menu_id) VALUES (7, 3);
@@ -1789,13 +1849,13 @@ INSERT INTO sys_module (module_id, tenant_id, parent_id, module_name, route_name
 ON DUPLICATE KEY UPDATE module_name = VALUES(module_name), parent_id = VALUES(parent_id), route_name = VALUES(route_name), path = VALUES(path), component = VALUES(component), icon = VALUES(icon), module_sort = VALUES(module_sort), hidden = VALUES(hidden), perms = VALUES(perms), has_flow = VALUES(has_flow), flow_conditions = VALUES(flow_conditions), no_cache = VALUES(no_cache), is_app = VALUES(is_app), is_frame = VALUES(is_frame), query = VALUES(query), redirect = VALUES(redirect), status = VALUES(status);
 INSERT INTO sys_module (module_id, tenant_id, parent_id, module_name, route_name, path, component, icon, module_sort, hidden, perms, has_flow, flow_conditions, no_cache, is_app, is_frame, query, redirect, status) VALUES (340785, 1, 340340, '抄送我的', 'Copy', 'copy', 'eos/todoItem/copy/index', 'iconfont-tijiao', 4, 0, '', 1, '', 0, '', '', '', '', '0')
 ON DUPLICATE KEY UPDATE module_name = VALUES(module_name), parent_id = VALUES(parent_id), route_name = VALUES(route_name), path = VALUES(path), component = VALUES(component), icon = VALUES(icon), module_sort = VALUES(module_sort), hidden = VALUES(hidden), perms = VALUES(perms), has_flow = VALUES(has_flow), flow_conditions = VALUES(flow_conditions), no_cache = VALUES(no_cache), is_app = VALUES(is_app), is_frame = VALUES(is_frame), query = VALUES(query), redirect = VALUES(redirect), status = VALUES(status);
-INSERT INTO sys_module (module_id, tenant_id, parent_id, module_name, route_name, path, component, icon, module_sort, hidden, perms, has_flow, flow_conditions, no_cache, is_app, is_frame, query, redirect, status) VALUES (340310, 1, 0, '营销', 'Sale', '/sale', 'Layout', 'iconfont-xiaoshouloudou', 1, 0, '', 1, '', 0, '', '', '', 'noRedirect', '0')
+INSERT INTO sys_module (module_id, tenant_id, parent_id, module_name, route_name, path, component, icon, module_sort, hidden, perms, has_flow, flow_conditions, no_cache, is_app, is_frame, query, redirect, status) VALUES (340310, 1, 0, '客户管理', 'CRM', '/crm', 'Layout', 'iconfont-xiaoshouloudou', 1, 0, '', 1, '', 0, '', '', '', 'noRedirect', '0')
 ON DUPLICATE KEY UPDATE module_name = VALUES(module_name), parent_id = VALUES(parent_id), route_name = VALUES(route_name), path = VALUES(path), component = VALUES(component), icon = VALUES(icon), module_sort = VALUES(module_sort), hidden = VALUES(hidden), perms = VALUES(perms), has_flow = VALUES(has_flow), flow_conditions = VALUES(flow_conditions), no_cache = VALUES(no_cache), is_app = VALUES(is_app), is_frame = VALUES(is_frame), query = VALUES(query), redirect = VALUES(redirect), status = VALUES(status);
-INSERT INTO sys_module (module_id, tenant_id, parent_id, module_name, route_name, path, component, icon, module_sort, hidden, perms, has_flow, flow_conditions, no_cache, is_app, is_frame, query, redirect, status) VALUES (340590, 1, 340310, '商机管理', 'Business-mange', 'business-mange', 'eos/business/index', 'iconfont-shuju_shangji_shangjimingcheng_huaban1', 2, 0, 'project:business:list', 1, '', 0, '', '', '', '', '0')
+INSERT INTO sys_module (module_id, tenant_id, parent_id, module_name, route_name, path, component, icon, module_sort, hidden, perms, has_flow, flow_conditions, no_cache, is_app, is_frame, query, redirect, status) VALUES (340590, 1, 340310, '商机管理', 'Business-mange', 'opportunities', 'eos/business/index', 'iconfont-shuju_shangji_shangjimingcheng_huaban1', 2, 0, 'project:business:list', 1, '', 0, '', '', '', '', '0')
 ON DUPLICATE KEY UPDATE module_name = VALUES(module_name), parent_id = VALUES(parent_id), route_name = VALUES(route_name), path = VALUES(path), component = VALUES(component), icon = VALUES(icon), module_sort = VALUES(module_sort), hidden = VALUES(hidden), perms = VALUES(perms), has_flow = VALUES(has_flow), flow_conditions = VALUES(flow_conditions), no_cache = VALUES(no_cache), is_app = VALUES(is_app), is_frame = VALUES(is_frame), query = VALUES(query), redirect = VALUES(redirect), status = VALUES(status);
-INSERT INTO sys_module (module_id, tenant_id, parent_id, module_name, route_name, path, component, icon, module_sort, hidden, perms, has_flow, flow_conditions, no_cache, is_app, is_frame, query, redirect, status) VALUES (340644, 1, 340310, '招标投标', 'Bid', 'bid', 'eos/bid/index', 'iconfont-zhaotoubiao', 3, 0, 'project:bid:list', 1, '', 0, '', '', '', '', '0')
+INSERT INTO sys_module (module_id, tenant_id, parent_id, module_name, route_name, path, component, icon, module_sort, hidden, perms, has_flow, flow_conditions, no_cache, is_app, is_frame, query, redirect, status) VALUES (340644, 1, 340310, '客户分析', 'CrmAnalysis', 'analysis', 'eos/crm/analysis/index', 'iconfont-chengbenfenxi-', 3, 0, 'project:analysis:list', 0, '', 0, '', '', '', '', '0')
 ON DUPLICATE KEY UPDATE module_name = VALUES(module_name), parent_id = VALUES(parent_id), route_name = VALUES(route_name), path = VALUES(path), component = VALUES(component), icon = VALUES(icon), module_sort = VALUES(module_sort), hidden = VALUES(hidden), perms = VALUES(perms), has_flow = VALUES(has_flow), flow_conditions = VALUES(flow_conditions), no_cache = VALUES(no_cache), is_app = VALUES(is_app), is_frame = VALUES(is_frame), query = VALUES(query), redirect = VALUES(redirect), status = VALUES(status);
-INSERT INTO sys_module (module_id, tenant_id, parent_id, module_name, route_name, path, component, icon, module_sort, hidden, perms, has_flow, flow_conditions, no_cache, is_app, is_frame, query, redirect, status) VALUES (340352, 1, 340310, '客商管理', 'Merchant', 'merchant', 'eos/merchant/index', 'iconfont-keshangguanli1', 4, 0, 'project:merchant:list', 1, '', 0, '', '', '', '', '0')
+INSERT INTO sys_module (module_id, tenant_id, parent_id, module_name, route_name, path, component, icon, module_sort, hidden, perms, has_flow, flow_conditions, no_cache, is_app, is_frame, query, redirect, status) VALUES (340352, 1, 340310, '客户档案', 'Customers', 'customers', 'eos/crm/customer/index', 'iconfont-xiaoshou', 1, 0, 'project:merchant:list', 1, '', 0, '', '', '', '', '0')
 ON DUPLICATE KEY UPDATE module_name = VALUES(module_name), parent_id = VALUES(parent_id), route_name = VALUES(route_name), path = VALUES(path), component = VALUES(component), icon = VALUES(icon), module_sort = VALUES(module_sort), hidden = VALUES(hidden), perms = VALUES(perms), has_flow = VALUES(has_flow), flow_conditions = VALUES(flow_conditions), no_cache = VALUES(no_cache), is_app = VALUES(is_app), is_frame = VALUES(is_frame), query = VALUES(query), redirect = VALUES(redirect), status = VALUES(status);
 INSERT INTO sys_module (module_id, tenant_id, parent_id, module_name, route_name, path, component, icon, module_sort, hidden, perms, has_flow, flow_conditions, no_cache, is_app, is_frame, query, redirect, status) VALUES (340309, 1, 0, '系统', 'System', '/system', 'Layout', 'iconfont-xitongguanli1', 8, 0, '', 1, '', 0, '', '', '', 'noRedirect', '0')
 ON DUPLICATE KEY UPDATE module_name = VALUES(module_name), parent_id = VALUES(parent_id), route_name = VALUES(route_name), path = VALUES(path), component = VALUES(component), icon = VALUES(icon), module_sort = VALUES(module_sort), hidden = VALUES(hidden), perms = VALUES(perms), has_flow = VALUES(has_flow), flow_conditions = VALUES(flow_conditions), no_cache = VALUES(no_cache), is_app = VALUES(is_app), is_frame = VALUES(is_frame), query = VALUES(query), redirect = VALUES(redirect), status = VALUES(status);
@@ -1826,6 +1886,8 @@ ON DUPLICATE KEY UPDATE module_name = VALUES(module_name), parent_id = VALUES(pa
 INSERT INTO sys_module (module_id, tenant_id, parent_id, module_name, route_name, path, component, icon, module_sort, hidden, perms, has_flow, flow_conditions, no_cache, is_app, is_frame, query, redirect, status) VALUES (341001, 1, 341000, '成员管理', 'HrMembers', 'members', 'enterprise/hr/index', 'iconfont-tuandui4', 1, 0, 'hr:member:list', 1, '', 0, '', '', '', '', '0')
 ON DUPLICATE KEY UPDATE module_name = VALUES(module_name), parent_id = VALUES(parent_id), route_name = VALUES(route_name), path = VALUES(path), component = VALUES(component), icon = VALUES(icon), module_sort = VALUES(module_sort), hidden = VALUES(hidden), perms = VALUES(perms), has_flow = VALUES(has_flow), flow_conditions = VALUES(flow_conditions), no_cache = VALUES(no_cache), is_app = VALUES(is_app), is_frame = VALUES(is_frame), query = VALUES(query), redirect = VALUES(redirect), status = VALUES(status);
 INSERT INTO sys_module (module_id, tenant_id, parent_id, module_name, route_name, path, component, icon, module_sort, hidden, perms, has_flow, flow_conditions, no_cache, is_app, is_frame, query, redirect, status) VALUES (341100, 1, 340309, '使用文档', 'Docs', 'docs', 'docs/index', 'iconfont-bangzhu', 99, 1, 'system:docs:list', 0, '', 0, '', '', '', '', '0')
+ON DUPLICATE KEY UPDATE module_name = VALUES(module_name), parent_id = VALUES(parent_id), route_name = VALUES(route_name), path = VALUES(path), component = VALUES(component), icon = VALUES(icon), module_sort = VALUES(module_sort), hidden = VALUES(hidden), perms = VALUES(perms), has_flow = VALUES(has_flow), flow_conditions = VALUES(flow_conditions), no_cache = VALUES(no_cache), is_app = VALUES(is_app), is_frame = VALUES(is_frame), query = VALUES(query), redirect = VALUES(redirect), status = VALUES(status);
+INSERT INTO sys_module (module_id, tenant_id, parent_id, module_name, route_name, path, component, icon, module_sort, hidden, perms, has_flow, flow_conditions, no_cache, is_app, is_frame, query, redirect, status) VALUES (341101, 1, 340310, '风险提醒', 'CrmRisks', 'risks', 'eos/crm/risk/index', 'iconfont-yujing', 4, 0, 'project:risk:list', 0, '', 0, '', '', '', '', '0')
 ON DUPLICATE KEY UPDATE module_name = VALUES(module_name), parent_id = VALUES(parent_id), route_name = VALUES(route_name), path = VALUES(path), component = VALUES(component), icon = VALUES(icon), module_sort = VALUES(module_sort), hidden = VALUES(hidden), perms = VALUES(perms), has_flow = VALUES(has_flow), flow_conditions = VALUES(flow_conditions), no_cache = VALUES(no_cache), is_app = VALUES(is_app), is_frame = VALUES(is_frame), query = VALUES(query), redirect = VALUES(redirect), status = VALUES(status);
 
 
@@ -2017,22 +2079,80 @@ INSERT IGNORE INTO sys_user_post (user_id, post_id) VALUES (35, 13);
 
 INSERT INTO oa_merchant (
     id, tenant_id, serial, name, type, address, tax_number, taxpayer_type,
+    industry, company_scale, region, enterprise_nature, customer_source,
+    cooperation_status, owner_user_id, owner_user_name, public_pool, assigned_at,
+    last_followup_time, contract_expire_date, last_payment_date,
+    cooperation_positions, referral_count, hire_count, contract_amount, received_amount,
     remark, status, create_by
 ) VALUES (
     1, 1, 'KS-DEMO-001', '示例客户', '客户', '上海市浦东新区示例路 100 号',
-    '91310000DEMO000001', '一般纳税人', '用于项目、合同和付款演示', '0', 'system'
+    '91310000DEMO000001', '一般纳税人',
+    '软件与信息服务', '101-500人', '华东', '民营企业', '客户转介绍',
+    '合作中', 1, '方铭渴', '0', DATE_ADD(CURRENT_TIMESTAMP, INTERVAL -60 DAY),
+    DATE_ADD(CURRENT_TIMESTAMP, INTERVAL -12 DAY), DATE_ADD(CURRENT_DATE, INTERVAL 120 DAY),
+    DATE_ADD(CURRENT_DATE, INTERVAL -20 DAY), 4, 18, 9, 360000.00, 180000.00,
+    '用于客户档案、联系人、跟进、商机和经营分析演示', '0', 'system'
 )
 ON DUPLICATE KEY UPDATE name = VALUES(name), serial = VALUES(serial),
     type = VALUES(type), address = VALUES(address), tax_number = VALUES(tax_number),
-    taxpayer_type = VALUES(taxpayer_type), remark = VALUES(remark);
+    taxpayer_type = VALUES(taxpayer_type), industry = VALUES(industry),
+    company_scale = VALUES(company_scale), region = VALUES(region),
+    enterprise_nature = VALUES(enterprise_nature),
+    customer_source = VALUES(customer_source),
+    cooperation_status = VALUES(cooperation_status),
+    owner_user_id = VALUES(owner_user_id), owner_user_name = VALUES(owner_user_name),
+    public_pool = VALUES(public_pool), assigned_at = VALUES(assigned_at),
+    last_followup_time = VALUES(last_followup_time),
+    contract_expire_date = VALUES(contract_expire_date),
+    last_payment_date = VALUES(last_payment_date),
+    cooperation_positions = VALUES(cooperation_positions),
+    referral_count = VALUES(referral_count), hire_count = VALUES(hire_count),
+    contract_amount = VALUES(contract_amount),
+    received_amount = VALUES(received_amount), remark = VALUES(remark);
 
 INSERT INTO oa_merchant_contact (
-    id, merchant_id, name, phone, email, position, remark
+    id, merchant_id, name, phone, wechat, email, position,
+    decision_role, primary_contact, remark
 ) VALUES (
-    1, 1, '张经理', '13800000000', 'contact@example.com', '项目联系人', ''
+    1, 1, '张经理', '13800000000', 'zhang-manager', 'contact@example.com',
+    '人力资源总监', '最终决策', '1', '负责年度招聘服务决策'
 )
 ON DUPLICATE KEY UPDATE name = VALUES(name), phone = VALUES(phone),
-    email = VALUES(email), position = VALUES(position), remark = VALUES(remark);
+    wechat = VALUES(wechat), email = VALUES(email), position = VALUES(position),
+    decision_role = VALUES(decision_role),
+    primary_contact = VALUES(primary_contact), remark = VALUES(remark);
+
+INSERT INTO oa_merchant_contact (
+    id, merchant_id, name, phone, wechat, email, position,
+    decision_role, primary_contact, remark
+) VALUES (
+    2, 1, '李主管', '13800000003', 'li-supervisor', 'li@example.com',
+    '招聘主管', '业务执行', '0', '负责岗位需求和面试协调'
+)
+ON DUPLICATE KEY UPDATE name = VALUES(name), phone = VALUES(phone),
+    wechat = VALUES(wechat), email = VALUES(email), position = VALUES(position),
+    decision_role = VALUES(decision_role),
+    primary_contact = VALUES(primary_contact), remark = VALUES(remark);
+
+INSERT INTO oa_merchant_collaborator (
+    id, merchant_id, user_id, user_name
+) VALUES (
+    1, 1, 9, '苏记勇'
+)
+ON DUPLICATE KEY UPDATE user_id = VALUES(user_id), user_name = VALUES(user_name);
+
+INSERT INTO oa_customer_followup (
+    id, tenant_id, merchant_id, followup_time, method, content, next_plan,
+    next_followup_time, owner_user_id, owner_user_name, create_by
+) VALUES (
+    1, 1, 1, DATE_ADD(CURRENT_TIMESTAMP, INTERVAL -12 DAY), '会议',
+    '复盘本年度招聘交付情况，确认下一年度技术岗位需求。',
+    '整理年度招聘服务方案并安排下次沟通。',
+    DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 5 DAY), 1, '方铭渴', '17630135660'
+)
+ON DUPLICATE KEY UPDATE method = VALUES(method), content = VALUES(content),
+    next_plan = VALUES(next_plan), next_followup_time = VALUES(next_followup_time),
+    owner_user_id = VALUES(owner_user_id), owner_user_name = VALUES(owner_user_name);
 
 INSERT INTO oa_merchant_account (
     id, merchant_id, account, account_name, bank, remark
@@ -2070,9 +2190,9 @@ INSERT INTO oa_form_definition (
 
 -- Generated from public reference list API responses by tools/build-parity-data.mjs.
 DELETE FROM biz_record WHERE id BETWEEN 5000 AND 5999;
-INSERT INTO biz_record (id, tenant_id, module, business_key, payload_json, status, create_by, create_time) VALUES (5000, 1, '/project/business/list', '/project/business/list:1', '{"id":3,"delFlag":null,"createBy":null,"createTime":null,"updateBy":null,"updateTime":null,"remark":"","version":null,"tenantId_":"8a28d7d2dbb74a6e857ca016c9b4efcd","params":{},"name":"test_jjt","code":"20240125110507","attachment":null,"amount":null,"ownerUnit":"XX有限公司","fundSource":null,"loaningScale":null,"loaningTime":null,"bid":null,"profitRate":null,"sysUser":null,"sealBusinessStages":null,"sealBusinessUsers":null,"businessState":null}', 'approved', '17630135660', '2026-10-26 18:00:00') ON DUPLICATE KEY UPDATE payload_json = VALUES(payload_json);
-INSERT INTO biz_record (id, tenant_id, module, business_key, payload_json, status, create_by, create_time) VALUES (5001, 1, '/project/business/list', '/project/business/list:2', '{"id":2,"delFlag":null,"createBy":null,"createTime":null,"updateBy":null,"updateTime":null,"remark":"XX西高速南段35公里路段监控、信息发布及雾天公路诱导系统施工，光缆线路及供配电工程","version":null,"tenantId_":"8a28d7d2dbb74a6e857ca016c9b4efcd","params":{},"name":"2022年XX平安智慧升级改造项目","code":"20220804144043","attachment":null,"amount":10000000,"ownerUnit":"XX有限公司","fundSource":"客户自筹资金","loaningScale":"3000000","loaningTime":"3个月","bid":"是","profitRate":"20%","sysUser":null,"sealBusinessStages":null,"sealBusinessUsers":null,"businessState":"转化项目"}', 'approved', '17630135660', '2026-10-26 18:00:00') ON DUPLICATE KEY UPDATE payload_json = VALUES(payload_json);
-INSERT INTO biz_record (id, tenant_id, module, business_key, payload_json, status, create_by, create_time) VALUES (5002, 1, '/project/business/list', '/project/business/list:3', '{"id":1,"delFlag":null,"createBy":null,"createTime":null,"updateBy":null,"updateTime":null,"remark":"XX县党建板块中华民族共同体意识教育基地、新时代文明实践中心、青少年活动中心等一基地两中心项目建设","version":null,"tenantId_":"8a28d7d2dbb74a6e857ca016c9b4efcd","params":{},"name":"XX县中华民族共同体意识教育基地建设","code":"20220803171053","attachment":null,"amount":null,"ownerUnit":null,"fundSource":null,"loaningScale":null,"loaningTime":null,"bid":null,"profitRate":null,"sysUser":null,"sealBusinessStages":null,"sealBusinessUsers":null,"businessState":"方案"}', 'approved', '17630135660', '2026-10-26 18:00:00') ON DUPLICATE KEY UPDATE payload_json = VALUES(payload_json);
+INSERT INTO biz_record (id, tenant_id, module, business_key, payload_json, status, create_by, create_time) VALUES (5000, 1, '/project/business/list', '/project/business/list:1', '{"id":3,"delFlag":null,"createBy":null,"createTime":null,"updateBy":null,"updateTime":null,"remark":"","version":null,"tenantId_":"8a28d7d2dbb74a6e857ca016c9b4efcd","params":{},"name":"test_jjt","code":"20240125110507","attachment":null,"amount":null,"ownerUnit":"XX有限公司","fundSource":null,"loaningScale":null,"loaningTime":null,"bid":null,"profitRate":null,"sysUser":null,"sealBusinessStages":null,"sealBusinessUsers":null,"businessState":"初步接洽","customerId":1,"customerName":"示例客户","stage":"初步接洽","potentialCooperation":"test_jjt","requirement":"客户需要补充技术岗位并优化招聘交付流程","cooperationIntent":"中","expectedAmount":0,"ownerUserId":1,"ownerUserName":"方铭渴","statusLabel":"推进中"}', 'approved', '17630135660', '2026-10-26 18:00:00') ON DUPLICATE KEY UPDATE payload_json = VALUES(payload_json);
+INSERT INTO biz_record (id, tenant_id, module, business_key, payload_json, status, create_by, create_time) VALUES (5001, 1, '/project/business/list', '/project/business/list:2', '{"id":2,"delFlag":null,"createBy":null,"createTime":null,"updateBy":null,"updateTime":null,"remark":"XX西高速南段35公里路段监控、信息发布及雾天公路诱导系统施工，光缆线路及供配电工程","version":null,"tenantId_":"8a28d7d2dbb74a6e857ca016c9b4efcd","params":{},"name":"2022年XX平安智慧升级改造项目","code":"20220804144043","attachment":null,"amount":10000000,"ownerUnit":"XX有限公司","fundSource":"客户自筹资金","loaningScale":"3000000","loaningTime":"3个月","bid":"是","profitRate":"20%","sysUser":null,"sealBusinessStages":null,"sealBusinessUsers":null,"businessState":"赢单","customerId":1,"customerName":"示例客户","stage":"赢单","potentialCooperation":"XX西高速南段35公里路段监控、信息发布及雾天公路诱导系统施工，光缆线路及供配电工程","requirement":"客户需要补充技术岗位并优化招聘交付流程","cooperationIntent":"中","expectedAmount":10000000,"ownerUserId":1,"ownerUserName":"方铭渴","statusLabel":"已赢单"}', 'approved', '17630135660', '2026-10-26 18:00:00') ON DUPLICATE KEY UPDATE payload_json = VALUES(payload_json);
+INSERT INTO biz_record (id, tenant_id, module, business_key, payload_json, status, create_by, create_time) VALUES (5002, 1, '/project/business/list', '/project/business/list:3', '{"id":1,"delFlag":null,"createBy":null,"createTime":null,"updateBy":null,"updateTime":null,"remark":"XX县党建板块中华民族共同体意识教育基地、新时代文明实践中心、青少年活动中心等一基地两中心项目建设","version":null,"tenantId_":"8a28d7d2dbb74a6e857ca016c9b4efcd","params":{},"name":"XX县中华民族共同体意识教育基地建设","code":"20220803171053","attachment":null,"amount":null,"ownerUnit":null,"fundSource":null,"loaningScale":null,"loaningTime":null,"bid":null,"profitRate":null,"sysUser":null,"sealBusinessStages":null,"sealBusinessUsers":null,"businessState":"方案报价","customerId":1,"customerName":"示例客户","stage":"方案报价","potentialCooperation":"XX县党建板块中华民族共同体意识教育基地、新时代文明实践中心、青少年活动中心等一基地两中心项目建设","requirement":"客户需要补充技术岗位并优化招聘交付流程","cooperationIntent":"中","expectedAmount":0,"ownerUserId":1,"ownerUserName":"方铭渴","statusLabel":"推进中"}', 'approved', '17630135660', '2026-10-26 18:00:00') ON DUPLICATE KEY UPDATE payload_json = VALUES(payload_json);
 INSERT INTO biz_record (id, tenant_id, module, business_key, payload_json, status, create_by, create_time) VALUES (5003, 1, '/project/bid/list', '/project/bid/list:1', '{"id":28,"delFlag":null,"createBy":"13981757840","createTime":null,"updateBy":null,"updateTime":null,"remark":"","version":null,"tenantId_":null,"params":{},"name":"test_jjt","code":"10086","businessId":null,"description":null,"openDate":"2024-01-26 11:02:05","agency":"XXX有限公司","attachment":null,"user":null,"business":null}', 'approved', '13981757840', '2026-10-26 18:00:00') ON DUPLICATE KEY UPDATE payload_json = VALUES(payload_json);
 INSERT INTO biz_record (id, tenant_id, module, business_key, payload_json, status, create_by, create_time) VALUES (5004, 1, '/project/bid/list', '/project/bid/list:2', '{"id":27,"delFlag":null,"createBy":"18180495112","createTime":null,"updateBy":null,"updateTime":null,"remark":"","version":null,"tenantId_":null,"params":{},"name":"XX中烟工业有限责任公司XX卷烟厂XXXX年办公楼自动灭火系统升级改造项目","code":"CDQY-ZY-202300025","businessId":null,"description":null,"openDate":"2023-11-20 09:17:33","agency":"XXX有限公司","attachment":null,"user":null,"business":null}', 'approved', '18180495112', '2026-10-26 18:00:00') ON DUPLICATE KEY UPDATE payload_json = VALUES(payload_json);
 INSERT INTO biz_record (id, tenant_id, module, business_key, payload_json, status, create_by, create_time) VALUES (5005, 1, '/project/bid/list', '/project/bid/list:3', '{"id":26,"delFlag":null,"createBy":"13761958967","createTime":null,"updateBy":null,"updateTime":null,"remark":"","version":null,"tenantId_":null,"params":{},"name":"XXXX某部安防设施设备采购项目（第二次）","code":"2022-JWSCMY-W1001","businessId":null,"description":null,"openDate":"2023-09-23 10:32:51","agency":"XXX有限公司","attachment":null,"user":null,"business":null}', 'approved', '13761958967', '2026-10-26 18:00:00') ON DUPLICATE KEY UPDATE payload_json = VALUES(payload_json);

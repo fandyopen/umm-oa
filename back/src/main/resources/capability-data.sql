@@ -37,6 +37,7 @@ MERGE INTO sys_role_module (role_id, module_id) KEY (role_id, module_id) VALUES 
 MERGE INTO sys_role_module (role_id, module_id) KEY (role_id, module_id) VALUES (3, 340786);
 MERGE INTO sys_role_module (role_id, module_id) KEY (role_id, module_id) VALUES (3, 340590);
 MERGE INTO sys_role_module (role_id, module_id) KEY (role_id, module_id) VALUES (3, 340644);
+MERGE INTO sys_role_module (role_id, module_id) KEY (role_id, module_id) VALUES (3, 341101);
 MERGE INTO sys_role_module (role_id, module_id) KEY (role_id, module_id) VALUES (4, 340341);
 MERGE INTO sys_role_module (role_id, module_id) KEY (role_id, module_id) VALUES (4, 340342);
 MERGE INTO sys_role_module (role_id, module_id) KEY (role_id, module_id) VALUES (4, 340527);
@@ -51,6 +52,7 @@ MERGE INTO sys_role_module (role_id, module_id) KEY (role_id, module_id) VALUES 
 MERGE INTO sys_role_module (role_id, module_id) KEY (role_id, module_id) VALUES (5, 340644);
 MERGE INTO sys_role_module (role_id, module_id) KEY (role_id, module_id) VALUES (5, 340352);
 MERGE INTO sys_role_module (role_id, module_id) KEY (role_id, module_id) VALUES (5, 340786);
+MERGE INTO sys_role_module (role_id, module_id) KEY (role_id, module_id) VALUES (5, 341101);
 MERGE INTO sys_role_module (role_id, module_id) KEY (role_id, module_id) VALUES (6, 340341);
 MERGE INTO sys_role_module (role_id, module_id) KEY (role_id, module_id) VALUES (6, 340342);
 MERGE INTO sys_role_module (role_id, module_id) KEY (role_id, module_id) VALUES (6, 340527);
@@ -59,6 +61,7 @@ MERGE INTO sys_role_module (role_id, module_id) KEY (role_id, module_id) VALUES 
 MERGE INTO sys_role_module (role_id, module_id) KEY (role_id, module_id) VALUES (6, 340644);
 MERGE INTO sys_role_module (role_id, module_id) KEY (role_id, module_id) VALUES (6, 340352);
 MERGE INTO sys_role_module (role_id, module_id) KEY (role_id, module_id) VALUES (6, 340786);
+MERGE INTO sys_role_module (role_id, module_id) KEY (role_id, module_id) VALUES (6, 341101);
 MERGE INTO sys_role_module (role_id, module_id) KEY (role_id, module_id) VALUES (7, 340341);
 MERGE INTO sys_role_module (role_id, module_id) KEY (role_id, module_id) VALUES (7, 340342);
 MERGE INTO sys_role_module (role_id, module_id) KEY (role_id, module_id) VALUES (7, 340527);
@@ -85,6 +88,7 @@ MERGE INTO sys_role_module (role_id, module_id) KEY (role_id, module_id) VALUES 
 MERGE INTO sys_role_module (role_id, module_id) KEY (role_id, module_id) VALUES (10, 340644);
 MERGE INTO sys_role_module (role_id, module_id) KEY (role_id, module_id) VALUES (10, 340352);
 MERGE INTO sys_role_module (role_id, module_id) KEY (role_id, module_id) VALUES (10, 340786);
+MERGE INTO sys_role_module (role_id, module_id) KEY (role_id, module_id) VALUES (10, 341101);
 MERGE INTO sys_role_module (role_id, module_id) KEY (role_id, module_id) VALUES (11, 340341);
 MERGE INTO sys_role_module (role_id, module_id) KEY (role_id, module_id) VALUES (11, 340342);
 MERGE INTO sys_role_module (role_id, module_id) KEY (role_id, module_id) VALUES (11, 340527);
@@ -120,6 +124,7 @@ MERGE INTO sys_role_module (role_id, module_id) KEY (role_id, module_id) VALUES 
 MERGE INTO sys_role_module (role_id, module_id) KEY (role_id, module_id) VALUES (15, 340644);
 MERGE INTO sys_role_module (role_id, module_id) KEY (role_id, module_id) VALUES (15, 340352);
 MERGE INTO sys_role_module (role_id, module_id) KEY (role_id, module_id) VALUES (15, 340786);
+MERGE INTO sys_role_module (role_id, module_id) KEY (role_id, module_id) VALUES (15, 341101);
 MERGE INTO sys_role_module (role_id, module_id) KEY (role_id, module_id) VALUES (16, 340341);
 MERGE INTO sys_role_module (role_id, module_id) KEY (role_id, module_id) VALUES (16, 340342);
 MERGE INTO sys_role_module (role_id, module_id) KEY (role_id, module_id) VALUES (16, 340527);
@@ -128,6 +133,7 @@ MERGE INTO sys_role_module (role_id, module_id) KEY (role_id, module_id) VALUES 
 MERGE INTO sys_role_module (role_id, module_id) KEY (role_id, module_id) VALUES (16, 340786);
 MERGE INTO sys_role_module (role_id, module_id) KEY (role_id, module_id) VALUES (16, 340590);
 MERGE INTO sys_role_module (role_id, module_id) KEY (role_id, module_id) VALUES (16, 340644);
+MERGE INTO sys_role_module (role_id, module_id) KEY (role_id, module_id) VALUES (16, 341101);
 MERGE INTO sys_role_module (role_id, module_id) KEY (role_id, module_id) VALUES (17, 340341);
 MERGE INTO sys_role_module (role_id, module_id) KEY (role_id, module_id) VALUES (17, 340342);
 MERGE INTO sys_role_module (role_id, module_id) KEY (role_id, module_id) VALUES (17, 340527);
@@ -136,6 +142,7 @@ MERGE INTO sys_role_module (role_id, module_id) KEY (role_id, module_id) VALUES 
 MERGE INTO sys_role_module (role_id, module_id) KEY (role_id, module_id) VALUES (17, 340644);
 MERGE INTO sys_role_module (role_id, module_id) KEY (role_id, module_id) VALUES (17, 340352);
 MERGE INTO sys_role_module (role_id, module_id) KEY (role_id, module_id) VALUES (17, 340786);
+MERGE INTO sys_role_module (role_id, module_id) KEY (role_id, module_id) VALUES (17, 341101);
 MERGE INTO sys_role_module (role_id, module_id) KEY (role_id, module_id) VALUES (18, 340341);
 MERGE INTO sys_role_module (role_id, module_id) KEY (role_id, module_id) VALUES (18, 340342);
 MERGE INTO sys_role_module (role_id, module_id) KEY (role_id, module_id) VALUES (18, 340527);
@@ -144,6 +151,7 @@ MERGE INTO sys_role_module (role_id, module_id) KEY (role_id, module_id) VALUES 
 MERGE INTO sys_role_module (role_id, module_id) KEY (role_id, module_id) VALUES (18, 340786);
 MERGE INTO sys_role_module (role_id, module_id) KEY (role_id, module_id) VALUES (18, 340590);
 MERGE INTO sys_role_module (role_id, module_id) KEY (role_id, module_id) VALUES (18, 340644);
+MERGE INTO sys_role_module (role_id, module_id) KEY (role_id, module_id) VALUES (18, 341101);
 MERGE INTO sys_role_menu (role_id, menu_id) KEY (role_id, menu_id) VALUES (7, 1);
 MERGE INTO sys_role_menu (role_id, menu_id) KEY (role_id, menu_id) VALUES (7, 2);
 MERGE INTO sys_role_menu (role_id, menu_id) KEY (role_id, menu_id) VALUES (7, 3);

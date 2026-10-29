@@ -93,29 +93,10 @@ export function delMenu(menuId) {
 
 // 用户常用菜单API
 // 获取用户常用应用(构建菜单之后的)
-export function listUserMenus() {
-  return request({
-    url: '/project/regular/menu/list/build',
-    method: 'get'
-  })
-}
 
 // 添加用户常用菜单
-export function addUserMenu(data) {
-  return request({
-    url: '/project/regular/menu',
-    method: 'post',
-    data: data
-  })
-}
 
 // 删除常用应用菜单
-export function deleteUserMenu(menuId) {
-  return request({
-    url: '/project/regular/menu/' + menuId,
-    method: 'delete'
-  })
-}
 
 // 根据角色ID查询菜单下拉树结构
 export function roleMenuTree(params) {

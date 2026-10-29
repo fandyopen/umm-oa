@@ -64,6 +64,36 @@ class AuthFlowIntegrationTest {
     }
 
     @Test
+    void sessionEndpointReturnsLoginBootstrapInOneRequest() throws Exception {
+        String authorization = "Bearer " + login("17630135660");
+
+        mockMvc.perform(get("/auth/session").header("Authorization", authorization))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.user.userName").isNotEmpty())
+                .andExpect(jsonPath("$.roles[0]").value("admin"))
+                .andExpect(jsonPath("$.permissions[0]").value("*:*:*"))
+                .andExpect(jsonPath("$.routers").isArray())
+                .andExpect(jsonPath("$.docs.enabled").isNotEmpty())
+                .andExpect(jsonPath("$.docs.title").isNotEmpty())
+                .andExpect(jsonPath("$.currentCompany").isNotEmpty())
+                .andExpect(jsonPath("$.organizationPermissions").isMap());
+    }
+
+    @Test
+    void waitingTasksHonorsDashboardPageSize() throws Exception {
+        String authorization = "Bearer " + login("17630135660");
+
+        mockMvc.perform(get("/project/activity/taskWaitList")
+                        .param("pageNum", "1")
+                        .param("pageSize", "1")
+                        .header("Authorization", authorization))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.rows.length()").value(org.hamcrest.Matchers.lessThanOrEqualTo(1)));
+    }
+
+    @Test
     void memberListSupportsDepartmentAndCreateDateFilters() throws Exception {
         String authorization = "Bearer " + login("17630135660");
 
