@@ -326,15 +326,24 @@ public class SystemController {
     }
 
     @DeleteMapping("/system/user/{userIds}")
-    @RequiresModuleAction(moduleId = 340782L, action = "manage")
+    @RequiresAnyModuleAction({
+            @ModuleActionRequirement(moduleId = 340782L, action = "access"),
+            @ModuleActionRequirement(moduleId = 341001L, action = "access")
+    })
     public Map<String, Object> deleteUsers(@PathVariable String userIds) {
-        for (String value : userIds.split(",")) {
-            long userId = Long.parseLong(value);
-            if (userId == SUPER_ADMIN_USER_ID) {
-                throw new ApiException(403, "固定超级管理员不能被删除");
-            }
-            jdbc.update("UPDATE sys_user SET del_flag = '2' WHERE user_id = ?", userId);
+        if (!systemService.isUnrestricted(AuthContext.userId())) {
+            throw new ApiException(403, "只有超级管理员可以删除员工");
         }
+        List<Long> employeeIds;
+        try {
+            employeeIds = java.util.Arrays.stream(userIds.split(",", -1))
+                    .map(String::trim)
+                    .map(Long::valueOf)
+                    .toList();
+        } catch (NumberFormatException exception) {
+            throw new ApiException(400, "员工编号格式不正确");
+        }
+        hrMemberService.deleteMembers(employeeIds);
         return ApiResult.ok();
     }
 

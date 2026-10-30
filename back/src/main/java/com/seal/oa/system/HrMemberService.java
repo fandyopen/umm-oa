@@ -107,6 +107,9 @@ public class HrMemberService {
         if (userIds.isEmpty()) {
             throw new ApiException(400, "请选择需要转为离职的成员");
         }
+        if (userIds.contains(1L)) {
+            throw new ApiException(403, "固定超级管理员不能转为离职");
+        }
     }
 
     @Transactional
@@ -120,6 +123,41 @@ public class HrMemberService {
                     """, userId);
         }
         return count;
+    }
+
+    @Transactional
+    public void deleteMembers(List<Long> userIds) {
+        if (userIds.isEmpty() || userIds.stream().anyMatch(id -> id == null || id <= 0L)) {
+            throw new ApiException(400, "请选择需要删除的员工");
+        }
+        List<Long> uniqueIds = userIds.stream().distinct().toList();
+        if (uniqueIds.contains(1L)) {
+            throw new ApiException(403, "固定超级管理员不能被删除");
+        }
+        // Validate the complete batch before changing any employee or relationships.
+        for (Long userId : uniqueIds) {
+            Integer count = jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM sys_user WHERE user_id = ? AND del_flag IN ('0', '2')",
+                    Integer.class, userId);
+            if (count == null || count == 0) {
+                throw new ApiException(404, "员工不存在或已被删除");
+            }
+        }
+        for (Long userId : uniqueIds) {
+            jdbc.update("""
+                    UPDATE sys_dept SET leader = '', update_time = CURRENT_TIMESTAMP
+                    WHERE dept_id IN (SELECT dept_id FROM sys_dept_principal WHERE user_id = ?)
+                    """, userId);
+            jdbc.update("DELETE FROM sys_dept_principal WHERE user_id = ?", userId);
+            jdbc.update("DELETE FROM sys_user_role WHERE user_id = ?", userId);
+            jdbc.update("DELETE FROM sys_user_post WHERE user_id = ?", userId);
+            // '2' is reserved for departed staff; '1' removes the account from both lists.
+            // Preserve the user row so historical business ownership remains traceable.
+            jdbc.update("""
+                    UPDATE sys_user SET del_flag = '1', status = '1', update_time = CURRENT_TIMESTAMP
+                    WHERE user_id = ?
+                    """, userId);
+        }
     }
 
     private void bind(

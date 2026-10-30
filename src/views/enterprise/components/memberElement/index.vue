@@ -65,6 +65,7 @@
         </a-popover>
         <a-button ghost type="primary" @click="mitosis" v-hasModuleAction="'dismiss'"> 转为离职 </a-button>
       </div>
+      <a-button v-if="canDeleteMembers" type="danger" icon="delete" :disabled="!selectedRowKeys.length" @click="deleteMembers()">删除员工</a-button>
       <div class="member-filter-pane" v-if="showQueryFilters">
         <a-tree-select
           v-model="filterDeptId"
@@ -100,8 +101,12 @@
         <!-- 数据表格 -->
         <s-table ref="table" size="default" rowKey="userId" :columns="visibleColumns" :data="loadData" :rowSelection="rowSelection" :customRow="customRow" :scroll="tableScroll">
           <span slot="deptAction" slot-scope="text, record" class="dept-action" @click.stop>
-            <a-button v-if="isDepartmentPrincipal(record)" type="link" class="cancel-principal" @click.stop="clearDepartmentPrincipal(record)">取消主管</a-button>
-            <a-button v-else type="link" @click.stop="setDepartmentPrincipal(record)">设为主管</a-button>
+            <template v-if="showDepartmentActions">
+              <a-button v-if="isDepartmentPrincipal(record)" type="link" class="cancel-principal" @click.stop="clearDepartmentPrincipal(record)">取消主管</a-button>
+              <a-button v-else type="link" @click.stop="setDepartmentPrincipal(record)">设为主管</a-button>
+            </template>
+            <a-button v-if="canDeleteMembers && Number(record.userId) !== 1" type="link" class="delete-member" @click.stop="deleteMembers(record)">删除</a-button>
+            <span v-else-if="canDeleteMembers && !showDepartmentActions">固定超级管理员</span>
           </span>
         </s-table>
       </div>
@@ -196,7 +201,7 @@ import {
 } from '/src/api/enterprise/index.js'
 import { executeWorkflowAction } from '/src/api/workflow/action.js'
 import { delDept } from '/src/api/system/dept.js'
-import { excelImport } from '/src/api/system/user.js'
+import { excelImport, delUser } from '/src/api/system/user.js'
 import SelectDepartmentElement from '../selectDepartmentElement/index.vue'
 import countryCodeSelector from '/src/components/CountryCodeSelector/index.vue'
 import Details from './details.vue'
@@ -217,7 +222,7 @@ export default {
     treeNodeData: {
       type: Object,
       require: false,
-      default: () => {}
+      default: () => ({})
     },
     showRoleInfo: {
       type: Boolean,
@@ -617,6 +622,31 @@ export default {
         this.adjusDepVisible = false
       }
     },
+    /* 超级管理员直接删除员工 */
+    deleteMembers(record) {
+      if (!this.canDeleteMembers) return
+      const userIds = record ? [record.userId] : this.selectedRowKeys.slice()
+      if (!userIds.length) return this.$message.warning('请选择需要删除的员工')
+      if (userIds.some(id => Number(id) === 1)) {
+        return this.$message.warning('固定超级管理员不能被删除')
+      }
+      const name = record ? '“' + record.nickName + '”' : '选中的 ' + userIds.length + ' 名员工'
+      this.$antdconfirm({
+        title: '删除员工',
+        content: '确定删除' + name + '吗？删除后员工无法登录，也不会出现在在职或离职列表中，历史业务记录保留。',
+        okText: '确认删除',
+        okType: 'danger',
+        onOk: () => delUser(userIds.join(',')).then(res => {
+          if (res.code === 200) {
+            this.selectedRowKeys = []
+            this.selectedRows = []
+            this.$refs.table.refresh(true)
+            this.$emit('saveSuccess')
+            this.$message.success('员工删除成功')
+          }
+        })
+      })
+    },
     /* 转为离职 */
     mitosis() {
       if (this.selectedRowKeys.length === 0) {
@@ -733,6 +763,7 @@ export default {
     /* 树节点Data */
     treeNodeData: {
       handler(v) {
+        if (!v || !v.eventKey) return
         this.selectTreeNodeId = v.eventKey
         this.editNameVal = v.title
       },
@@ -747,13 +778,13 @@ export default {
       const columns = this.showRoleInfo
         ? this.columns
         : this.columns.filter(column => !column.roleRelated)
-      if (!this.showDepartmentActions) {
+      if (!this.showDepartmentActions && !this.canDeleteMembers) {
         return columns
       }
       return columns.concat({
         title: '操作',
         key: 'deptAction',
-        width: 110,
+        width: this.showDepartmentActions && this.canDeleteMembers ? 180 : 140,
         fixed: 'right',
         align: 'center',
         scopedSlots: { customRender: 'deptAction' }
@@ -766,7 +797,7 @@ export default {
         && this.canManageDepartment
     },
     tableScroll() {
-      return this.showDepartmentActions ? { x: 1160 } : {}
+      return this.showDepartmentActions || this.canDeleteMembers ? { x: 1230 } : {}
     },
     rowSelection() {
       if (!this.canManageMembers) {
@@ -774,13 +805,18 @@ export default {
       }
       return {
         selectedRowKeys: this.selectedRowKeys,
-        onChange: this.onSelectChange
+        onChange: this.onSelectChange,
+        getCheckboxProps: record => ({ props: { disabled: Number(record.userId) === 1 } })
       }
+    },
+    canDeleteMembers() {
+      return (this.$store.getters.roles || []).includes('admin')
+        || (this.$store.getters.permissions || []).includes('*:*:*')
     },
     canManageMembers() {
       const permissions = this.$store.getters.permissions || []
       const meta = this.$route.meta
-      return hasModuleAction(permissions, meta, 'transfer')
+      return this.canDeleteMembers || hasModuleAction(permissions, meta, 'transfer')
         || hasModuleAction(permissions, meta, 'dismiss')
     },
     canManageDepartment() {
@@ -798,4 +834,7 @@ export default {
 
 <style lang="less" scoped>
 @import './index.less';
+.delete-member {
+  color: #f5222d;
+}
 </style>
