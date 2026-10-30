@@ -139,7 +139,7 @@ export default {
           }
         },
         {
-          title: '部门角色',
+          title: '部门身份',
           dataIndex: 'userDept',
           align: 'center',
           customRender: (text, record) => {

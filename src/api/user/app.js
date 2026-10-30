@@ -78,24 +78,6 @@ export function addSystemDepchild(data) {
   })
 }
 
-// 设置部门主管
-export function addDeptPrincipal(params) {
-  return request({
-    url: '/system/dept/add/principal',
-    method: 'get',
-    params
-  })
-}
-
-// 查询当前部门成员
-export function queryUserList(params) {
-  return request({
-    url: '/system/user/list',
-    method: 'get',
-    params
-  })
-}
-
 // 调整部门成员
 export function adjustDeptUser(params) {
   return request({
@@ -191,53 +173,11 @@ export function roleImport(data) {
   })
 }
 
-//  查询管理组
-export function queryAdminGroup() {
-  return request({
-    url: '/system/admin/query/adminGroup',
-    method: 'get'
-  })
-}
-// 查询系统管理员
+// 查询固定超级管理员
 export function queryStstemAdmin() {
   return request({
     url: '/system/admin/query/admin',
     method: 'get'
-  })
-}
-
-// 查询普通管组详情
-export function queryNormalAdminDetail(params) {
-  return request({
-    url: '/system/admin/adminGroup/' + params.groupId,
-    method: 'get'
-  })
-}
-
-// 添加管理组
-export function addAdminGroup(data) {
-  return request({
-    url: '/system/admin/addGroup',
-    method: 'post',
-    data
-  })
-}
-
-// 添加系统管理员
-export function addAdminStstemGroup(data) {
-  return request({
-    url: '/system/admin/addAdmin',
-    method: 'post',
-    data
-  })
-}
-
-// 管理组更新权限
-export function adminUpdatePre(data) {
-  return request({
-    url: '/system/admin/update',
-    method: 'post',
-    data
   })
 }
 
@@ -263,22 +203,6 @@ export function updateApp(data) {
 export function deleteAppItem(params) {
   return request({
     url: '/app/user/delete/' + params,
-    method: 'delete'
-  })
-}
-
-// 管理组修改
-export function editGroupName(data) {
-  return request({
-    url: '/system/admin/edit',
-    method: 'post',
-    data
-  })
-}
-// 管理组删除
-export function adminGroupDelete(params) {
-  return request({
-    url: '/system/admin/remove/' + params,
     method: 'delete'
   })
 }

@@ -33,7 +33,10 @@ INSERT INTO sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order
 INSERT INTO sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, status, del_flag) VALUES (332, 1, 330, '0,322,330', '四川项目组', 0, '0', '0') ON DUPLICATE KEY UPDATE parent_id = VALUES(parent_id), ancestors = VALUES(ancestors), dept_name = VALUES(dept_name), order_num = VALUES(order_num), del_flag = VALUES(del_flag);
 INSERT INTO sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, status, del_flag) VALUES (333, 1, 330, '0,322,330', '云南项目组', 1, '0', '0') ON DUPLICATE KEY UPDATE parent_id = VALUES(parent_id), ancestors = VALUES(ancestors), dept_name = VALUES(dept_name), order_num = VALUES(order_num), del_flag = VALUES(del_flag);
 INSERT INTO sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, status, del_flag) VALUES (334, 1, 330, '0,322,330', '湖北项目组', 2, '0', '0') ON DUPLICATE KEY UPDATE parent_id = VALUES(parent_id), ancestors = VALUES(ancestors), dept_name = VALUES(dept_name), order_num = VALUES(order_num), del_flag = VALUES(del_flag);
-UPDATE sys_user SET dept_id = 329, nick_name = '方铭渴', is_admin = '1', is_owner = '0' WHERE user_id = 1;
+UPDATE sys_user SET dept_id = 329, user_name = '13610316814', nick_name = '欧志锋',
+    email = '13610316814@seals.com', phonenumber = '13610316814',
+    is_admin = '1', is_owner = '0', remark = '固定超级管理员'
+WHERE user_id = 1;
 UPDATE sys_user SET dept_id = 323, nick_name = '孟声怎', is_admin = '1', is_owner = '1' WHERE user_id = 2;
 UPDATE sys_user SET dept_id = 325, nick_name = '曹好疲', is_admin = '1', is_owner = '1' WHERE user_id = 3;
 UPDATE sys_user SET dept_id = 325, nick_name = '卞在重', is_admin = '1', is_owner = '1' WHERE user_id = 4;
@@ -67,6 +70,8 @@ INSERT INTO sys_user (user_id, tenant_id, dept_id, user_name, nick_name, passwor
 INSERT INTO sys_user (user_id, tenant_id, dept_id, user_name, nick_name, password, email, phonenumber, sex, avatar, status, del_flag, is_admin, is_owner, create_by, remark) VALUES (32, 1, 324, '13640084343', '彭课在', '$2b$12$nopR.IbdlsiAu1H9PE9MbeCgKM2Px8B87NDujHm1Fst/VYPwl6Ivy', '13640084343@seals.com', '13640084343', '0', '', '0', '0', '1', '1', 'reference', '参考站演示成员') ON DUPLICATE KEY UPDATE dept_id = VALUES(dept_id), nick_name = VALUES(nick_name), email = VALUES(email), phonenumber = VALUES(phonenumber), status = VALUES(status), is_admin = VALUES(is_admin), is_owner = VALUES(is_owner);
 INSERT INTO sys_user (user_id, tenant_id, dept_id, user_name, nick_name, password, email, phonenumber, sex, avatar, status, del_flag, is_admin, is_owner, create_by, remark) VALUES (33, 1, 333, '13656619176', '康还个', '$2b$12$nopR.IbdlsiAu1H9PE9MbeCgKM2Px8B87NDujHm1Fst/VYPwl6Ivy', '13656619176@seals.com', '13656619176', '0', '', '0', '0', '1', '1', 'reference', '参考站演示成员') ON DUPLICATE KEY UPDATE dept_id = VALUES(dept_id), nick_name = VALUES(nick_name), email = VALUES(email), phonenumber = VALUES(phonenumber), status = VALUES(status), is_admin = VALUES(is_admin), is_owner = VALUES(is_owner);
 INSERT INTO sys_user (user_id, tenant_id, dept_id, user_name, nick_name, password, email, phonenumber, sex, avatar, status, del_flag, is_admin, is_owner, create_by, remark) VALUES (34, 1, 333, '17661061682', '安听天', '$2b$12$nopR.IbdlsiAu1H9PE9MbeCgKM2Px8B87NDujHm1Fst/VYPwl6Ivy', '17661061682@seals.com', '17661061682', '0', '', '0', '0', '1', '1', 'reference', '参考站演示成员') ON DUPLICATE KEY UPDATE dept_id = VALUES(dept_id), nick_name = VALUES(nick_name), email = VALUES(email), phonenumber = VALUES(phonenumber), status = VALUES(status), is_admin = VALUES(is_admin), is_owner = VALUES(is_owner);
+UPDATE sys_user SET is_admin = '0', is_owner = '0' WHERE user_id <> 1;
+UPDATE sys_user SET is_admin = '1', is_owner = '0' WHERE user_id = 1;
 DELETE FROM sys_user_role WHERE user_id BETWEEN 10 AND 34;
 INSERT IGNORE INTO sys_user_role (user_id, role_id) VALUES (10, 2);
 INSERT IGNORE INTO sys_user_role (user_id, role_id) VALUES (11, 2);

@@ -12,7 +12,7 @@
 | 角色动作授权 | `sys_role_module_action` | 决定角色在模块内可执行哪些动作 |
 | 按钮动作 | `sys_module_action.permission_code` | `/getInfo.permissions` 配合 `v-hasPermi` |
 | 数据范围 | `sys_role.data_scope` | 决定组织数据可见范围 |
-| 系统管理员 | `admin` 角色 / `sys_admin_identity` | 返回 `*:*:*`，不受模块过滤 |
+| 超级管理员 | `admin` 角色 / `sys_admin_identity` | 返回 `*:*:*`，不受模块过滤 |
 
 判断规则：
 
@@ -21,7 +21,7 @@
 - 普通角色被授予模块后，只有需要写操作时才勾选新增、修改、删除、导出等动作。
 - 提交审批复用新增或修改权限，不再生成独立的 `submit` 动作。
 - `v-hasPermi="['xxx']"` 检查 `/getInfo.permissions`，权限码来自角色动作授权。
-- `admin` 角色和系统管理员直接返回 `*:*:*`。
+- `admin` 角色和固定超级管理员身份直接返回 `*:*:*`。
 - 组织架构页签由模块 `340782` 与 `sys_role.data_scope` 判断。
 - 角色权限页签由模块 `340597` 与 `sys_role.data_scope` 判断。
 - 后端接口通过 `@RequiresModuleAction` 校验同一套动作，不能通过直接调用接口绕过前端按钮。

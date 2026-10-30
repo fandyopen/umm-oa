@@ -58,7 +58,7 @@ const mysqlData = data.replaceAll(
 
 const output = `-- UMM OA MySQL 8 initialization script
 -- Generated from the H2 development schema by tools/build-mysql-sql.mjs.
--- Local demo administrator: 17630135660 / admin123123
+-- Fixed super administrator: 13610316814 / admin123123
 
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;

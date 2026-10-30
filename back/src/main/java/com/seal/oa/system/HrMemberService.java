@@ -137,6 +137,9 @@ public class HrMemberService {
         for (Object value : values) {
             long id = longValue(value, 0L);
             if (id > 0L) {
+                if ("sys_user_role".equals(table) && id == 1L) {
+                    throw new ApiException(403, "超级管理员角色不能分配给新账号");
+                }
                 jdbc.update(
                         "INSERT INTO " + table + " (" + userColumn + ", " + valueColumn + ") VALUES (?, ?)",
                         userId,

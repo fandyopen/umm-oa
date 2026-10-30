@@ -1,10 +1,10 @@
 INSERT INTO sys_tenant (tenant_id, tenant_name, contact_name, contact_phone, status)
-VALUES (1, '示例企业', '方铭渴', '17630135660', '0');
+VALUES (1, '示例企业', '欧志锋', '13610316814', '0');
 
 INSERT INTO sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, leader, phone, status)
-VALUES (100, 1, 0, '0', '示例企业', 0, '方铭渴', '17630135660', '0');
+VALUES (100, 1, 0, '0', '示例企业', 0, '欧志锋', '13610316814', '0');
 INSERT INTO sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, leader, phone, status)
-VALUES (101, 1, 100, '0,100', '综合管理部', 1, '方铭渴', '17630135660', '0');
+VALUES (101, 1, 100, '0,100', '综合管理部', 1, '欧志锋', '13610316814', '0');
 INSERT INTO sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, leader, phone, status)
 VALUES (102, 1, 100, '0,100', '财务部', 2, '财务负责人', '15685266238', '0');
 INSERT INTO sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, leader, phone, status)
@@ -16,9 +16,9 @@ INSERT INTO sys_user (
     user_id, tenant_id, dept_id, user_name, nick_name, password, email, phonenumber,
     sex, avatar, status, create_by, remark
 ) VALUES (
-    1, 1, 101, '17630135660', '方铭渴',
+    1, 1, 101, '13610316814', '欧志锋',
     '$2b$12$nopR.IbdlsiAu1H9PE9MbeCgKM2Px8B87NDujHm1Fst/VYPwl6Ivy',
-    'admin@example.com', '17630135660', '0', '', '0', 'system', '本地演示管理员'
+    '13610316814@seals.com', '13610316814', '0', '', '0', 'system', '固定超级管理员'
 );
 INSERT INTO sys_user (
     user_id, tenant_id, dept_id, user_name, nick_name, password, email, phonenumber,
@@ -149,19 +149,8 @@ INSERT INTO sys_app_module (tenant_app_id, module_name, module_path, component, 
 (1, '费用报销', '/expense/index', 'eos/expense/indexOp', 'iconfont-baoxiao', 3, '0'),
 (1, '采购申请', '/purchase/index', 'eos/purchase/apply/indexOp', 'iconfont-caigou', 4, '0');
 
-INSERT INTO sys_admin_group (
-    group_id, group_name, tenant_id, is_add, role_read, role_manage,
-    dept_read, dept_manage, sort
-) VALUES (26, '企业管理', 1, '0', '0', '0', '0', '0', 0);
-INSERT INTO sys_admin_group_member (group_id, user_id) VALUES
-    (26, 17),
-    (26, 14);
-
 INSERT INTO sys_admin_identity (user_id, user_name, nick_name, email, phonenumber, sex, status, sort) VALUES
-    (109960376, '13686621113', '严音泪', NULL, NULL, NULL, NULL, 0),
-    (220440149, '15646021885', '张为骄', NULL, NULL, NULL, NULL, 1),
-    (1756143678, '17603686635', '倪所力', NULL, NULL, NULL, NULL, 2),
-    (2090571137, '13671476794', '奚哭芬', NULL, NULL, NULL, NULL, 3);
+    (1, '13610316814', '欧志锋', '13610316814@seals.com', '13610316814', '0', '0', 0);
 
 INSERT INTO oa_project (
     id, tenant_id, code, name, nick_name, dept_id, type, owner_unit, sketch, status, process_status, create_by

@@ -15,12 +15,7 @@
         </a-col>
         <a-col :xs="24" :md="12">
           <a-form-model-item label="行业" prop="industry">
-            <a-auto-complete
-              v-model="form.industry"
-              :data-source="options.industries"
-              allow-clear
-              placeholder="选择或输入行业，例如：软件与信息服务"
-            />
+            <industry-select v-model="form.industry" placeholder="请选择客户行业" />
           </a-form-model-item>
         </a-col>
         <a-col :xs="24" :md="12">
@@ -32,7 +27,7 @@
         </a-col>
         <a-col :xs="24" :md="12">
           <a-form-model-item label="地区">
-            <a-auto-complete v-model="form.region" :data-source="options.regions" placeholder="选择或输入地区" />
+            <region-select v-model="form.region" placeholder="请选择客户地区" />
           </a-form-model-item>
         </a-col>
         <a-col :xs="24" :md="12">
@@ -201,11 +196,11 @@
 
 <script>
 import { addCustomer, getCustomer, listCustomerOwners, updateCustomer } from '/src/api/eos/crm/index.js'
+import IndustrySelect from '/src/components/IndustrySelect/index.vue'
+import RegionSelect from '/src/components/RegionSelect/index.vue'
 
 const options = {
-  industries: ['互联网', '软件与信息服务', '制造业', '建筑工程', '金融', '教育', '医疗健康', '批发零售', '其他'],
   scales: ['1-50人', '51-100人', '101-500人', '501-1000人', '1000人以上'],
-  regions: ['华北', '华东', '华南', '华中', '西南', '西北', '东北', '海外'],
   natures: ['民营企业', '国有企业', '外资企业', '合资企业', '事业单位', '政府机构', '其他'],
   sources: ['官网咨询', '客户转介绍', '展会活动', '销售拓展', '渠道合作', '广告投放', '公开信息', '组织分配', '其他'],
   statuses: ['潜在客户', '初步接洽', '合作中', '重点客户', '暂停合作', '已流失']
@@ -242,6 +237,7 @@ function emptyForm() {
 
 export default {
   name: 'CustomerForm',
+  components: { IndustrySelect, RegionSelect },
   props: {
     isUpdate: { type: Boolean, default: false },
     updateRow: { type: Object, default: () => ({}) }

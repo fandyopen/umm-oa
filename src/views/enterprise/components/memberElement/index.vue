@@ -25,33 +25,6 @@
           <a-button type="link">修改名称</a-button>
         </a-popover>
         <a-divider type="vertical" />
-        <a-popover trigger="click" v-model="setDepLeaderVisible">
-          <template slot="content">
-            <div class="setDepTree">
-              <SelectDepartmentElement ref="treeRef" :treeData="setDepTreeData" :replaceFields="replaceFields" @returnData="returnData" />
-            </div>
-            <div class="editNameBtn">
-              <a-button @click="setDepLeaderDirector(0)"> 取消 </a-button>
-              <a-button type="primary" @click="setDepLeaderDirector(1)"> 确认 </a-button>
-            </div>
-          </template>
-          <a-button type="link" @click="initsetDepTreeDataAll">设置部门分管领导</a-button>
-        </a-popover>
-        <a-divider type="vertical" />
-        <a-divider type="vertical" />
-        <a-popover trigger="click" v-model="setDepVisible">
-          <template slot="content">
-            <div class="setDepTree">
-              <SelectDepartmentElement ref="treeRef" :treeData="setDepTreeData" :replaceFields="replaceFields" @returnData="returnData" />
-            </div>
-            <div class="editNameBtn">
-              <a-button @click="setDepDirector(0)"> 取消 </a-button>
-              <a-button type="primary" @click="setDepDirector(1)"> 确认 </a-button>
-            </div>
-          </template>
-          <a-button type="link" @click="initsetDepTreeDataAll">设置部门主管</a-button>
-        </a-popover>
-        <a-divider type="vertical" />
         <a-popover trigger="click" v-model="DepVisible">
           <template slot="content">
             <div class="editNameInput">
@@ -125,11 +98,11 @@
       </div> -->
       <div class="member-table">
         <!-- 数据表格 -->
-        <s-table ref="table" size="default" rowKey="userId" :columns="visibleColumns" :data="loadData" :rowSelection="rowSelection" :customRow="customRow">
-          <!-- <span slot="action" slot-scope="text, record, index">
-            <a-button type="link" @click="makeInvite(text, record, index)"> 再次邀请 </a-button>
-            <a-button type="link" @click="rowClick(text, record, index)"> 编辑 </a-button>
-          </span> -->
+        <s-table ref="table" size="default" rowKey="userId" :columns="visibleColumns" :data="loadData" :rowSelection="rowSelection" :customRow="customRow" :scroll="tableScroll">
+          <span slot="deptAction" slot-scope="text, record" class="dept-action" @click.stop>
+            <a-button v-if="isDepartmentPrincipal(record)" type="link" class="cancel-principal" @click.stop="clearDepartmentPrincipal(record)">取消主管</a-button>
+            <a-button v-else type="link" @click.stop="setDepartmentPrincipal(record)">设为主管</a-button>
+          </span>
         </s-table>
       </div>
     </div>
@@ -218,11 +191,8 @@ import {
   editDeptName,
   getTreeMenu,
   addSystemDepchild,
-  queryUserList,
-  addDeptPrincipal,
-  addDeptPrincipalLeader,
-  deptLeaderList,
-  deptPrincipalList
+  setDeptPrincipal,
+  clearDeptPrincipal
 } from '/src/api/enterprise/index.js'
 import { executeWorkflowAction } from '/src/api/workflow/action.js'
 import { delDept } from '/src/api/system/dept.js'
@@ -342,28 +312,12 @@ export default {
           }
         },
         {
-          title: '部门角色',
-          dataIndex: 'userDept',
+          title: '部门身份',
+          dataIndex: 'deptPrincipal',
           roleRelated: true,
           align: 'center',
-          customRender: (text, record) => {
-            let principals = '成员'
-            if (text.length > 0) {
-              text.forEach((item, index) => {
-                if (item.principal === 0) {
-                  principals = '主管'
-                }
-              })
-            }
-            return principals
-          }
+          customRender: text => Number(text) === 1 ? '部门主管' : '成员'
         }
-        // {
-        //   title: '',
-        //   width: 160,
-        //   align: 'center',
-        //   scopedSlots: { customRender: 'action' }
-        // }
       ],
       /* 标题 */
       userTitle: '',
@@ -373,18 +327,12 @@ export default {
       visible: false,
       /* 添加子部门气泡 */
       DepVisible: false,
-      /* 设置部门主管 */
-      setDepVisible: false,
-      /* 设置部门分管领导 */
-      setDepLeaderVisible: false,
       /* 修改名称val */
       editNameVal: '',
       /* 添加子部门 */
       addDepchildVal: '',
       /* 部门ID */
       selectTreeNodeId: null,
-      /* 部门分管领导  */
-      PrincipalLeaderName: '',
       /* 邀请成员弹窗 */
       isIMmodal: false,
       current: ['手动添加成员'],
@@ -443,10 +391,6 @@ export default {
       defaultValue: 'aaaaaaaaaaaaaaaaaaa',
       /* 区号 */
       countryCode: 86,
-      /* 部门成员树 */
-      setDepTreeData: [],
-      /* 部门成员树匹配字段 */
-      replaceFields: { title: 'nickName', key: 'userId', value: 'userId' },
       /* 部门树返回的数据 */
       rData: [],
       /* 调整部门 */
@@ -522,66 +466,54 @@ export default {
         this.visible = false
       }
     },
-    /* 初始化部门成员树 */
-    initsetDepTreeData() {
-      queryUserList({ deptId: this.selectTreeNodeId })
-        .then(res => {
-          this.setDepTreeData = res.rows
-        })
-        .catch(err => {
-          this.setDepVisible = false
-          return this.$message.error(err)
-        })
+    isDepartmentPrincipal(record) {
+      return Number(record.deptPrincipal) === 1
     },
-    /* 初始化成员树 */
-    initsetDepTreeDataAll() {
-      queryUserList()
-        .then(res => {
-          this.setDepTreeData = res.rows
-        })
-        .catch(err => {
-          this.setDepVisible = false
-          return this.$message.error(err)
-        })
-    },
-    /* 设置部门主管 */
-    setDepDirector(v) {
-      if (v === 1) {
-        if (this.rData.length !== 0) {
-          addDeptPrincipal({ deptId: this.selectTreeNodeId, userIds: this.rData.join(',') }).then(res => {
-            if (res.code === 200) {
-              this.setDepVisible = false
-              this.$message.success('设置成功')
-              this.updateUserTitle(this.treeNodeData.title || this.title, this.selectTreeNodeId)
-              this.$refs.table.refresh()
-            }
-          })
-        } else {
-          return this.$message.error('输入要设置的部门主管')
-        }
-      } else {
-        this.setDepVisible = false
+    setDepartmentPrincipal(record) {
+      const deptId = Number(record.deptId || record.dept?.deptId || this.deptId)
+      if (!deptId) {
+        return this.$message.warning('请先选择具体部门')
       }
-    },
-    /* 设置部门分管领导 */
-    setDepLeaderDirector(v) {
-      if (v === 1) {
-        if (this.rData.length !== 0) {
-          addDeptPrincipalLeader({ deptId: this.selectTreeNodeId, userIds: this.rData.join(',') }).then(res => {
-            if (res.code === 200) {
-              this.setDepLeaderVisible = false
-              this.$message.success('设置成功')
-              this.updateUserTitle(this.treeNodeData.title || this.title, this.selectTreeNodeId)
-
-              this.$refs.table.refresh()
+      this.$antdconfirm({
+        title: '设置部门主管',
+        content: '确定将“' + record.nickName + '”设为当前部门主管吗？原主管将自动取消。',
+        onOk: () => setDeptPrincipal(deptId, record.userId).then(res => {
+          if (res.code === 200) {
+            if (!this.verifyPrincipalResponse(res, deptId, record.userId, 1)) {
+              return
             }
-          })
-        } else {
-          return this.$message.error('输入要设置的部门分管领导')
-        }
-      } else {
-        this.setDepLeaderVisible = false
+            this.$refs.table.refresh()
+            return this.$message.success('部门主管设置成功')
+          }
+        })
+      })
+    },
+    clearDepartmentPrincipal(record) {
+      const deptId = Number(record.deptId || record.dept?.deptId || this.deptId)
+      this.$antdconfirm({
+        title: '取消部门主管',
+        content: '确定取消“' + record.nickName + '”的部门主管身份吗？',
+        onOk: () => clearDeptPrincipal(deptId, record.userId).then(res => {
+          if (res.code === 200) {
+            if (!this.verifyPrincipalResponse(res, deptId, record.userId, 0)) {
+              return
+            }
+            this.$refs.table.refresh()
+            return this.$message.success('已取消部门主管')
+          }
+        })
+      })
+    },
+    verifyPrincipalResponse(res, deptId, userId, principal) {
+      const saved = res.data
+      if (!saved
+        || Number(saved.deptId) !== Number(deptId)
+        || Number(saved.userId) !== Number(userId)
+        || Number(saved.deptPrincipal) !== principal) {
+        this.$message.error('未收到主管保存结果，请先重启后端服务后重试')
+        return false
       }
+      return true
     },
     /* 添加子部门 */
     addDepchild(v) {
@@ -631,20 +563,6 @@ export default {
     },
     updateUserTitle(deptName, deptId) {
       this.userTitle = deptName
-      if (!this.isEmpty(deptId)) {
-        Promise.all([deptLeaderList({ deptId }), deptPrincipalList({ deptId })]).then(([leaderRes, principalRes]) => {
-          const parts = [deptName]
-          const leaderName = (leaderRes.data || []).map(e => e.nickName).join(',')
-          const principalName = (principalRes.data || []).map(e => e.nickName).join(',')
-          if (leaderName) {
-            parts.push(`分管领导: ${leaderName}`)
-          }
-          if (principalName) {
-            parts.push(`部门主管: ${principalName}`)
-          }
-          this.userTitle = parts.join(' ')
-        })
-      }
     },
     /* 邀请成员 */
     inviteMembers() {
@@ -826,9 +744,29 @@ export default {
       return this.title === '全部成员' || this.title === '离职成员'
     },
     visibleColumns() {
-      return this.showRoleInfo
+      const columns = this.showRoleInfo
         ? this.columns
         : this.columns.filter(column => !column.roleRelated)
+      if (!this.showDepartmentActions) {
+        return columns
+      }
+      return columns.concat({
+        title: '操作',
+        key: 'deptAction',
+        width: 110,
+        fixed: 'right',
+        align: 'center',
+        scopedSlots: { customRender: 'deptAction' }
+      })
+    },
+    showDepartmentActions() {
+      return Boolean(this.deptId)
+        && this.title !== '全部成员'
+        && this.title !== '离职成员'
+        && this.canManageDepartment
+    },
+    tableScroll() {
+      return this.showDepartmentActions ? { x: 1160 } : {}
     },
     rowSelection() {
       if (!this.canManageMembers) {
@@ -844,6 +782,10 @@ export default {
       const meta = this.$route.meta
       return hasModuleAction(permissions, meta, 'transfer')
         || hasModuleAction(permissions, meta, 'dismiss')
+    },
+    canManageDepartment() {
+      const permissions = this.$store.getters.permissions || []
+      return hasModuleAction(permissions, this.$route.meta, 'manage')
     }
   },
   created() {},

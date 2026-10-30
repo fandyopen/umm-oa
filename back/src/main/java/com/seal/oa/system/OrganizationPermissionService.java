@@ -15,7 +15,8 @@ import java.util.Set;
  * <ul>
  *   <li>{@code sys_role_module} 决定菜单、页面和按钮动作；</li>
  *   <li>{@code sys_role.data_scope} 决定组织数据的可见范围；</li>
- *   <li>{@code sys_admin_identity} 和 admin 角色继续表示系统级不受限管理员。</li>
+ *   <li>{@code sys_admin_identity} 和 admin 角色共同表示固定的唯一超级管理员；</li>
+ *   <li>其他人员的管理权限统一由角色模块授权和角色数据范围决定。</li>
  * </ul>
  *
  * <p>旧权限码表 {@code sys_menu}/{@code sys_role_menu} 不再参与鉴权。
@@ -56,8 +57,8 @@ public class OrganizationPermissionService {
         List<String> roleKeys = systemService.roleKeys(userId);
         List<String> permissions = systemService.permissions(userId);
         boolean adminRole = roleKeys.contains("admin");
-        boolean systemAdmin = systemService.isSystemAdmin(userId);
-        boolean isAdmin = adminRole || systemAdmin;
+        boolean superAdminIdentity = systemService.isSuperAdminIdentity(userId);
+        boolean isAdmin = adminRole || superAdminIdentity;
         boolean unrestricted = isAdmin || permissions.contains("*:*:*");
 
         Set<Long> moduleIds = moduleService.roleModuleIds(userId);

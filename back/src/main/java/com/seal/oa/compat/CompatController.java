@@ -18,6 +18,10 @@ public class CompatController {
         String method = request.getMethod();
         String path = request.getRequestURI();
 
+        if (path.startsWith("/system/dept/")) {
+            return ApiResult.error(404, "部门接口不存在，请确认后端已更新并重启");
+        }
+
         if ("GET".equalsIgnoreCase(method)) {
             if (path.contains("/export")) {
                 Map<String, Object> result = ApiResult.message("导出兼容接口尚未实现");

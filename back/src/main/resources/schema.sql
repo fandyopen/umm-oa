@@ -94,15 +94,8 @@ CREATE TABLE sys_dept (
 );
 
 CREATE TABLE sys_dept_principal (
-    dept_id BIGINT NOT NULL,
-    user_id BIGINT NOT NULL,
-    PRIMARY KEY (dept_id, user_id)
-);
-
-CREATE TABLE sys_dept_leader (
-    dept_id BIGINT NOT NULL,
-    user_id BIGINT NOT NULL,
-    PRIMARY KEY (dept_id, user_id)
+    dept_id BIGINT PRIMARY KEY,
+    user_id BIGINT NOT NULL
 );
 
 CREATE TABLE sys_user (
@@ -345,43 +338,6 @@ CREATE TABLE sys_app_module (
     icon VARCHAR(100),
     order_num INT NOT NULL DEFAULT 0,
     status VARCHAR(1) NOT NULL DEFAULT '0'
-);
-
-CREATE TABLE sys_admin_group (
-    group_id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    group_name VARCHAR(100) NOT NULL,
-    tenant_id BIGINT NOT NULL DEFAULT 1,
-    is_add VARCHAR(1) NOT NULL DEFAULT '0',
-    role_read VARCHAR(1) NOT NULL DEFAULT '0',
-    role_manage VARCHAR(1) NOT NULL DEFAULT '0',
-    dept_read VARCHAR(1) NOT NULL DEFAULT '0',
-    dept_manage VARCHAR(1) NOT NULL DEFAULT '0',
-    sort INT NOT NULL DEFAULT 0,
-    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE sys_admin_group_member (
-    group_id BIGINT NOT NULL,
-    user_id BIGINT NOT NULL,
-    PRIMARY KEY (group_id, user_id)
-);
-
-CREATE TABLE sys_admin_group_app (
-    group_id BIGINT NOT NULL,
-    tenant_app_id BIGINT NOT NULL,
-    PRIMARY KEY (group_id, tenant_app_id)
-);
-
-CREATE TABLE sys_admin_group_dept (
-    group_id BIGINT NOT NULL,
-    dept_id BIGINT NOT NULL,
-    PRIMARY KEY (group_id, dept_id)
-);
-
-CREATE TABLE sys_admin_group_role (
-    group_id BIGINT NOT NULL,
-    role_id BIGINT NOT NULL,
-    PRIMARY KEY (group_id, role_id)
 );
 
 CREATE TABLE sys_admin_identity (

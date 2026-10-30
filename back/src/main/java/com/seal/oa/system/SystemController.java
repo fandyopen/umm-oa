@@ -9,6 +9,7 @@ import com.seal.oa.web.RequiresAnyModuleAction;
 import com.seal.oa.web.ModuleActionRequirement;
 import com.seal.oa.system.SystemService.UserAccount;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -31,6 +32,9 @@ import java.util.Objects;
 
 @RestController
 public class SystemController {
+
+    private static final long SUPER_ADMIN_USER_ID = 1L;
+    private static final long SUPER_ADMIN_ROLE_ID = 1L;
 
     private final JdbcTemplate jdbc;
     private final PasswordEncoder passwordEncoder;
@@ -106,7 +110,11 @@ public class SystemController {
                        u.email, u.phonenumber, u.sex, u.avatar, u.status, u.del_flag,
                        u.is_admin, u.is_owner, u.login_ip, u.login_date,
                        u.create_by, u.create_time, u.remark,
-                       d.dept_name
+                       d.dept_name,
+                       CASE WHEN EXISTS (
+                           SELECT 1 FROM sys_dept_principal dp
+                           WHERE dp.dept_id = u.dept_id AND dp.user_id = u.user_id
+                       ) THEN 1 ELSE 0 END AS dept_principal
                 FROM sys_user u
                 LEFT JOIN sys_dept d ON d.dept_id = u.dept_id
                 %s
@@ -123,7 +131,6 @@ public class SystemController {
             dept.put("deptId", row.get("deptId"));
             dept.put("deptName", row.get("deptName"));
             row.put("dept", dept);
-            row.put("userDept", List.of());
         });
         return ApiResult.page(result, total == null ? 0 : total);
     }
@@ -187,7 +194,11 @@ public class SystemController {
         pageArguments.add((pageNum - 1) * pageSize);
         List<Map<String, Object>> rows = JdbcMaps.camelCase(jdbc.queryForList("""
                 SELECT u.user_id, u.tenant_id, u.dept_id, u.user_name, u.nick_name,
-                       u.email, u.phonenumber, u.status, u.create_time, d.dept_name
+                        u.email, u.phonenumber, u.status, u.create_time, d.dept_name,
+                        CASE WHEN EXISTS (
+                            SELECT 1 FROM sys_dept_principal dp
+                            WHERE dp.dept_id = u.dept_id AND dp.user_id = u.user_id
+                        ) THEN 1 ELSE 0 END AS dept_principal
                 FROM sys_user u LEFT JOIN sys_dept d ON d.dept_id = u.dept_id
                 %s ORDER BY u.create_time DESC, u.user_id DESC LIMIT ? OFFSET ?
                 """.formatted(where), pageArguments.toArray()));
@@ -199,7 +210,6 @@ public class SystemController {
                     "deptId", row.getOrDefault("deptId", 0L),
                     "deptName", row.getOrDefault("deptName", "")
             ));
-            row.put("userDept", List.of());
         });
         return ApiResult.page(rows, total == null ? 0 : total);
     }
@@ -264,6 +274,12 @@ public class SystemController {
         if (userId == 0L) {
             throw new ApiException(400, "userId 不能为空");
         }
+        if (userId == SUPER_ADMIN_USER_ID) {
+            throw new ApiException(403, "固定超级管理员不能在成员管理中修改");
+        }
+        if (ids(body, "roleIds").contains(SUPER_ADMIN_ROLE_ID)) {
+            throw new ApiException(403, "超级管理员角色不能分配给其他账号");
+        }
         jdbc.update("""
                 UPDATE sys_user SET dept_id = ?, nick_name = ?, email = ?, phonenumber = ?,
                     sex = ?, status = ?, remark = ?, update_by = ?, update_time = ?
@@ -300,6 +316,9 @@ public class SystemController {
     @PutMapping("/system/user/changeStatus")
     @RequiresModuleAction(moduleId = 340782L, action = "manage")
     public Map<String, Object> changeUserStatus(@RequestBody Map<String, Object> body) {
+        if (longValue(body.get("userId"), 0L) == SUPER_ADMIN_USER_ID) {
+            throw new ApiException(403, "固定超级管理员不能被停用");
+        }
         jdbc.update("UPDATE sys_user SET status = ? WHERE user_id = ?",
                 defaultString(body.get("status"), "0"),
                 longValue(body.get("userId"), 0L));
@@ -310,7 +329,11 @@ public class SystemController {
     @RequiresModuleAction(moduleId = 340782L, action = "manage")
     public Map<String, Object> deleteUsers(@PathVariable String userIds) {
         for (String value : userIds.split(",")) {
-            jdbc.update("UPDATE sys_user SET del_flag = '2' WHERE user_id = ?", Long.parseLong(value));
+            long userId = Long.parseLong(value);
+            if (userId == SUPER_ADMIN_USER_ID) {
+                throw new ApiException(403, "固定超级管理员不能被删除");
+            }
+            jdbc.update("UPDATE sys_user SET del_flag = '2' WHERE user_id = ?", userId);
         }
         return ApiResult.ok();
     }
@@ -479,38 +502,55 @@ public class SystemController {
         return ApiResult.ok();
     }
 
-    @GetMapping("/system/dept/add/principal")
+    @PutMapping("/system/dept/{deptId}/principal")
     @RequiresModuleAction(moduleId = 340782L, action = "manage")
-    public Map<String, Object> assignDepartmentPrincipals(@RequestParam Map<String, String> query) {
-        replaceDepartmentMembers("sys_dept_principal", longValue(query.get("deptId"), 0L), query.get("userIds"));
-        return ApiResult.ok();
-    }
-
-    @GetMapping("/system/dept/add/principal/leader")
-    @RequiresModuleAction(moduleId = 340782L, action = "manage")
-    public Map<String, Object> assignDepartmentLeaders(@RequestParam Map<String, String> query) {
-        long deptId = longValue(query.get("deptId"), 0L);
-        List<Long> userIds = replaceDepartmentMembers("sys_dept_leader", deptId, query.get("userIds"));
-        String leader = userIds.isEmpty()
-                ? ""
-                : String.join(",", jdbc.queryForList("""
-                        SELECT nick_name FROM sys_user WHERE user_id IN (%s) ORDER BY user_id
-                        """.formatted(placeholders(userIds.size())), String.class, userIds.toArray()));
+    @Transactional
+    public Map<String, Object> assignDepartmentPrincipal(
+            @PathVariable Long deptId,
+            @RequestBody Map<String, Object> body
+    ) {
+        lockDepartment(deptId);
+        long userId = longValue(body.get("userId"), 0L);
+        List<String> userNames = jdbc.queryForList("""
+                SELECT user_name
+                FROM sys_user
+                WHERE user_id = ? AND dept_id = ? AND del_flag = '0' AND status = '0'
+                """, String.class, userId, deptId);
+        if (userNames.isEmpty()) {
+            throw new ApiException(400, "只能将当前部门的在职成员设为部门主管");
+        }
+        jdbc.update("DELETE FROM sys_dept_principal WHERE dept_id = ?", deptId);
+        jdbc.update("INSERT INTO sys_dept_principal (dept_id, user_id) VALUES (?, ?)", deptId, userId);
         jdbc.update("UPDATE sys_dept SET leader = ?, update_time = ? WHERE dept_id = ?",
-                leader, Timestamp.valueOf(LocalDateTime.now()), deptId);
-        return ApiResult.ok();
+                userNames.get(0), Timestamp.valueOf(LocalDateTime.now()), deptId);
+        return ApiResult.ok(Map.of("deptId", deptId, "userId", userId, "deptPrincipal", 1));
     }
 
-    @GetMapping("/system/dept/dept/principal")
-    @RequiresModuleAction(moduleId = 340782L, action = "access")
-    public Map<String, Object> departmentPrincipals(@RequestParam Map<String, String> query) {
-        return ApiResult.ok(departmentMembers("sys_dept_principal", longValue(query.get("deptId"), 0L)));
+    @DeleteMapping("/system/dept/{deptId}/principal")
+    @RequiresModuleAction(moduleId = 340782L, action = "manage")
+    @Transactional
+    public Map<String, Object> clearDepartmentPrincipal(
+            @PathVariable Long deptId,
+            @RequestParam Long userId
+    ) {
+        lockDepartment(deptId);
+        int removed = jdbc.update("DELETE FROM sys_dept_principal WHERE dept_id = ? AND user_id = ?", deptId, userId);
+        if (removed == 0) {
+            throw new ApiException(409, "部门主管已变更，请刷新后重试");
+        }
+        jdbc.update("UPDATE sys_dept SET leader = '', update_time = ? WHERE dept_id = ?",
+                Timestamp.valueOf(LocalDateTime.now()), deptId);
+        return ApiResult.ok(Map.of("deptId", deptId, "userId", userId, "deptPrincipal", 0));
     }
 
-    @GetMapping("/system/dept/dept/leader")
-    @RequiresModuleAction(moduleId = 340782L, action = "access")
-    public Map<String, Object> departmentLeaders(@RequestParam Map<String, String> query) {
-        return ApiResult.ok(departmentMembers("sys_dept_leader", longValue(query.get("deptId"), 0L)));
+    private void lockDepartment(Long deptId) {
+        List<Long> departments = jdbc.queryForList("""
+                SELECT dept_id FROM sys_dept
+                WHERE dept_id = ? AND del_flag = '0' AND status = '0' FOR UPDATE
+                """, Long.class, deptId);
+        if (departments.isEmpty()) {
+            throw new ApiException(404, "部门不存在或已停用");
+        }
     }
 
     @GetMapping("/system/dept/sort")
@@ -643,6 +683,9 @@ public class SystemController {
     @RequiresModuleAction(moduleId = 340597L, action = "manage")
     public Map<String, Object> updateRole(@RequestBody Map<String, Object> body) {
         Long roleId = longValue(body.get("roleId"), longValue(body.get("id"), 0L));
+        if (roleId == SUPER_ADMIN_ROLE_ID) {
+            throw new ApiException(403, "固定超级管理员角色不能修改");
+        }
         List<Map<String, Object>> existingRows = JdbcMaps.camelCase(jdbc.queryForList("""
                 SELECT role_name, role_key, role_sort, data_scope, status, remark
                 FROM sys_role WHERE role_id = ?
@@ -696,6 +739,9 @@ public class SystemController {
     @PutMapping("/system/role/changeStatus")
     @RequiresModuleAction(moduleId = 340597L, action = "manage")
     public Map<String, Object> changeRoleStatus(@RequestBody Map<String, Object> body) {
+        if (longValue(body.get("roleId"), 0L) == SUPER_ADMIN_ROLE_ID) {
+            throw new ApiException(403, "固定超级管理员角色不能停用");
+        }
         jdbc.update("UPDATE sys_role SET status = ? WHERE role_id = ?",
                 defaultString(body.get("status"), "0"),
                 longValue(body.get("roleId"), 0L));
@@ -705,6 +751,9 @@ public class SystemController {
     @DeleteMapping({"/system/role/{roleId}", "/system/role/remove/{roleId}"})
     @RequiresModuleAction(moduleId = 340597L, action = "manage")
     public Map<String, Object> deleteRole(@PathVariable Long roleId) {
+        if (roleId == SUPER_ADMIN_ROLE_ID) {
+            throw new ApiException(403, "固定超级管理员角色不能删除");
+        }
         jdbc.update("DELETE FROM sys_role_module_action WHERE role_id = ?", roleId);
         jdbc.update("DELETE FROM sys_role_module WHERE role_id = ?", roleId);
         jdbc.update("UPDATE sys_role SET del_flag = '2' WHERE role_id = ?", roleId);
@@ -755,7 +804,7 @@ public class SystemController {
                        COALESCE(rgm.group_id, 50) AS group_id
                 FROM sys_role r
                 LEFT JOIN sys_role_group_member rgm ON rgm.role_id = r.role_id
-                WHERE r.del_flag = '0' AND r.status = '0'
+                WHERE r.del_flag = '0' AND r.status = '0' AND r.role_id <> 1
                 ORDER BY r.role_sort, r.role_id
                 """));
         Map<String, Object> result = ApiResult.ok(Map.of(
@@ -795,6 +844,9 @@ public class SystemController {
     @RequiresModuleAction(moduleId = 340597L, action = "manage")
     public Map<String, Object> addRoleMember(@RequestBody Map<String, Object> body) {
         long roleId = longValue(body.get("roleId"), 0L);
+        if (roleId == SUPER_ADMIN_ROLE_ID) {
+            throw new ApiException(403, "超级管理员角色不允许手工分配");
+        }
         for (Long userId : ids(body, "userIds")) {
             if (roleId > 0L && userId > 0L) {
                 jdbc.update("""
@@ -815,6 +867,9 @@ public class SystemController {
             return ApiResult.ok();
         }
         long roleId = longValue(body.get("roleId"), 0L);
+        if (roleId == SUPER_ADMIN_ROLE_ID) {
+            throw new ApiException(403, "固定超级管理员角色不能移除成员");
+        }
         for (Long userId : ids(body, "userIds")) {
             jdbc.update("DELETE FROM sys_user_role WHERE user_id = ? AND role_id = ?", userId, roleId);
         }
@@ -822,6 +877,7 @@ public class SystemController {
     }
 
     @PostMapping({"/system/role/insert", "/system/role/update"})
+    @RequiresModuleAction(moduleId = 340597L, action = "manage")
     public Map<String, Object> legacyRoleWrite(@RequestBody Map<String, Object> body) {
         return body.containsKey("roleId") ? updateRole(body) : createRole(body);
     }
@@ -916,16 +972,6 @@ public class SystemController {
         return ApiResult.ok();
     }
 
-    @GetMapping("/system/admin/query/adminGroup")
-    @RequiresModuleAction(moduleId = 340782L, action = "access")
-    public Map<String, Object> adminGroups() {
-        return ApiResult.ok(JdbcMaps.camelCase(jdbc.queryForList("""
-                SELECT group_id, group_name, tenant_id, is_add, role_read, role_manage,
-                       dept_read, dept_manage, sort, create_time
-                FROM sys_admin_group ORDER BY sort, group_id
-                """)));
-    }
-
     @GetMapping("/system/admin/query/admin")
     @RequiresModuleAction(moduleId = 340782L, action = "access")
     public Map<String, Object> admins() {
@@ -933,159 +979,6 @@ public class SystemController {
                 SELECT user_id, user_name, nick_name, email, phonenumber, sex, status
                 FROM sys_admin_identity ORDER BY sort, user_id
                 """)));
-    }
-
-    @GetMapping("/system/admin/adminGroup/{groupId}")
-    @RequiresModuleAction(moduleId = 340782L, action = "access")
-    public Map<String, Object> adminGroup(@PathVariable Long groupId) {
-        List<Map<String, Object>> groupRows = jdbc.queryForList("""
-                SELECT group_id, group_name, is_add, role_read, role_manage,
-                       dept_read, dept_manage, sort
-                FROM sys_admin_group WHERE group_id = ?
-                """, groupId);
-        if (groupRows.isEmpty()) {
-            throw new ApiException(404, "Admin group not found");
-        }
-        Map<String, Object> source = JdbcMaps.camelCase(groupRows).get(0);
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("groupId", source.get("groupId"));
-        result.put("apps", JdbcMaps.camelCase(jdbc.queryForList("""
-                SELECT a.tenant_app_id AS id, a.app_name
-                FROM sys_admin_group_app aga
-                JOIN sys_app a ON a.tenant_app_id = aga.tenant_app_id
-                WHERE aga.group_id = ? ORDER BY a.tenant_app_id
-                """, groupId)));
-        result.put("members", JdbcMaps.camelCase(jdbc.queryForList("""
-                SELECT u.user_id, u.user_name, u.nick_name, u.email, u.phonenumber,
-                       u.sex, u.status
-                FROM sys_admin_group_member agm
-                JOIN sys_user u ON u.user_id = agm.user_id
-                WHERE agm.group_id = ? AND u.del_flag = '0'
-                ORDER BY u.user_name
-                """, groupId)));
-        List<Map<String, Object>> deptRange = JdbcMaps.camelCase(jdbc.queryForList("""
-                SELECT d.dept_id, d.dept_name
-                FROM sys_admin_group_dept agd
-                JOIN sys_dept d ON d.dept_id = agd.dept_id
-                WHERE agd.group_id = ? ORDER BY d.order_num, d.dept_id
-                """, groupId));
-        List<Map<String, Object>> roleRange = JdbcMaps.camelCase(jdbc.queryForList("""
-                SELECT r.role_id, r.role_name, r.role_key
-                FROM sys_admin_group_role agr
-                JOIN sys_role r ON r.role_id = agr.role_id
-                WHERE agr.group_id = ? ORDER BY r.role_sort, r.role_id
-                """, groupId));
-        result.put("deptRange", deptRange);
-        result.put("hasDeptRange", !deptRange.isEmpty());
-        result.put("roleRange", roleRange);
-        result.put("hasRoleRange", !roleRange.isEmpty());
-        result.put("op", Map.of(
-                "appUpdate", enabled(source.get("isAdd")),
-                "memberRead", enabled(source.get("deptRead")),
-                "memberManage", enabled(source.get("deptManage")),
-                "roleRead", enabled(source.get("roleRead")),
-                "roleManage", enabled(source.get("roleManage"))
-        ));
-        return ApiResult.ok(result);
-    }
-
-    @PostMapping("/system/admin/addGroup")
-    @RequiresModuleAction(moduleId = 340782L, action = "manage")
-    public Map<String, Object> addAdminGroup(@RequestBody Map<String, Object> body) {
-        String groupName = defaultString(body.get("groupName"), "新管理组");
-        jdbc.update("""
-                INSERT INTO sys_admin_group
-                    (group_name, tenant_id, is_add, role_read, role_manage,
-                     dept_read, dept_manage, sort)
-                VALUES (?, 1, '0', '0', '0', '0', '0', ?)
-                """, groupName, longValue(body.get("sort"), 0L));
-        return ApiResult.ok();
-    }
-
-    @PostMapping("/system/admin/edit")
-    @RequiresModuleAction(moduleId = 340782L, action = "manage")
-    public Map<String, Object> editAdminGroup(@RequestBody Map<String, Object> body) {
-        jdbc.update("UPDATE sys_admin_group SET group_name = ? WHERE group_id = ?",
-                defaultString(body.get("groupName"), ""),
-                longValue(body.get("groupId"), 0L));
-        return ApiResult.ok();
-    }
-
-    @PostMapping("/system/admin/update")
-    @RequiresModuleAction(moduleId = 340782L, action = "manage")
-    public Map<String, Object> updateAdminGroup(@RequestBody Map<String, Object> body) {
-        long groupId = longValue(body.get("groupId"), 0L);
-        if (groupId <= 0L) {
-            throw new ApiException(400, "groupId is required");
-        }
-        Object opValue = body.get("op");
-        if (opValue instanceof Map<?, ?> op) {
-            updateAdminFlag(groupId, "is_add", op.get("appUpdate"));
-            updateAdminFlag(groupId, "dept_read", op.get("memberRead"));
-            updateAdminFlag(groupId, "dept_manage", op.get("memberManage"));
-            updateAdminFlag(groupId, "role_read", op.get("roleRead"));
-            updateAdminFlag(groupId, "role_manage", op.get("roleManage"));
-        }
-        if (body.containsKey("members")) {
-            replaceAdminRelations(groupId, "sys_admin_group_member", "user_id", ids(body, "members"));
-        }
-        if (body.containsKey("apps")) {
-            replaceAdminRelations(groupId, "sys_admin_group_app", "tenant_app_id", ids(body, "apps"));
-        }
-        if (body.containsKey("deptRange")) {
-            replaceAdminRelations(groupId, "sys_admin_group_dept", "dept_id", ids(body, "deptRange"));
-        }
-        if (body.containsKey("roleRange")) {
-            replaceAdminRelations(groupId, "sys_admin_group_role", "role_id", ids(body, "roleRange"));
-        }
-        return ApiResult.ok();
-    }
-
-    @PostMapping("/system/admin/addAdmin")
-    @RequiresModuleAction(moduleId = 340782L, action = "manage")
-    public Map<String, Object> updateSystemAdmins(@RequestBody Map<String, Object> body) {
-        List<Long> userIds = ids(body, "userIds");
-        jdbc.update("DELETE FROM sys_admin_identity");
-        for (Long userId : userIds) {
-            List<Map<String, Object>> users = jdbc.queryForList("""
-                    SELECT user_id, user_name, nick_name, email, phonenumber, sex, status
-                    FROM sys_user WHERE user_id = ? AND del_flag = '0'
-                    """, userId);
-            if (users.isEmpty()) {
-                continue;
-            }
-            Map<String, Object> user = JdbcMaps.camelCase(users).get(0);
-            jdbc.update("""
-                    INSERT INTO sys_admin_identity
-                        (user_id, user_name, nick_name, email, phonenumber, sex, status, sort)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                    """,
-                    user.get("userId"),
-                    user.get("userName"),
-                    user.get("nickName"),
-                    user.get("email"),
-                    user.get("phonenumber"),
-                    user.get("sex"),
-                    user.get("status"),
-                    userIds.indexOf(userId)
-            );
-        }
-        return ApiResult.ok();
-    }
-
-    @DeleteMapping("/system/admin/remove/{groupId}")
-    @RequiresModuleAction(moduleId = 340782L, action = "manage")
-    public Map<String, Object> deleteAdminGroup(@PathVariable Long groupId) {
-        for (String table : List.of(
-                "sys_admin_group_member",
-                "sys_admin_group_app",
-                "sys_admin_group_dept",
-                "sys_admin_group_role"
-        )) {
-            jdbc.update("DELETE FROM " + table + " WHERE group_id = ?", groupId);
-        }
-        jdbc.update("DELETE FROM sys_admin_group WHERE group_id = ?", groupId);
-        return ApiResult.ok();
     }
 
     private List<Map<String, Object>> roles(Long userId) {
@@ -1112,7 +1005,7 @@ public class SystemController {
                            ? AS group_id
                     FROM sys_role r
                     JOIN sys_role_group_member rgm ON rgm.role_id = r.role_id
-                    WHERE rgm.group_id = ? AND r.del_flag = '0'
+                    WHERE rgm.group_id = ? AND r.del_flag = '0' AND r.role_id <> 1
                     ORDER BY r.role_sort, r.role_id
                     """, groupId, groupId)));
         }
@@ -1148,44 +1041,6 @@ public class SystemController {
                 groupId, roleId);
     }
 
-    private List<Long> replaceDepartmentMembers(String table, long deptId, String rawUserIds) {
-        if (deptId <= 0L) {
-            throw new ApiException(400, "deptId is required");
-        }
-        List<Long> userIds = java.util.Arrays.stream(
-                        defaultString(rawUserIds, "").split(",")
-                )
-                .map(String::trim)
-                .filter(StringUtils::hasText)
-                .map(value -> longValue(value, 0L))
-                .filter(value -> value > 0L)
-                .distinct()
-                .toList();
-        jdbc.update("DELETE FROM " + table + " WHERE dept_id = ?", deptId);
-        for (Long userId : userIds) {
-            jdbc.update(
-                    "INSERT INTO " + table + " (dept_id, user_id) VALUES (?, ?)",
-                    deptId,
-                    userId
-            );
-        }
-        return userIds;
-    }
-
-    private List<Map<String, Object>> departmentMembers(String table, long deptId) {
-        return JdbcMaps.camelCase(jdbc.queryForList("""
-                SELECT u.user_id, u.user_name, u.nick_name, u.phonenumber, u.email, u.status
-                FROM %s relation
-                JOIN sys_user u ON u.user_id = relation.user_id
-                WHERE relation.dept_id = ? AND u.del_flag = '0'
-                ORDER BY u.user_id
-                """.formatted(table), deptId));
-    }
-
-    private String placeholders(int count) {
-        return String.join(",", java.util.Collections.nCopies(count, "?"));
-    }
-
     private List<Long> ids(Map<String, Object> body, String property) {
         Object value = body.get(property);
         if (value instanceof List<?> values) {
@@ -1215,29 +1070,6 @@ public class SystemController {
             return 0L;
         }
         return longValue(value, 0L);
-    }
-
-    private boolean enabled(Object value) {
-        return "0".equals(String.valueOf(value));
-    }
-
-    private void updateAdminFlag(long groupId, String column, Object value) {
-        if (value == null) {
-            return;
-        }
-        boolean enabled = value instanceof Boolean bool
-                ? bool
-                : Boolean.parseBoolean(String.valueOf(value));
-        jdbc.update("UPDATE sys_admin_group SET " + column + " = ? WHERE group_id = ?",
-                enabled ? "0" : "1", groupId);
-    }
-
-    private void replaceAdminRelations(long groupId, String table, String column, List<Long> ids) {
-        jdbc.update("DELETE FROM " + table + " WHERE group_id = ?", groupId);
-        for (Long id : ids) {
-            jdbc.update("INSERT INTO " + table + " (group_id, " + column + ") VALUES (?, ?)",
-                    groupId, id);
-        }
     }
 
     private List<Map<String, Object>> buildDeptTree(List<Map<String, Object>> rows) {

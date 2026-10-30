@@ -34,13 +34,6 @@
           <a-radio-button v-for="(d, index) in statusOptions" :key="index" :value="d.dictValue">{{ d.dictLabel }}</a-radio-button>
         </a-radio-group>
       </a-form-model-item>
-      <a-form-model-item label="岗位" prop="postIds">
-        <a-select mode="multiple" v-model="form.postIds" placeholder="请选择">
-          <a-select-option v-for="(d, index) in postOptions" :key="index" :value="d.postId">
-            {{ d.postName }}
-          </a-select-option>
-        </a-select>
-      </a-form-model-item>
       <a-form-model-item label="角色" prop="roleIds">
         <a-select mode="multiple" v-model="form.roleIds" placeholder="请选择">
           <a-select-option v-for="(d, index) in roleOptions" :key="index" :value="d.roleId">

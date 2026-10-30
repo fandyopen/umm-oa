@@ -12,8 +12,17 @@
       </template>
       <p style="font-size: 25px; margin: 0 auto; text-align: center">您没有相关权限,请联系管理员授权</p>
     </a-modal>
-    <div class="contacts-internal">
+    <div class="contacts-internal" :class="{ 'menu-is-collapsed': menuCollapsed }">
       <div class="layout-menu">
+        <button
+          type="button"
+          class="menu-collapse-trigger"
+          :title="menuCollapsed ? '展开左侧栏' : '收起左侧栏'"
+          :aria-label="menuCollapsed ? '展开左侧栏' : '收起左侧栏'"
+          @click="toggleMenuCollapsed"
+        >
+          <a-icon :type="menuCollapsed ? 'right' : 'left'" />
+        </button>
         <div class="menu-header">
           <!-- <a-radio-group button-style="solid" v-model="gvalue">
               <a-radio-button value="组织架构"> 组织架构 </a-radio-button>
@@ -43,10 +52,6 @@
             <!-- <a-tree ref="treeRef" :tree-data="treeData" :selectedKeys="selectedTreeKeys" :replaceFields="replaceFields" @select="treeNodeSelect"> </a-tree> -->
             <a-tree ref="treeRef" :selectedKeys="selectedTreeKeys" :tree-data="treeData" :replaceFields="replaceFields" @dragenter="onDragEnter" @drop="onDrop" @select="treeNodeSelect"> </a-tree>
           </div>
-          <div class="menu-type">岗位</div>
-          <div class="department-tree">
-            <a-tree ref="treePostRef" :selectedKeys="selectedPostTreeKeys" :tree-data="treePostData" :replaceFields="replacePostFields" @select="treeNodePostSelect"> </a-tree>
-          </div>
         </div>
         <div class="menu-content" v-if="gvalue === '角色'">
           <div v-userPerms="{ bindingPerms: 'roleManage' }" class="menu-type">
@@ -63,94 +68,64 @@
             <!-- 创建角色组弹窗 -->
             <a-modal width="450px" :visible="crg_Visible" @ok="crg_handleOk" @cancel="crg_handleCancel">
               <p>角色组名称</p>
-              <a-input placeholder="输入角色名称" allowClear v-model="roleGroupName" />
+              <a-input placeholder="输入角色组名称" allowClear v-model="roleGroupName" />
             </a-modal>
             <!-- 创建角色弹窗 -->
             <a-modal width="450px" :visible="cr_Visible" @ok="cr_handleOk" @cancel="cr_handleCancel">
               <p>角色名称</p>
-              <a-input placeholder="输入角色组名称" allowClear v-model="roleName" />
+              <a-input placeholder="输入角色名称" allowClear v-model="roleName" />
               <p>目标分组</p>
               <a-select placeholder="选择角色组" allowClear style="width: 100%" @change="handleChange">
                 <a-select-option v-for="item in RoleGroupMenu" :value="item.id" :key="item.id"> {{ item.value }} </a-select-option>
               </a-select>
             </a-modal>
+            <!-- 修改角色名称弹窗 -->
+            <a-modal title="修改角色名称" width="450px" :visible="editRoleVisible" @ok="editRoleHandleOk" @cancel="editRoleHandleCancel">
+              <a-input placeholder="输入新的角色名称" allowClear v-model="editRoleName" @pressEnter="editRoleHandleOk" />
+            </a-modal>
+            <!-- 修改角色组名称弹窗 -->
+            <a-modal title="修改角色组名称" width="450px" :visible="editRoleGroupVisible" @ok="editRoleGroupHandleOk" @cancel="editRoleGroupHandleCancel">
+              <a-input placeholder="输入新的角色组名称" allowClear v-model="editRoleGroupName" @pressEnter="editRoleGroupHandleOk" />
+            </a-modal>
           </div>
           <div class="roleMenu" v-if="RoleMenuTree.length > 0">
-            <a-directory-tree :defaultExpandedKeys="selectedKeysRole" @select="onSelectRole" :selectedKeys="selectedKeysRole">
-              <a-tree-node :title="item.groupName" :selectable="false" v-for="item in RoleMenuTree" :key="item.groupId">
-                <a-tree-node :title="ritem.roleName" :key="ritem.roleId" is-leaf v-for="ritem in item.roles">
-                  <span slot="icon" v-if="ritem">
-                    <div class="role-line">
-                      <!-- <span style="margin-right: 10px">{{ ritem.roleName }}</span> -->
-                      <a-icon v-userPerms="{ bindingPerms: 'roleManage' }" type="delete" @click="deleteRole(ritem.roleId, ritem.roleName)" />
-                    </div>
+            <a-tree :defaultExpandedKeys="selectedKeysRole" @select="onSelectRole" :selectedKeys="selectedKeysRole">
+              <a-tree-node :selectable="false" v-for="item in RoleMenuTree" :key="item.groupId">
+                <span slot="title" class="role-tree-title role-tree-title-group">
+                  <span class="role-tree-label" :title="item.groupName">{{ item.groupName }}</span>
+                  <span class="role-tree-actions">
+                    <a-icon v-userPerms="{ bindingPerms: 'roleManage' }" type="edit" title="修改角色组名称" @click.stop="openEditRoleGroup(item)" />
+                    <a-icon v-userPerms="{ bindingPerms: 'roleManage' }" type="delete" title="删除角色组" @click.stop="deleteRoleGroup(item.groupId, item.groupName)" />
+                  </span>
+                </span>
+                <a-tree-node :key="ritem.roleId" is-leaf v-for="ritem in item.roles">
+                  <span slot="title" class="role-tree-title role-tree-title-role">
+                    <span class="role-tree-label" :title="ritem.roleName">{{ ritem.roleName }}</span>
+                    <span class="role-tree-actions">
+                      <a-icon v-userPerms="{ bindingPerms: 'roleManage' }" type="edit" title="修改角色名称" @click.stop="openEditRole(ritem)" />
+                      <a-icon v-userPerms="{ bindingPerms: 'roleManage' }" type="delete" title="删除角色" @click.stop="deleteRole(ritem.roleId, ritem.roleName)" />
+                    </span>
                   </span>
                 </a-tree-node>
-                <span slot="icon">
-                  <div class="dept-line">
-                    <!-- <span style="margin-right: 10px">{{ item.groupName }}</span> -->
-                    <a-icon v-userPerms="{ bindingPerms: 'roleManage' }" type="delete" @click="deleteRoleGroup(item.groupId, item.groupName)" />
-                  </div>
-                </span>
               </a-tree-node>
-            </a-directory-tree>
+            </a-tree>
           </div>
         </div>
         <div class="menu-content" v-if="gvalue === '管理员'">
-          <div class="menu-type">系统管理组</div>
+          <div class="menu-type">超级管理员</div>
           <div class="member-all">
-            <a-menu class="member-menu" mode="inline" :selectedKeys="selectedKeys_AdminMenu" @click="handleAdminMenu">
-              <a-menu-item key="系统管理员" title="系统管理员">
+            <a-menu class="member-menu" mode="inline" :selectedKeys="selectedKeys_AdminMenu">
+              <a-menu-item key="超级管理员" title="超级管理员">
                 <a-icon type="user" />
-                系统管理员
+                超级管理员
               </a-menu-item>
             </a-menu>
-          </div>
-          <div class="menu-type">
-            普通管理组
-            <!-- 添加管理组 -->
-            <a-icon type="plus" @click="addAdminGroup" />
-            <!-- 添加管理组弹窗 -->
-            <a-modal width="450px" :visible="admin_Visible" @ok="admin_handleOk" @cancel="admin_handleCancel">
-              <p>添加管理组</p>
-              <a-input placeholder="输入管理组名称" allowClear v-model="adminGroupName" />
-            </a-modal>
-          </div>
-          <div class="member-all">
-            <a-menu class="member-menu" mode="inline" :selectedKeys="selectedKeys_AdminMenu" @click="handleAdminMenu">
-              <a-menu-item :key="item.groupId" v-for="item in adminGroupMenu" :title="item.groupName">
-                <div class="adminMenuStyle">
-                  <div class="left">
-                    <a-icon type="user" />
-                    {{ item.groupName }}
-                  </div>
-                  <div class="right">
-                    <a-dropdown :trigger="['click']">
-                      <a-icon type="more" style="font-size: 18px" @click="e => e.preventDefault()" />
-                      <a-menu slot="overlay">
-                        <a-menu-item>
-                          <a-button type="link" @click="hanlderEditGroupName(item)"> 修改名称 </a-button>
-                        </a-menu-item>
-                        <a-menu-item>
-                          <a-button type="link" style="color: red" @click="deleteGroupItem(item.groupId)"> 删除 </a-button>
-                        </a-menu-item>
-                      </a-menu>
-                    </a-dropdown>
-                  </div>
-                </div>
-              </a-menu-item>
-            </a-menu>
-            <a-modal title="修改管理组名称" :visible="editGroupNameVisible" @ok="editGroupNameHandleOk" @cancel="hanlderCancel">
-              <a-input placeholder="Basic usage" v-model="newGroupName" />
-            </a-modal>
           </div>
         </div>
       </div>
       <!-- 成员 -->
       <div class="layout-content" v-if="gvalue === '组织架构'">
         <MemberElement v-if="selectedKeys.includes('全部成员') || selectedKeys.includes('离职成员') || deptId" :title="mTitle" :deptId="deptId" @clearDeptId="clearDeptId" :treeNodeData="treeNodeData" @saveSuccess="saveSuccess" />
-        <!-- 岗位 -->
-        <PostElement v-if="localPostId" :title="mTitle" :postId="localPostId" @saveSuccess="saveSuccess" />
       </div>
       <!-- 角色 -->
       <div class="layout-content" v-if="gvalue === '角色'">
@@ -158,7 +133,7 @@
       </div>
       <!-- 管理员 -->
       <div class="layout-content" v-if="gvalue === '管理员'">
-        <AdminElement :title="atitle" :groupId="agroupId" />
+        <AdminElement :title="atitle" />
       </div>
     </div>
   </div>
@@ -166,16 +141,14 @@
 
 <script>
 import MemberElement from '../components/memberElement/index.vue'
-import PostElement from '../components/postElement/index.vue'
 import RoleElement from '../components/roleElement/index.vue'
 import AdminElement from '../components/adminElement/index.vue'
-import { getTreeMenu, deptsort, getRoleListClass, insertRole, updateRoleGroup, queryAdminGroup, addAdminGroup, adminGroupDelete, editGroupName, getRoleByAdmin } from '/src/api/enterprise/index.js'
+import { getTreeMenu, deptsort, insertRole, updateRole, updateRoleGroup, getRoleByAdmin } from '/src/api/enterprise/index.js'
 import { delSaasRole, delRoleGroup } from '/src/api/system/role.js'
-import { listPostAll } from '/src/api/system/post.js'
 
 export default {
   name: 'ContactsOp',
-  components: { MemberElement, PostElement, RoleElement, AdminElement },
+  components: { MemberElement, RoleElement, AdminElement },
   data() {
     return {
       // 岗位
@@ -190,6 +163,8 @@ export default {
       localPostId: null,
       /* 岗位树节点数据 */
       treeNodePostData: {},
+      /* 左侧栏收起状态 */
+      menuCollapsed: false,
       gvalue: '',
       optionList: ['组织架构', '角色', '管理员'],
       memberTitle: '',
@@ -209,6 +184,14 @@ export default {
       crg_Visible: false,
       /* 创建角色弹窗 */
       cr_Visible: false,
+      /* 修改角色名称弹窗 */
+      editRoleVisible: false,
+      editRoleId: null,
+      editRoleName: '',
+      /* 修改角色组名称弹窗 */
+      editRoleGroupVisible: false,
+      editRoleGroupId: null,
+      editRoleGroupName: '',
       /* 气泡弹窗 */
       popoverVisible: false,
       /* 角色组树菜单 */
@@ -226,23 +209,15 @@ export default {
       roleMenuId: null,
       /* 选中目标分组 */
       selectRoleGroup: null,
-      /* 新增管理组名称 */
-      adminGroupName: null,
-      /* 新增普通管理组弹窗 */
-      admin_Visible: false,
-      /* 管理组 */
-      selectedKeys_AdminMenu: ['系统管理员'],
-      atitle: '系统管理员',
-      agroupId: null,
-      /* 查询管理组菜单 */
-      adminGroupMenu: [],
-      editAdminGroup: false,
-      editGroupNameVisible: false,
-      editGroupName_Id: null,
-      newGroupName: ''
+      selectedKeys_AdminMenu: ['超级管理员'],
+      atitle: '超级管理员'
     }
   },
   methods: {
+    toggleMenuCollapsed() {
+      this.menuCollapsed = !this.menuCollapsed
+      window.localStorage.setItem('enterprise-contacts-menu-collapsed', this.menuCollapsed ? '1' : '0')
+    },
     handleOrgTab() {
       if (!this.isEmpty(this.localPostId)) {
         this.clearMemberSelectedKeys()
@@ -452,10 +427,6 @@ export default {
       getTreeMenu().then(res => {
         this.treeData = res.data
       })
-      /* 岗位 */
-      listPostAll().then(res => {
-        this.treePostData = res.data
-      })
       if (!refresh && this.gvalue === '组织架构') {
         this.handleMemberMenu({ key: '全部成员' })
       }
@@ -475,19 +446,74 @@ export default {
       this.cr_Visible = true
       this.popoverVisible = false
       this.roleName = null
-      /* 查询角色组 */
-      // getRoleListClass().then(res => {
-      //   this.RoleGroupMenu = res.data.map(({ groupId, groupName }) => ({ id: groupId, value: groupName }))
-      // })
+      this.selectRoleGroup = null
       getRoleByAdmin().then(res => {
         this.RoleGroupMenu = res.data.roleGroups.map(({ groupId, groupName }) => ({ id: groupId, value: groupName }))
       })
     },
     /* 角色树菜单选中回调 */
     onSelectRole(keys, { selected, node }) {
+      if (!selected || keys.length === 0) {
+        return
+      }
       this.selectedKeysRole = keys
       this.rtitle = node.title
       this.roleMenuId = keys[0]
+    },
+    /* 打开角色名称修改 */
+    openEditRole(role) {
+      this.editRoleId = role.roleId
+      this.editRoleName = role.roleName
+      this.editRoleVisible = true
+    },
+    /* 提交角色名称修改 */
+    editRoleHandleOk() {
+      const roleName = (this.editRoleName || '').trim()
+      if (!roleName) {
+        return this.$message.warning('角色名称不能为空')
+      }
+      updateRole({ roleId: this.editRoleId, roleName }).then(res => {
+        if (res.code === 200) {
+          if (this.roleMenuId === this.editRoleId) {
+            this.rtitle = roleName
+          }
+          this.editRoleVisible = false
+          this.initRoleList(this.editRoleId)
+          this.editRoleName = ''
+          return this.$message.success('角色名称修改成功')
+        }
+      })
+    },
+    editRoleHandleCancel() {
+      this.editRoleVisible = false
+      this.editRoleId = null
+      this.editRoleName = ''
+    },
+    /* 打开角色组名称修改 */
+    openEditRoleGroup(group) {
+      this.editRoleGroupId = group.groupId
+      this.editRoleGroupName = group.groupName
+      this.editRoleGroupVisible = true
+    },
+    /* 提交角色组名称修改 */
+    editRoleGroupHandleOk() {
+      const groupName = (this.editRoleGroupName || '').trim()
+      if (!groupName) {
+        return this.$message.warning('角色组名称不能为空')
+      }
+      updateRoleGroup({ groupId: this.editRoleGroupId, groupName }).then(res => {
+        if (res.code === 200) {
+          this.editRoleGroupVisible = false
+          this.initRoleList(this.roleMenuId)
+          this.editRoleGroupName = ''
+          return this.$message.success('角色组名称修改成功')
+        }
+      })
+    },
+    editRoleGroupHandleCancel() {
+      this.editRoleGroupVisible = false
+      this.editRoleGroupId = null
+      this.editRoleGroupName = ''
     },
     /* 删除角色 */
     deleteRole(id, name) {
@@ -526,20 +552,14 @@ export default {
       })
     },
     /* 查询角色组和角色 */
-    initRoleList() {
-      // getRoleListClass().then(res => {
-      //   this.RoleMenuTree = res.data
-      //   this.selectedKeysRole[0] = this.RoleMenuTree[0].roles[0].roleId
-      //   this.rtitle = this.RoleMenuTree[0].roles[0].roleName
-      //   this.roleMenuId = this.RoleMenuTree[0].roles[0].roleId
-      // })
+    initRoleList(preferredRoleId = null) {
       getRoleByAdmin().then(res => {
         this.RoleMenuTree = res.data.roleGroups
-        if (this.RoleMenuTree[0].roles.length > 0) {
-          this.selectedKeysRole[0] = this.RoleMenuTree[0].roles[0] ? this.RoleMenuTree[0].roles[0].roleId : null
-          this.rtitle = this.RoleMenuTree[0].roles[0] ? this.RoleMenuTree[0].roles[0].roleName : ''
-          this.roleMenuId = this.RoleMenuTree[0].roles[0].roleId ? this.RoleMenuTree[0].roles[0].roleId : null
-        }
+        const roles = this.RoleMenuTree.reduce((items, group) => items.concat(group.roles || []), [])
+        const selectedRole = roles.find(role => role.roleId === preferredRoleId) || roles[0]
+        this.selectedKeysRole = selectedRole ? [selectedRole.roleId] : []
+        this.rtitle = selectedRole ? selectedRole.roleName : ''
+        this.roleMenuId = selectedRole ? selectedRole.roleId : null
       })
     },
     /* 创建角色组提交 */
@@ -565,8 +585,10 @@ export default {
       if (!this.isEmpty(this.roleName) && !this.isEmpty(this.selectRoleGroup)) {
         insertRole({ roleName: this.roleName, groupId: this.selectRoleGroup }).then(res => {
           if (res.code === 200) {
-            this.initRoleList()
+            this.initRoleList(res.data)
             this.cr_Visible = false
+            this.roleName = null
+            this.selectRoleGroup = null
             return this.$message.success('新增成功')
           }
         })
@@ -585,77 +607,11 @@ export default {
     /* 关闭 */
     cr_handleCancel() {
       this.cr_Visible = false
-    },
-    /* 添加管理组 */
-    addAdminGroup() {
-      this.admin_Visible = true
-    },
-    /* 新增管理组提交 */
-    admin_handleOk() {
-      addAdminGroup({ groupName: this.adminGroupName }).then(res => {
-        if (res.code === 200) {
-          this.admin_Visible = false
-          this.adminGroupName = null
-          this.initAadminGroup()
-          return this.$message.success('添加成功')
-        }
-      })
-    },
-    /* 关闭 */
-    admin_handleCancel() {
-      this.admin_Visible = false
-    },
-    /* 管理组菜单选中回调 */
-    handleAdminMenu({ item, key, keyPath }) {
-      this.selectedKeys_AdminMenu = []
-      this.selectedKeys_AdminMenu = keyPath
-      this.atitle = item.title
-      if (typeof key === 'number' && key) {
-        this.agroupId = key
-      }
-    },
-    /* 查询管理组 */
-    initAadminGroup() {
-      queryAdminGroup().then(res => {
-        this.adminGroupMenu = res.data
-      })
-    },
-    /* 修改管理组名称 */
-    hanlderEditGroupName({ groupId }) {
-      this.editGroupName_Id = groupId
-      this.editAdminGroup = false
-      this.editGroupNameVisible = true
-    },
-    /* 删除管理组 */
-    deleteGroupItem(groupId) {
-      adminGroupDelete(groupId).then(res => {
-        if (res.code === 200) {
-          this.initAadminGroup()
-          return this.$message.success('删除成功')
-        }
-      })
-      this.editAdminGroup = false
-    },
-    /* 关闭弹窗 */
-    hanlderCancel() {
-      this.editGroupNameParmas = null
-      this.newGroupName = ''
-      this.editGroupNameVisible = false
-    },
-    /* 修改管理组名称确定 */
-    editGroupNameHandleOk() {
-      editGroupName({ groupName: this.newGroupName, groupId: this.editGroupName_Id }).then(res => {
-        if (res.code === 200) {
-          this.newGroupName = ''
-          this.editGroupNameParmas = null
-          this.editGroupNameVisible = false
-          this.initAadminGroup()
-          return this.$message.success('修改成功')
-        }
-      })
+      this.selectRoleGroup = null
     }
   },
   created() {
+    this.menuCollapsed = window.localStorage.getItem('enterprise-contacts-menu-collapsed') === '1'
     this.toshow()
     this.gvalue = this.optionList[0]
     this.initTreeMenuList()
@@ -670,10 +626,9 @@ export default {
         this.initRoleList()
       }
       if (data === '管理员') {
-        /* 默认选中系统管理员 */
-        this.selectedKeys_AdminMenu = ['系统管理员']
-        this.atitle = '系统管理员'
-        this.initAadminGroup()
+        /* 默认选中固定超级管理员 */
+        this.selectedKeys_AdminMenu = ['超级管理员']
+        this.atitle = '超级管理员'
       }
     }
   },
@@ -687,13 +642,78 @@ export default {
 
 <style lang="less" scoped>
 @import './index.less';
-.role-line,
-.dept-line {
-  width: 60px;
-  display: flex;
-  justify-content: space-between;
-  i {
-    line-height: 27px;
+.role-tree-title {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 32px;
+  padding-right: 54px;
+  line-height: 32px;
+  min-width: 0;
+  box-sizing: border-box;
+
+  .role-tree-label {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .role-tree-actions {
+    position: absolute;
+    top: 0;
+    right: 2px;
+    bottom: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    margin: 0;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.15s ease;
+
+    i {
+      width: 18px;
+      line-height: 32px;
+      text-align: center;
+    }
+
+    i:hover {
+      color: #1890ff;
+    }
+  }
+
+  &:hover .role-tree-actions {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+  }
+}
+
+.roleMenu {
+  overflow-x: hidden;
+
+  ::v-deep .ant-tree,
+  ::v-deep .ant-tree li {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  ::v-deep .ant-tree li .ant-tree-node-content-wrapper {
+    width: calc(100% - 28px);
+    height: 32px;
+    padding: 0 6px;
+    line-height: 32px;
+    overflow: hidden;
+    vertical-align: top;
+    box-sizing: border-box;
+  }
+
+  ::v-deep .ant-tree-title {
+    display: block;
+    width: 100%;
   }
 }
 </style>

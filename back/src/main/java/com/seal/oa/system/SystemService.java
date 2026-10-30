@@ -85,7 +85,7 @@ public class SystemService {
     }
 
     public List<String> roleKeys(Long userId) {
-        if (isSystemAdmin(userId)) {
+        if (isSuperAdminIdentity(userId)) {
             return List.of("admin");
         }
         return jdbc.queryForList("""
@@ -139,7 +139,7 @@ public class SystemService {
     }
 
     /**
-     * 是否不受授权过滤：角色 admin、系统管理员身份，或持有通配权限。
+     * 是否不受授权过滤：固定超级管理员角色。
      * 菜单下发与组织权限判定统一走这里，避免各处自行拼装 admin 判断。
      */
     public boolean isUnrestricted(Long userId) {
@@ -166,7 +166,7 @@ public class SystemService {
         return flag(userId, "is_owner");
     }
 
-    public boolean isSystemAdmin(Long userId) {
+    public boolean isSuperAdminIdentity(Long userId) {
         Long count = jdbc.queryForObject("""
                 SELECT COUNT(*)
                 FROM sys_admin_identity identity
@@ -174,6 +174,14 @@ public class SystemService {
                 WHERE u.user_id = ? AND u.del_flag = '0'
                 """, Long.class, userId);
         return count != null && count > 0L;
+    }
+
+    /**
+     * 兼容旧调用；该身份现已统一命名为固定超级管理员。
+     */
+    @Deprecated
+    public boolean isSystemAdmin(Long userId) {
+        return isSuperAdminIdentity(userId);
     }
 
     private boolean flag(Long userId, String column) {

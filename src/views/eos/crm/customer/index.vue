@@ -32,9 +32,7 @@
           <a-input v-model="queryParam.name" allow-clear placeholder="名称" style="width: 170px" />
         </a-form-item>
         <a-form-item label="行业">
-          <a-select v-model="queryParam.industry" allow-clear placeholder="全部" style="width: 150px">
-            <a-select-option v-for="item in options.industries" :key="item" :value="item">{{ item }}</a-select-option>
-          </a-select>
+          <industry-select v-model="queryParam.industry" placeholder="全部" style="width: 150px" />
         </a-form-item>
         <a-form-item label="规模">
           <a-select v-model="queryParam.companyScale" allow-clear placeholder="全部" style="width: 130px">
@@ -42,9 +40,7 @@
           </a-select>
         </a-form-item>
         <a-form-item label="地区">
-          <a-select v-model="queryParam.region" allow-clear placeholder="全部" style="width: 120px">
-            <a-select-option v-for="item in options.regions" :key="item" :value="item">{{ item }}</a-select-option>
-          </a-select>
+          <region-select v-model="queryParam.region" placeholder="全部" style="width: 120px" />
         </a-form-item>
         <a-form-item label="企业性质">
           <a-select v-model="queryParam.enterpriseNature" allow-clear placeholder="全部" style="width: 140px">
@@ -120,6 +116,8 @@ import STable from '/src/components/Table/index.jsx'
 import { read as readXlsx, utils as xlsxUtils, writeFile as writeXlsxFile } from 'xlsx'
 import store from '/src/store/index.js'
 import { hasModuleAction } from '/src/utils/modulePermission.js'
+import IndustrySelect from '/src/components/IndustrySelect/index.vue'
+import RegionSelect from '/src/components/RegionSelect/index.vue'
 import {
   claimCustomer,
   deleteCustomer,
@@ -135,9 +133,7 @@ import FollowupForm from './modules/FollowupForm.vue'
 import HandoverForm from './modules/HandoverForm.vue'
 
 const options = {
-  industries: ['互联网', '软件与信息服务', '制造业', '建筑工程', '金融', '教育', '医疗健康', '批发零售', '其他'],
   scales: ['1-50人', '51-100人', '101-500人', '501-1000人', '1000人以上'],
-  regions: ['华北', '华东', '华南', '华中', '西南', '西北', '东北', '海外'],
   natures: ['民营企业', '国有企业', '外资企业', '合资企业', '事业单位', '政府机构', '其他'],
   sources: ['官网咨询', '客户转介绍', '展会活动', '销售拓展', '渠道合作', '广告投放', '公开信息', '组织分配', '其他'],
   statuses: ['潜在客户', '初步接洽', '合作中', '重点客户', '暂停合作', '已流失']
@@ -167,7 +163,7 @@ const excelColumns = [
 
 export default {
   name: 'CrmCustomers',
-  components: { STable },
+  components: { IndustrySelect, RegionSelect, STable },
   data() {
     return {
       activePool: 'mine',

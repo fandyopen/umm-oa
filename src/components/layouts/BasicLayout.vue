@@ -59,8 +59,8 @@ import RightContent from './GlobalHeader/RightContent.vue'
 import GlobalFooter from './GlobalFooter/index.vue'
 import { firstUpperCase } from '/src/utils/common/util.js'
 
-import smallLogo from '/src/assets/img/logo.png'
-import bigLogo from '/src/assets/img/home-logo.png'
+import smallLogo from '/src/assets/img/home.png'
+import bigLogo from '/src/assets/img/home.png'
 import imgHome from '/src/assets/img/home.png'
 
 export default {

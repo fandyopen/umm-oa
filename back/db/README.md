@@ -4,6 +4,8 @@
 
 - `mysql/umm_oa.sql`：完整 MySQL 8 初始化脚本，生产部署只使用该文件。
 - `mysql/upgrade-workflow-action.sql`：已有 MySQL 数据库增加动作级流程绑定表时执行一次。
+- `mysql/upgrade-administrator-model.sql`：已有 MySQL 数据库收敛为唯一固定超级管理员时执行一次。
+- `mysql/upgrade-department-principal.sql`：已有 MySQL 数据库统一为“一部门一主管”时执行一次。
 
 ## MySQL 构建源
 

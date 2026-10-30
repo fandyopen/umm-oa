@@ -1,6 +1,6 @@
 -- UMM OA MySQL 8 initialization script
 -- Generated from the H2 development schema by tools/build-mysql-sql.mjs.
--- Local demo administrator: 17630135660 / admin123123
+-- Fixed super administrator: 13610316814 / admin123123
 
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
@@ -106,15 +106,8 @@ CREATE TABLE sys_dept (
 );
 
 CREATE TABLE sys_dept_principal (
-    dept_id BIGINT NOT NULL,
-    user_id BIGINT NOT NULL,
-    PRIMARY KEY (dept_id, user_id)
-);
-
-CREATE TABLE sys_dept_leader (
-    dept_id BIGINT NOT NULL,
-    user_id BIGINT NOT NULL,
-    PRIMARY KEY (dept_id, user_id)
+    dept_id BIGINT PRIMARY KEY,
+    user_id BIGINT NOT NULL
 );
 
 CREATE TABLE sys_user (
@@ -357,43 +350,6 @@ CREATE TABLE sys_app_module (
     icon VARCHAR(100),
     order_num INT NOT NULL DEFAULT 0,
     status VARCHAR(1) NOT NULL DEFAULT '0'
-);
-
-CREATE TABLE sys_admin_group (
-    group_id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    group_name VARCHAR(100) NOT NULL,
-    tenant_id BIGINT NOT NULL DEFAULT 1,
-    is_add VARCHAR(1) NOT NULL DEFAULT '0',
-    role_read VARCHAR(1) NOT NULL DEFAULT '0',
-    role_manage VARCHAR(1) NOT NULL DEFAULT '0',
-    dept_read VARCHAR(1) NOT NULL DEFAULT '0',
-    dept_manage VARCHAR(1) NOT NULL DEFAULT '0',
-    sort INT NOT NULL DEFAULT 0,
-    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE sys_admin_group_member (
-    group_id BIGINT NOT NULL,
-    user_id BIGINT NOT NULL,
-    PRIMARY KEY (group_id, user_id)
-);
-
-CREATE TABLE sys_admin_group_app (
-    group_id BIGINT NOT NULL,
-    tenant_app_id BIGINT NOT NULL,
-    PRIMARY KEY (group_id, tenant_app_id)
-);
-
-CREATE TABLE sys_admin_group_dept (
-    group_id BIGINT NOT NULL,
-    dept_id BIGINT NOT NULL,
-    PRIMARY KEY (group_id, dept_id)
-);
-
-CREATE TABLE sys_admin_group_role (
-    group_id BIGINT NOT NULL,
-    role_id BIGINT NOT NULL,
-    PRIMARY KEY (group_id, role_id)
 );
 
 CREATE TABLE sys_admin_identity (
@@ -930,12 +886,12 @@ CREATE INDEX idx_oa_workflow_request_instance ON oa_workflow_request (process_in
 
 
 INSERT INTO sys_tenant (tenant_id, tenant_name, contact_name, contact_phone, status)
-VALUES (1, '示例企业', '方铭渴', '17630135660', '0');
+VALUES (1, '示例企业', '欧志锋', '13610316814', '0');
 
 INSERT INTO sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, leader, phone, status)
-VALUES (100, 1, 0, '0', '示例企业', 0, '方铭渴', '17630135660', '0');
+VALUES (100, 1, 0, '0', '示例企业', 0, '欧志锋', '13610316814', '0');
 INSERT INTO sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, leader, phone, status)
-VALUES (101, 1, 100, '0,100', '综合管理部', 1, '方铭渴', '17630135660', '0');
+VALUES (101, 1, 100, '0,100', '综合管理部', 1, '欧志锋', '13610316814', '0');
 INSERT INTO sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, leader, phone, status)
 VALUES (102, 1, 100, '0,100', '财务部', 2, '财务负责人', '15685266238', '0');
 INSERT INTO sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, leader, phone, status)
@@ -947,9 +903,9 @@ INSERT INTO sys_user (
     user_id, tenant_id, dept_id, user_name, nick_name, password, email, phonenumber,
     sex, avatar, status, create_by, remark
 ) VALUES (
-    1, 1, 101, '17630135660', '方铭渴',
+    1, 1, 101, '13610316814', '欧志锋',
     '$2b$12$nopR.IbdlsiAu1H9PE9MbeCgKM2Px8B87NDujHm1Fst/VYPwl6Ivy',
-    'admin@example.com', '17630135660', '0', '', '0', 'system', '本地演示管理员'
+    '13610316814@seals.com', '13610316814', '0', '', '0', 'system', '固定超级管理员'
 );
 INSERT INTO sys_user (
     user_id, tenant_id, dept_id, user_name, nick_name, password, email, phonenumber,
@@ -1080,19 +1036,8 @@ INSERT INTO sys_app_module (tenant_app_id, module_name, module_path, component, 
 (1, '费用报销', '/expense/index', 'eos/expense/indexOp', 'iconfont-baoxiao', 3, '0'),
 (1, '采购申请', '/purchase/index', 'eos/purchase/apply/indexOp', 'iconfont-caigou', 4, '0');
 
-INSERT INTO sys_admin_group (
-    group_id, group_name, tenant_id, is_add, role_read, role_manage,
-    dept_read, dept_manage, sort
-) VALUES (26, '企业管理', 1, '0', '0', '0', '0', '0', 0);
-INSERT INTO sys_admin_group_member (group_id, user_id) VALUES
-    (26, 17),
-    (26, 14);
-
 INSERT INTO sys_admin_identity (user_id, user_name, nick_name, email, phonenumber, sex, status, sort) VALUES
-    (109960376, '13686621113', '严音泪', NULL, NULL, NULL, NULL, 0),
-    (220440149, '15646021885', '张为骄', NULL, NULL, NULL, NULL, 1),
-    (1756143678, '17603686635', '倪所力', NULL, NULL, NULL, NULL, 2),
-    (2090571137, '13671476794', '奚哭芬', NULL, NULL, NULL, NULL, 3);
+    (1, '13610316814', '欧志锋', '13610316814@seals.com', '13610316814', '0', '0', 0);
 
 INSERT INTO oa_project (
     id, tenant_id, code, name, nick_name, dept_id, type, owner_unit, sketch, status, process_status, create_by
@@ -1926,7 +1871,10 @@ INSERT INTO sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order
 INSERT INTO sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, status, del_flag) VALUES (332, 1, 330, '0,322,330', '四川项目组', 0, '0', '0') ON DUPLICATE KEY UPDATE parent_id = VALUES(parent_id), ancestors = VALUES(ancestors), dept_name = VALUES(dept_name), order_num = VALUES(order_num), del_flag = VALUES(del_flag);
 INSERT INTO sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, status, del_flag) VALUES (333, 1, 330, '0,322,330', '云南项目组', 1, '0', '0') ON DUPLICATE KEY UPDATE parent_id = VALUES(parent_id), ancestors = VALUES(ancestors), dept_name = VALUES(dept_name), order_num = VALUES(order_num), del_flag = VALUES(del_flag);
 INSERT INTO sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, status, del_flag) VALUES (334, 1, 330, '0,322,330', '湖北项目组', 2, '0', '0') ON DUPLICATE KEY UPDATE parent_id = VALUES(parent_id), ancestors = VALUES(ancestors), dept_name = VALUES(dept_name), order_num = VALUES(order_num), del_flag = VALUES(del_flag);
-UPDATE sys_user SET dept_id = 329, nick_name = '方铭渴', is_admin = '1', is_owner = '0' WHERE user_id = 1;
+UPDATE sys_user SET dept_id = 329, user_name = '13610316814', nick_name = '欧志锋',
+    email = '13610316814@seals.com', phonenumber = '13610316814',
+    is_admin = '1', is_owner = '0', remark = '固定超级管理员'
+WHERE user_id = 1;
 UPDATE sys_user SET dept_id = 323, nick_name = '孟声怎', is_admin = '1', is_owner = '1' WHERE user_id = 2;
 UPDATE sys_user SET dept_id = 325, nick_name = '曹好疲', is_admin = '1', is_owner = '1' WHERE user_id = 3;
 UPDATE sys_user SET dept_id = 325, nick_name = '卞在重', is_admin = '1', is_owner = '1' WHERE user_id = 4;
@@ -1960,6 +1908,8 @@ INSERT INTO sys_user (user_id, tenant_id, dept_id, user_name, nick_name, passwor
 INSERT INTO sys_user (user_id, tenant_id, dept_id, user_name, nick_name, password, email, phonenumber, sex, avatar, status, del_flag, is_admin, is_owner, create_by, remark) VALUES (32, 1, 324, '13640084343', '彭课在', '$2b$12$nopR.IbdlsiAu1H9PE9MbeCgKM2Px8B87NDujHm1Fst/VYPwl6Ivy', '13640084343@seals.com', '13640084343', '0', '', '0', '0', '1', '1', 'reference', '参考站演示成员') ON DUPLICATE KEY UPDATE dept_id = VALUES(dept_id), nick_name = VALUES(nick_name), email = VALUES(email), phonenumber = VALUES(phonenumber), status = VALUES(status), is_admin = VALUES(is_admin), is_owner = VALUES(is_owner);
 INSERT INTO sys_user (user_id, tenant_id, dept_id, user_name, nick_name, password, email, phonenumber, sex, avatar, status, del_flag, is_admin, is_owner, create_by, remark) VALUES (33, 1, 333, '13656619176', '康还个', '$2b$12$nopR.IbdlsiAu1H9PE9MbeCgKM2Px8B87NDujHm1Fst/VYPwl6Ivy', '13656619176@seals.com', '13656619176', '0', '', '0', '0', '1', '1', 'reference', '参考站演示成员') ON DUPLICATE KEY UPDATE dept_id = VALUES(dept_id), nick_name = VALUES(nick_name), email = VALUES(email), phonenumber = VALUES(phonenumber), status = VALUES(status), is_admin = VALUES(is_admin), is_owner = VALUES(is_owner);
 INSERT INTO sys_user (user_id, tenant_id, dept_id, user_name, nick_name, password, email, phonenumber, sex, avatar, status, del_flag, is_admin, is_owner, create_by, remark) VALUES (34, 1, 333, '17661061682', '安听天', '$2b$12$nopR.IbdlsiAu1H9PE9MbeCgKM2Px8B87NDujHm1Fst/VYPwl6Ivy', '17661061682@seals.com', '17661061682', '0', '', '0', '0', '1', '1', 'reference', '参考站演示成员') ON DUPLICATE KEY UPDATE dept_id = VALUES(dept_id), nick_name = VALUES(nick_name), email = VALUES(email), phonenumber = VALUES(phonenumber), status = VALUES(status), is_admin = VALUES(is_admin), is_owner = VALUES(is_owner);
+UPDATE sys_user SET is_admin = '0', is_owner = '0' WHERE user_id <> 1;
+UPDATE sys_user SET is_admin = '1', is_owner = '0' WHERE user_id = 1;
 DELETE FROM sys_user_role WHERE user_id BETWEEN 10 AND 34;
 INSERT IGNORE INTO sys_user_role (user_id, role_id) VALUES (10, 2);
 INSERT IGNORE INTO sys_user_role (user_id, role_id) VALUES (11, 2);
