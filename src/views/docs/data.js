@@ -179,7 +179,19 @@ export const routeMapEntries = [
     related: ['src/views/system/menu/modules/CreateForm.vue', 'src/views/system/moduleAction/index.vue'],
     api: ['src/api/system/menu.js', 'src/api/user/module.js'],
     backend: ['ModuleController', 'AuthController', 'ModuleActionService'],
-    note: '菜单、模块和动作配置',
+    note: '按模块维护审批流程设计入口',
+    permission: 'sys:module'
+  },
+  {
+    group: '系统',
+    menu: '模块管理',
+    route: '/system/module',
+    component: 'system/module/index',
+    file: 'src/views/system/module/index.vue',
+    related: ['src/views/system/module/modules/ModuleForm.vue', 'src/views/system/moduleAction/index.vue'],
+    api: ['src/api/system/menu.js'],
+    backend: ['ModuleController', 'ModuleService', 'ModuleActionService'],
+    note: '维护与角色模块树同源的目录、页面和按钮动作',
     permission: 'sys:module'
   },
   {
@@ -267,7 +279,7 @@ export const routeMapEntries = [
     related: [],
     api: ['src/api/system/menu.js'],
     backend: ['ModuleController', 'ModuleActionService', 'WorkflowActionController'],
-    note: '配置动作、handlerKey 与流程绑定',
+    note: '配置模块按钮、自动生成动作编码、handlerKey 与流程绑定',
     permission: ''
   },
   {
@@ -350,75 +362,4 @@ export const apiGroups = [
   }
 ]
 
-export const moduleGroups = [
-  {
-    name: '待办',
-    icon: 'check-square',
-    purpose: '统一承接各业务模块发起后生成的审批任务、已办、我发起和抄送数据。',
-    pages: ['我的待办', '我的已办', '我的发起', '抄送我的'],
-    permissions: ['todoItem:todo:list', 'todoItem:done:list'],
-    backend: ['ActivityController', 'LowCodeWorkflowService', 'WorkflowActionController'],
-    data: ['oa_todo', 'oa_process_instance', 'oa_process_task'],
-    note: '业务模块通过 workflow/action/execute 发起审批，待办中心负责统一流转。'
-  },
-  {
-    name: '营销',
-    icon: 'fund',
-    purpose: '管理商机、招标投标和客商资料，承接销售过程数据。',
-    pages: ['商机管理', '招标投标', '客商管理'],
-    permissions: ['project:business:list', 'project:bid:list', 'project:merchant:list'],
-    backend: ['BusinessQueryController', 'MerchantController', 'ModuleActionInterceptor'],
-    data: ['oa_business_opportunity', 'biz_record', 'oa_merchant'],
-    note: '商机跟踪、阶段推进等按钮动作受模块动作授权控制。'
-  },
-  {
-    name: '人事管理',
-    icon: 'team',
-    purpose: '维护在职和离职成员，提供邀请成员、调整部门和转为离职等审批动作。',
-    pages: ['成员管理'],
-    permissions: ['hr:member:list', 'hr.member.invite', 'hr.member.transfer', 'hr.member.dismiss'],
-    backend: ['SystemController', 'HrMemberService', 'HrMemberActionHandler'],
-    data: ['sys_user', 'sys_user_role', 'sys_dept', 'oa_workflow_request'],
-    note: '成员列表支持部门、姓名和新增日期筛选，并按新增时间倒序。'
-  },
-  {
-    name: '系统',
-    icon: 'setting',
-    purpose: '维护组织架构、角色权限、基础数据、流程配置、系统参数、通知和日志。',
-    pages: ['组织机构', '角色权限', '基础数据', '流程设置', '参数设置', '通知公告', '日志管理', '使用文档'],
-    permissions: ['sys:module', 'system:dict:list', 'system:config:list', 'system:notice:list', 'system:docs:list'],
-    backend: ['SystemController', 'ModuleController', 'MetadataController', 'OrganizationPermissionService'],
-    data: ['sys_user', 'sys_dept', 'sys_role', 'sys_module', 'sys_module_action', 'sys_config'],
-    note: '管理员默认可访问全部系统功能；其他角色通过模块和动作授权控制。'
-  },
-  {
-    name: '工作台',
-    icon: 'dashboard',
-    purpose: '展示待办、通知、常用应用和营销商机统计等聚合信息。',
-    pages: ['首页 / 工作台'],
-    permissions: ['登录后访问'],
-    backend: ['DashboardController', 'ActivityController'],
-    data: ['oa_business_opportunity', 'oa_todo'],
-    note: '工作台不单独占用左侧菜单，登录后默认进入。'
-  },
-  {
-    name: '综合查询权限',
-    icon: 'safety-certificate',
-    purpose: '承载跨模块数据范围和综合查询授权，不直接对普通用户展示。',
-    pages: ['隐藏模块'],
-    permissions: ['按角色模块授权'],
-    backend: ['OrganizationPermissionService', 'DataScopeService'],
-    data: ['sys_role_module', 'sys_dept_module', 'sys_role_module_action'],
-    note: '用于统一模块访问、数据范围和动作权限的判断边界。'
-  },
-  {
-    name: '使用文档',
-    icon: 'file-text',
-    purpose: '集中查看路由地图、API 文档和系统模块说明。',
-    pages: ['路由地图', 'API 文档', '系统模块说明'],
-    permissions: ['system:docs:list'],
-    backend: ['Frontend-only'],
-    data: [],
-    note: '入口由 sys.docs.enabled 控制；管理员默认可见，其他角色授权后可见。'
-  }
-]
+export { moduleGroups } from './moduleGuides.js'

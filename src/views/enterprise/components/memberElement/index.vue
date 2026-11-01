@@ -640,7 +640,7 @@ export default {
           if (res.code === 200) {
             this.selectedRowKeys = []
             this.selectedRows = []
-            this.$refs.table.refresh(true)
+            this.$refs.table.refresh()
             this.$emit('saveSuccess')
             this.$message.success('员工删除成功')
           }

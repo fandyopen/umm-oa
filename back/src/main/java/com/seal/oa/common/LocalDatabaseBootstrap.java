@@ -43,10 +43,13 @@ public class LocalDatabaseBootstrap implements ApplicationRunner {
     private static final List<String> UPGRADE_SCRIPTS = List.of(
             "organization-permission.sql",
             "workflow-action.sql",
+            "module-management.sql",
             "docs-config.sql",
             "crm-upgrade.sql",
             "crm-menu.sql",
             "retire-business-modules.sql",
+            "customer-contract-schema.sql",
+            "customer-contract-menu.sql",
             "administrator-model.sql",
             "retire-admin-groups.sql"
     );

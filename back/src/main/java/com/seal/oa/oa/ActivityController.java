@@ -2,6 +2,7 @@ package com.seal.oa.oa;
 
 import com.seal.oa.auth.AuthContext;
 import com.seal.oa.common.ApiResult;
+import com.seal.oa.common.ApiException;
 import com.seal.oa.common.JdbcMaps;
 import com.seal.oa.lowcode.LowCodeWorkflowService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -20,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.sql.Timestamp;
 import java.util.Comparator;
+import java.util.Locale;
 
 @RestController
 public class ActivityController {
@@ -40,7 +42,11 @@ public class ActivityController {
 
     @GetMapping("/project/activity/taskWaitList")
     public Map<String, Object> waitingTasks(@RequestParam(defaultValue = "1") int pageNum,
-                                            @RequestParam(defaultValue = "10") int pageSize) {
+                                            @RequestParam(defaultValue = "10") int pageSize,
+                                            @RequestParam Map<String, String> query) {
+        if ("contract".equals(query.get("businessCategory")) || !value(query.get("queryAll"), "").isBlank()) {
+            return filteredWaitingTasksPage(pageNum, pageSize, query);
+        }
         return tasksByStatus("todo", pageNum, pageSize);
     }
 
@@ -79,6 +85,16 @@ public class ActivityController {
             @RequestBody Map<String, Object> body,
             HttpServletRequest request
     ) {
+        if (request.getRequestURI().endsWith("/delegate")
+                && workflowService.isContractApprovalTask(value(body.get("taskId"), ""))) {
+            throw new ApiException(409, "合同审批须按已发布流程的节点办理，暂不支持临时转办");
+        }
+        long protectedId = number(body.get("todoId"), number(body.get("id"), 0L));
+        List<String> protectedTypes = jdbc.queryForList(
+                "SELECT business_type FROM oa_todo WHERE id = ? OR task_id = ?", String.class, protectedId, value(body.get("taskId"), ""));
+        if (protectedTypes.stream().anyMatch(type -> "crmRisk".equals(type) || "crmContractApproval".equals(type))) {
+            throw new ApiException(409, "请在客户或合同详情办理，风险消除或完成合同审批后待办自动关闭");
+        }
         if ("lowcode".equals(value(body.get("type"), ""))
                 || workflowService.isManagedTask(
                         value(body.get("taskId"), ""),
@@ -87,6 +103,16 @@ public class ActivityController {
             Map<String, Object> completion = new LinkedHashMap<>(body);
             if (body.get("variablesStr") != null) {
                 completion.put("variables", value(body.get("variablesStr"), "{}"));
+            } else if (body.get("variables") instanceof Map<?, ?> supplied) {
+                Map<String, Object> variables = new LinkedHashMap<>();
+                supplied.forEach((key, value) -> variables.put(String.valueOf(key), value));
+                variables.putIfAbsent("comment", value(body.get("comment"), "同意"));
+                if (request.getRequestURI().endsWith("/back") || request.getRequestURI().endsWith("/end/process")) {
+                    variables.put("pass", false);
+                } else {
+                    variables.putIfAbsent("pass", true);
+                }
+                completion.put("variables", variables);
             } else {
                 Map<String, Object> variables = new LinkedHashMap<>();
                 variables.put("comment", value(body.get("comment"), "同意"));
@@ -134,6 +160,7 @@ public class ActivityController {
         int safeSize = Math.min(100, Math.max(1, pageSize));
         int from = Math.min((safePage - 1) * safeSize, total);
         int to = Math.min(from + safeSize, total);
+        decorateCrmTasks(rows);
         return ApiResult.page(rows.subList(from, to), total);
     }
 
@@ -172,7 +199,69 @@ public class ActivityController {
         }
         int from = Math.min((safePage - 1) * safeSize, rows.size());
         int to = Math.min(from + safeSize, rows.size());
+        decorateCrmTasks(rows);
         return ApiResult.page(rows.subList(from, to), total);
+    }
+
+    private Map<String, Object> filteredWaitingTasksPage(int pageNum, int pageSize, Map<String, String> query) {
+        List<Map<String, Object>> rows = new ArrayList<>(JdbcMaps.camelCase(jdbc.queryForList("""
+                SELECT id, tenant_id, user_id, title, business_type, business_id,
+                       process_instance_id, task_id, status, create_time
+                FROM oa_todo
+                WHERE user_id = ? AND status = 'todo'
+                  AND NOT EXISTS (
+                      SELECT 1 FROM oa_process_instance i WHERE i.id = oa_todo.process_instance_id
+                  )
+                ORDER BY create_time DESC, id DESC
+                """, AuthContext.userId())));
+        rows.addAll(workflowService.tasks("todo", AuthContext.userId()));
+        if (rows.isEmpty()) rows = new ArrayList<>(parityRecords.rows("todo:wait:" + AuthContext.username()));
+        rows.sort(Comparator.comparing(this::createTime, Comparator.nullsLast(Comparator.reverseOrder())));
+        decorateCrmTasks(rows);
+        int unfilteredTotal = rows.size();
+        String keyword = value(query.get("queryAll"), "").trim().toLowerCase(Locale.ROOT);
+        List<Map<String, Object>> filtered = rows.stream()
+                .filter(row -> !"contract".equals(query.get("businessCategory")) || isContractApproval(row))
+                .filter(row -> keyword.isEmpty() || List.of("title", "processName", "taskName", "applyUserName", "form").stream()
+                        .anyMatch(key -> value(row.get(key), "").toLowerCase(Locale.ROOT).contains(keyword)))
+                .toList();
+        int size = Math.min(100, Math.max(1, pageSize));
+        int from = (int) Math.min((long) (Math.max(1, pageNum) - 1) * size, filtered.size());
+        Map<String, Object> result = ApiResult.page(filtered.subList(from, Math.min(from + size, filtered.size())), filtered.size());
+        result.put("unfilteredTotal", unfilteredTotal);
+        return result;
+    }
+
+    private boolean isContractApproval(Map<String, Object> row) {
+        if ("crmContractApproval".equals(row.get("businessType"))) return true;
+        return "workflowAction".equals(row.get("businessType"))
+                && row.get("form") instanceof Map<?, ?> form && number(form.get("contractId"), 0L) > 0;
+    }
+
+    private void decorateCrmTasks(List<Map<String, Object>> rows) {
+        for (Map<String, Object> row : rows) {
+            String type = value(row.get("businessType"), "");
+            if (!"crmRisk".equals(type) && !"crmContractApproval".equals(type)) continue;
+            Map<String, Object> form = new LinkedHashMap<>();
+            form.put("title", row.get("title"));
+            long businessId = number(row.get("businessId"), 0L);
+            if ("crmContractApproval".equals(type)) form.put("contractId", businessId);
+            else {
+                form.put("customerId", businessId);
+                String taskId = value(row.get("taskId"), "");
+                if (taskId.startsWith("crm-contract-")) {
+                    String[] parts = taskId.split("-");
+                    if (parts.length > 2) form.put("contractId", number(parts[2], 0L));
+                }
+            }
+            row.put("form", form);
+            row.put("formId", businessId);
+            row.put("type", row.get("status"));
+            row.put("processName", "crmRisk".equals(type) ? "客户风险提醒" : "合同审批");
+            row.put("taskName", "crmRisk".equals(type) ? "跟进处理" : "合同及收费审核");
+            row.put("applyUserName", "客户与合同管理");
+            row.put("lastHistoricActivity", Map.of("comment", "", "assigneeName", ""));
+        }
     }
 
     private Timestamp createTime(Map<String, Object> row) {

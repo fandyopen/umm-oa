@@ -6,6 +6,7 @@ const toolDir = path.dirname(fileURLToPath(import.meta.url))
 const projectDir = path.resolve(toolDir, '..')
 const mysqlSourceDir = path.join(projectDir, 'db/mysql/source')
 const schema = fs.readFileSync(path.join(projectDir, 'src/main/resources/schema.sql'), 'utf8')
+const customerContractSchema = fs.readFileSync(path.join(projectDir, 'src/main/resources/customer-contract-schema.sql'), 'utf8')
 const data = fs.readFileSync(path.join(projectDir, 'src/main/resources/data.sql'), 'utf8')
 const moduleDataPath = path.join(mysqlSourceDir, 'module-data.sql')
 const moduleData = fs.existsSync(moduleDataPath)
@@ -91,6 +92,8 @@ ${parityData}
 ${todoParityData}
 
 ${retiredModuleData}
+
+${customerContractSchema}
 
 SET FOREIGN_KEY_CHECKS = 1;
 `

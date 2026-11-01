@@ -98,6 +98,7 @@
               <a-menu-item key="detail"><a-icon type="profile" /> 查看详情</a-menu-item>
               <a-menu-item v-if="canAction('track')" key="followup"><a-icon type="message" /> 新增跟进</a-menu-item>
               <a-menu-item v-if="canAction('edit')" key="edit"><a-icon type="edit" /> 修改档案</a-menu-item>
+              <a-menu-item v-if="canAction('add')" key="copy"><a-icon type="copy" /> 复制新建</a-menu-item>
               <a-menu-item v-if="canAction('edit') && record.publicPool !== '1'" key="assign"><a-icon type="user-switch" /> 客户分配</a-menu-item>
               <a-menu-item v-if="record.publicPool === '1'" key="claim"><a-icon type="import" /> 领取客户</a-menu-item>
               <a-menu-item v-if="canAction('edit') && record.publicPool !== '1'" key="release"><a-icon type="inbox" /> 移入公海</a-menu-item>
@@ -232,6 +233,7 @@ export default {
       ]
     }
   },
+  watch: { '$route.query.customerId': { immediate: true, handler(id) { if (id && Number(id) > 0) this.$nextTick(() => this.handleDetail({ id: Number(id) })) } } },
   methods: {
     canAction(action) {
       return hasModuleAction(store.getters.permissions || [], this.$route.meta, action)
@@ -329,6 +331,7 @@ export default {
         detail: () => this.handleDetail(record),
         followup: () => this.openFollowup(record),
         edit: () => this.handleUpdate(record),
+        copy: () => this.handleCopy(record),
         assign: () => this.openAssign(record),
         claim: () => this.handleClaim(record),
         release: () => this.handleRelease(record),
@@ -342,11 +345,15 @@ export default {
     handleUpdate(record) {
       this.openCustomerForm({ isUpdate: true, updateRow: record })
     },
+    handleCopy(record) {
+      if (!this.canAction('add')) return
+      this.openCustomerForm({ copySourceId: record.id })
+    },
     openCustomerForm(props) {
       this.$createAntdDrawer({
         stopPropagation: true,
         drawerProps: {
-          title: props.isUpdate ? '修改客户档案' : '新建客户档案',
+          title: props.isUpdate ? '修改客户档案' : props.copySourceId ? '复制新建客户档案' : '新建客户档案',
           width: '72%',
           maskClosable: true
         },

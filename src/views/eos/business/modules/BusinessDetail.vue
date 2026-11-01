@@ -24,6 +24,7 @@
       <a-descriptions-item label="客户需求" :span="2">{{ data.requirement || data.remark || '-' }}</a-descriptions-item>
       <a-descriptions-item label="备注" :span="2">{{ data.remark || '-' }}</a-descriptions-item>
     </a-descriptions>
+    <div v-if="data.customerId && canCreateContract" style="margin-top: 18px"><a-button type="primary" icon="file-text" @click="createContract">从此商机起草合同</a-button><span style="margin-left: 12px; color: #667085">自动关联客户与商机，延续报价到签约流程</span></div>
 
     <div v-if="stages.length" class="stage-section">
       <h3>阶段记录</h3>
@@ -40,6 +41,8 @@
 
 <script>
 import { getBusiness } from '/src/api/eos/business/business.js'
+import { can } from '../../crm/contract/shared.js'
+import ContractForm from '../../crm/contract/modules/ContractForm.vue'
 
 export default {
   name: 'BusinessDetail',
@@ -54,6 +57,7 @@ export default {
     }
   },
   computed: {
+    canCreateContract() { return can(341201, 'add') },
     stageColor() {
       return {
         赢单: 'green',
@@ -76,6 +80,7 @@ export default {
       })
   },
   methods: {
+    createContract() { this.$createAntdModal({ modalProps: { title: '商机转合同', width: 920, maskClosable: false, footer: null }, onOk: () => this.$message.success('合同草稿已建立，可前往合同列表提交审批'), content: { template: ContractForm, props: { initial: { customerId: Number(this.data.customerId), customerName: this.data.customerName, opportunityId: this.formId, name: this.data.name, amount: Number(this.data.expectedAmount || this.data.amount || 0) } } } }) },
     formatMoney(value) {
       return `￥${Number(value || 0).toLocaleString('zh-CN', {
         minimumFractionDigits: 2,

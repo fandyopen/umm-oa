@@ -10,6 +10,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
@@ -37,15 +38,18 @@ public class CrmController {
     private final JdbcTemplate jdbc;
     private final DataScopeService dataScopeService;
     private final ParityRecordService parityRecords;
+    private final CrmContractService contracts;
 
     public CrmController(
             JdbcTemplate jdbc,
             DataScopeService dataScopeService,
-            ParityRecordService parityRecords
+            ParityRecordService parityRecords,
+            CrmContractService contracts
     ) {
         this.jdbc = jdbc;
         this.dataScopeService = dataScopeService;
         this.parityRecords = parityRecords;
+        this.contracts = contracts;
     }
 
     @GetMapping("/analysis/overview")
@@ -93,10 +97,11 @@ public class CrmController {
 
     @GetMapping("/risk/list")
     @RequiresModuleAction(moduleId = RISK_MODULE_ID, action = "access")
-    public Map<String, Object> riskList() {
+    public Map<String, Object> riskList(@RequestParam(required = false) Long customerId) {
         List<Map<String, Object>> risks = risks(true);
         synchronizeRiskTodos(risks, true);
-        return ApiResult.page(risks, risks.size());
+        List<Map<String, Object>> filtered = risks.stream().filter(row -> customerId == null || customerId.equals(number(row.get("customerId"), 0L))).toList();
+        return ApiResult.page(filtered, filtered.size());
     }
 
     @PostMapping("/risk/sync")
@@ -163,7 +168,7 @@ public class CrmController {
             }
 
             LocalDate expiry = date(customer.get("contractExpireDate"));
-            if (expiry != null) {
+            if (expiry != null && !contracts.managedCustomer(id)) {
                 long expiryDays = ChronoUnit.DAYS.between(today, expiry);
                 if (expiryDays >= 0L && expiryDays <= 30L) {
                     risks.add(risk(
@@ -182,6 +187,7 @@ public class CrmController {
             LocalDate lastPayment = date(customer.get("lastPaymentDate"));
             long noPaymentDays = lastPayment == null ? 999L : ChronoUnit.DAYS.between(lastPayment, today);
             if (contractAmount.compareTo(BigDecimal.ZERO) > 0
+                    && !contracts.managedCustomer(id)
                     && receivedAmount.compareTo(contractAmount) < 0
                     && noPaymentDays >= 60L) {
                 risks.add(risk(
@@ -194,6 +200,7 @@ public class CrmController {
                 ));
             }
         }
+        risks.addAll(contracts.reminders(scoped));
         return risks;
     }
 

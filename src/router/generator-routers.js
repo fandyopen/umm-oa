@@ -146,7 +146,7 @@ export const generator = (routerMap, parent) => {
       currentRouter.hidden = true
     }
     // 适配Seal，Seal为缩写路径，而antdv-pro的pro-layout要求每个路径需为全路径
-    if (!constantRouterComponents[item.component || item.key]) {
+    if (!constantRouterComponents[item.component || item.key] || (item.path && !item.path.startsWith('/') && !validURL(item.path))) {
       if (parent && parent.path && parent.path !== '/') {
         currentRouter.path = `${parent && parent.path}/${item.path}`
       }

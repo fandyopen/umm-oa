@@ -3,6 +3,8 @@ package com.seal.oa.system;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.seal.oa.common.ApiException;
 import com.seal.oa.common.JdbcMaps;
+import com.seal.oa.workflow.WorkflowActionHandler;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -11,6 +13,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -36,7 +39,8 @@ public class ModuleActionService {
 
     private static final Set<Long> MANAGE_ONLY_MODULES = Set.of(
             340597L,
-            340771L
+            340771L,
+            340772L
     );
 
     private static final Set<Long> READ_ONLY_MODULES = Set.of(
@@ -50,6 +54,11 @@ public class ModuleActionService {
     );
 
     private static final Map<Long, List<ActionDefinition>> MODULE_ACTIONS = Map.ofEntries(
+            Map.entry(341201L, List.of(ADD, EDIT, REMOVE, new ActionDefinition("submit", "提交审批", "crm.contract.submit"), new ActionDefinition("sign", "签署生效", "crm.contract.sign"))),
+            Map.entry(341202L, List.of(new ActionDefinition("approve", "审批"))),
+            Map.entry(341203L, List.of(new ActionDefinition("receive", "登记回款"))),
+            Map.entry(341204L, List.of(EDIT)),
+            Map.entry(341205L, List.of(new ActionDefinition("handle", "处理提醒"))),
             Map.entry(340590L, List.of(ADD, EDIT, REMOVE, TRACK)),
             Map.entry(340644L, ADD_EDIT_REMOVE),
             Map.entry(340352L, List.of(ADD, EDIT, REMOVE, EXPORT, TRACK)),
@@ -64,15 +73,20 @@ public class ModuleActionService {
 
     private final JdbcTemplate jdbc;
     private final ObjectMapper objectMapper;
+    private final ObjectProvider<WorkflowActionHandler> handlers;
+    private boolean tablesReady;
 
-    public ModuleActionService(JdbcTemplate jdbc, ObjectMapper objectMapper) {
+    public ModuleActionService(JdbcTemplate jdbc, ObjectMapper objectMapper,
+                               ObjectProvider<WorkflowActionHandler> handlers) {
         this.jdbc = jdbc;
         this.objectMapper = objectMapper;
+        this.handlers = handlers;
     }
 
     @Transactional
     public void bootstrap() {
         ensureTables();
+        migrateEditableActions();
         List<Map<String, Object>> modules = JdbcMaps.camelCase(jdbc.queryForList("""
                 SELECT module_id, perms, component
                 FROM sys_module WHERE status = '0'
@@ -93,28 +107,6 @@ public class ModuleActionService {
                       AND ma.action_code = rma.action_code
                 )
                 """);
-        jdbc.update("""
-                DELETE FROM oa_module_action_flow binding
-                WHERE NOT EXISTS (
-                    SELECT 1
-                    FROM sys_module_action action
-                    WHERE action.module_id = binding.module_id
-                      AND action.action_code = binding.action_code
-                )
-                """);
-        jdbc.update("""
-                UPDATE oa_module_action_flow binding
-                SET approval_enabled = 0, update_time = CURRENT_TIMESTAMP
-                WHERE NOT EXISTS (
-                    SELECT 1
-                    FROM sys_module_action action
-                    WHERE action.module_id = binding.module_id
-                      AND action.action_code = binding.action_code
-                      AND action.status = '0'
-                      AND action.handler_key IS NOT NULL
-                      AND TRIM(action.handler_key) <> ''
-                )
-                """);
         backfillRoleActions();
         backfillLegacyCustomerExportPermission();
         applyDefaultRoleActions(
@@ -130,9 +122,13 @@ public class ModuleActionService {
                 "manage"
         );
         mergeDuplicateHrRole();
+        migrateWorkflowAdministration();
+        migrateContractNavigation();
+        migrateContractSigning();
     }
 
-    public void ensureTables() {
+    public synchronized void ensureTables() {
+        if (tablesReady) return;
         jdbc.execute("""
                 CREATE TABLE IF NOT EXISTS sys_module_action (
                     module_id BIGINT NOT NULL,
@@ -154,6 +150,9 @@ public class ModuleActionService {
         ensureColumn("sys_module_action", "status", "VARCHAR(1) NOT NULL DEFAULT '0'");
         ensureColumn("sys_module_action", "create_time", "DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP");
         ensureColumn("sys_module_action", "update_time", "DATETIME");
+        ensureColumn("sys_module_action", "flow_design_enabled", "INT NOT NULL DEFAULT 0");
+        ensureColumn("sys_module_action", "action_sort", "INT NOT NULL DEFAULT 0");
+        ensureColumn("sys_module_action", "action_description", "VARCHAR(500)");
         jdbc.execute("""
                 CREATE TABLE IF NOT EXISTS sys_role_module_action (
                     role_id BIGINT NOT NULL,
@@ -168,6 +167,7 @@ public class ModuleActionService {
                     applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
                 )
                 """);
+        tablesReady = true;
     }
 
     private void ensureColumn(String table, String column, String definition) {
@@ -184,10 +184,19 @@ public class ModuleActionService {
 
     @Transactional
     public void refreshModule(long moduleId, String perms, String component) {
-        jdbc.update("DELETE FROM sys_module_action WHERE module_id = ? AND builtin = 1", moduleId);
         if (moduleId <= 0L || "Layout".equals(component) || "ParentView".equals(component)) {
             return;
         }
+        // Defaults seed each page only once; edits and deletions are authoritative.
+        String seedKey = "module_actions_seed_v2_" + moduleId;
+        if (migrationApplied(seedKey)) {
+            return;
+        }
+        jdbc.update("INSERT INTO sys_permission_migration (migration_key) VALUES (?)", seedKey);
+        seedModule(moduleId, perms == null ? "" : perms, component == null ? "" : component);
+    }
+
+    private void seedModule(long moduleId, String perms, String component) {
         if (MANAGE_ONLY_MODULES.contains(moduleId)) {
             insertManageAction(moduleId, perms);
             return;
@@ -226,67 +235,60 @@ public class ModuleActionService {
     }
 
     public List<Map<String, Object>> actions(long moduleId) {
-        return JdbcMaps.camelCase(jdbc.queryForList("""
-                SELECT module_id, action_code, action_name, permission_code, handler_key,
-                       config_json, builtin, status, create_time, update_time
-                FROM sys_module_action WHERE module_id = ? AND status = '0'
-                ORDER BY CASE action_code
+        return actionRows(moduleId, "a.status = '0'", """
+                a.action_sort, CASE a.action_code
                     WHEN 'add' THEN 1 WHEN 'edit' THEN 2
                     WHEN 'remove' THEN 3 WHEN 'export' THEN 4
                     WHEN 'invite' THEN 5 WHEN 'track' THEN 6
                     WHEN 'transfer' THEN 7 WHEN 'split' THEN 8
                     WHEN 'notify' THEN 9 WHEN 'confirm' THEN 10
                     WHEN 'dismiss' THEN 11
-                    WHEN 'manage' THEN 90 ELSE 50 END, action_code
-                """, moduleId));
+                    WHEN 'manage' THEN 90 ELSE 50 END, a.action_code
+                """);
     }
 
     public List<Map<String, Object>> allActions(long moduleId) {
-        return JdbcMaps.camelCase(jdbc.queryForList("""
-                SELECT module_id, action_code, action_name, permission_code, handler_key,
-                       config_json, builtin, status, create_time, update_time
-                FROM sys_module_action WHERE module_id = ?
-                ORDER BY builtin DESC, action_code
-                """, moduleId));
+        return actionRows(moduleId, "a.status <> '2'", "a.action_sort, a.action_code");
     }
 
     public List<Map<String, Object>> workflowActions(long moduleId) {
-        return JdbcMaps.camelCase(jdbc.queryForList("""
-                SELECT module_id, action_code, action_name, permission_code, handler_key,
-                       config_json, builtin, status, create_time, update_time
-                FROM sys_module_action
-                WHERE module_id = ? AND status = '0'
-                  AND handler_key IS NOT NULL AND TRIM(handler_key) <> ''
-                ORDER BY builtin DESC, action_code
-                """, moduleId));
+        return actionRows(moduleId, "a.status = '0' AND a.handler_key IS NOT NULL AND TRIM(a.handler_key) <> ''",
+                "a.action_sort, a.action_code");
     }
 
     public Map<String, Object> action(long moduleId, String actionCode) {
         List<Map<String, Object>> rows = JdbcMaps.camelCase(jdbc.queryForList("""
                 SELECT module_id, action_code, action_name, permission_code, handler_key,
-                       config_json, builtin, status, create_time, update_time
-                FROM sys_module_action WHERE module_id = ? AND action_code = ?
+                       config_json, builtin, status, create_time, update_time, flow_design_enabled,
+                       action_sort, action_description
+                FROM sys_module_action WHERE module_id = ? AND action_code = ? AND status <> '2'
                 """, moduleId, actionCode));
-        return rows.isEmpty() ? Map.of() : rows.get(0);
+        if (rows.isEmpty()) return Map.of();
+        describeBusinessAction(rows.get(0));
+        return rows.get(0);
     }
 
     @Transactional
-    public void createAction(long moduleId, Map<String, Object> body) {
+    public Map<String, Object> createAction(long moduleId, Map<String, Object> body) {
         Map<String, Object> module = requireModule(moduleId);
-        String actionCode = normalizeActionCode(text(body.get("actionCode")));
+        String actionCode = text(body.get("actionCode"));
+        actionCode = actionCode.isBlank()
+                ? nextActionCode(moduleId)
+                : normalizeActionCode(actionCode);
         String actionName = requiredText(body.get("actionName"), "动作名称不能为空");
-        if (!action(moduleId, actionCode).isEmpty()) {
+        if (actionCodeExists(moduleId, actionCode)) {
             throw new ApiException(400, "该模块动作编码已存在");
         }
         String permissionCode = text(body.get("permissionCode"));
         if (permissionCode.isBlank()) {
             permissionCode = defaultPermissionCode(moduleId, text(module.get("perms")), actionCode);
         }
+        validateConfiguration(moduleId, actionCode, body);
         jdbc.update("""
                 INSERT INTO sys_module_action (
                     module_id, action_code, action_name, permission_code,
-                    handler_key, config_json, builtin, status
-                ) VALUES (?, ?, ?, ?, ?, ?, 0, ?)
+                    handler_key, config_json, builtin, status, flow_design_enabled, action_sort, action_description
+                ) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?)
                 """,
                 moduleId,
                 actionCode,
@@ -294,7 +296,22 @@ public class ModuleActionService {
                 permissionCode,
                 optionalText(body.get("handlerKey"), 128),
                 normalizedConfig(body.get("configJson")),
-                normalizeStatus(body.get("status")));
+                normalizeStatus(body.get("status")),
+                enabled(body.get("flowDesignEnabled")) ? 1 : 0,
+                longValue(body.get("actionSort")),
+                optionalText(body.get("actionDescription"), 500));
+        return action(moduleId, actionCode);
+    }
+
+    public String nextActionCode(long moduleId) {
+        requireModule(moduleId);
+        for (int index = 1; index <= 9999; index++) {
+            String candidate = String.format(Locale.ROOT, "action_%03d", index);
+            if (!actionCodeExists(moduleId, candidate)) {
+                return candidate;
+            }
+        }
+        throw new ApiException(400, "该模块按钮数量已达上限");
     }
 
     @Transactional
@@ -303,25 +320,33 @@ public class ModuleActionService {
         if (existing.isEmpty()) {
             throw new ApiException(404, "模块动作不存在");
         }
-        if (longValue(existing.get("builtin")) == 1L) {
-            throw new ApiException(400, "内置动作由代码维护，不能在此修改");
+        if (body.containsKey("actionCode") && !actionCode.equals(text(body.get("actionCode")))) {
+            throw new ApiException(400, "动作编码是按钮的稳定标识，保存后不可修改");
         }
+        Map<String, Object> values = new LinkedHashMap<>(existing);
+        values.put("flowDesignEnabled", existing.get("flowDesignEnabled"));
+        values.putAll(body);
+        validateConfiguration(moduleId, actionCode, values);
         Map<String, Object> module = requireModule(moduleId);
-        String permissionCode = text(body.get("permissionCode"));
+        String permissionCode = text(values.get("permissionCode"));
         if (permissionCode.isBlank()) {
             permissionCode = defaultPermissionCode(moduleId, text(module.get("perms")), actionCode);
         }
         jdbc.update("""
                 UPDATE sys_module_action
                 SET action_name = ?, permission_code = ?, handler_key = ?, config_json = ?,
-                    status = ?, update_time = CURRENT_TIMESTAMP
+                    status = ?, flow_design_enabled = ?, action_sort = ?, action_description = ?,
+                    builtin = 0, update_time = CURRENT_TIMESTAMP
                 WHERE module_id = ? AND action_code = ?
                 """,
-                requiredText(body.get("actionName"), "动作名称不能为空"),
+                requiredText(values.get("actionName"), "动作名称不能为空"),
                 permissionCode,
-                optionalText(body.get("handlerKey"), 128),
-                normalizedConfig(body.get("configJson")),
-                normalizeStatus(body.get("status")),
+                optionalText(values.get("handlerKey"), 128),
+                normalizedConfig(values.get("configJson")),
+                normalizeStatus(values.get("status")),
+                enabled(values.get("flowDesignEnabled")) ? 1 : 0,
+                longValue(values.get("actionSort")),
+                optionalText(values.get("actionDescription"), 500),
                 moduleId,
                 actionCode);
     }
@@ -332,17 +357,19 @@ public class ModuleActionService {
         if (existing.isEmpty()) {
             throw new ApiException(404, "模块动作不存在");
         }
-        if (longValue(existing.get("builtin")) == 1L) {
-            throw new ApiException(400, "内置动作不能删除");
+        Long running = jdbc.queryForObject("""
+                SELECT COUNT(*) FROM oa_workflow_request
+                WHERE module_id = ? AND action_code = ? AND status = 'running'
+                """, Long.class, moduleId, actionCode);
+        if (running != null && running > 0) {
+            throw new ApiException(409, "该按钮仍有审批中的申请，请先处理完成；可停用按钮阻止新申请");
         }
-        jdbc.update("""
-                DELETE FROM oa_module_action_flow WHERE module_id = ? AND action_code = ?
-                """, moduleId, actionCode);
         jdbc.update("""
                 DELETE FROM sys_role_module_action WHERE module_id = ? AND action_code = ?
                 """, moduleId, actionCode);
         jdbc.update("""
-                DELETE FROM sys_module_action WHERE module_id = ? AND action_code = ?
+                UPDATE sys_module_action SET status = '2', flow_design_enabled = 0,
+                    update_time = CURRENT_TIMESTAMP WHERE module_id = ? AND action_code = ?
                 """, moduleId, actionCode);
     }
 
@@ -358,6 +385,11 @@ public class ModuleActionService {
                   AND ma.status = '0' AND r.status = '0' AND r.del_flag = '0'
                 """, Long.class, userId, moduleId, actionCode);
         return count != null && count > 0L;
+    }
+
+    public boolean isActionDisabled(long moduleId, String actionCode) {
+        return jdbc.queryForObject("SELECT COUNT(*) FROM sys_module_action WHERE module_id = ? AND action_code = ? AND status <> '0'",
+                Long.class, moduleId, actionCode) > 0L;
     }
 
     public boolean hasModule(long userId, long moduleId) {
@@ -548,30 +580,175 @@ public class ModuleActionService {
             ActionDefinition action,
             String permissionCode
     ) {
-        int updated = jdbc.update("""
-                UPDATE sys_module_action
-                SET action_name = ?, permission_code = ?, handler_key = ?, config_json = '{}',
-                    builtin = 1, status = '0', update_time = CURRENT_TIMESTAMP
-                WHERE module_id = ? AND action_code = ?
-                """,
-                action.name(),
-                permissionCode,
-                action.handlerKey(),
-                moduleId,
-                action.code());
-        if (updated == 0) {
+        if (!actionCodeExists(moduleId, action.code())) {
             jdbc.update("""
                     INSERT INTO sys_module_action (
                         module_id, action_code, action_name, permission_code,
-                        handler_key, config_json, builtin, status
-                    ) VALUES (?, ?, ?, ?, ?, '{}', 1, '0')
+                        handler_key, config_json, builtin, status, flow_design_enabled
+                    ) VALUES (?, ?, ?, ?, ?, '{}', 0, '0', ?)
                     """,
                     moduleId,
                     action.code(),
                     action.name(),
                     permissionCode,
-                    action.handlerKey());
+                    action.handlerKey(),
+                    moduleId == 341201L && "submit".equals(action.code()) ? 1 : 0);
         }
+    }
+
+    private boolean migrationApplied(String key) {
+        return jdbc.queryForObject("SELECT COUNT(*) FROM sys_permission_migration WHERE migration_key = ?",
+                Long.class, key) > 0L;
+    }
+
+    private void migrateEditableActions() {
+        String key = "editable_button_configuration_v1";
+        if (migrationApplied(key)) return;
+        jdbc.update("""
+                UPDATE sys_module_action a SET builtin = 0,
+                    flow_design_enabled = CASE WHEN a.handler_key IS NOT NULL
+                    AND TRIM(a.handler_key) <> '' AND ((a.module_id = 341201 AND a.action_code = 'submit')
+                      OR EXISTS (SELECT 1 FROM oa_module_action_flow b
+                        WHERE b.module_id = a.module_id AND b.action_code = a.action_code))
+                    THEN 1 ELSE 0 END
+                """);
+        jdbc.update("INSERT INTO sys_permission_migration (migration_key) VALUES (?)", key);
+    }
+
+    private void migrateWorkflowAdministration() {
+        String key = "module_workflow_administration_v1";
+        if (migrationApplied(key)) return;
+        insertAction(340772L, new ActionDefinition("workflow", "配置按钮流程"), "module:340772:workflow");
+        // Legacy workflow administrators gain the new entry, never routing/deletion rights.
+        jdbc.update("""
+                INSERT INTO sys_role_module (role_id, module_id)
+                SELECT DISTINCT old.role_id, 340772 FROM sys_role_module old
+                WHERE old.module_id = 340771 AND NOT EXISTS (
+                    SELECT 1 FROM sys_role_module current_grant
+                    WHERE current_grant.role_id = old.role_id AND current_grant.module_id = 340772)
+                """);
+        jdbc.update("""
+                INSERT INTO sys_role_module_action (role_id, module_id, action_code)
+                SELECT DISTINCT old.role_id, 340772, 'workflow' FROM sys_role_module_action old
+                WHERE old.module_id = 340771 AND old.action_code = 'manage' AND NOT EXISTS (
+                    SELECT 1 FROM sys_role_module_action current_grant
+                    WHERE current_grant.role_id = old.role_id AND current_grant.module_id = 340772
+                      AND current_grant.action_code = 'workflow')
+                """);
+        jdbc.update("INSERT INTO sys_permission_migration (migration_key) VALUES (?)", key);
+    }
+
+    private boolean actionCodeExists(long moduleId, String actionCode) {
+        return jdbc.queryForObject("SELECT COUNT(*) FROM sys_module_action WHERE module_id = ? AND action_code = ?",
+                Long.class, moduleId, actionCode) > 0L;
+    }
+
+    private void migrateContractNavigation() {
+        String key = "contract_navigation_consolidation_v1";
+        if (migrationApplied(key)) return;
+        // Relocate entry access only. Approval, receipts, revisions and handling keep their original grants.
+        jdbc.update("""
+                INSERT INTO sys_role_module (role_id, module_id)
+                SELECT DISTINCT source.role_id, 341201 FROM sys_role_module source
+                WHERE source.module_id IN (341203, 341204) AND NOT EXISTS (
+                    SELECT 1 FROM sys_role_module target
+                    WHERE target.role_id = source.role_id AND target.module_id = 341201)
+                """);
+        jdbc.update("""
+                INSERT INTO sys_role_module (role_id, module_id)
+                SELECT DISTINCT source.role_id, 340341 FROM sys_role_module source
+                WHERE source.module_id = 341202 AND NOT EXISTS (
+                    SELECT 1 FROM sys_role_module target
+                    WHERE target.role_id = source.role_id AND target.module_id = 340341)
+                """);
+        jdbc.update("""
+                INSERT INTO sys_role_module (role_id, module_id)
+                SELECT DISTINCT source.role_id, 341101 FROM sys_role_module source
+                WHERE source.module_id = 341205 AND NOT EXISTS (
+                    SELECT 1 FROM sys_role_module target
+                    WHERE target.role_id = source.role_id AND target.module_id = 341101)
+                """);
+        jdbc.update("INSERT INTO sys_permission_migration (migration_key) VALUES (?)", key);
+    }
+
+    private void migrateContractSigning() {
+        String key = "contract_sign_workflow_v1";
+        if (migrationApplied(key)) return;
+        jdbc.update("""
+                UPDATE sys_module_action SET handler_key = 'crm.contract.sign', update_time = CURRENT_TIMESTAMP
+                WHERE module_id = 341201 AND action_code = 'sign' AND status <> '2'
+                  AND (handler_key IS NULL OR TRIM(handler_key) = '')
+                """);
+        jdbc.update("INSERT INTO sys_permission_migration (migration_key) VALUES (?)", key);
+    }
+
+    private List<Map<String, Object>> actionRows(long moduleId, String condition, String order) {
+        List<Map<String, Object>> rows = JdbcMaps.camelCase(jdbc.queryForList("""
+                SELECT a.*, b.process_design_id, b.approval_enabled, d.status AS process_status
+                FROM sys_module_action a
+                LEFT JOIN oa_module_action_flow b ON b.module_id = a.module_id
+                  AND b.action_code = a.action_code AND b.tenant_app_id = 1
+                LEFT JOIN oa_process_design d ON d.id = b.process_design_id
+                WHERE a.module_id = ? AND
+                """ + condition + " ORDER BY " + order, moduleId));
+        for (Map<String, Object> row : rows) {
+            describeBusinessAction(row);
+            boolean designEnabled = enabled(row.get("flowDesignEnabled"));
+            row.put("flowDesignEnabled", designEnabled);
+            row.put("workflowState", !designEnabled ? "未开启"
+                    : text(row.get("handlerKey")).isBlank() ? "待接入"
+                    : text(row.get("processDesignId")).isBlank() ? "未配置"
+                    : !"published".equals(text(row.get("processStatus"))) ? "未发布"
+                    : enabled(row.get("approvalEnabled")) ? "已启用" : "已停用");
+        }
+        return rows;
+    }
+
+    public void requireFlowDesign(long moduleId, String actionCode) {
+        Map<String, Object> action = action(moduleId, actionCode);
+        if (action.isEmpty()) throw new ApiException(400, "请选择真实存在的按钮，流程只能配置在按钮级别");
+        if (!enabled(action.get("flowDesignEnabled"))) {
+            throw new ApiException(400, "该按钮尚未开启流程设计，请先在模块管理的按钮修改页开启");
+        }
+        if (!"0".equals(text(action.get("status")))) throw new ApiException(400, "该按钮已停用");
+        validateConfiguration(moduleId, actionCode, action);
+    }
+
+    private void validateConfiguration(long moduleId, String actionCode, Map<String, Object> values) {
+        String handlerKey = text(values.get("handlerKey"));
+        ActionDefinition businessAction = MODULE_ACTIONS.getOrDefault(moduleId, List.of()).stream()
+                .filter(item -> item.code().equals(actionCode)).findFirst().orElse(null);
+        if (businessAction != null && businessAction.handlerKey() != null
+                && !businessAction.handlerKey().isBlank() && !businessAction.handlerKey().equals(handlerKey)) {
+            throw new ApiException(400, "该按钮的业务行为须使用执行器 " + businessAction.handlerKey());
+        }
+        if (handlerKey.isBlank()) {
+            return;
+        }
+        WorkflowActionHandler handler = handlers.orderedStream().filter(item -> item.supports(handlerKey))
+                .findFirst().orElseThrow(() -> new ApiException(400, "业务执行器未注册：" + handlerKey));
+        if (!handler.supportsAction(moduleId, actionCode)) throw new ApiException(400, "所选执行器不适用于该按钮");
+    }
+
+    public static boolean enabled(Object value) {
+        return Boolean.TRUE.equals(value) || "true".equalsIgnoreCase(String.valueOf(value))
+                || "1".equals(String.valueOf(value));
+    }
+
+    private void describeBusinessAction(Map<String, Object> row) {
+        ActionDefinition definition = MODULE_ACTIONS.getOrDefault(longValue(row.get("moduleId")), List.of()).stream()
+                .filter(item -> item.code().equals(text(row.get("actionCode"))))
+                .filter(item -> item.handlerKey() != null && !item.handlerKey().isBlank()).findFirst().orElse(null);
+        row.put("handlerManaged", definition != null);
+        if (definition != null) row.put("businessActionName", definition.name());
+    }
+
+    public void requireWorkflowExecution(long moduleId, String actionCode) {
+        Map<String, Object> action = action(moduleId, actionCode);
+        if (text(action.get("handlerKey")).isBlank()) {
+            throw new ApiException(400, "该按钮尚未接入业务执行器，可先保存流程草稿，接入后再发布启用审批");
+        }
+        validateConfiguration(moduleId, actionCode, action);
     }
 
     private void insertManageAction(long moduleId, String permissionCode) {
@@ -597,6 +774,7 @@ public class ModuleActionService {
 
     private String normalizeActionCode(String value) {
         String actionCode = value == null ? "" : value.trim();
+        if ("page".equals(actionCode)) throw new ApiException(400, "page 是旧页面流程保留编码，不能用作按钮编码");
         if (!actionCode.matches("[a-z][a-z0-9_]{0,31}")) {
             throw new ApiException(
                     400,

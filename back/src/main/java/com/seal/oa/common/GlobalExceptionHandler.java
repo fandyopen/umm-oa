@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.util.Map;
 
@@ -28,6 +29,11 @@ public class GlobalExceptionHandler {
                     : validation.getBindingResult().getFieldError().getDefaultMessage()
                 : exception.getMessage();
         return ResponseEntity.ok(ApiResult.error(400, message));
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public Map<String, Object> handleTypeMismatch(MethodArgumentTypeMismatchException exception) {
+        return ApiResult.error(400, "参数“" + exception.getName() + "”格式不正确，请检查后重试");
     }
 
     @ExceptionHandler(Exception.class)

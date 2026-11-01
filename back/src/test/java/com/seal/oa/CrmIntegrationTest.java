@@ -57,7 +57,7 @@ class CrmIntegrationTest {
 
     @Test
     void crmMenusAndActionsUseTheConvertedMarketingModule() throws Exception {
-        String authorization = login("17630135660");
+        String authorization = login("13610316814");
 
         MvcResult result = mockMvc.perform(get("/getRouters")
                         .header("Authorization", authorization))
@@ -86,7 +86,7 @@ class CrmIntegrationTest {
     @Test
     @Transactional
     void customerImportReportsBadRowsAndExportReturnsFilteredAuthorizedRows() throws Exception {
-        String admin = login("17630135660");
+        String admin = login("13610316814");
         mockMvc.perform(post("/project/merchant/import")
                         .header("Authorization", admin)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -137,7 +137,7 @@ class CrmIntegrationTest {
     @Test
     @Transactional
     void customerLifecycleSupportsContactsFollowupsPoolAndHandover() throws Exception {
-        String admin = login("17630135660");
+        String admin = login("13610316814");
         createSelfOnlyEmployee();
 
         long customerId = createCustomer(admin, """
@@ -297,7 +297,7 @@ class CrmIntegrationTest {
     @Test
     @Transactional
     void unreferencedCustomerCanBeDeleted() throws Exception {
-        String admin = login("17630135660");
+        String admin = login("13610316814");
         long customerId = createCustomer(admin, """
                 {"name":"CRM 未引用草稿","serial":"CRM-DELETE-001","industry":"教育"}
                 """);
@@ -326,7 +326,7 @@ class CrmIntegrationTest {
     @Test
     @Transactional
     void customerDetailAndFollowupsRespectDataScopeAndTrackAction() throws Exception {
-        String admin = login("17630135660");
+        String admin = login("13610316814");
         createSelfOnlyEmployee();
         long ownCustomerId = createCustomer(admin, """
                 {
@@ -392,7 +392,7 @@ class CrmIntegrationTest {
     @Test
     @Transactional
     void opportunityAnalysisAndRiskTodosFormAClosedCrmLoop() throws Exception {
-        String admin = login("17630135660");
+        String admin = login("13610316814");
         long customerId = createCustomer(admin, """
                 {
                   "name": "CRM 风险分析客户",

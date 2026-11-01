@@ -3,7 +3,8 @@ package com.seal.oa.system;
 import com.seal.oa.common.ApiException;
 import com.seal.oa.common.ApiResult;
 import com.seal.oa.system.SystemService.UserAccount;
-import com.seal.oa.web.RequiresModuleAction;
+import com.seal.oa.web.ModuleActionRequirement;
+import com.seal.oa.web.RequiresAnyModuleAction;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -20,7 +21,10 @@ import java.util.Set;
 
 @RestController
 @RequestMapping("/system/module")
-@RequiresModuleAction(moduleId = 340771L, action = "access")
+@RequiresAnyModuleAction({
+        @ModuleActionRequirement(moduleId = 340771L, action = "access"),
+        @ModuleActionRequirement(moduleId = 340772L, action = "access")
+})
 public class ModuleController {
 
     private final ModuleService moduleService;
@@ -63,6 +67,15 @@ public class ModuleController {
         ));
     }
 
+    @GetMapping("/management-tree")
+    public Map<String, Object> managementTree() {
+        UserAccount user = systemService.requireCurrentUser();
+        Map<String, Object> result = ApiResult.ok(moduleService.managementTree(user.tenantId()));
+        result.put("canManageStructure", systemService.hasModuleAction(user.userId(), 340772L, "manage"));
+        result.put("canManageWorkflow", canManageWorkflow(user.userId()));
+        return result;
+    }
+
     @GetMapping("/{moduleId}")
     public Map<String, Object> detail(@PathVariable Long moduleId) {
         return ApiResult.ok(requireModule(moduleId));
@@ -84,14 +97,23 @@ public class ModuleController {
                 : moduleActionService.actions(moduleId));
     }
 
+    @GetMapping("/{moduleId}/actions/next-code")
+    public Map<String, Object> nextActionCode(@PathVariable Long moduleId) {
+        requireModule(moduleId);
+        return ApiResult.ok(Map.of(
+                "actionCode",
+                moduleActionService.nextActionCode(moduleId)
+        ));
+    }
+
     @PostMapping("/{moduleId}/actions")
     public Map<String, Object> createAction(
             @PathVariable Long moduleId,
             @RequestBody Map<String, Object> body
     ) {
+        requireStructureManagement();
         requireModule(moduleId);
-        moduleActionService.createAction(moduleId, body);
-        return ApiResult.ok();
+        return ApiResult.ok(moduleActionService.createAction(moduleId, body));
     }
 
     @PutMapping("/{moduleId}/actions/{actionCode}")
@@ -100,6 +122,13 @@ public class ModuleController {
             @PathVariable String actionCode,
             @RequestBody Map<String, Object> body
     ) {
+        if (body.size() == 1 && body.containsKey("flowDesignEnabled")) {
+            if (!canManageWorkflow(systemService.requireCurrentUser().userId())) {
+                throw new ApiException(403, "没有按钮流程配置权限");
+            }
+        } else {
+            requireStructureManagement();
+        }
         requireModule(moduleId);
         moduleActionService.updateAction(moduleId, actionCode, body);
         return ApiResult.ok();
@@ -110,6 +139,7 @@ public class ModuleController {
             @PathVariable Long moduleId,
             @PathVariable String actionCode
     ) {
+        requireStructureManagement();
         requireModule(moduleId);
         moduleActionService.deleteAction(moduleId, actionCode);
         return ApiResult.ok();
@@ -117,12 +147,14 @@ public class ModuleController {
 
     @PostMapping
     public Map<String, Object> create(@RequestBody Map<String, Object> body) {
+        requireStructureManagement();
         UserAccount user = systemService.requireCurrentUser();
         return ApiResult.ok(moduleService.create(body, user.tenantId()));
     }
 
     @PutMapping
     public Map<String, Object> update(@RequestBody Map<String, Object> body) {
+        requireStructureManagement();
         Object moduleId = body.containsKey("menuId") ? body.get("menuId") : body.get("moduleId");
         if (moduleId == null) {
             throw new ApiException(400, "moduleId is required");
@@ -134,9 +166,22 @@ public class ModuleController {
 
     @DeleteMapping("/{moduleId}")
     public Map<String, Object> delete(@PathVariable Long moduleId) {
+        requireStructureManagement();
         requireModule(moduleId);
         moduleService.delete(moduleId);
         return ApiResult.ok();
+    }
+
+    private boolean canManageWorkflow(Long userId) {
+        return systemService.hasModuleAction(userId, 340772L, "manage")
+                || systemService.hasModuleAction(userId, 340772L, "workflow")
+                || systemService.hasModuleAction(userId, 340771L, "manage");
+    }
+
+    private void requireStructureManagement() {
+        if (!systemService.hasModuleAction(systemService.requireCurrentUser().userId(), 340772L, "manage")) {
+            throw new ApiException(403, "没有模块结构和按钮管理权限");
+        }
     }
 
     private Map<String, Object> requireModule(Long moduleId) {

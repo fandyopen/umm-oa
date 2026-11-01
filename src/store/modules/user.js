@@ -1,4 +1,5 @@
 import storage from 'store'
+import { setModuleActionConfigurations } from '/src/utils/moduleActionConfig.js'
 import { login, getSession, logout } from '/src/api/user/login.js'
 import { registered } from '/src/api/user/registered.js'
 import { ACCESS_TOKEN, TENANT_ID } from '/src/store/mutation-types.js'
@@ -70,6 +71,7 @@ const user = {
         }
         commit('SET_ROLES', res.roles && res.roles.length ? res.roles : ['ROLE_DEFAULT'])
         commit('SET_PERMISSIONS', res.permissions || [])
+        setModuleActionConfigurations(res.moduleActions || [])
         commit('SET_NAME', currentUser.nickName || '')
         commit('SET_USER_NAME', currentUser.userName || '')
         commit('SET_AVATAR', avatar)
@@ -113,6 +115,7 @@ const user = {
         commit('SET_TOKEN', '')
         commit('SET_ROLES', [])
         commit('SET_PERMISSIONS', [])
+        setModuleActionConfigurations([])
         commit('SET_USERPERMISSION', {})
         commit('SET_SEX', '')
         commit('SET_POSTS', '')

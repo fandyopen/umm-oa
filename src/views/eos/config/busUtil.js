@@ -70,6 +70,8 @@ export const handleMerchantEdit = (name, merchantList, callBackFunc) => {
  * 业务流程-业务表单映射关系
  */
 export const busFlowMap = {
+  crmRisk: { processName: '客户风险提醒', processColor: 'red', busFieldProp: 'title', busDetailCompName: 'CrmTodoDetail' },
+  crmContractApproval: { processName: '合同审批', processColor: 'blue', busFieldProp: 'title', busDetailCompName: 'CrmTodoDetail' },
   lowcode: {
     processName: '自定义审批',
     processColor: 'blue',

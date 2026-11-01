@@ -60,7 +60,8 @@ public class WorkflowActionRequestService {
                 operatorId,
                 operatorName
         );
-        handler(handlerKey).validate(context);
+        WorkflowActionHandler handler = handler(handlerKey);
+        handler.validate(context);
         Map<String, Object> storedPayload = new LinkedHashMap<>(payload);
         storedPayload.putIfAbsent("title", title);
         storedPayload.putIfAbsent("actionCode", actionCode);
@@ -88,6 +89,9 @@ public class WorkflowActionRequestService {
         if (id <= 0L) {
             throw new ApiException(500, "审批申请创建失败");
         }
+        handler.submitted(new WorkflowActionContext(id, moduleId, actionCode, handlerKey,
+                config, storedPayload, operatorId, operatorName));
+        jdbc.update("UPDATE oa_workflow_request SET payload_json = ? WHERE id = ?", json(storedPayload), id);
         return id;
     }
 
@@ -171,6 +175,7 @@ public class WorkflowActionRequestService {
                         complete_time = CURRENT_TIMESTAMP
                     WHERE id = ?
                     """, instanceId, taskId, taskName, requestId);
+            notifyWorkflowState(request, instanceId, businessStatus, taskId, taskName);
             return;
         }
         jdbc.update("""
@@ -179,6 +184,40 @@ public class WorkflowActionRequestService {
                     process_task_name = ?, update_time = CURRENT_TIMESTAMP
                 WHERE id = ?
                 """, instanceId, taskId, taskName, requestId);
+        notifyWorkflowState(request, instanceId, businessStatus, taskId, taskName);
+    }
+
+    public void validateCompletion(String instanceId, String taskId, boolean pass,
+                                   String comment, Long operatorId) {
+        List<Long> requests = jdbc.queryForList("""
+                SELECT business_id FROM oa_process_instance
+                WHERE id = ? AND business_type = 'workflowAction'
+                """, Long.class, instanceId);
+        if (requests.isEmpty()) return;
+        Map<String, Object> request = request(requests.get(0));
+        if (request.isEmpty()) throw new ApiException(404, "审批申请不存在");
+        WorkflowActionContext context = context(request);
+        handler(context.handlerKey()).validateCompletion(context, instanceId, taskId, pass, comment, operatorId);
+    }
+
+    private void notifyWorkflowState(Map<String, Object> request, String instanceId,
+                                     String businessStatus, String taskId, String taskName) {
+        WorkflowActionContext context = context(request);
+        handler(context.handlerKey()).workflowStateChanged(context, instanceId, businessStatus, taskId, taskName);
+    }
+
+    private WorkflowActionContext context(Map<String, Object> request) {
+        long moduleId = number(request.get("module_id"), 0L);
+        String actionCode = value(request.get("action_code"), "");
+        String handlerKey = value(request.get("handler_key"), "");
+        Map<String, Object> config = object(request.get("config_json"));
+        if (handlerKey.isBlank()) {
+            Map<String, Object> action = moduleActionService.action(moduleId, actionCode);
+            handlerKey = value(action.get("handlerKey"), "");
+            config = object(action.get("configJson"));
+        }
+        return new WorkflowActionContext(number(request.get("id"), 0L), moduleId, actionCode,
+                handlerKey, config, object(request.get("payload_json")), null, value(request.get("create_by"), ""));
     }
 
     public Map<String, Object> payload(long requestId) {

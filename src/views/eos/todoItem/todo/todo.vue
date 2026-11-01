@@ -1,17 +1,21 @@
 <!-- 待办事项 -->
 <template>
   <div>
-    <s-search v-if="!simple" placeholder="搜索此列表..." clickTips="搜索姓名、流程名称、审批" @onSearch="onSearch" />
+    <template v-if="!simple">
+      <s-search placeholder="搜索此列表..." clickTips="搜索姓名、流程名称、审批" @onSearch="onSearch" />
+      <a-select v-model="businessCategory" style="width: 200px; margin-bottom: 16px" @change="changeCategory"><a-select-option value="">全部待办</a-select-option><a-select-option value="contract">合同审批</a-select-option></a-select>
+    </template>
     <!-- 数据表格 -->
     <no-data index v-show="noData" />
     <s-table :customRow="rowClick" :class="{ 'dashboard-table': simple }" v-show="!noData" :data="loadData" ref="table" size="default" rowKey="taskId" :columns="columns">
       <span slot="action" slot-scope="text, item">
+        <a v-if="['crmRisk', 'crmContractApproval'].includes(item.businessType)" @click.stop="handleDetail(item, 'CrmTodoDetail')">{{ item.businessType === 'crmContractApproval' ? '审批合同' : '处理风险' }}</a>
         <activiti-apply
           :preAudit="{ comment: item.lastHistoricActivity.comment, assigneeName: item.lastHistoricActivity.assigneeName }"
           :simple="simple"
           style="margin-right: 10px; margin-left: auto"
           slot="actions"
-          v-if="item && item.taskId"
+          v-else-if="item && item.taskId"
           :todoItem="item"
           @getList="refresh"
           @markUnread="handleMarkUnread(item)"
@@ -66,7 +70,8 @@ export default {
       }),
       busFlowMap,
       // 查询参数
-      queryParam: {},
+      businessCategory: !this.simple && this.$route.query.businessCategory === 'contract' ? 'contract' : '',
+      queryParam: !this.simple && this.$route.query.businessCategory === 'contract' ? { businessCategory: 'contract' } : {},
       // 加载数据方法 必须为 Promise 对象
       loadData: param => {
         if (this.simple) {
@@ -75,7 +80,7 @@ export default {
         }
         return listTodo(Object.assign({}, param, this.queryParam)).then(res => {
           this.noData = res.total === 0
-          this.$store.commit('SET_TODOTOTAL', res.total)
+          this.$store.commit('SET_TODOTOTAL', res.unfilteredTotal ?? res.total)
           return {
             data: res.rows,
             totalCount: this.simple ? 0 : res.total,
@@ -139,7 +144,23 @@ export default {
       ]
     }
   },
+  watch: {
+    '$route.query.businessCategory'(value) {
+      if (this.simple) return
+      this.businessCategory = value === 'contract' ? 'contract' : ''
+      this.queryParam = { ...this.queryParam, businessCategory: this.businessCategory }
+      this.refresh(true)
+    }
+  },
   methods: {
+    changeCategory(value) {
+      this.queryParam = { ...this.queryParam, businessCategory: value }
+      const query = { ...this.$route.query }
+      if (value) query.businessCategory = value
+      else delete query.businessCategory
+      if (this.$route.query.businessCategory !== query.businessCategory) this.$router.replace({ path: this.$route.path, query })
+      else this.refresh(true)
+    },
     handleDetail(row, detailCompName) {
       if (this.isEmpty(detailCompName)) {
         return this.$message.error('请传递详情组件')
@@ -223,11 +244,11 @@ export default {
         }
       }
       this.queryParam = { ...this.queryParam, queryAll: data, queryAllBusType }
-      this.refresh()
+      this.refresh(true)
     },
     // 刷新页面
-    refresh() {
-      this.$refs.table.refresh()
+    refresh(resetPage = false) {
+      this.$refs.table.refresh(resetPage)
     }
   }
 }

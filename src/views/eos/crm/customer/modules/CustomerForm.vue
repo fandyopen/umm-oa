@@ -1,5 +1,13 @@
 <template>
   <a-spin :spinning="loading">
+    <a-alert
+      v-if="copySourceId"
+      type="info"
+      show-icon
+      message="已复制基础资料、联系人和银行账户，请修改公司名称并填写新客户税号后保存。"
+      description="客户编号留空自动生成，负责人默认为当前用户，合作状态重置为潜在客户；合作数据、合同、回款及跟进历史不复制。"
+      style="margin-bottom: 16px"
+    />
     <a-form-model ref="form" :model="form" :rules="rules" :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }">
       <div class="form-section-title">客户主档</div>
       <a-row :gutter="16">
@@ -152,22 +160,22 @@
             </a-col>
             <a-col :xs="24" :md="8">
               <a-form-model-item label="合同金额">
-                <a-input-number v-model="form.contractAmount" :min="0" :precision="2" style="width: 100%" />
+                <a-input-number v-model="form.contractAmount" :disabled="form.contractManaged" :min="0" :precision="2" style="width: 100%" />
               </a-form-model-item>
             </a-col>
             <a-col :xs="24" :md="8">
               <a-form-model-item label="回款金额">
-                <a-input-number v-model="form.receivedAmount" :min="0" :precision="2" style="width: 100%" />
+                <a-input-number v-model="form.receivedAmount" :disabled="form.contractManaged" :min="0" :precision="2" style="width: 100%" />
               </a-form-model-item>
             </a-col>
             <a-col :xs="24" :md="8">
               <a-form-model-item label="合同到期">
-                <a-date-picker v-model="form.contractExpireDate" value-format="YYYY-MM-DD" style="width: 100%" />
+                <a-date-picker v-model="form.contractExpireDate" :disabled="form.contractManaged" value-format="YYYY-MM-DD" style="width: 100%" />
               </a-form-model-item>
             </a-col>
             <a-col :xs="24" :md="8">
               <a-form-model-item label="最近回款">
-                <a-date-picker v-model="form.lastPaymentDate" value-format="YYYY-MM-DD" style="width: 100%" />
+                <a-date-picker v-model="form.lastPaymentDate" :disabled="form.contractManaged" value-format="YYYY-MM-DD" style="width: 100%" />
               </a-form-model-item>
             </a-col>
           </a-row>
@@ -188,7 +196,7 @@
 
       <div class="form-actions">
         <a-button @click="$emit('close')">取消</a-button>
-        <a-button type="primary" :loading="saving" @click="handleSubmit">保存</a-button>
+        <a-button type="primary" :loading="saving" :disabled="loading || loadFailed" @click="handleSubmit">保存</a-button>
       </div>
     </a-form-model>
   </a-spin>
@@ -235,16 +243,30 @@ function emptyForm() {
   }
 }
 
+function copyCustomerForm(data) {
+  const form = emptyForm()
+  const fields = ['name', 'industry', 'companyScale', 'region', 'enterpriseNature', 'customerSource', 'address', 'taxpayerType', 'remark']
+  fields.forEach(field => {
+    if (data[field] != null) form[field] = data[field]
+  })
+  const copyFields = (item, keys) => Object.fromEntries(keys.map(key => [key, item[key] ?? '']))
+  form.sealMerchantUsers = (data.sealMerchantUsers || []).map(contact => copyFields(contact, ['name', 'position', 'phone', 'wechat', 'email', 'decisionRole', 'primaryContact', 'remark']))
+  form.sealMerchantAccounts = (data.sealMerchantAccounts || []).map(account => copyFields(account, ['account', 'accountName', 'bank', 'remark']))
+  return form
+}
+
 export default {
   name: 'CustomerForm',
   components: { IndustrySelect, RegionSelect },
   props: {
     isUpdate: { type: Boolean, default: false },
-    updateRow: { type: Object, default: () => ({}) }
+    updateRow: { type: Object, default: () => ({}) },
+    copySourceId: { type: [Number, String], default: null }
   },
   data() {
     return {
       loading: false,
+      loadFailed: false,
       saving: false,
       form: emptyForm(),
       owners: [],
@@ -259,8 +281,9 @@ export default {
     this.loadOwners()
     if (this.isUpdate && this.updateRow.id) {
       this.loadCustomer(this.updateRow.id)
-    } else if (this.$store.getters.userInfo?.userId) {
-      this.form.ownerUserId = this.$store.getters.userInfo.userId
+    } else {
+      this.form.ownerUserId = this.$store.getters.userInfo?.userId || null
+      if (this.copySourceId) this.loadCustomer(this.copySourceId)
     }
   },
   methods: {
@@ -277,9 +300,13 @@ export default {
     },
     loadCustomer(id) {
       this.loading = true
-      getCustomer(id)
+      this.loadFailed = false
+      return getCustomer(id)
         .then(res => {
-          const data = res.data || {}
+          const source = res.data
+          if (!source?.id) throw new Error('无法读取客户档案，请关闭后重试')
+          const copying = this.copySourceId && !this.isUpdate
+          const data = copying ? { ...copyCustomerForm(source), ownerUserId: this.form.ownerUserId } : source
           this.form = {
             ...emptyForm(),
             ...data,
@@ -291,6 +318,10 @@ export default {
             sealMerchantAccounts: data.sealMerchantAccounts || [],
             collaboratorIds: (data.collaborators || []).map(item => item.userId)
           }
+        })
+        .catch(error => {
+          this.loadFailed = true
+          this.$message.error(error.message || '读取客户档案失败，请关闭后重试')
         })
         .finally(() => {
           this.loading = false
@@ -321,6 +352,7 @@ export default {
       })
     },
     handleSubmit() {
+      if (this.loading || this.loadFailed || this.saving) return
       this.$refs.form.validate(valid => {
         if (!valid) return
         if (this.form.sealMerchantUsers.some(contact => !contact.name)) {

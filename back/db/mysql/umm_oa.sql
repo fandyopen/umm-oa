@@ -1794,13 +1794,13 @@ INSERT INTO sys_module (module_id, tenant_id, parent_id, module_name, route_name
 ON DUPLICATE KEY UPDATE module_name = VALUES(module_name), parent_id = VALUES(parent_id), route_name = VALUES(route_name), path = VALUES(path), component = VALUES(component), icon = VALUES(icon), module_sort = VALUES(module_sort), hidden = VALUES(hidden), perms = VALUES(perms), has_flow = VALUES(has_flow), flow_conditions = VALUES(flow_conditions), no_cache = VALUES(no_cache), is_app = VALUES(is_app), is_frame = VALUES(is_frame), query = VALUES(query), redirect = VALUES(redirect), status = VALUES(status);
 INSERT INTO sys_module (module_id, tenant_id, parent_id, module_name, route_name, path, component, icon, module_sort, hidden, perms, has_flow, flow_conditions, no_cache, is_app, is_frame, query, redirect, status) VALUES (340785, 1, 340340, '抄送我的', 'Copy', 'copy', 'eos/todoItem/copy/index', 'iconfont-tijiao', 4, 0, '', 1, '', 0, '', '', '', '', '0')
 ON DUPLICATE KEY UPDATE module_name = VALUES(module_name), parent_id = VALUES(parent_id), route_name = VALUES(route_name), path = VALUES(path), component = VALUES(component), icon = VALUES(icon), module_sort = VALUES(module_sort), hidden = VALUES(hidden), perms = VALUES(perms), has_flow = VALUES(has_flow), flow_conditions = VALUES(flow_conditions), no_cache = VALUES(no_cache), is_app = VALUES(is_app), is_frame = VALUES(is_frame), query = VALUES(query), redirect = VALUES(redirect), status = VALUES(status);
-INSERT INTO sys_module (module_id, tenant_id, parent_id, module_name, route_name, path, component, icon, module_sort, hidden, perms, has_flow, flow_conditions, no_cache, is_app, is_frame, query, redirect, status) VALUES (340310, 1, 0, '客户管理', 'CRM', '/crm', 'Layout', 'iconfont-xiaoshouloudou', 1, 0, '', 1, '', 0, '', '', '', 'noRedirect', '0')
+INSERT INTO sys_module (module_id, tenant_id, parent_id, module_name, route_name, path, component, icon, module_sort, hidden, perms, has_flow, flow_conditions, no_cache, is_app, is_frame, query, redirect, status) VALUES (340310, 1, 0, '客户与合同管理', 'CRM', '/crm', 'Layout', 'iconfont-xiaoshouloudou', 1, 0, '', 1, '', 0, '', '', '', 'noRedirect', '0')
 ON DUPLICATE KEY UPDATE module_name = VALUES(module_name), parent_id = VALUES(parent_id), route_name = VALUES(route_name), path = VALUES(path), component = VALUES(component), icon = VALUES(icon), module_sort = VALUES(module_sort), hidden = VALUES(hidden), perms = VALUES(perms), has_flow = VALUES(has_flow), flow_conditions = VALUES(flow_conditions), no_cache = VALUES(no_cache), is_app = VALUES(is_app), is_frame = VALUES(is_frame), query = VALUES(query), redirect = VALUES(redirect), status = VALUES(status);
 INSERT INTO sys_module (module_id, tenant_id, parent_id, module_name, route_name, path, component, icon, module_sort, hidden, perms, has_flow, flow_conditions, no_cache, is_app, is_frame, query, redirect, status) VALUES (340590, 1, 340310, '商机管理', 'Business-mange', 'opportunities', 'eos/business/index', 'iconfont-shuju_shangji_shangjimingcheng_huaban1', 2, 0, 'project:business:list', 1, '', 0, '', '', '', '', '0')
 ON DUPLICATE KEY UPDATE module_name = VALUES(module_name), parent_id = VALUES(parent_id), route_name = VALUES(route_name), path = VALUES(path), component = VALUES(component), icon = VALUES(icon), module_sort = VALUES(module_sort), hidden = VALUES(hidden), perms = VALUES(perms), has_flow = VALUES(has_flow), flow_conditions = VALUES(flow_conditions), no_cache = VALUES(no_cache), is_app = VALUES(is_app), is_frame = VALUES(is_frame), query = VALUES(query), redirect = VALUES(redirect), status = VALUES(status);
-INSERT INTO sys_module (module_id, tenant_id, parent_id, module_name, route_name, path, component, icon, module_sort, hidden, perms, has_flow, flow_conditions, no_cache, is_app, is_frame, query, redirect, status) VALUES (340644, 1, 340310, '客户分析', 'CrmAnalysis', 'analysis', 'eos/crm/analysis/index', 'iconfont-chengbenfenxi-', 3, 0, 'project:analysis:list', 0, '', 0, '', '', '', '', '0')
+INSERT INTO sys_module (module_id, tenant_id, parent_id, module_name, route_name, path, component, icon, module_sort, hidden, perms, has_flow, flow_conditions, no_cache, is_app, is_frame, query, redirect, status) VALUES (340644, 1, 340310, '客户分析', 'CrmAnalysis', 'analysis', 'eos/crm/analysis/index', 'iconfont-chengbenfenxi-', 4, 0, 'project:analysis:list', 0, '', 0, '', '', '', '', '0')
 ON DUPLICATE KEY UPDATE module_name = VALUES(module_name), parent_id = VALUES(parent_id), route_name = VALUES(route_name), path = VALUES(path), component = VALUES(component), icon = VALUES(icon), module_sort = VALUES(module_sort), hidden = VALUES(hidden), perms = VALUES(perms), has_flow = VALUES(has_flow), flow_conditions = VALUES(flow_conditions), no_cache = VALUES(no_cache), is_app = VALUES(is_app), is_frame = VALUES(is_frame), query = VALUES(query), redirect = VALUES(redirect), status = VALUES(status);
-INSERT INTO sys_module (module_id, tenant_id, parent_id, module_name, route_name, path, component, icon, module_sort, hidden, perms, has_flow, flow_conditions, no_cache, is_app, is_frame, query, redirect, status) VALUES (340352, 1, 340310, '客户档案', 'Customers', 'customers', 'eos/crm/customer/index', 'iconfont-xiaoshou', 1, 0, 'project:merchant:list', 1, '', 0, '', '', '', '', '0')
+INSERT INTO sys_module (module_id, tenant_id, parent_id, module_name, route_name, path, component, icon, module_sort, hidden, perms, has_flow, flow_conditions, no_cache, is_app, is_frame, query, redirect, status) VALUES (340352, 1, 340310, '客户档案', 'Customers', 'customers', 'eos/crm/customer/index', 'iconfont-kehuguanli', 1, 0, 'project:merchant:list', 1, '', 0, '', '', '', '', '0')
 ON DUPLICATE KEY UPDATE module_name = VALUES(module_name), parent_id = VALUES(parent_id), route_name = VALUES(route_name), path = VALUES(path), component = VALUES(component), icon = VALUES(icon), module_sort = VALUES(module_sort), hidden = VALUES(hidden), perms = VALUES(perms), has_flow = VALUES(has_flow), flow_conditions = VALUES(flow_conditions), no_cache = VALUES(no_cache), is_app = VALUES(is_app), is_frame = VALUES(is_frame), query = VALUES(query), redirect = VALUES(redirect), status = VALUES(status);
 INSERT INTO sys_module (module_id, tenant_id, parent_id, module_name, route_name, path, component, icon, module_sort, hidden, perms, has_flow, flow_conditions, no_cache, is_app, is_frame, query, redirect, status) VALUES (340309, 1, 0, '系统', 'System', '/system', 'Layout', 'iconfont-xitongguanli1', 8, 0, '', 1, '', 0, '', '', '', 'noRedirect', '0')
 ON DUPLICATE KEY UPDATE module_name = VALUES(module_name), parent_id = VALUES(parent_id), route_name = VALUES(route_name), path = VALUES(path), component = VALUES(component), icon = VALUES(icon), module_sort = VALUES(module_sort), hidden = VALUES(hidden), perms = VALUES(perms), has_flow = VALUES(has_flow), flow_conditions = VALUES(flow_conditions), no_cache = VALUES(no_cache), is_app = VALUES(is_app), is_frame = VALUES(is_frame), query = VALUES(query), redirect = VALUES(redirect), status = VALUES(status);
@@ -1810,7 +1810,7 @@ INSERT INTO sys_module (module_id, tenant_id, parent_id, module_name, route_name
 ON DUPLICATE KEY UPDATE module_name = VALUES(module_name), parent_id = VALUES(parent_id), route_name = VALUES(route_name), path = VALUES(path), component = VALUES(component), icon = VALUES(icon), module_sort = VALUES(module_sort), hidden = VALUES(hidden), perms = VALUES(perms), has_flow = VALUES(has_flow), flow_conditions = VALUES(flow_conditions), no_cache = VALUES(no_cache), is_app = VALUES(is_app), is_frame = VALUES(is_frame), query = VALUES(query), redirect = VALUES(redirect), status = VALUES(status);
 INSERT INTO sys_module (module_id, tenant_id, parent_id, module_name, route_name, path, component, icon, module_sort, hidden, perms, has_flow, flow_conditions, no_cache, is_app, is_frame, query, redirect, status) VALUES (340314, 1, 340309, '基础数据', 'Dict', 'dict', 'system/dict/index', 'iconfont-xiangmuzidian', 3, 0, 'system:dict:list', 1, '', 0, '', '', '', '', '0')
 ON DUPLICATE KEY UPDATE module_name = VALUES(module_name), parent_id = VALUES(parent_id), route_name = VALUES(route_name), path = VALUES(path), component = VALUES(component), icon = VALUES(icon), module_sort = VALUES(module_sort), hidden = VALUES(hidden), perms = VALUES(perms), has_flow = VALUES(has_flow), flow_conditions = VALUES(flow_conditions), no_cache = VALUES(no_cache), is_app = VALUES(is_app), is_frame = VALUES(is_frame), query = VALUES(query), redirect = VALUES(redirect), status = VALUES(status);
-INSERT INTO sys_module (module_id, tenant_id, parent_id, module_name, route_name, path, component, icon, module_sort, hidden, perms, has_flow, flow_conditions, no_cache, is_app, is_frame, query, redirect, status) VALUES (340771, 1, 340309, '流程设置', 'Module_manage', 'module_manage', 'system/menu/index', 'iconfont-mokuai', 4, 0, 'sys:module', 1, '', 0, '', '', '', '', '0')
+INSERT INTO sys_module (module_id, tenant_id, parent_id, module_name, route_name, path, component, icon, module_sort, hidden, perms, has_flow, flow_conditions, no_cache, is_app, is_frame, query, redirect, status) VALUES (340771, 1, 340309, '流程设置', 'Module_manage', 'module_manage', 'system/menu/index', 'iconfont-mokuai', 4, 1, 'sys:module', 1, '', 0, '', '', '', '/system/module', '0')
 ON DUPLICATE KEY UPDATE module_name = VALUES(module_name), parent_id = VALUES(parent_id), route_name = VALUES(route_name), path = VALUES(path), component = VALUES(component), icon = VALUES(icon), module_sort = VALUES(module_sort), hidden = VALUES(hidden), perms = VALUES(perms), has_flow = VALUES(has_flow), flow_conditions = VALUES(flow_conditions), no_cache = VALUES(no_cache), is_app = VALUES(is_app), is_frame = VALUES(is_frame), query = VALUES(query), redirect = VALUES(redirect), status = VALUES(status);
 INSERT INTO sys_module (module_id, tenant_id, parent_id, module_name, route_name, path, component, icon, module_sort, hidden, perms, has_flow, flow_conditions, no_cache, is_app, is_frame, query, redirect, status) VALUES (340315, 1, 340309, '参数设置', 'Config', 'config', 'system/config/index', 'iconfont-canshupeizhi', 7, 0, 'system:config:list', 1, '', 0, '', '', '', '', '0')
 ON DUPLICATE KEY UPDATE module_name = VALUES(module_name), parent_id = VALUES(parent_id), route_name = VALUES(route_name), path = VALUES(path), component = VALUES(component), icon = VALUES(icon), module_sort = VALUES(module_sort), hidden = VALUES(hidden), perms = VALUES(perms), has_flow = VALUES(has_flow), flow_conditions = VALUES(flow_conditions), no_cache = VALUES(no_cache), is_app = VALUES(is_app), is_frame = VALUES(is_frame), query = VALUES(query), redirect = VALUES(redirect), status = VALUES(status);
@@ -1832,7 +1832,21 @@ INSERT INTO sys_module (module_id, tenant_id, parent_id, module_name, route_name
 ON DUPLICATE KEY UPDATE module_name = VALUES(module_name), parent_id = VALUES(parent_id), route_name = VALUES(route_name), path = VALUES(path), component = VALUES(component), icon = VALUES(icon), module_sort = VALUES(module_sort), hidden = VALUES(hidden), perms = VALUES(perms), has_flow = VALUES(has_flow), flow_conditions = VALUES(flow_conditions), no_cache = VALUES(no_cache), is_app = VALUES(is_app), is_frame = VALUES(is_frame), query = VALUES(query), redirect = VALUES(redirect), status = VALUES(status);
 INSERT INTO sys_module (module_id, tenant_id, parent_id, module_name, route_name, path, component, icon, module_sort, hidden, perms, has_flow, flow_conditions, no_cache, is_app, is_frame, query, redirect, status) VALUES (341100, 1, 340309, '使用文档', 'Docs', 'docs', 'docs/index', 'iconfont-bangzhu', 99, 1, 'system:docs:list', 0, '', 0, '', '', '', '', '0')
 ON DUPLICATE KEY UPDATE module_name = VALUES(module_name), parent_id = VALUES(parent_id), route_name = VALUES(route_name), path = VALUES(path), component = VALUES(component), icon = VALUES(icon), module_sort = VALUES(module_sort), hidden = VALUES(hidden), perms = VALUES(perms), has_flow = VALUES(has_flow), flow_conditions = VALUES(flow_conditions), no_cache = VALUES(no_cache), is_app = VALUES(is_app), is_frame = VALUES(is_frame), query = VALUES(query), redirect = VALUES(redirect), status = VALUES(status);
-INSERT INTO sys_module (module_id, tenant_id, parent_id, module_name, route_name, path, component, icon, module_sort, hidden, perms, has_flow, flow_conditions, no_cache, is_app, is_frame, query, redirect, status) VALUES (341101, 1, 340310, '风险提醒', 'CrmRisks', 'risks', 'eos/crm/risk/index', 'iconfont-yujing', 4, 0, 'project:risk:list', 0, '', 0, '', '', '', '', '0')
+INSERT INTO sys_module (module_id, tenant_id, parent_id, module_name, route_name, path, component, icon, module_sort, hidden, perms, has_flow, flow_conditions, no_cache, is_app, is_frame, query, redirect, status) VALUES (340772, 1, 340309, '模块管理', 'ModuleManage', 'module', 'system/module/index', 'iconfont-mokuai', 2, 0, 'sys:module', 0, '', 0, '', '', '', '', '0')
+ON DUPLICATE KEY UPDATE module_name = VALUES(module_name), parent_id = VALUES(parent_id), route_name = VALUES(route_name), path = VALUES(path), component = VALUES(component), icon = VALUES(icon), module_sort = VALUES(module_sort), hidden = VALUES(hidden), perms = VALUES(perms), has_flow = VALUES(has_flow), flow_conditions = VALUES(flow_conditions), no_cache = VALUES(no_cache), is_app = VALUES(is_app), is_frame = VALUES(is_frame), query = VALUES(query), redirect = VALUES(redirect), status = VALUES(status);
+INSERT INTO sys_module (module_id, tenant_id, parent_id, module_name, route_name, path, component, icon, module_sort, hidden, perms, has_flow, flow_conditions, no_cache, is_app, is_frame, query, redirect, status) VALUES (341101, 1, 340310, '风险提醒', 'CrmRisks', 'risks', 'eos/crm/risk/index', 'iconfont-jinggao', 5, 0, 'project:risk:list', 0, '', 0, '', '', '', '', '0')
+ON DUPLICATE KEY UPDATE module_name = VALUES(module_name), parent_id = VALUES(parent_id), route_name = VALUES(route_name), path = VALUES(path), component = VALUES(component), icon = VALUES(icon), module_sort = VALUES(module_sort), hidden = VALUES(hidden), perms = VALUES(perms), has_flow = VALUES(has_flow), flow_conditions = VALUES(flow_conditions), no_cache = VALUES(no_cache), is_app = VALUES(is_app), is_frame = VALUES(is_frame), query = VALUES(query), redirect = VALUES(redirect), status = VALUES(status);
+INSERT INTO sys_module (module_id, tenant_id, parent_id, module_name, route_name, path, component, icon, module_sort, hidden, perms, has_flow, flow_conditions, no_cache, is_app, is_frame, query, redirect, status) VALUES (341200, 1, 340310, '合同管理', 'CrmContracts', 'contracts', 'Layout', 'iconfont-hetong', 3, 1, '', 0, '', 1, '', '', '', '/crm/contracts/list', '0')
+ON DUPLICATE KEY UPDATE module_name = VALUES(module_name), parent_id = VALUES(parent_id), route_name = VALUES(route_name), path = VALUES(path), component = VALUES(component), icon = VALUES(icon), module_sort = VALUES(module_sort), hidden = VALUES(hidden), perms = VALUES(perms), has_flow = VALUES(has_flow), flow_conditions = VALUES(flow_conditions), no_cache = VALUES(no_cache), is_app = VALUES(is_app), is_frame = VALUES(is_frame), query = VALUES(query), redirect = VALUES(redirect), status = VALUES(status);
+INSERT INTO sys_module (module_id, tenant_id, parent_id, module_name, route_name, path, component, icon, module_sort, hidden, perms, has_flow, flow_conditions, no_cache, is_app, is_frame, query, redirect, status) VALUES (341201, 1, 340310, '合同列表', 'CrmContractList', 'contracts/list', 'eos/crm/contract/index', 'iconfont-hetong', 3, 0, 'crm:contract:list', 0, '', 1, '', '', '', '', '0')
+ON DUPLICATE KEY UPDATE module_name = VALUES(module_name), parent_id = VALUES(parent_id), route_name = VALUES(route_name), path = VALUES(path), component = VALUES(component), icon = VALUES(icon), module_sort = VALUES(module_sort), hidden = VALUES(hidden), perms = VALUES(perms), has_flow = VALUES(has_flow), flow_conditions = VALUES(flow_conditions), no_cache = VALUES(no_cache), is_app = VALUES(is_app), is_frame = VALUES(is_frame), query = VALUES(query), redirect = VALUES(redirect), status = VALUES(status);
+INSERT INTO sys_module (module_id, tenant_id, parent_id, module_name, route_name, path, component, icon, module_sort, hidden, perms, has_flow, flow_conditions, no_cache, is_app, is_frame, query, redirect, status) VALUES (341202, 1, 341200, '合同审批', 'CrmContractApprovals', 'approvals', 'eos/crm/contract/approvals', 'iconfont-hetong', 2, 1, 'crm:approval:list', 0, '', 1, '', '', '', '', '0')
+ON DUPLICATE KEY UPDATE module_name = VALUES(module_name), parent_id = VALUES(parent_id), route_name = VALUES(route_name), path = VALUES(path), component = VALUES(component), icon = VALUES(icon), module_sort = VALUES(module_sort), hidden = VALUES(hidden), perms = VALUES(perms), has_flow = VALUES(has_flow), flow_conditions = VALUES(flow_conditions), no_cache = VALUES(no_cache), is_app = VALUES(is_app), is_frame = VALUES(is_frame), query = VALUES(query), redirect = VALUES(redirect), status = VALUES(status);
+INSERT INTO sys_module (module_id, tenant_id, parent_id, module_name, route_name, path, component, icon, module_sort, hidden, perms, has_flow, flow_conditions, no_cache, is_app, is_frame, query, redirect, status) VALUES (341203, 1, 341200, '收费条款', 'CrmContractFees', 'fees', 'eos/crm/contract/fees', 'iconfont-hetong', 3, 1, 'crm:fee:list', 0, '', 1, '', '', '', '', '0')
+ON DUPLICATE KEY UPDATE module_name = VALUES(module_name), parent_id = VALUES(parent_id), route_name = VALUES(route_name), path = VALUES(path), component = VALUES(component), icon = VALUES(icon), module_sort = VALUES(module_sort), hidden = VALUES(hidden), perms = VALUES(perms), has_flow = VALUES(has_flow), flow_conditions = VALUES(flow_conditions), no_cache = VALUES(no_cache), is_app = VALUES(is_app), is_frame = VALUES(is_frame), query = VALUES(query), redirect = VALUES(redirect), status = VALUES(status);
+INSERT INTO sys_module (module_id, tenant_id, parent_id, module_name, route_name, path, component, icon, module_sort, hidden, perms, has_flow, flow_conditions, no_cache, is_app, is_frame, query, redirect, status) VALUES (341204, 1, 341200, '合同版本', 'CrmContractVersions', 'versions', 'eos/crm/contract/versions', 'iconfont-hetong', 4, 1, 'crm:version:list', 0, '', 1, '', '', '', '', '0')
+ON DUPLICATE KEY UPDATE module_name = VALUES(module_name), parent_id = VALUES(parent_id), route_name = VALUES(route_name), path = VALUES(path), component = VALUES(component), icon = VALUES(icon), module_sort = VALUES(module_sort), hidden = VALUES(hidden), perms = VALUES(perms), has_flow = VALUES(has_flow), flow_conditions = VALUES(flow_conditions), no_cache = VALUES(no_cache), is_app = VALUES(is_app), is_frame = VALUES(is_frame), query = VALUES(query), redirect = VALUES(redirect), status = VALUES(status);
+INSERT INTO sys_module (module_id, tenant_id, parent_id, module_name, route_name, path, component, icon, module_sort, hidden, perms, has_flow, flow_conditions, no_cache, is_app, is_frame, query, redirect, status) VALUES (341205, 1, 341200, '合同提醒', 'CrmContractReminders', 'reminders', 'eos/crm/contract/reminders', 'iconfont-hetong', 5, 1, 'crm:reminder:list', 0, '', 1, '', '', '', '', '0')
 ON DUPLICATE KEY UPDATE module_name = VALUES(module_name), parent_id = VALUES(parent_id), route_name = VALUES(route_name), path = VALUES(path), component = VALUES(component), icon = VALUES(icon), module_sort = VALUES(module_sort), hidden = VALUES(hidden), perms = VALUES(perms), has_flow = VALUES(has_flow), flow_conditions = VALUES(flow_conditions), no_cache = VALUES(no_cache), is_app = VALUES(is_app), is_frame = VALUES(is_frame), query = VALUES(query), redirect = VALUES(redirect), status = VALUES(status);
 
 
@@ -2651,6 +2665,73 @@ DELETE FROM oa_warehouse;
 DELETE FROM oa_invoice;
 
 DELETE FROM sys_module WHERE module_id IN (77777,340343,340350,340351,340359,340360,340367,340369,340382,340389,340396,340403,340410,340417,340431,340445,340459,340466,340474,340475,340480,340481,340483,340492,340494,340496,340503,340504,340516,340517,340531,340539,340548,340549,340556,340563,340567,340568,340569,340570,340598,340605,340606,340613,340620,340627,340634,340635,340636,340687,340695,340703,340710,340711,340746,340748,340762,340774,340775,340776,340777,340778,340780,340792);
+
+
+CREATE TABLE IF NOT EXISTS oa_crm_contract (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    tenant_id BIGINT NOT NULL DEFAULT 1,
+    customer_id BIGINT NOT NULL,
+    opportunity_id BIGINT,
+    parent_contract_id BIGINT,
+    code VARCHAR(80) NOT NULL UNIQUE,
+    name VARCHAR(200) NOT NULL,
+    service_type VARCHAR(64) NOT NULL,
+    amount DECIMAL(18, 2) NOT NULL DEFAULT 0,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    status VARCHAR(32) NOT NULL DEFAULT 'draft',
+    version_no INT NOT NULL DEFAULT 1,
+    effective_version INT NOT NULL DEFAULT 0,
+    revision INT NOT NULL DEFAULT 0,
+    approval_user_id BIGINT,
+    submit_user_id BIGINT,
+    approval_comment VARCHAR(2000),
+    terms_json TEXT NOT NULL,
+    attachment TEXT,
+    remark VARCHAR(2000),
+    create_by VARCHAR(64),
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME,
+    FOREIGN KEY (customer_id) REFERENCES oa_merchant(id)
+);
+
+CREATE TABLE IF NOT EXISTS oa_crm_contract_version (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    contract_id BIGINT NOT NULL,
+    version_no INT NOT NULL,
+    snapshot_json TEXT NOT NULL,
+    status VARCHAR(32) NOT NULL,
+    submit_user_id BIGINT NOT NULL,
+    approval_user_id BIGINT NOT NULL,
+    approval_comment VARCHAR(2000),
+    submit_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    approval_time DATETIME,
+    signed_date DATE,
+    UNIQUE (contract_id, version_no),
+    FOREIGN KEY (contract_id) REFERENCES oa_crm_contract(id)
+);
+
+CREATE TABLE IF NOT EXISTS oa_crm_contract_receipt (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    contract_id BIGINT NOT NULL,
+    term_key VARCHAR(64) NOT NULL,
+    amount DECIMAL(18, 2) NOT NULL,
+    receipt_date DATE NOT NULL,
+    remark VARCHAR(1000),
+    create_by VARCHAR(64),
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (contract_id) REFERENCES oa_crm_contract(id)
+);
+
+CREATE TABLE IF NOT EXISTS oa_crm_contract_reminder_log (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    contract_id BIGINT NOT NULL,
+    task_id VARCHAR(180) NOT NULL,
+    content VARCHAR(2000) NOT NULL,
+    create_by VARCHAR(64),
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (contract_id) REFERENCES oa_crm_contract(id)
+);
 
 
 SET FOREIGN_KEY_CHECKS = 1;

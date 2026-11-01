@@ -3,7 +3,7 @@ MERGE INTO sys_module (
     icon, module_sort, hidden, perms, has_flow, flow_conditions, no_cache,
     is_app, is_frame, query, redirect, status
 ) KEY (module_id) VALUES (
-    340310, 1, 0, '客户管理', 'CRM', '/crm', 'Layout',
+    340310, 1, 0, '客户与合同管理', 'CRM', '/crm', 'Layout',
     'iconfont-xiaoshouloudou', 1, 0, '', 1, '', 0,
     '', '', '', 'noRedirect', '0'
 );
@@ -34,7 +34,7 @@ MERGE INTO sys_module (
     is_app, is_frame, query, redirect, status
 ) KEY (module_id) VALUES (
     340644, 1, 340310, '客户分析', 'CrmAnalysis', 'analysis', 'eos/crm/analysis/index',
-    'iconfont-chengbenfenxi-', 3, 0, 'project:analysis:list', 0, '', 0,
+    'iconfont-chengbenfenxi-', 4, 0, 'project:analysis:list', 0, '', 0,
     '', '', '', '', '0'
 );
 
@@ -44,7 +44,7 @@ MERGE INTO sys_module (
     is_app, is_frame, query, redirect, status
 ) KEY (module_id) VALUES (
     341101, 1, 340310, '风险提醒', 'CrmRisks', 'risks', 'eos/crm/risk/index',
-    'iconfont-yujing', 4, 0, 'project:risk:list', 0, '', 0,
+    'iconfont-yujing', 5, 0, 'project:risk:list', 0, '', 0,
     '', '', '', '', '0'
 );
 

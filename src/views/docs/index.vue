@@ -17,7 +17,7 @@
           </a-menu-item>
           <a-menu-item key="module-docs">
             <a-icon type="appstore" />
-            系统模块说明
+            模块说明
           </a-menu-item>
         </a-menu>
         <div class="docs-sidebar-note">

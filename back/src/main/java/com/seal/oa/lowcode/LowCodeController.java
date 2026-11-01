@@ -6,6 +6,11 @@ import com.seal.oa.auth.AuthContext;
 import com.seal.oa.common.ApiException;
 import com.seal.oa.common.ApiResult;
 import com.seal.oa.common.JdbcMaps;
+import com.seal.oa.system.ModuleActionService;
+import com.seal.oa.system.SystemService;
+import com.seal.oa.web.ModuleActionRequirement;
+import com.seal.oa.web.RequiresAnyModuleAction;
+import org.springframework.transaction.annotation.Transactional;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -32,17 +37,23 @@ public class LowCodeController {
     private final ObjectMapper objectMapper;
     private final LowCodeWorkflowService workflowService;
     private final ModuleFlowBindingService flowBindingService;
+    private final ModuleActionService moduleActionService;
+    private final SystemService systemService;
 
     public LowCodeController(
             JdbcTemplate jdbc,
             ObjectMapper objectMapper,
             LowCodeWorkflowService workflowService,
-            ModuleFlowBindingService flowBindingService
+            ModuleFlowBindingService flowBindingService,
+            ModuleActionService moduleActionService,
+            SystemService systemService
     ) {
         this.jdbc = jdbc;
         this.objectMapper = objectMapper;
         this.workflowService = workflowService;
         this.flowBindingService = flowBindingService;
+        this.moduleActionService = moduleActionService;
+        this.systemService = systemService;
     }
 
     @GetMapping("/form/list")
@@ -213,6 +224,12 @@ public class LowCodeController {
     }
 
     @PostMapping("/activiti/mongo/setProcess")
+    @Transactional
+    @RequiresAnyModuleAction({
+            @ModuleActionRequirement(moduleId = 340772L, action = "manage"),
+            @ModuleActionRequirement(moduleId = 340772L, action = "workflow"),
+            @ModuleActionRequirement(moduleId = 340771L, action = "manage")
+    })
     public Map<String, Object> setProcess(@RequestBody Map<String, Object> body) {
         long tenantAppId = number(body.get("tenantAppId"), 1L);
         long menuId = number(body.get("menuId"), 0L);
@@ -221,7 +238,28 @@ public class LowCodeController {
             actionCode = "page";
         }
         boolean approvalEnabled = bool(body.get("approvalEnabled"), true);
+        if ("page".equals(actionCode)) throw new ApiException(400, "流程设计已调整到按钮级别，请选择具体按钮");
+        requireDesignModule(menuId);
+        jdbc.queryForList("SELECT action_code FROM sys_module_action WHERE module_id = ? AND action_code = ? FOR UPDATE",
+                menuId, actionCode);
+        moduleActionService.requireFlowDesign(menuId, actionCode);
+        String draftKey = tenantAppId + ":" + menuId + ":" + actionCode;
+        if (bool(body.get("draft"), false)) {
+            String payload = json(Map.of("processData", body.getOrDefault("processData", Map.of()),
+                    "approvalEnabled", approvalEnabled));
+            int saved = jdbc.update("UPDATE biz_record SET payload_json = ?, create_by = ?, update_time = CURRENT_TIMESTAMP WHERE module = 'lowcode:button-flow-draft' AND business_key = ?",
+                    payload, AuthContext.username(), draftKey);
+            if (saved == 0) jdbc.update("INSERT INTO biz_record (module, business_key, payload_json, create_by) VALUES ('lowcode:button-flow-draft', ?, ?, ?)",
+                    draftKey, payload, AuthContext.username());
+            return ApiResult.message("流程草稿已保存，已发布流程不受影响");
+        }
+        if (approvalEnabled) moduleActionService.requireWorkflowExecution(menuId, actionCode);
         String requestedId = value(body.get("_id"), "");
+        Map<String, Object> currentBinding = flowBindingService.binding(tenantAppId, menuId, actionCode);
+        if (!requestedId.isBlank() && !"null".equalsIgnoreCase(requestedId)
+                && !requestedId.equals(String.valueOf(currentBinding.get("processDesignId")))) {
+            throw new ApiException(409, "流程标识与当前按钮不匹配，请重新打开流程设计");
+        }
         String processId = !requestedId.isBlank() && !"null".equalsIgnoreCase(requestedId)
                 ? requestedId
                 : "process-" + tenantAppId + "-" + menuId
@@ -261,10 +299,16 @@ public class LowCodeController {
                 approvalEnabled,
                 AuthContext.username()
         );
+        jdbc.update("DELETE FROM biz_record WHERE module = 'lowcode:button-flow-draft' AND business_key = ?", draftKey);
         return ApiResult.ok(processId);
     }
 
     @PostMapping("/activiti/mongo/detailProcess")
+    @RequiresAnyModuleAction({
+            @ModuleActionRequirement(moduleId = 340772L, action = "manage"),
+            @ModuleActionRequirement(moduleId = 340772L, action = "workflow"),
+            @ModuleActionRequirement(moduleId = 340771L, action = "manage")
+    })
     public Map<String, Object> detailProcess(@RequestBody Map<String, Object> body) {
         long tenantAppId = number(body.get("tenantAppId"), 1L);
         long menuId = number(body.get("menuId"), 0L);
@@ -272,6 +316,8 @@ public class LowCodeController {
         if (actionCode.isBlank()) {
             actionCode = "page";
         }
+        requireDesignModule(menuId);
+        if (!"page".equals(actionCode)) moduleActionService.requireFlowDesign(menuId, actionCode);
         List<Map<String, Object>> rows = JdbcMaps.camelCase(jdbc.queryForList("""
                 SELECT d.id, d.process_data, d.menu_id, d.menu_name, d.update_time,
                        b.id AS binding_id, b.action_code, b.approval_enabled
@@ -284,8 +330,9 @@ public class LowCodeController {
             rows = JdbcMaps.camelCase(jdbc.queryForList("""
                     SELECT id, process_data, menu_id, menu_name, update_time
                     FROM oa_process_design WHERE tenant_app_id = ? AND menu_id = ?
+                      AND id = CONCAT('process-', ?, '-', ?)
                     ORDER BY update_time DESC LIMIT 1
-                    """, tenantAppId, menuId));
+                    """, tenantAppId, menuId, tenantAppId, menuId));
         }
         Map<String, Object> result = ApiResult.ok();
         if (!rows.isEmpty()) {
@@ -297,7 +344,20 @@ public class LowCodeController {
             result.put("actionCode", actionCode);
             result.put("approvalEnabled", bool(rows.get(0).get("approvalEnabled"), true));
         }
+        List<String> drafts = jdbc.queryForList("SELECT payload_json FROM biz_record WHERE module = 'lowcode:button-flow-draft' AND business_key = ? ORDER BY id DESC LIMIT 1",
+                String.class, tenantAppId + ":" + menuId + ":" + actionCode);
+        if (!drafts.isEmpty()) {
+            result.putAll(object(drafts.get(0)));
+            result.put("draft", true);
+            result.put("actionCode", actionCode);
+        }
         return result;
+    }
+
+    private void requireDesignModule(long moduleId) {
+        Long count = jdbc.queryForObject("SELECT COUNT(*) FROM sys_module WHERE module_id = ? AND tenant_id = ?",
+                Long.class, moduleId, systemService.requireCurrentUser().tenantId());
+        if (count == null || count == 0) throw new ApiException(404, "页面不存在或不属于当前企业");
     }
 
     @GetMapping("/activiti/mongoWorkflow/taskWaitCount")

@@ -10,7 +10,22 @@ public interface WorkflowActionHandler {
         return handlerKey != null && handlerKeys().contains(handlerKey);
     }
 
+    default boolean supportsAction(long moduleId, String actionCode) {
+        return true;
+    }
+
     default void validate(WorkflowActionContext context) {
+    }
+
+    default void submitted(WorkflowActionContext context) {
+    }
+
+    default void workflowStateChanged(WorkflowActionContext context, String instanceId,
+                                      String businessStatus, String taskId, String taskName) {
+    }
+
+    default void validateCompletion(WorkflowActionContext context, String instanceId,
+                                    String taskId, boolean pass, String comment, Long operatorId) {
     }
 
     Object execute(WorkflowActionContext context);

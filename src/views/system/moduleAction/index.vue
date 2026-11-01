@@ -3,7 +3,7 @@
     <a-card :bordered="false">
       <div class="action-toolbar">
         <div class="action-toolbar__filter">
-          <span class="action-toolbar__label">业务模块</span>
+          <span class="action-toolbar__label">所属页面</span>
           <a-select
             v-model="moduleId"
             show-search
@@ -17,8 +17,10 @@
           </a-select>
         </div>
         <a-button icon="reload" :loading="loading" @click="loadActions">刷新</a-button>
-        <a-button type="primary" icon="plus" :disabled="!moduleId" @click="openCreate">
-          新增动作
+        <a-input v-model="actionKeyword" allow-clear placeholder="搜索按钮名称 / 动作编码" style="width: 240px" />
+        <a-button icon="setting" @click="openModuleManager">模块管理</a-button>
+        <a-button v-if="canManageStructure" type="primary" icon="plus" :disabled="!moduleId" @click="openCreate">
+          新增按钮
         </a-button>
       </div>
 
@@ -26,20 +28,19 @@
         class="action-hint"
         type="info"
         show-icon
-        message="自定义动作保存在数据库中；内置动作由代码维护，应用启动时自动同步。"
+        message="这里维护页面内的按钮权限与流程动作。新增按钮时，动作编码由系统自动生成并显示。"
+        description="所有按钮统一维护，不再区分内置或自定义。在修改页开启流程设计后，可配置该按钮的审批；关闭会保留原设计与审批记录。"
       />
 
       <a-table
         row-key="actionCode"
         :loading="loading"
         :columns="columns"
-        :data-source="actions"
+        :data-source="filteredActions"
         :pagination="false"
       >
-        <span slot="builtin" slot-scope="text">
-          <a-tag :color="Number(text) === 1 ? 'blue' : 'green'">
-            {{ Number(text) === 1 ? '内置' : '自定义' }}
-          </a-tag>
+        <span slot="workflow" slot-scope="text, record">
+          <a-tag :color="record.flowDesignEnabled ? 'blue' : 'default'">{{ record.workflowState || '未开启' }}</a-tag>
         </span>
         <span slot="status" slot-scope="text">
           <a-tag :color="String(text) === '0' ? 'green' : 'default'">
@@ -51,104 +52,59 @@
           <span v-else class="action-empty">未配置</span>
         </span>
         <span slot="operation" slot-scope="text, record">
-          <a @click="openEdit(record)" v-if="Number(record.builtin) !== 1">修改</a>
-          <a-divider type="vertical" v-if="Number(record.builtin) !== 1" />
+          <a v-if="canManageWorkflow && record.flowDesignEnabled && String(record.status) === '0'" @click="configureWorkflow(record)">流程设计</a>
+          <a-divider v-if="canManageWorkflow && record.flowDesignEnabled && String(record.status) === '0'" type="vertical" />
+          <a v-if="canManageStructure || canManageWorkflow" @click="openEdit(record)">修改</a>
+          <a-divider v-if="canManageStructure" type="vertical" />
           <a-popconfirm
-            v-if="Number(record.builtin) !== 1"
-            title="确认删除该动作？"
+            v-if="canManageStructure"
+            title="确认删除该按钮？已有审批记录会保留。"
             ok-text="删除"
             cancel-text="取消"
             @confirm="removeAction(record)"
           >
             <a class="action-danger">删除</a>
           </a-popconfirm>
-          <span v-if="Number(record.builtin) === 1" class="action-empty">代码维护</span>
         </span>
       </a-table>
     </a-card>
 
-    <a-modal
-      v-model="editorVisible"
-      :title="editing ? '修改动作' : '新增动作'"
-      width="640px"
-      :confirm-loading="saving"
-      @ok="saveAction"
-    >
-      <a-form-model ref="actionForm" :model="form" :rules="rules" :label-col="{ span: 6 }" :wrapper-col="{ span: 16 }">
-        <a-form-model-item label="动作编码" prop="actionCode">
-          <a-input v-model="form.actionCode" :disabled="editing" placeholder="例如 archive" />
-        </a-form-model-item>
-        <a-form-model-item label="动作名称" prop="actionName">
-          <a-input v-model="form.actionName" placeholder="例如 成员归档" />
-        </a-form-model-item>
-        <a-form-model-item label="权限标识" prop="permissionCode">
-          <a-input v-model="form.permissionCode" placeholder="留空自动生成" />
-        </a-form-model-item>
-        <a-form-model-item label="handlerKey" prop="handlerKey">
-          <a-auto-complete
-            v-model="form.handlerKey"
-            :data-source="handlerKeys"
-            placeholder="选择或输入已注册的执行器"
-            style="width: 100%"
-          />
-        </a-form-model-item>
-        <a-form-model-item label="执行器配置" prop="configJson">
-          <a-textarea v-model="form.configJson" :rows="6" placeholder='例如 {"operation":"invite"}' />
-        </a-form-model-item>
-        <a-form-model-item label="状态" prop="status">
-          <a-radio-group v-model="form.status">
-            <a-radio-button value="0">启用</a-radio-button>
-            <a-radio-button value="1">停用</a-radio-button>
-          </a-radio-group>
-        </a-form-model-item>
-      </a-form-model>
-    </a-modal>
+    <module-action-form ref="actionForm" :can-manage-structure="canManageStructure" :can-manage-workflow="canManageWorkflow" @ok="loadActions" />
   </page-header-wrapper>
 </template>
 
 <script>
-import {
-  createModuleAction,
-  deleteModuleAction,
-  getModuleActions,
-  updateModuleAction
-} from '/src/api/system/menu.js'
-import { getWorkflowActionHandlers } from '/src/api/workflow/action.js'
-import { getRouters } from '/src/api/user/module.js'
+import { deleteModuleAction, getModuleManagementTree, getModuleActions } from '/src/api/system/menu.js'
+import ModuleActionForm from '../module/modules/ModuleActionForm.vue'
 
 export default {
   name: 'ModuleActions',
+  components: { ModuleActionForm },
   data() {
     return {
       modules: [],
       moduleId: undefined,
       actions: [],
-      handlerKeys: [],
+      actionKeyword: '',
       loading: false,
-      saving: false,
-      editorVisible: false,
-      editing: false,
-      form: this.emptyForm(),
-      rules: {
-        actionCode: [
-          { required: true, message: '请输入动作编码', trigger: 'blur' },
-          { pattern: /^[a-z][a-z0-9_]{0,31}$/, message: '使用小写字母、数字和下划线', trigger: 'blur' }
-        ],
-        actionName: [{ required: true, message: '请输入动作名称', trigger: 'blur' }],
-        configJson: [{ validator: this.validateConfigJson, trigger: 'blur' }]
-      },
+      canManageStructure: false,
+      canManageWorkflow: false,
       columns: [
         { title: '动作编码', dataIndex: 'actionCode', width: 150 },
-        { title: '动作名称', dataIndex: 'actionName', width: 150 },
+        { title: '按钮 / 动作名称', dataIndex: 'actionName', width: 170 },
         { title: '权限标识', dataIndex: 'permissionCode', ellipsis: true },
         { title: 'handlerKey', dataIndex: 'handlerKey', scopedSlots: { customRender: 'handlerKey' }, width: 190 },
-        { title: '来源', dataIndex: 'builtin', scopedSlots: { customRender: 'builtin' }, width: 90 },
+        { title: '流程状态', scopedSlots: { customRender: 'workflow' }, width: 110 },
         { title: '状态', dataIndex: 'status', scopedSlots: { customRender: 'status' }, width: 90 },
-        { title: '操作', scopedSlots: { customRender: 'operation' }, width: 150, align: 'center' }
+        { title: '操作', scopedSlots: { customRender: 'operation' }, width: 260, align: 'center' }
       ]
     }
   },
   computed: {
+    filteredActions() {
+      const keyword = this.actionKeyword.trim().toLowerCase()
+      return this.actions.filter(item => !keyword || [item.actionName, item.actionCode, item.permissionCode].some(value => String(value || '').toLowerCase().includes(keyword)))
+    },
     moduleOptions() {
       return this.modules.map(item => ({
         ...item,
@@ -158,27 +114,35 @@ export default {
   },
   created() {
     this.loadModules()
-    this.loadHandlers()
   },
   methods: {
-    emptyForm() {
-      return {
-        actionCode: '',
-        actionName: '',
-        permissionCode: '',
-        handlerKey: '',
-        configJson: '{}',
-        status: '0'
-      }
+    configureWorkflow(action) {
+      this.$router.push({ path: '/processDesign', query: {
+        tenantAppId: this.$store.getters.tenantAppId || 1,
+        menuId: this.moduleId,
+        menuName: this.modules.find(item => item.moduleId === Number(this.moduleId))?.moduleName || '业务模块',
+        actionCode: action.actionCode
+      } })
+    },
+    openModuleManager() {
+      this.$router.push({
+        path: '/system/module',
+        query: this.moduleId ? { moduleId: this.moduleId } : {}
+      })
     },
     async loadModules() {
-      const response = await getRouters()
+      const response = await getModuleManagementTree()
+      this.canManageStructure = response.canManageStructure === true
+      this.canManageWorkflow = response.canManageWorkflow === true
       const rows = []
       const walk = (nodes, parentName = '') => {
         ;(nodes || []).forEach(node => {
-          const nodeTitle = node.meta?.title || node.moduleName || node.name
+          if (node.nodeType === 'action') {
+            return
+          }
+          const nodeTitle = node.moduleName
           const displayName = parentName ? `${parentName} / ${nodeTitle}` : nodeTitle
-          if (node.moduleId && node.component && !['Layout', 'ParentView'].includes(node.component)) {
+          if (node.moduleId && node.menuType === 'C') {
             rows.push({
               moduleId: Number(node.moduleId),
               moduleName: nodeTitle,
@@ -193,12 +157,9 @@ export default {
       const queryModuleId = Number(this.$route.query.moduleId || 0)
       this.moduleId = queryModuleId || rows.find(item => item.moduleId === 341001)?.moduleId || rows[0]?.moduleId
       if (this.moduleId) {
-        this.loadActions()
+        await this.loadActions()
+        this.openRequestedEditor()
       }
-    },
-    async loadHandlers() {
-      const response = await getWorkflowActionHandlers()
-      this.handlerKeys = response.data || []
     },
     async loadActions() {
       if (!this.moduleId) {
@@ -214,6 +175,7 @@ export default {
       }
     },
     handleModuleChange(moduleId) {
+      this.actionKeyword = ''
       this.$router.replace({
         query: {
           ...this.$route.query,
@@ -222,57 +184,34 @@ export default {
       })
       this.loadActions()
     },
+    openRequestedEditor() {
+      if (String(this.$route.query.create) === '1' && this.canManageStructure) {
+        this.openCreate()
+        return
+      }
+      const actionCode = this.$route.query.actionCode
+      if (!actionCode) {
+        return
+      }
+      const action = this.actions.find(item => item.actionCode === actionCode)
+      if (action && (this.canManageStructure || this.canManageWorkflow)) {
+        this.openEdit(action)
+      }
+    },
     openCreate() {
-      this.editing = false
-      this.form = this.emptyForm()
-      this.editorVisible = true
+      this.$refs.actionForm.handleAdd({ moduleId: this.moduleId,
+        moduleName: this.modules.find(item => item.moduleId === Number(this.moduleId))?.moduleName || '当前页面' })
     },
     openEdit(row) {
-      this.editing = true
-      this.form = {
-        actionCode: row.actionCode,
-        actionName: row.actionName,
-        permissionCode: row.permissionCode || '',
-        handlerKey: row.handlerKey || '',
-        configJson: row.configJson || '{}',
-        status: String(row.status || '0')
-      }
-      this.editorVisible = true
-    },
-    saveAction() {
-      this.$refs.actionForm.validate(async valid => {
-        if (!valid) {
-          return
-        }
-        this.saving = true
-        try {
-          if (this.editing) {
-            await updateModuleAction(this.moduleId, this.form.actionCode, this.form)
-            this.$message.success('动作修改成功')
-          } else {
-            await createModuleAction(this.moduleId, this.form)
-            this.$message.success('动作新增成功')
-          }
-          this.editorVisible = false
-          await this.loadActions()
-        } finally {
-          this.saving = false
-        }
-      })
+      this.$refs.actionForm.handleUpdate({ ...row, moduleId: this.moduleId,
+        moduleName: this.modules.find(item => item.moduleId === Number(this.moduleId))?.moduleName || '当前页面' })
     },
     async removeAction(row) {
       await deleteModuleAction(this.moduleId, row.actionCode)
       this.$message.success('动作已删除')
+      await this.$store.dispatch('BootstrapSession')
       this.loadActions()
     },
-    validateConfigJson(rule, value, callback) {
-      try {
-        JSON.parse(value || '{}')
-        callback()
-      } catch (error) {
-        callback(new Error('请输入有效 JSON'))
-      }
-    }
   }
 }
 </script>
@@ -304,6 +243,8 @@ export default {
 .action-empty {
   color: #999;
 }
+
+
 
 .action-danger {
   color: #ff4d4f;

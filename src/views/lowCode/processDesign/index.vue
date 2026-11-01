@@ -11,29 +11,44 @@
           {{ item.label }}
         </div>
       </div>
-      <el-button size="small" class="publish-btn" @click="publish">发布</el-button>
+      <div class="publish-btn">
+        <el-button size="small" :loading="saving" :disabled="!selectedAction || !!loadError" @click="saveDraft">保存草稿</el-button>
+        <el-button type="primary" size="small" :loading="saving" :disabled="!selectedAction || !!loadError" @click="publish">发布</el-button>
+      </div>
     </header>
     <div class="workflow-actions">
       <span class="workflow-actions__label">
-        {{ $route.query.menuName || '当前模块' }} · 审批触发动作
+        {{ $route.query.menuName || '当前页面' }} · 按钮审批流程
       </span>
-      <a-radio-group
+      <a-select
         :value="actionCode"
-        button-style="solid"
-        @change="event => handleActionChange(event.target.value)"
+        show-search
+        option-filter-prop="children"
+        style="width: 360px"
+        @change="handleActionChange"
       >
-        <a-radio-button v-for="item in actionOptions" :key="item.code" :value="item.code">
-          {{ item.name }}
-        </a-radio-button>
-      </a-radio-group>
-      <div v-if="actionCode !== 'page'" class="workflow-actions__switch">
+        <a-select-option v-for="item in actionOptions" :key="item.code" :value="item.code">
+          {{ item.name }}（{{ item.code }}）
+        </a-select-option>
+      </a-select>
+      <span class="workflow-actions__label">当前动作编码：{{ actionCode }}</span>
+      <div v-if="selectedAction" class="workflow-actions__switch">
         <span>启用审批</span>
         <a-switch v-model="approvalEnabled" size="small" />
       </div>
       <a-button size="small" icon="setting" @click="openActionManager">
-        管理动作
+        修改按钮配置
       </a-button>
     </div>
+    <a-alert v-if="loadError" class="workflow-action-warning" type="warning" show-icon :message="loadError" description="请返回模块管理，在对应按钮的修改页开启流程设计后进入。" />
+    <a-alert
+      v-if="selectedAction && !selectedAction.handlerKey"
+      class="workflow-action-warning"
+      type="warning"
+      show-icon
+      message="该按钮尚未接入业务执行器，可先设计并保存草稿；正式发布启用审批前须完成业务接入。"
+    />
+    <a-alert v-if="mockData && mockData.draft" class="workflow-action-warning" type="info" show-icon message="当前为未发布草稿；保存草稿不会改变已发布流程，发布后新申请使用新配置，进行中的审批不受影响。" />
     <div v-if="mockData" class="page__content">
       <Process ref="processDesign" :conf="mockData.processData" tabName="processDesign" v-show="activeStep === 'processDesign'" />
     </div>
@@ -58,47 +73,58 @@ export default {
     return {
       // 加载字段
       spinning: true,
+      saving: false,
       // 表单字段
       formItems: [],
       activeStep: 'processDesign', // 激活的步骤面板
       steps: [{ label: '流程设计', key: 'processDesign' }],
       mockData: null, // 可选择诸如 $route.param，Ajax获取数据等方式自行注入
-      actionCode: 'page',
+      actionCode: '',
+      loadError: '',
+      loadSequence: 0,
       approvalEnabled: true,
-      workflowActions: []
+      moduleActions: []
     }
   },
   computed: {
     actionOptions() {
-      return [
-        { code: 'page', name: '页面默认审批' },
-        ...this.workflowActions.map(item => ({
+      return this.moduleActions.map(item => ({
           code: item.actionCode,
-          name: item.actionName
-        }))
-      ]
+          name: item.actionName,
+          handlerKey: item.handlerKey
+      }))
+    },
+    selectedAction() {
+      return this.moduleActions.find(item => item.actionCode === this.actionCode)
     }
   },
   methods: {
     changeSteps(item) {
       this.activeStep = item.key
     },
-    publish() {
+    publish() { return this.saveProcess(false) },
+    saveDraft() { return this.saveProcess(true) },
+    async saveProcess(draft) {
+      if (this.saving || !this.selectedAction || this.loadError || !this.$refs.processDesign) return
+      this.saving = true
       const getCmpData = name => this.$refs[name].getData()
       const p3 = getCmpData('processDesign')
-      Promise.all([p3])
+      return Promise.all([p3])
         .then(res => {
           const param = {
             processData: res[0].formData,
             actionCode: this.actionCode,
-            approvalEnabled: this.approvalEnabled
+            approvalEnabled: this.approvalEnabled,
+            draft
           }
-          this.sendToServer(param)
+          return this.sendToServer(param)
         })
         .catch(err => {
           err.target && (this.activeStep = err.target)
           err.msg && this.$message.warning(err.msg)
+          if (!err.msg) this.$message.error(err.message || '流程保存失败')
         })
+        .finally(() => { this.saving = false })
     },
     sendToServer(param) {
       const { menuId, menuName, tenantAppId } = this.$route.query
@@ -112,12 +138,14 @@ export default {
           menuName,
           processData: param.processData,
           actionCode: param.actionCode,
-          approvalEnabled: param.approvalEnabled
+            approvalEnabled: param.approvalEnabled,
+            draft: param.draft
         }
-        setProcess(data).then(res => {
+        return setProcess(data).then(res => {
           if (res.code === 200) {
-            this.$message.success('创建成功')
-            this.$router.go(-1)
+            this.$message.success(param.draft ? '草稿已保存，已发布流程不受影响' : '发布成功')
+            if (param.draft) this.mockData.draft = true
+            else this.$router.go(-1)
           }
         })
         // 否则修改
@@ -129,12 +157,14 @@ export default {
           processData: param.processData,
           actionCode: param.actionCode,
           approvalEnabled: param.approvalEnabled,
+          draft: param.draft,
           _id: this.mockData._id
         }
-        setProcess(data).then(res => {
+        return setProcess(data).then(res => {
           if (res.code === 200) {
-            this.$message.success('编辑成功')
-            this.$router.go(-1)
+            this.$message.success(param.draft ? '草稿已保存，已发布流程不受影响' : '发布成功')
+            if (param.draft) this.mockData.draft = true
+            else this.$router.go(-1)
           }
         })
       }
@@ -191,52 +221,40 @@ export default {
       this.$router.push({
         path: '/system/moduleActions',
         query: {
-          moduleId: this.$route.query.menuId
+          moduleId: this.$route.query.menuId,
+          actionCode: this.actionCode
         }
       })
     },
-    initFlowData() {
-      // 处理formItems
+    async initFlowData() {
+      const sequence = ++this.loadSequence
       this.handleFormItem()
       const { menuId, tenantAppId, actionCode } = this.$route.query
-      this.actionCode = actionCode || 'page'
       this.spinning = true
-      const moduleId = parseInt(menuId)
-      Promise.all([
-        getModuleActions(moduleId, { workflowOnly: true }).catch(error => {
-          this.$message.error(String(error || '审批动作加载失败'))
-          return { data: [] }
-        }),
-        detailProcess({
-          tenantAppId: parseInt(tenantAppId),
-          menuId: moduleId,
-          actionCode: this.actionCode
-        })
-      ]).then(([actionsRes, res]) => {
-        this.workflowActions = actionsRes.data || []
-        // 为空就做新增操作
-        if (!res || !res._id) {
-          GET_MOCK_CONF().then(data => {
-            this.mockData = data
-            this.approvalEnabled = true
-            this.spinning = false
-          })
-        } else {
-          // 否则就是修改
-          // 回显
-          this.mockData = res
-          this.approvalEnabled = res.approvalEnabled !== false
-          this.spinning = false
+      this.loadError = ''
+      this.mockData = null
+      this.moduleActions = []
+      this.actionCode = actionCode || ''
+      try {
+        const moduleId = Number(menuId)
+        if (!Number.isSafeInteger(moduleId) || moduleId <= 0 || !actionCode || actionCode === 'page') {
+          throw new Error('流程设计需要指定按钮，不再使用页面默认审批')
         }
-      })
-      // const formId = this.$route.query.formid
-      // if (this._.isNil(formId) || this._.isEmpty(formId)) {
-      //   GET_MOCK_CONF().then(data => (this.mockData = data))
-      // } else {
-      //   getFormDetail({ formId: this.$route.query.formid, tenantAppId: this.$route.query.id }).then(data => {
-      //     this.mockData = data
-      //   })
-      // }
+        const actionsRes = await getModuleActions(moduleId, { includeDisabled: true })
+        if (sequence !== this.loadSequence) return
+        this.moduleActions = (actionsRes.data || []).filter(item => item.flowDesignEnabled && String(item.status) === '0')
+        if (!this.selectedAction) throw new Error('该按钮不存在、已停用或尚未开启流程设计')
+        const res = await detailProcess({ tenantAppId: Number(tenantAppId) || 1, menuId: moduleId, actionCode })
+        if (sequence !== this.loadSequence) return
+        const data = res && (res._id || res.draft) ? res : await GET_MOCK_CONF()
+        if (sequence !== this.loadSequence) return
+        this.mockData = data
+        this.approvalEnabled = res && (res._id || res.draft) ? res.approvalEnabled !== false : true
+      } catch (error) {
+        if (sequence === this.loadSequence) this.loadError = error.message || String(error || '流程加载失败')
+      } finally {
+        if (sequence === this.loadSequence) this.spinning = false
+      }
     }
   },
   beforeRouteEnter(to, from, next) {
@@ -367,6 +385,10 @@ $header-height = 54px;
     color: #595959;
     font-size: 13px;
   }
+}
+
+.workflow-action-warning {
+  margin: 12px 18px 0;
 }
 
 .publish-btn {

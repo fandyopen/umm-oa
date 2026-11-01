@@ -52,6 +52,7 @@
 <script>
 import store from '/src/store/index.js'
 import { hasModuleAction } from '/src/utils/modulePermission.js'
+import { moduleActionName } from '/src/utils/moduleActionConfig.js'
 
 const ACTION_BY_LABEL = {
   新增: 'add',
@@ -84,6 +85,9 @@ export default {
       return this.actions.filter(item => {
         const action = item.actionCode || ACTION_BY_LABEL[item.label]
         return !action || hasModuleAction(permissions, this.$route.meta, action)
+      }).map(item => {
+        const action = ACTION_BY_LABEL[item.label]
+        return action ? { ...item, label: moduleActionName(this.$route.meta.moduleId, action, item.label) } : item
       })
     },
     // 操作列第一个按钮，是对象

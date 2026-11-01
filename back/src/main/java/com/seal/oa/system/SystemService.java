@@ -2,6 +2,7 @@ package com.seal.oa.system;
 
 import com.seal.oa.auth.AuthContext;
 import com.seal.oa.common.ApiException;
+import com.seal.oa.common.JdbcMaps;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -116,21 +117,24 @@ public class SystemService {
                   AND m.perms <> ''
                   AND m.perms LIKE '%:list'
                 """, String.class, userId);
-        List<String> actionPermissions = jdbc.queryForList("""
-                SELECT DISTINCT ma.permission_code
+        List<Map<String, Object>> actionPermissions = JdbcMaps.camelCase(jdbc.queryForList("""
+                SELECT DISTINCT ma.module_id, ma.action_code, ma.permission_code
                 FROM sys_role_module_action rma
                 JOIN sys_module_action ma
                   ON ma.module_id = rma.module_id AND ma.action_code = rma.action_code
                 JOIN sys_user_role ur ON ur.role_id = rma.role_id
                 JOIN sys_role r ON r.role_id = rma.role_id
                 WHERE ur.user_id = ? AND r.status = '0' AND r.del_flag = '0'
+                  AND ma.status = '0'
                   AND ma.permission_code IS NOT NULL
                   AND ma.permission_code <> ''
                 ORDER BY ma.permission_code
-                """, String.class, userId);
+                """, userId));
         return java.util.stream.Stream.concat(
                         modulePermissions.stream(),
-                        actionPermissions.stream()
+                        actionPermissions.stream().flatMap(row -> java.util.stream.Stream.of(
+                                String.valueOf(row.get("permissionCode")),
+                                "module:" + row.get("moduleId") + ":" + row.get("actionCode")))
                 )
                 .filter(permission -> permission != null && !permission.isBlank())
                 .distinct()
@@ -147,6 +151,7 @@ public class SystemService {
     }
 
     public boolean hasModuleAction(Long userId, long moduleId, String actionCode) {
+        if (moduleActionService.isActionDisabled(moduleId, actionCode)) return false;
         return isUnrestricted(userId)
                 || moduleActionService.hasAction(userId, moduleId, actionCode)
                 || (!"manage".equals(actionCode)
@@ -156,6 +161,20 @@ public class SystemService {
     public boolean hasModuleAccess(Long userId, long moduleId) {
         return isUnrestricted(userId)
                 || moduleActionService.hasModule(userId, moduleId);
+    }
+
+    public List<Map<String, Object>> buttonConfigurations(UserAccount user) {
+        return JdbcMaps.camelCase(jdbc.queryForList("""
+                SELECT a.module_id, a.action_code, a.action_name, a.permission_code,
+                       CASE WHEN m.status = '0' THEN a.status ELSE '1' END AS status
+                FROM sys_module_action a JOIN sys_module m ON m.module_id = a.module_id
+                WHERE m.tenant_id = ? AND (? = 1 OR EXISTS (
+                    SELECT 1 FROM sys_role_module rm
+                    JOIN sys_user_role ur ON ur.role_id = rm.role_id
+                    JOIN sys_role r ON r.role_id = rm.role_id
+                    WHERE ur.user_id = ? AND rm.module_id = m.module_id
+                      AND r.status = '0' AND r.del_flag = '0'))
+                """, user.tenantId(), isUnrestricted(user.userId()) ? 1 : 0, user.userId()));
     }
 
     public boolean isAdmin(Long userId) {

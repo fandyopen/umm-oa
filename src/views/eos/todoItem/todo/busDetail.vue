@@ -1,8 +1,10 @@
 <template>
   <div>
-    <component :is="detailCompName" :row="row" :formId="formId" :formKey="formKey" />
-    <a-divider>审批意见</a-divider>
-    <view-verify :isOnlyShowProcess="isOnlyShowProcess" :isShowReApply="false" :todoItem="todoItem" @getList="handleGetList" @delegateTask="handleDelegateTask" @close="handleClose" />
+    <component :is="detailCompName" :row="row" :formId="formId" :formKey="formKey" :todo-item="todoItem" @changed="handleGetList" @close="handleClose" />
+    <template v-if="!['crmRisk', 'crmContractApproval'].includes(todoItem.businessType)">
+      <a-divider>审批意见</a-divider>
+      <view-verify :isOnlyShowProcess="isOnlyShowProcess" :isShowReApply="false" :todoItem="todoItem" :allowDelegate="!(todoItem.businessType === 'workflowAction' && row && row.contractId)" @getList="handleGetList" @delegateTask="handleDelegateTask" @close="handleClose" />
+    </template>
   </div>
 </template>
 
@@ -11,6 +13,7 @@ import ViewVerify from '/src/components/Activiti/ViewVerify/index.vue'
 import UserSelect from '/src/components/Activiti/UserSelect'
 import LowCodeTodoDetail from '/src/views/lowCode/todoDetail.vue'
 import WorkflowActionTodoDetail from '/src/views/workflow/todoDetail.vue'
+import CrmTodoDetail from '/src/views/eos/crm/contract/modules/CrmTodoDetail.vue'
 
 export default {
   props: {
@@ -44,7 +47,8 @@ export default {
   components: {
     ViewVerify,
     LowCodeTodoDetail,
-    WorkflowActionTodoDetail
+    WorkflowActionTodoDetail,
+    CrmTodoDetail
   },
   methods: {
     handleGetList() {

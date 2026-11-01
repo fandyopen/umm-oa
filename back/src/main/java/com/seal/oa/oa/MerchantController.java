@@ -37,10 +37,12 @@ public class MerchantController {
 
     private final JdbcTemplate jdbc;
     private final DataScopeService dataScopeService;
+    private final CrmContractService contracts;
 
-    public MerchantController(JdbcTemplate jdbc, DataScopeService dataScopeService) {
+    public MerchantController(JdbcTemplate jdbc, DataScopeService dataScopeService, CrmContractService contracts) {
         this.jdbc = jdbc;
         this.dataScopeService = dataScopeService;
+        this.contracts = contracts;
     }
 
     @GetMapping("/project/merchant/list")
@@ -275,6 +277,7 @@ public class MerchantController {
     public Map<String, Object> update(@RequestBody Map<String, Object> body) {
         long id = number(body.get("id"), 0L);
         requireAccessibleMerchant(id);
+        if ("1".equals(String.valueOf(body.get("publicPool")))) contracts.requireReleasable(id);
         validateDuplicate(body, id);
         long ownerUserId = ownerId(body);
         requireOwnerAccess(ownerUserId);
@@ -320,6 +323,8 @@ public class MerchantController {
         jdbc.update("DELETE FROM oa_merchant_collaborator WHERE merchant_id = ?", id);
         saveChildren(id, body);
         saveCollaborators(id, body);
+        contracts.syncCustomer(id);
+        contracts.syncOwnership(id);
         return ApiResult.ok(id);
     }
 
@@ -328,6 +333,9 @@ public class MerchantController {
     @RequiresModuleAction(moduleId = CUSTOMER_MODULE_ID, action = "remove")
     public Map<String, Object> delete(@PathVariable Long id) {
         Map<String, Object> customer = requireAccessibleMerchant(id);
+        if (jdbc.queryForObject("SELECT COUNT(*) FROM oa_crm_contract WHERE customer_id = ?", Long.class, id) > 0) {
+            throw new ApiException(409, "客户已关联合同，请保留客户档案和合同历史");
+        }
         Long followupCount = jdbc.queryForObject(
                 "SELECT COUNT(*) FROM oa_customer_followup WHERE merchant_id = ?",
                 Long.class,
@@ -414,6 +422,7 @@ public class MerchantController {
                 """, ownerUserId, nickName(ownerUserId), id);
         jdbc.update("DELETE FROM oa_merchant_collaborator WHERE merchant_id = ?", id);
         saveCollaborators(id, body);
+        contracts.syncOwnership(id);
         return ApiResult.ok();
     }
 
@@ -421,6 +430,7 @@ public class MerchantController {
     @RequiresModuleAction(moduleId = CUSTOMER_MODULE_ID, action = "edit")
     public Map<String, Object> release(@PathVariable Long id) {
         requireAccessibleMerchant(id);
+        contracts.requireReleasable(id);
         jdbc.update("""
                 UPDATE oa_merchant SET owner_user_id = NULL, owner_user_name = '',
                     public_pool = '1', assigned_at = CURRENT_TIMESTAMP, update_time = CURRENT_TIMESTAMP
@@ -455,11 +465,13 @@ public class MerchantController {
         }
         requireOwnerAccess(fromUserId);
         requireOwnerAccess(toUserId);
+        List<Long> affectedCustomers = jdbc.queryForList("SELECT id FROM oa_merchant WHERE owner_user_id = ?", Long.class, fromUserId);
         int count = jdbc.update("""
                 UPDATE oa_merchant SET owner_user_id = ?, owner_user_name = ?,
                     assigned_at = CURRENT_TIMESTAMP, update_time = CURRENT_TIMESTAMP
                 WHERE owner_user_id = ?
                 """, toUserId, nickName(toUserId), fromUserId);
+        affectedCustomers.forEach(contracts::syncOwnership);
         return ApiResult.ok(count);
     }
 
@@ -609,6 +621,7 @@ public class MerchantController {
     }
 
     private void decorateCustomer(Map<String, Object> row) {
+        row.put("contractManaged", contracts.managedCustomer(number(row.get("id"), 0L)));
         row.put("publicPool", "1".equals(String.valueOf(row.get("publicPool"))) ? "1" : "0");
         row.put("createTime", formatted(row.get("createTime")));
         row.put("assignedAt", formatted(row.get("assignedAt")));

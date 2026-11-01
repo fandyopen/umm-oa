@@ -146,7 +146,8 @@ public class LowCodeWorkflowService {
             throw new ApiException(400, "菜单、业务类型和业务数据不能为空");
         }
         String normalizedAction = actionCode == null || actionCode.isBlank() ? "page" : actionCode;
-        Map<String, Object> design = publishedDesign(menuId, normalizedAction);
+        Map<String, Object> design = frozenBusinessDesign(businessType, businessId);
+        if (design.isEmpty()) design = publishedDesign(menuId, normalizedAction);
         if (design.isEmpty()) {
             throw new ApiException(400, "该页面尚未发布流程设计");
         }
@@ -299,6 +300,7 @@ public class LowCodeWorkflowService {
         Map<String, Object> variables = object(body.get("variables"));
         String comment = value(variables.get("comment"), value(body.get("comment"), "同意"));
         boolean pass = !"false".equalsIgnoreCase(value(variables.get("pass"), "true"));
+        actionRequestService.validateCompletion(instanceId, taskId, pass, comment, operatorId);
         Timestamp now = Timestamp.valueOf(LocalDateTime.now());
 
         jdbc.update("""
@@ -733,7 +735,8 @@ public class LowCodeWorkflowService {
         String key = value(instance.get("process_key"), "");
         if (key.startsWith(BUSINESS_PREFIX)) {
             BusinessProcessKey businessKey = businessProcessKey(key);
-            Map<String, Object> design = flowBindingService.boundDesign(
+            Map<String, Object> design = frozenBusinessDesign(value(instance.get("business_type"), ""), number(instance.get("business_id"), 0L));
+            if (design.isEmpty()) design = flowBindingService.boundDesign(
                     1L,
                     businessKey.moduleId(),
                     businessKey.actionCode()
@@ -754,6 +757,13 @@ public class LowCodeWorkflowService {
             return result;
         }
         return form(processKey(instance));
+    }
+
+    private Map<String, Object> frozenBusinessDesign(String businessType, long businessId) {
+        if (!"workflowAction".equals(businessType)) return Map.of();
+        Map<String, Object> frozen = object(actionRequestService.payload(businessId).get("_workflowDefinition"));
+        return frozen.isEmpty() ? Map.of() : Map.of("menu_name", value(frozen.get("menuName"), "业务审批"),
+                "process_data", json(frozen.get("processData")));
     }
 
     private String flowName(Map<String, Object> definition) {
@@ -838,6 +848,17 @@ public class LowCodeWorkflowService {
                 UPDATE biz_record SET payload_json = ?, status = ?, update_time = CURRENT_TIMESTAMP
                 WHERE module = ? AND id = ?
                 """, json(payload), storedStatus, module, businessId);
+    }
+
+    public boolean isContractApprovalTask(String taskId) {
+        if (taskId == null || taskId.isBlank()) return false;
+        Long count = jdbc.queryForObject("""
+                SELECT COUNT(*) FROM oa_process_task t
+                JOIN oa_process_instance i ON i.id = t.instance_id AND i.business_type = 'workflowAction'
+                JOIN oa_workflow_request r ON r.id = i.business_id
+                WHERE t.id = ? AND r.module_id = 341201 AND r.action_code = 'submit'
+                """, Long.class, taskId);
+        return count != null && count > 0L;
     }
 
     public boolean isManagedTask(String taskId, String instanceId) {

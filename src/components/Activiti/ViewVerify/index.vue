@@ -20,7 +20,7 @@
       <!-- class="bottom-control" -->
       <a-space>
         <a-button style="background-color: #52c41a; color: white; border-color: #52c41a" @click="complete(true)">同 意</a-button>
-        <a-button type="primary" @click="handleDelegateTaskClick">转 办</a-button>
+        <a-button v-if="allowDelegate" type="primary" @click="handleDelegateTaskClick">转 办</a-button>
         <a-button style="background-color: #fa541c; color: white; border-color: #fa541c" @click="handleRejectTask()">驳 回</a-button>
         <a-button v-if="!pass" style="background-color: #fa541c; color: white; border-color: #fa541c" @click="handleFinishTask()">结束流程</a-button>
         <a-button @click="close">取 消</a-button>
@@ -40,6 +40,7 @@ export default {
     ProcessHistory
   },
   props: {
+    allowDelegate: { type: Boolean, default: true },
     todoItem: {
       type: Object,
       default: () => {}
@@ -90,6 +91,7 @@ export default {
     },
     // 转办
     handleDelegateTaskClick() {
+      if (!this.allowDelegate) return
       this.$emit('delegateTask')
       if (this.isCloseDrawer) {
         this.close()

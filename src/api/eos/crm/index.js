@@ -136,9 +136,10 @@ export function getCustomerAnalysis() {
   })
 }
 
-export function listCustomerRisks() {
+export function listCustomerRisks(params) {
   return request({
     url: '/project/crm/risk/list',
+    params,
     method: 'get'
   })
 }

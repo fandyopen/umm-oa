@@ -450,12 +450,66 @@ public class MetadataController {
 
     @GetMapping("/monitor/logininfor/list")
     @RequiresModuleAction(moduleId = 340319L)
-    public Map<String, Object> loginLogs() {
-        List<Map<String, Object>> rows = JdbcMaps.camelCase(jdbc.queryForList("""
-                SELECT info_id, user_name, ipaddr, browser, os, status, msg, login_time
-                FROM sys_logininfor ORDER BY info_id DESC
-                """));
-        return ApiResult.page(rows, rows.size());
+    public Map<String, Object> loginLogs(@RequestParam Map<String, String> query) {
+        StringBuilder where = new StringBuilder(" WHERE 1 = 1");
+        List<Object> args = new java.util.ArrayList<>();
+        String username = StringUtils.hasText(query.get("userName")) ? query.get("userName") : query.get("loginName");
+        if (StringUtils.hasText(username)) {
+            where.append(" AND LOWER(user_name) LIKE LOWER(?)");
+            args.add("%" + username.trim() + "%");
+        }
+        if (StringUtils.hasText(query.get("ipaddr"))) {
+            where.append(" AND ipaddr LIKE ?");
+            args.add("%" + query.get("ipaddr").trim() + "%");
+        }
+        if (StringUtils.hasText(query.get("status"))) {
+            where.append(" AND status = ?");
+            args.add(query.get("status"));
+        }
+        java.time.LocalDate begin = loginLogDate(query, "beginTime");
+        java.time.LocalDate end = loginLogDate(query, "endTime");
+        if (begin != null && end != null && begin.isAfter(end)) {
+            throw new com.seal.oa.common.ApiException(400, "开始日期不能晚于结束日期");
+        }
+        if (begin != null) {
+            where.append(" AND login_time >= ?");
+            args.add(java.sql.Timestamp.valueOf(begin.atStartOfDay()));
+        }
+        if (end != null) {
+            where.append(" AND login_time < ?");
+            args.add(java.sql.Timestamp.valueOf(end.plusDays(1).atStartOfDay()));
+        }
+        Long total = jdbc.queryForObject("SELECT COUNT(*) FROM sys_logininfor" + where, Long.class, args.toArray());
+        long page = Math.min(Integer.MAX_VALUE, Math.max(1L, number(query.get("pageNum"), 1L)));
+        int size = (int) Math.min(1000L, Math.max(1L, number(query.get("pageSize"), 10L)));
+        args.add(size);
+        args.add((page - 1L) * size);
+        List<Map<String, Object>> rows = JdbcMaps.camelCase(jdbc.queryForList(
+                "SELECT info_id, user_name, ipaddr, browser, os, status, msg, login_time FROM sys_logininfor"
+                        + where + " ORDER BY info_id DESC LIMIT ? OFFSET ?", args.toArray()));
+        rows.forEach(row -> row.put("loginLocation", loginLocation(string(row.get("ipaddr")))));
+        return ApiResult.page(rows, total == null ? 0 : total);
+    }
+
+    private java.time.LocalDate loginLogDate(Map<String, String> query, String key) {
+        String value = query.get(key);
+        if (!StringUtils.hasText(value)) value = query.get("params[" + key + "]");
+        if (!StringUtils.hasText(value)) value = query.get("params." + key);
+        if (!StringUtils.hasText(value)) return null;
+        try {
+            return java.time.LocalDate.parse(value.trim());
+        } catch (java.time.format.DateTimeParseException exception) {
+            throw new com.seal.oa.common.ApiException(400, "登录日期格式应为 YYYY-MM-DD");
+        }
+    }
+
+    private String loginLocation(String ip) {
+        if (List.of("127.0.0.1", "::1", "0:0:0:0:0:0:0:1").contains(ip)) return "本机地址";
+        String[] parts = ip.split("[.]");
+        long second = ip.startsWith("172.") && parts.length > 1 ? number(parts[1], 0L) : 0L;
+        if (ip.startsWith("10.") || ip.startsWith("192.168.") || (second >= 16L && second <= 31L)
+                || ip.startsWith("fc") || ip.startsWith("fd") || ip.startsWith("fe80:")) return "内网地址";
+        return "未解析";
     }
 
     @DeleteMapping({"/monitor/logininfor/{infoId}", "/monitor/logininfor/clean"})

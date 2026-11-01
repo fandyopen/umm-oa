@@ -19,6 +19,7 @@ public class OperationLogInterceptor implements HandlerInterceptor {
             "/cce/captcha/get",
             "/captcha/check",
             "/login",
+            "/login/pwd",
             "/logout",
             "/activiti/process/listHistory",
             "/error"

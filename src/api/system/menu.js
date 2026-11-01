@@ -9,6 +9,14 @@ export function listMenu(query) {
   })
 }
 
+// 查询模块管理树（包含页面和按钮动作）
+export function getModuleManagementTree() {
+  return request({
+    url: '/system/module/management-tree',
+    method: 'get'
+  })
+}
+
 // 查询菜单详细
 export function getMenu(menuId) {
   return request({
@@ -23,6 +31,13 @@ export function getModuleActions(moduleId, query = {}) {
     url: '/system/module/' + moduleId + '/actions',
     method: 'get',
     params: query
+  })
+}
+
+export function getNextModuleActionCode(moduleId) {
+  return request({
+    url: '/system/module/' + moduleId + '/actions/next-code',
+    method: 'get'
   })
 }
 

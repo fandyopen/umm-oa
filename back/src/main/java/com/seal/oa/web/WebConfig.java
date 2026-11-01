@@ -30,6 +30,7 @@ public class WebConfig implements WebMvcConfigurer {
                 .excludePathPatterns(
                         "/captchaImage",
                         "/login",
+                        "/login/pwd",
                         "/logout",
                         "/crm/user/register",
                         "/profile/**",

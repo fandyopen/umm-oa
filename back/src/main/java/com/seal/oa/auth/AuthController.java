@@ -6,6 +6,7 @@ import com.seal.oa.system.ModuleService;
 import com.seal.oa.system.OrganizationPermissionService;
 import com.seal.oa.system.SystemService;
 import com.seal.oa.system.SystemService.UserAccount;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -29,6 +30,7 @@ public class AuthController {
     private final OrganizationPermissionService organizationPermissionService;
     private final JdbcTemplate jdbc;
     private final boolean validateCaptcha;
+    private final LoginLogService loginLogs;
 
     public AuthController(
             CaptchaService captchaService,
@@ -38,6 +40,7 @@ public class AuthController {
             SystemService systemService,
             OrganizationPermissionService organizationPermissionService,
             JdbcTemplate jdbc,
+            LoginLogService loginLogs,
             @Value("${app.captcha.validate:false}") boolean validateCaptcha
     ) {
         this.captchaService = captchaService;
@@ -47,6 +50,7 @@ public class AuthController {
         this.systemService = systemService;
         this.organizationPermissionService = organizationPermissionService;
         this.jdbc = jdbc;
+        this.loginLogs = loginLogs;
         this.validateCaptcha = validateCaptcha;
     }
 
@@ -61,25 +65,37 @@ public class AuthController {
     }
 
     @PostMapping({"/login", "/login/pwd"})
-    public Map<String, Object> login(@RequestBody Map<String, Object> body) {
+    public Map<String, Object> login(@RequestBody Map<String, Object> body, HttpServletRequest request) {
         String username = text(body.get("username"));
-        String password = passwordCipher.decryptIfPossible(text(body.get("password")));
-        if (validateCaptcha && !captchaService.validate(text(body.get("uuid")), text(body.get("code")))) {
-            throw new ApiException(500, "Captcha code is incorrect");
-        }
+        try {
+            String password = passwordCipher.decryptIfPossible(text(body.get("password")));
+            if (validateCaptcha && !captchaService.validate(text(body.get("uuid")), text(body.get("code")))) {
+                throw new ApiException(500, "Captcha code is incorrect");
+            }
 
-        UserAccount user = systemService.findLoginUser(username)
-                .orElseThrow(() -> new ApiException(500, "Invalid username or password"));
-        if (!"0".equals(user.status())) {
-            throw new ApiException(500, "User account is disabled");
-        }
-        if (!systemService.passwordMatches(user, password)) {
-            throw new ApiException(500, "Invalid username or password");
-        }
+            UserAccount user = systemService.findLoginUser(username)
+                    .orElseThrow(() -> new ApiException(500, "Invalid username or password"));
+            if (!"0".equals(user.status())) {
+                throw new ApiException(500, "User account is disabled");
+            }
+            if (!systemService.passwordMatches(user, password)) {
+                throw new ApiException(500, "Invalid username or password");
+            }
 
-        Map<String, Object> result = ApiResult.message("Login successful");
-        result.put("token", jwtService.createToken(user.userId(), user.username()));
-        return result;
+            Map<String, Object> result = ApiResult.message("Login successful");
+            result.put("token", jwtService.createToken(user.userId(), user.username()));
+            loginLogs.record(user.username(), true, "登录成功", request);
+            return result;
+        } catch (ApiException exception) {
+            String reason = switch (exception.getMessage()) {
+                case "Captcha code is incorrect" -> "验证码错误或已过期";
+                case "User account is disabled" -> "账号已停用";
+                case "Invalid username or password" -> "账号或密码错误";
+                default -> "登录失败";
+            };
+            loginLogs.record(username, false, reason, request);
+            throw exception;
+        }
     }
 
     @GetMapping("/getInfo")
@@ -89,6 +105,7 @@ public class AuthController {
         result.put("user", systemService.userDetails(user));
         result.put("roles", systemService.roleKeys(user.userId()));
         result.put("permissions", systemService.permissions(user.userId()));
+        result.put("moduleActions", systemService.buttonConfigurations(user));
         result.put("posts", systemService.posts(user.userId()));
         return result;
     }
@@ -107,6 +124,7 @@ public class AuthController {
         result.put("user", systemService.userDetails(user, roles));
         result.put("roles", roles);
         result.put("permissions", permissions);
+        result.put("moduleActions", systemService.buttonConfigurations(user));
         result.put("posts", systemService.posts(user.userId()));
         result.put("routers", moduleService.routers(
                 user.tenantId(),

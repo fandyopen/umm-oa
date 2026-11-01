@@ -170,6 +170,10 @@ const RouteMenu = {
   methods: {
     ...mapActions(['SetCurrentLevelOneMenu']),
     updateMenu() {
+      if (this.showFirstLevelMenu) {
+        const currentModule = this.menus.find(item => this.$route.matched.some(route => route.name === item.name))
+        if (currentModule && this.currentFirstLevelMenu[0]?.name !== currentModule.name) this.SetCurrentLevelOneMenu([currentModule])
+      }
       const routes = this.$route.matched.concat()
       const { hidden } = this.$route.meta
       if (routes.length >= 3 && hidden) {

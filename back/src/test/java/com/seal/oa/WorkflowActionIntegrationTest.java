@@ -3,6 +3,7 @@ package com.seal.oa;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.seal.oa.system.ModuleActionService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -13,6 +14,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 import static org.hamcrest.Matchers.greaterThan;
@@ -21,6 +23,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -43,9 +47,21 @@ class WorkflowActionIntegrationTest {
     @Autowired
     private ModuleActionService moduleActionService;
 
+    @BeforeEach
+    void ensureReviewerFixture() {
+        Integer count = jdbc.queryForObject("SELECT COUNT(*) FROM sys_user WHERE user_name = '17600000001'", Integer.class);
+        if (count == 0) {
+            jdbc.update("""
+                    INSERT INTO sys_user (user_id, tenant_id, dept_id, user_name, nick_name, phonenumber, password, status, del_flag)
+                    SELECT 9921, 1, dept_id, '17600000001', '流程测试审批人', '17600000001', password, '0', '0'
+                    FROM sys_user WHERE user_id = 4
+                    """);
+        }
+    }
+
     @Test
     void actionApprovalCreatesTodoAndExecutesAfterApproval() throws Exception {
-        String adminToken = login("17630135660");
+        String adminToken = login("13610316814");
         mockMvc.perform(get("/system/module/341001/actions")
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isOk())
@@ -98,6 +114,7 @@ class WorkflowActionIntegrationTest {
                 submitResult.getResponse().getContentAsString()
         ).path("data");
         assertUserCount(phone, 0);
+        updateButton(adminToken, "invite", Map.of("flowDesignEnabled", false), 200);
 
         String approverToken = login("17600000001");
         mockMvc.perform(get("/activiti/mongoWorkflow/taskWaitList")
@@ -125,7 +142,7 @@ class WorkflowActionIntegrationTest {
 
     @Test
     void disabledApprovalExecutesActionImmediately() throws Exception {
-        String adminToken = login("17630135660");
+        String adminToken = login("13610316814");
         publishFlow(adminToken, "invite", false);
         String phone = "13900002222";
 
@@ -149,8 +166,49 @@ class WorkflowActionIntegrationTest {
     }
 
     @Test
+    void moduleButtonCodeIsGeneratedReturnedAndVisibleInRoleTree() throws Exception {
+        String adminToken = login("13610316814");
+        MvcResult previewResult = mockMvc.perform(get("/system/module/341001/actions/next-code")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.actionCode").isNotEmpty())
+                .andReturn();
+        String actionCode = objectMapper.readTree(
+                previewResult.getResponse().getContentAsString()
+        ).path("data").path("actionCode").asText();
+        assertTrue(actionCode.matches("action_\\d{3}"));
+
+        mockMvc.perform(post("/system/module/341001/actions")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "actionName", "生成测试按钮",
+                                "status", "0"
+                        ))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.actionCode").value(actionCode))
+                .andExpect(jsonPath("$.data.actionName").value("生成测试按钮"));
+
+        MvcResult roleTreeResult = mockMvc.perform(get("/app/user/roleMenuTree")
+                        .param("roleId", "19")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andReturn();
+        assertTrue(roleTreeResult.getResponse().getContentAsString(StandardCharsets.UTF_8)
+                .contains("生成测试按钮（" + actionCode + "）"));
+
+        MvcResult managementTreeResult = mockMvc.perform(
+                        get("/system/module/management-tree")
+                                .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andReturn();
+        assertTrue(managementTreeResult.getResponse().getContentAsString(StandardCharsets.UTF_8)
+                .contains("\"actionCode\":\"" + actionCode + "\""));
+    }
+
+    @Test
     void customActionUsesConfiguredHandlerAcrossBootstrap() throws Exception {
-        String adminToken = login("17630135660");
+        String adminToken = login("13610316814");
         mockMvc.perform(post("/system/module/341001/actions")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -221,7 +279,135 @@ class WorkflowActionIntegrationTest {
                 .andExpect(jsonPath("$.code").value(200));
     }
 
+    @Test
+    void editedDefaultButtonAndDesignSwitchSurviveBootstrap() throws Exception {
+        String token = login("13610316814");
+        publishFlow(token, "invite", true);
+        String processId = jdbc.queryForObject("SELECT process_design_id FROM oa_module_action_flow WHERE module_id = 341001 AND action_code = 'invite'", String.class);
+        updateButton(token, "invite", Map.of("actionName", "成员入职申请", "permissionCode", "custom:member:invite",
+                "actionSort", 5, "actionDescription", "可维护按钮", "configJson", "{}", "flowDesignEnabled", false), 200);
+        moduleActionService.refreshModule(341001L, "changed:member:list", "enterprise/index");
+        moduleActionService.bootstrap();
+        Map<String, Object> action = moduleActionService.action(341001L, "invite");
+        assertEquals("成员入职申请", action.get("actionName"));
+        assertEquals("custom:member:invite", action.get("permissionCode"));
+        assertEquals(0L, ((Number) action.get("flowDesignEnabled")).longValue());
+        assertEquals(5L, ((Number) action.get("actionSort")).longValue());
+        assertEquals("可维护按钮", action.get("actionDescription"));
+        mockMvc.perform(post("/activiti/mongo/setProcess").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(Map.of("menuId", 341001, "actionCode", "invite"))))
+                .andExpect(jsonPath("$.code").value(400));
+        updateButton(token, "invite", Map.of("flowDesignEnabled", true), 200);
+        assertEquals(processId, jdbc.queryForObject("SELECT process_design_id FROM oa_module_action_flow WHERE module_id = 341001 AND action_code = 'invite'", String.class));
+        moduleActionService.bootstrap();
+        assertEquals(1L, ((Number) moduleActionService.action(341001L, "invite").get("flowDesignEnabled")).longValue());
+    }
+
+    @Test
+    void deletedDefaultButtonIsNotReseededOrReused() throws Exception {
+        String token = login("13610316814");
+        mockMvc.perform(delete("/system/module/341001/actions/dismiss").header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.code").value(200));
+        moduleActionService.bootstrap();
+        assertTrue(moduleActionService.action(341001L, "dismiss").isEmpty());
+        assertEquals("2", jdbc.queryForObject("SELECT status FROM sys_module_action WHERE module_id = 341001 AND action_code = 'dismiss'", String.class));
+        mockMvc.perform(post("/system/module/341001/actions").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(Map.of("actionCode", "dismiss", "actionName", "重复身份"))))
+                .andExpect(jsonPath("$.code").value(400));
+    }
+
+    @Test
+    void invalidHandlerAndIdentityChangesAreRejected() throws Exception {
+        String token = login("13610316814");
+        updateButton(token, "invite", Map.of("actionCode", "other"), 400);
+        updateButton(token, "invite", Map.of("handlerKey", "missing.handler"), 400);
+        mockMvc.perform(post("/system/module/341001/actions").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(Map.of("actionName", "未接入按钮", "flowDesignEnabled", true))))
+                .andExpect(jsonPath("$.code").value(200));
+        mockMvc.perform(put("/system/module/341201/actions/submit").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(Map.of("handlerKey", "workflow.noop"))))
+                .andExpect(jsonPath("$.code").value(400));
+    }
+
+    @Test
+    void workflowAdministratorCanConfigureFlowsWithoutStructurePermissions() throws Exception {
+        jdbc.update("INSERT INTO sys_user (user_id, tenant_id, dept_id, user_name, nick_name, password, status, del_flag) SELECT 9951, 1, dept_id, '17600000991', '流程配置测试', password, '0', '0' FROM sys_user WHERE user_id = 4");
+        jdbc.update("INSERT INTO sys_role (role_id, role_name, role_key) VALUES (9951, '流程配置测试', 'workflow_config_test')");
+        jdbc.update("INSERT INTO sys_user_role (user_id, role_id) VALUES (9951, 9951)");
+        jdbc.update("INSERT INTO sys_role_module (role_id, module_id) VALUES (9951, 340772)");
+        jdbc.update("INSERT INTO sys_role_module_action (role_id, module_id, action_code) VALUES (9951, 340772, 'workflow')");
+        String token = login("17600000991");
+        mockMvc.perform(get("/system/module/management-tree").header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.canManageStructure").value(false)).andExpect(jsonPath("$.canManageWorkflow").value(true));
+        updateButton(token, "invite", Map.of("flowDesignEnabled", false), 200);
+        updateButton(token, "invite", Map.of("actionName", "禁止修改结构"), 403);
+        publishFlow(token, "invite", true);
+        mockMvc.perform(delete("/system/module/341001/actions/invite").header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.code").value(403));
+        mockMvc.perform(post("/system/module/341001/actions").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(Map.of("actionName", "禁止新增"))))
+                .andExpect(jsonPath("$.code").value(403));
+        mockMvc.perform(put("/system/module").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(Map.of("menuId", 341001))))
+                .andExpect(jsonPath("$.code").value(403));
+    }
+
+    @Test
+    void legacyPageBindingIsPreservedButCannotBePublished() throws Exception {
+        String token = login("13610316814");
+        publishFlow(token, "invite", true);
+        jdbc.update("UPDATE oa_module_action_flow SET action_code = 'page' WHERE module_id = 341001 AND action_code = 'invite'");
+        moduleActionService.bootstrap();
+        assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM oa_module_action_flow WHERE module_id = 341001 AND action_code = 'page'", Integer.class));
+        mockMvc.perform(post("/activiti/mongo/setProcess").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(Map.of("menuId", 341001, "actionCode", "page"))))
+                .andExpect(jsonPath("$.code").value(400));
+    }
+
+    @Test
+    void buttonsWithoutExecutorsCanSaveAndReloadDraftsButCannotEnableApproval() throws Exception {
+        String token = login("13610316814");
+        moduleActionService.createAction(341001L, Map.of("actionCode", "draft_action", "actionName", "待接入按钮", "flowDesignEnabled", true));
+        Map<String, Object> body = Map.of("menuId", 341001, "actionCode", "draft_action", "draft", true,
+                "approvalEnabled", true, "processData", Map.of("nodes", java.util.List.of(Map.of("id", "draft-node"))));
+        mockMvc.perform(post("/activiti/mongo/setProcess").header("Authorization", "Bearer " + token).contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(body)))
+                .andExpect(jsonPath("$.code").value(200));
+        mockMvc.perform(post("/activiti/mongo/detailProcess").header("Authorization", "Bearer " + token).contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(body)))
+                .andExpect(jsonPath("$.draft").value(true)).andExpect(jsonPath("$.processData.nodes[0].id").value("draft-node"));
+        Map<String, Object> published = new java.util.LinkedHashMap<>(body);
+        published.put("draft", false);
+        mockMvc.perform(post("/activiti/mongo/setProcess").header("Authorization", "Bearer " + token).contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(published)))
+                .andExpect(jsonPath("$.code").value(400));
+        assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM oa_module_action_flow WHERE action_code = 'draft_action'", Integer.class));
+    }
+
+    @Test
+    void draftEditsNeverReplaceThePublishedWorkflow() throws Exception {
+        String token = login("13610316814");
+        publishFlow(token, "invite", true);
+        String published = jdbc.queryForObject("SELECT process_data FROM oa_process_design WHERE id = (SELECT process_design_id FROM oa_module_action_flow WHERE module_id = 341001 AND action_code = 'invite')", String.class);
+        mockMvc.perform(post("/activiti/mongo/setProcess").header("Authorization", "Bearer " + token).contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("menuId", 341001, "actionCode", "invite", "draft", true, "approvalEnabled", false, "processData", Map.of("nodes", java.util.List.of())))))
+                .andExpect(jsonPath("$.code").value(200));
+        assertEquals(published, jdbc.queryForObject("SELECT process_data FROM oa_process_design WHERE id = (SELECT process_design_id FROM oa_module_action_flow WHERE module_id = 341001 AND action_code = 'invite')", String.class));
+        assertEquals(1, jdbc.queryForObject("SELECT approval_enabled FROM oa_module_action_flow WHERE module_id = 341001 AND action_code = 'invite'", Integer.class));
+        publishFlow(token, "invite", true);
+        assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM biz_record WHERE module = 'lowcode:button-flow-draft' AND business_key = '1:341001:invite'", Integer.class));
+    }
+
+    private void updateButton(String token, String actionCode, Map<String, Object> body, int code) throws Exception {
+        mockMvc.perform(put("/system/module/341001/actions/" + actionCode).header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.code").value(code));
+    }
+
     private void publishFlow(String token, String actionCode, boolean approvalEnabled) throws Exception {
+        mockMvc.perform(put("/system/module/341001/actions/" + actionCode)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"flowDesignEnabled\":true}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
         Map<String, Object> processData = Map.of(
                 "nodes", java.util.List.of(
                         Map.of("id", "start", "type", "start", "name", "发起人"),

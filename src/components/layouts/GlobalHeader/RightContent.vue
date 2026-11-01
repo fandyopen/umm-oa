@@ -64,7 +64,7 @@ export default {
     }
   },
   computed: {
-    ...mapGetters(['todoTotal', 'addRouters', 'layout', 'permissions', 'roles', 'defaultCompany', 'docsEnabled', 'docsTitle', 'nickname']),
+    ...mapGetters(['todoTotal', 'addRouters', 'layout', 'permissions', 'roles', 'defaultCompany', 'docsEnabled', 'docsTitle', 'nickname', 'currentFirstLevelMenu']),
     ...mapState({
       showFirstLevelMenu: state => state.app.showFirstLevelMenu,
       menuIconHorizontal: state => state.app.menuIconHorizontal
@@ -87,6 +87,12 @@ export default {
         this.permissions.includes('*:*:*') ||
         this.permissions.includes('system:docs:list')
       )
+    }
+  },
+  watch: {
+    currentFirstLevelMenu: {
+      immediate: true,
+      handler(menus) { const item = menus[0]; this.current = item ? [item.meta.moduleId || item.name] : [] }
     }
   },
   mounted() {

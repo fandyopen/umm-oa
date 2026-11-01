@@ -931,7 +931,7 @@ public class SystemController {
     }
 
     @PostMapping("/system/menu")
-    @RequiresModuleAction(moduleId = 340771L, action = "manage")
+    @RequiresModuleAction(moduleId = 340772L, action = "manage")
     public Map<String, Object> createMenu(@RequestBody Map<String, Object> body) {
         jdbc.update("""
                 INSERT INTO sys_menu (menu_name, parent_id, order_num, path, component, menu_type, visible, status, perms, icon)
@@ -952,7 +952,7 @@ public class SystemController {
     }
 
     @PutMapping("/system/menu")
-    @RequiresModuleAction(moduleId = 340771L, action = "manage")
+    @RequiresModuleAction(moduleId = 340772L, action = "manage")
     public Map<String, Object> updateMenu(@RequestBody Map<String, Object> body) {
         jdbc.update("""
                 UPDATE sys_menu SET menu_name = ?, parent_id = ?, order_num = ?, path = ?,
@@ -975,7 +975,7 @@ public class SystemController {
     }
 
     @DeleteMapping("/system/menu/{menuId}")
-    @RequiresModuleAction(moduleId = 340771L, action = "manage")
+    @RequiresModuleAction(moduleId = 340772L, action = "manage")
     public Map<String, Object> deleteMenu(@PathVariable Long menuId) {
         jdbc.update("DELETE FROM sys_menu WHERE menu_id = ?", menuId);
         return ApiResult.ok();

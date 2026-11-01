@@ -27,7 +27,7 @@
 - 后端接口通过 `@RequiresModuleAction` 校验同一套动作，不能通过直接调用接口绕过前端按钮。
 - 项目、合同、采购、资金、报销、仓库等业务路径会按请求方法自动映射模块动作；显式注解优先于路径规则。
 - 停用或软删除的角色不再下发权限，角色删除时会同步清理模块动作和用户关联，旧 `sys_role_menu` 记录不参与鉴权。
-- 流程设置和菜单管理接口使用模块 `340771` 的 `manage` 动作，读取只需要模块访问权限。
+- 模块和按钮结构维护使用模块 340772 的 manage；流程配置使用该模块的 workflow 或 manage，兼容旧 340771/manage 流程授权。
 - 模块授权统一到角色页签；`/app/user/deptMenuTree` 和 `/app/user/userMenuTree` 已停用并返回 `410`。
 - `list:all`、`list:apply` 不属于动作权限，全部/本部门/本部门及以下/仅本人由 `sys_role.data_scope` 在后端查询中过滤。
 - 人事管理使用一级模块 `341000` 和成员模块 `341001`；组织架构与人事管理共用邀请、调整部门和转为离职动作。
@@ -70,14 +70,14 @@ project:business:track
 | --- | --- | --- | --- |
 | 组织机构 | 模块 `340782` | 管理 | 读取由模块授权控制 |
 | 角色权限 | 模块 `340597` | 管理 | 读取由模块授权控制 |
-| 流程设置 | 模块 `340771` | 管理 | 读取由模块授权控制 |
+| 按钮流程配置 | 模块 340772 | workflow / manage | 旧 340771 流程授权保留兼容 |
 | 基础数据 | `system:dict:list` | `system:dict:{add,edit,remove,export}` | 已下发 |
 | 参数设置 | `system:config:list` | `system:config:{add,edit,remove,export}` | 已下发 |
 | 通知公告 | `system:notice:list` | `system:notice:{add,edit,remove}` | 已下发 |
 | 操作日志 | `monitor:operlog:list` | `monitor:operlog:{remove,export}` | 已下发 |
 | 登录日志 | `monitor:logininfor:list` | `monitor:logininfor:{remove,export}` | 已下发 |
 
-`sys:module` 在本地同时控制“角色权限”和“流程设置”页面，以及流程设置中的新增、修改、删除和流程设计配置。
+导航元数据可共享 sys:module 标识，但实际访问和操作权限按模块 ID 与动作编码校验。模块管理是统一配置入口，结构管理 340772/manage 与流程配置 340772/workflow 分开授权。
 
 ## 4. 业务页面权限
 
@@ -124,7 +124,7 @@ project:business:track
 | 权限码 | 映射功能 |
 | --- | --- |
 | `*:*:*` | 全部权限通配符 |
-| `sys:module` | 角色权限、流程设置、模块编辑、流程设计配置 |
+| sys:module | 旧导航兼容标识；模块结构与流程维护分别按模块动作授权 |
 | `eos:budget:integratedQuery` | 预算综合查询 |
 | `eos:contract:integratedQuery` | 合同综合查询 |
 | `eos:earnest:integratedQuery` | 保证金综合查询 |
@@ -158,7 +158,7 @@ project:business:track
 | `system:role:*` | 角色管理旧模板 | 角色授权改走模块 `340597` |
 | `system:dept:*` | 部门管理旧模板 | 组织机构改走模块 `340782` |
 | `system:post:*` | 岗位管理旧模板 | 当前没有对应模块 |
-| `system:menu:*` | 菜单管理旧模板 | 流程设置改走 `sys:module` |
+| `system:menu:*` | 菜单管理旧模板 | 旧页面已跳转模块管理，写操作校验 340772/manage |
 | `project:stage:*` | 阶段管理 | 当前没有对应模块 |
 | `project:warehouse*Detail:*` | 仓库明细 | 当前没有对应模块 |
 

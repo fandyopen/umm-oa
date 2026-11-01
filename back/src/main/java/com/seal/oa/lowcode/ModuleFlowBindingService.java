@@ -35,8 +35,10 @@ public class ModuleFlowBindingService {
                        d.update_time, b.action_code, b.approval_enabled
                 FROM oa_module_action_flow b
                 JOIN oa_process_design d ON d.id = b.process_design_id
+                JOIN sys_module_action a ON a.module_id = b.module_id AND a.action_code = b.action_code
                 WHERE b.tenant_app_id = ? AND b.module_id = ? AND b.action_code = ?
                   AND b.approval_enabled = 1 AND d.status = 'published'
+                  AND a.flow_design_enabled = 1 AND a.status = '0'
                 """, tenantAppId, moduleId, actionCode);
         return rows.isEmpty() ? Map.of() : rows.get(0);
     }

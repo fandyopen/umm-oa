@@ -25,13 +25,13 @@ function flatten(items, parentId = 0, parentName = '') {
       moduleId: Number(item.moduleId || 0),
       parentId: Number(item.parentId ?? parentId),
       parentName,
-      moduleName: item.moduleName || meta.title || item.name || '',
+      moduleName: Number(item.moduleId) === 340771 ? '流程设置' : item.moduleName || meta.title || item.name || '',
       routeName: item.name || '',
       path: item.path || '',
       component: item.component || '',
       icon: meta.icon || '',
       moduleSort: Number(item.moduleSort ?? index),
-      hidden: item.hidden ? 1 : 0,
+      hidden: Number(item.moduleId) === 340771 || item.hidden ? 1 : 0,
       perms: item.perms || '',
       hasFlow: Number(item.hasFlow ?? 1),
       flowConditions: meta.flowConditions ? JSON.stringify(meta.flowConditions) : '',
@@ -39,7 +39,7 @@ function flatten(items, parentId = 0, parentName = '') {
       isApp: item.isApp ?? '',
       isFrame: item.isFrame ?? '',
       query: item.query || '',
-      redirect: item.redirect || '',
+      redirect: Number(item.moduleId) === 340771 ? '/system/module' : item.redirect || '',
       status: item.status || '0'
     })
     if (item.children?.length) {
@@ -52,7 +52,7 @@ flatten(source.data)
 
 const crmModuleOverrides = new Map([
   [340310, {
-    moduleName: '客户管理',
+    moduleName: '客户与合同管理',
     routeName: 'CRM',
     path: '/crm',
     component: 'Layout',
@@ -93,7 +93,7 @@ const crmModuleOverrides = new Map([
     path: 'analysis',
     component: 'eos/crm/analysis/index',
     icon: 'iconfont-chengbenfenxi-',
-    moduleSort: 3,
+    moduleSort: 4,
     hidden: 0,
     perms: 'project:analysis:list',
     hasFlow: 0,
@@ -172,15 +172,36 @@ modules.push(
     status: '0'
   },
   {
+    moduleId: 340772,
+    parentId: 340309,
+    parentName: '系统',
+    moduleName: '模块管理',
+    routeName: 'ModuleManage',
+    path: 'module',
+    component: 'system/module/index',
+    icon: 'iconfont-mokuai',
+    moduleSort: 2,
+    hidden: 0,
+    perms: 'sys:module',
+    hasFlow: 0,
+    flowConditions: '',
+    noCache: 0,
+    isApp: '',
+    isFrame: '',
+    query: '',
+    redirect: '',
+    status: '0'
+  },
+  {
     moduleId: 341101,
     parentId: 340310,
-    parentName: '客户管理',
+    parentName: '客户与合同管理',
     moduleName: '风险提醒',
     routeName: 'CrmRisks',
     path: 'risks',
     component: 'eos/crm/risk/index',
     icon: 'iconfont-jinggao',
-    moduleSort: 4,
+    moduleSort: 5,
     hidden: 0,
     perms: 'project:risk:list',
     hasFlow: 0,
@@ -193,6 +214,21 @@ modules.push(
     status: '0'
   }
 )
+
+const contractModules = [
+  [341200, 340310, '合同管理', 'CrmContracts', 'contracts', 'Layout', '', 3],
+  [341201, 340310, '合同列表', 'CrmContractList', 'contracts/list', 'eos/crm/contract/index', 'crm:contract:list', 3],
+  [341202, 341200, '合同审批', 'CrmContractApprovals', 'approvals', 'eos/crm/contract/approvals', 'crm:approval:list', 2],
+  [341203, 341200, '收费条款', 'CrmContractFees', 'fees', 'eos/crm/contract/fees', 'crm:fee:list', 3],
+  [341204, 341200, '合同版本', 'CrmContractVersions', 'versions', 'eos/crm/contract/versions', 'crm:version:list', 4],
+  [341205, 341200, '合同提醒', 'CrmContractReminders', 'reminders', 'eos/crm/contract/reminders', 'crm:reminder:list', 5]
+]
+for (const [moduleId, parentId, moduleName, routeName, modulePath, component, perms, moduleSort] of contractModules) {
+  modules.push({ moduleId, parentId, parentName: parentId === 340310 ? '客户与合同管理' : '合同管理',
+    moduleName, routeName, path: modulePath, component, perms, moduleSort,
+    icon: 'iconfont-hetong', hidden: moduleId === 341201 ? 0 : 1, hasFlow: 0, flowConditions: '', noCache: 1,
+    isApp: '', isFrame: '', query: '', redirect: moduleId === 341200 ? '/crm/contracts/list' : '', status: '0' })
+}
 
 const columns = [
   'module_id',
@@ -274,7 +310,7 @@ const h2Migration = `CREATE TABLE IF NOT EXISTS sys_module (
 ${h2Sql}
 `
 
-const mysqlSql = modules.map(module =>
+const mysqlStatement = module =>
   `INSERT INTO sys_module (${columns.join(', ')}) VALUES (${values(module)})\n` +
   `ON DUPLICATE KEY UPDATE module_name = VALUES(module_name), parent_id = VALUES(parent_id), ` +
   `route_name = VALUES(route_name), path = VALUES(path), component = VALUES(component), ` +
@@ -282,10 +318,18 @@ const mysqlSql = modules.map(module =>
   `perms = VALUES(perms), has_flow = VALUES(has_flow), flow_conditions = VALUES(flow_conditions), ` +
   `no_cache = VALUES(no_cache), is_app = VALUES(is_app), is_frame = VALUES(is_frame), ` +
   `query = VALUES(query), redirect = VALUES(redirect), status = VALUES(status);`
-).join('\n')
+const mysqlSql = modules.map(mysqlStatement).join('\n')
 
 fs.writeFileSync(h2Output, `${h2Sql}\n`)
+fs.writeFileSync(path.join(projectDir, 'src/main/resources/customer-contract-menu.sql'),
+  modules.filter(module => module.moduleId >= 341200 && module.moduleId <= 341205)
+    .map(module => `MERGE INTO sys_module (${columns.join(', ')}) KEY (module_id) VALUES (${values(module)});`).join('\n') + '\n')
 fs.writeFileSync(mysqlOutput, `${mysqlSql}\n`)
+fs.writeFileSync(path.join(projectDir, 'db/mysql/customer-contract-upgrade.sql'),
+  '-- Incremental customer and contract upgrade; preserves existing business data and role grants.\n' +
+  fs.readFileSync(path.join(projectDir, 'src/main/resources/customer-contract-schema.sql'), 'utf8') + '\n' +
+  modules.filter(module => [340310, 340644, 341101].includes(module.moduleId) || (module.moduleId >= 341200 && module.moduleId <= 341205))
+    .map(mysqlStatement).join('\n') + '\n')
 fs.writeFileSync(migrationOutput, h2Migration)
 console.log(`Generated ${modules.length} modules`)
 console.log(h2Output)

@@ -138,6 +138,53 @@ public class ModuleService {
         return rows;
     }
 
+    public List<Map<String, Object>> managementTree(Long tenantId) {
+        List<Map<String, Object>> rows = moduleRows(tenantId);
+        Map<Long, Map<String, Object>> nodes = new LinkedHashMap<>();
+        for (Map<String, Object> row : rows) {
+            long moduleId = number(row.get("moduleId"));
+            String component = String.valueOf(row.getOrDefault("component", ""));
+            Map<String, Object> node = new LinkedHashMap<>(row);
+            node.put("key", "module:" + moduleId);
+            node.put("nodeType", "module");
+            node.put("menuType", "Layout".equals(component) || "ParentView".equals(component) ? "M" : "C");
+            node.put("children", new ArrayList<Map<String, Object>>());
+            nodes.put(moduleId, node);
+        }
+
+        List<Map<String, Object>> roots = new ArrayList<>();
+        for (Map<String, Object> node : nodes.values()) {
+            long parentId = number(node.get("parentId"));
+            Map<String, Object> parent = nodes.get(parentId);
+            if (parent == null || parentId == 0L) {
+                roots.add(node);
+            } else {
+                @SuppressWarnings("unchecked")
+                List<Map<String, Object>> children = (List<Map<String, Object>>) parent.get("children");
+                children.add(node);
+            }
+        }
+
+        for (Map<String, Object> node : nodes.values()) {
+            long moduleId = number(node.get("moduleId"));
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> children = (List<Map<String, Object>>) node.get("children");
+            int index = 0;
+            for (Map<String, Object> action : moduleActionService.allActions(moduleId)) {
+                Map<String, Object> actionNode = new LinkedHashMap<>(action);
+                actionNode.put("key", "action:" + moduleId + ":" + action.get("actionCode"));
+                actionNode.put("nodeType", "action");
+                actionNode.put("moduleName", node.get("moduleName"));
+                actionNode.put("menuType", "F");
+                actionNode.put("moduleSort", 100000 + index++);
+                actionNode.put("children", List.of());
+                children.add(actionNode);
+            }
+        }
+        sortTree(roots);
+        return roots;
+    }
+
     public Map<String, Object> module(Long moduleId) {
         List<Map<String, Object>> rows = JdbcMaps.camelCase(jdbc.queryForList("""
                 SELECT module_id, tenant_id, parent_id, module_name, route_name, path, component, icon,
@@ -266,9 +313,31 @@ public class ModuleService {
     }
 
     public void delete(Long moduleId) {
-        jdbc.update("DELETE FROM sys_role_module_action WHERE module_id = ?", moduleId);
-        jdbc.update("DELETE FROM sys_module_action WHERE module_id = ?", moduleId);
-        jdbc.update("DELETE FROM sys_module WHERE module_id = ? OR parent_id = ?", moduleId, moduleId);
+        Set<Long> moduleIds = new HashSet<>();
+        moduleIds.add(moduleId);
+        List<Map<String, Object>> rows = JdbcMaps.camelCase(jdbc.queryForList(
+                "SELECT module_id, parent_id FROM sys_module"
+        ));
+        boolean changed;
+        do {
+            changed = false;
+            for (Map<String, Object> row : rows) {
+                long currentId = number(row.get("moduleId"));
+                long parentId = number(row.get("parentId"));
+                if (moduleIds.contains(parentId) && moduleIds.add(currentId)) {
+                    changed = true;
+                }
+            }
+        } while (changed);
+
+        for (Long id : moduleIds) {
+            jdbc.update("DELETE FROM oa_module_action_flow WHERE module_id = ?", id);
+            jdbc.update("DELETE FROM sys_role_module_action WHERE module_id = ?", id);
+            jdbc.update("DELETE FROM sys_role_module WHERE module_id = ?", id);
+            jdbc.update("DELETE FROM sys_dept_module WHERE module_id = ?", id);
+            jdbc.update("DELETE FROM sys_module_action WHERE module_id = ?", id);
+            jdbc.update("DELETE FROM sys_module WHERE module_id = ?", id);
+        }
     }
 
     private boolean isAllowed(Map<String, Object> row, Set<String> permissions) {

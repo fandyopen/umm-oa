@@ -56,6 +56,7 @@ public class WorkflowActionService {
             throw new ApiException(403, "没有该模块的动作权限");
         }
         Map<String, Object> action = action(moduleId, actionCode);
+        moduleActionService.requireWorkflowExecution(moduleId, actionCode);
         String actionName = value(action.get("actionName"), actionCode);
         String handlerKey = value(action.get("handlerKey"), "");
         Map<String, Object> config = object(action.get("configJson"));
@@ -64,8 +65,9 @@ public class WorkflowActionService {
         payload.putIfAbsent("title", title);
         payload.putIfAbsent("actionName", actionName);
 
-        Map<String, Object> binding = flowBindingService.binding(1L, moduleId, actionCode);
-        boolean approvalEnabled = number(binding.get("approvalEnabled"), 0L) == 1L;
+        boolean designEnabled = ModuleActionService.enabled(action.get("flowDesignEnabled"));
+        Map<String, Object> design = flowBindingService.activeDesign(1L, moduleId, actionCode);
+        boolean approvalEnabled = designEnabled && !design.isEmpty();
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("moduleId", moduleId);
         result.put("actionCode", actionCode);
@@ -85,10 +87,10 @@ public class WorkflowActionService {
             return result;
         }
 
-        Map<String, Object> design = flowBindingService.activeDesign(1L, moduleId, actionCode);
-        if (design.isEmpty()) {
-            throw new ApiException(400, "该动作已启用审批，但流程设计尚未发布");
-        }
+        payload.put("_workflowDefinition", Map.of(
+                "menuName", value(design.get("menu_name"), actionName),
+                "processData", object(design.get("process_data"))
+        ));
         long requestId = requestService.create(
                 moduleId,
                 actionCode,

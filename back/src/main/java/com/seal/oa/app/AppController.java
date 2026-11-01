@@ -186,7 +186,10 @@ public class AppController {
                         "id",
                         "action:" + moduleId + ":" + action.get("actionCode")
                 );
-                actionNode.put("label", action.get("actionName"));
+                actionNode.put(
+                        "label",
+                        action.get("actionName") + "（" + action.get("actionCode") + "）"
+                );
                 actionNode.put("moduleId", moduleId);
                 actionNode.put("actionCode", action.get("actionCode"));
                 actionNode.put("isAction", true);

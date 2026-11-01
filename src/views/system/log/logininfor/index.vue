@@ -11,7 +11,7 @@
               </a-form-item>
             </a-col>
             <a-col :md="8" :sm="24">
-              <a-form-item label="使用状态">
+              <a-form-item label="登录状态">
                 <a-select placeholder="请选择状态" v-model="queryParam.status" style="width: 100%" allow-clear>
                   <a-select-option v-for="(d, index) in statusOptions" :key="index" :value="d.dictValue">{{ d.dictLabel }}</a-select-option>
                 </a-select>
@@ -20,11 +20,11 @@
             <template v-if="advanced">
               <a-col :md="8" :sm="24">
                 <a-form-item label="登录名称">
-                  <a-input v-model="queryParam.loginName" style="width: 100%" allow-clear @keyup.enter.native="handleQuery" />
+                  <a-input v-model="queryParam.userName" style="width: 100%" allow-clear @keyup.enter.native="handleQuery" />
                 </a-form-item>
               </a-col>
               <a-col :md="8" :sm="24">
-                <a-form-item label="登陆时间">
+                <a-form-item label="登录时间">
                   <a-range-picker style="width: 100%" v-model="dateRange" valueFormat="YYYY-MM-DD" format="YYYY-MM-DD" allow-clear />
                 </a-form-item>
               </a-col>
@@ -163,9 +163,10 @@ export default {
     /** 查询登录日志列表 */
     getList() {
       this.loading = true
-      list(this.addDateRange(this.queryParam, this.dateRange)).then(response => {
-        this.list = response.rows
-        this.total = response.total
+      return list(this.addDateRange(this.queryParam, this.dateRange)).then(response => {
+        this.list = response.rows || []
+        this.total = response.total || 0
+      }).finally(() => {
         this.loading = false
       })
     },
@@ -191,6 +192,7 @@ export default {
       this.handleQuery()
     },
     onShowSizeChange(current, pageSize) {
+      this.queryParam.pageNum = 1
       this.queryParam.pageSize = pageSize
       this.getList()
     },
