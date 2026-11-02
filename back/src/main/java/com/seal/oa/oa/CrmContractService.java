@@ -55,8 +55,7 @@ public class CrmContractService {
     }
 
     public List<Map<String, Object>> list(Map<String, String> query) {
-        boolean approvalView = "approvals".equals(query.get("view"));
-        return rows().stream().filter(row -> visible(row, approvalView))
+        return rows().stream().filter(this::visible)
                 .filter(row -> blank(query.get("customerId")) || text(row.get("customerId")).equals(query.get("customerId")))
                 .filter(row -> blank(query.get("status")) || text(row.get("status")).equals(query.get("status")))
                 .filter(row -> blank(query.get("keyword")) || (text(row.get("name")) + text(row.get("code"))
@@ -97,15 +96,6 @@ public class CrmContractService {
                     workflowInfo(Map.of("signWorkflowRequestId", requestId), true, "signWorkflowRequestId", "sign")).toList());
         });
         return result;
-    }
-
-    public List<Map<String, Object>> approvers() {
-        return JdbcMaps.camelCase(jdbc.queryForList("""
-                SELECT user_id, nick_name FROM sys_user
-                WHERE status = '0' AND del_flag = '0' ORDER BY user_id
-                """)).stream().filter(row -> number(row.get("userId")) != AuthContext.userId())
-                .filter(row -> system.hasModuleAction(number(row.get("userId")), 341202L, "approve"))
-                .toList();
     }
 
     public List<Map<String, Object>> customerOptions(String name) {
@@ -352,15 +342,8 @@ public class CrmContractService {
         if (!pass && blank(comment)) throw new ApiException(400, "退回时请填写原因");
     }
 
-    public Map<String, Object> approvalTask(long id, Map<String, Object> body) {
-        Map<String, Object> row = require(id, true);
-        expectRevision(row, body);
-        expectStatus(row, "pending");
-        return workflow(id);
-    }
-
     @Transactional
-    public Map<String, Object> approve(long id, Map<String, Object> body) {
+    public Map<String, Object> approveLegacy(long id, Map<String, Object> body) {
         Map<String, Object> row = require(id, true);
         if (!workflow(id).isEmpty()) throw new ApiException(409, "该合同已接入审批流程，请办理当前流程任务");
         expectRevision(row, body);
@@ -542,15 +525,6 @@ public class CrmContractService {
         }
     }
 
-    public List<Map<String, Object>> fees(Map<String, String> query) {
-        List<Map<String, Object>> result = new ArrayList<>();
-        for (Map<String, Object> row : list(query)) {
-            if (number(row.get("effectiveVersion")) == 0) continue;
-            result.addAll(feeRows(row));
-        }
-        return result;
-    }
-
     public List<Map<String, Object>> reminders(boolean scoped) {
         List<Map<String, Object>> result = new ArrayList<>();
         LocalDate today = LocalDate.now(ZONE);
@@ -649,16 +623,15 @@ public class CrmContractService {
         List<Map<String, Object>> result = JdbcMaps.camelCase(jdbc.queryForList(SELECT + " WHERE c.id = ?", id));
         if (result.isEmpty()) throw new ApiException(404, "合同不存在");
         Map<String, Object> row = result.get(0);
-        if (!visible(row, false)) throw new ApiException(403, "无权访问该客户的合同");
+        if (!visible(row)) throw new ApiException(403, "无权访问该客户的合同");
         return row;
     }
 
-    private boolean visible(Map<String, Object> row, boolean approvals) {
+    private boolean visible(Map<String, Object> row) {
         boolean assigned = number(row.get("approvalUserId")) == AuthContext.userId()
                 && system.hasModuleAccess(AuthContext.userId(), 341202L);
         boolean customerRead = List.of(341201L, 341203L, 341204L, 341205L, 341101L).stream()
                 .anyMatch(moduleId -> system.hasModuleAccess(AuthContext.userId(), moduleId));
-        if (approvals) return assigned;
         if ((customerRead && customerVisible(row)) || assigned) return true;
         if (!system.hasModuleAccess(AuthContext.userId(), 341202L)) return false;
         return jdbc.queryForList("SELECT snapshot_json FROM oa_crm_contract_version WHERE contract_id = ?", String.class, row.get("id"))

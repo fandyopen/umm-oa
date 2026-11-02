@@ -6,7 +6,7 @@
           <h2>商机管理</h2>
           <p>将客户潜在需求推进为正式合作，跟踪阶段、预计成交时间和负责人。</p>
         </div>
-        <a-button type="primary" icon="plus" @click="handleAdd" v-hasModuleAction="'add'">新增商机</a-button>
+        <a-button type="primary" icon="plus" @click="handleAdd" v-hasModuleAction="moduleActionBinding('opportunity', 'add')" :loading="!!moduleActionBusy.openForm">新增商机</a-button>
       </div>
 
       <div class="opportunity-filter">
@@ -31,7 +31,7 @@
           {{ formatMoney(text || 0) }}
         </span>
         <span slot="action" slot-scope="text, record">
-          <s-action-columns :actions="actions" :record="record" />
+          <s-action-columns :module-meta="moduleContexts.opportunity" :allow-unresolved="true" :actions="actions" :record="record" />
         </span>
       </s-table>
     </a-card>
@@ -39,6 +39,8 @@
 </template>
 
 <script lang="jsx">
+import { withModuleContexts } from '/src/utils/moduleContext.js'
+import { crmModules } from '/src/views/eos/crm/moduleContexts.js'
 import { delBusiness, listBusiness } from '/src/api/eos/business/business.js'
 import { listCustomerOptions } from '/src/api/eos/crm/index.js'
 import { Ellipsis, SActionColumns, STable } from '/src/components/index.js'
@@ -47,6 +49,19 @@ import BusinessForm from './modules/BusinessForm.vue'
 import BusinessStageForm from './modules/BusinessStageForm.vue'
 
 export default {
+  mixins: [
+    withModuleContexts(
+      { opportunity: crmModules.opportunity },
+      {
+        openForm: function (props) {
+          return { module: 'opportunity', action: props.isUpdate ? 'edit' : 'add', label: props.isUpdate ? '修改商机' : '新增商机' }
+        },
+        handleDetail: { module: 'opportunity', action: 'view', label: '查看商机详情' },
+        handleTrace: { module: 'opportunity', action: 'track', label: '推进商机阶段' },
+        handleDelete: { module: 'opportunity', action: 'remove', label: '删除商机' }
+      }
+    )
+  ],
   name: 'Business',
   components: { SActionColumns, STable },
   data() {
@@ -256,14 +271,16 @@ export default {
       this.$refs.table.refresh(true)
     },
     stageColor(stage) {
-      return {
-        赢单: 'green',
-        输单: 'red',
-        商务谈判: 'orange',
-        方案报价: 'purple',
-        需求确认: 'blue',
-        初步接洽: 'default'
-      }[stage] || 'default'
+      return (
+        {
+          赢单: 'green',
+          输单: 'red',
+          商务谈判: 'orange',
+          方案报价: 'purple',
+          需求确认: 'blue',
+          初步接洽: 'default'
+        }[stage] || 'default'
+      )
     },
     formatMoney(value) {
       return `￥${Number(value || 0).toLocaleString('zh-CN', {

@@ -26,8 +26,6 @@
             <template v-for="type in tabKeys">
               <div v-for="(item, index) in selectedData[type]" :key="type + index" class="selected-item">
                 <span>
-                  <!-- <i v-if="item.deptName" class="iconfont iconbumen"></i>
-                  <i v-else class="iconfont iconyuangong"></i> &nbsp; -->
                   <span>{{ getNodeProp(item, 'label') }}</span>
                 </span>
                 <i class="el-icon-delete" @click="removeData(item, type)"></i>
@@ -36,8 +34,6 @@
             <template v-for="type in tabKeys">
               <div v-for="(item, index) in aloneCheckedData[type]" :key="'alone' + type + index" class="selected-item">
                 <span>
-                  <!-- <i v-if="item.deptName" class="iconfont iconbumen"></i>
-                  <i v-else class="iconfont iconyuangong"></i> &nbsp; -->
                   <span>{{ getNodeProp(item, 'label') }}</span>
                 </span>
                 <i class="el-icon-delete" @click="removeData(item, type, true)"></i>
@@ -53,8 +49,6 @@
 
         <div class="transfer-pane">
           <!-- 操作栏 -->
-          <!-- <div class="transfer-pane__tools">
-          </div> -->
           <!-- 穿梭框 -->
           <div class="transfer-pane__body" style="height: 370px">
             <div class="enough-mask" v-show="isEnough">
@@ -301,10 +295,6 @@ export default {
     onCheckChange(data, checked, tabKey) {
       // 获取
       this.activeTabName = tabKey
-      // const index = this.aloneCheckedData[tabKey].findIndex(t => t.nodeId === data.nodeId)
-      // if (index > -1) {
-      //   this.aloneCheckedData[tabKey].splice(index, 1)
-      // }
       this.$nextTick(() => {
         const tree = this.$refs[tabKey][0]
         const nodes = tree.getCheckedNodes().map(t => {

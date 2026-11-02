@@ -5,9 +5,7 @@
       <div class="table-operations">
         <a-button type="dashed" shape="circle" :loading="loading" :style="{ float: 'right' }" icon="reload" @click="getHistoryList" />
       </div>
-      <a-table rowKey="id" :loading="loading" :data-source="historyList" :columns="columnsHistory">
-        <!-- <a-table-column v-if="false" label="活动ID" align="center" prop="activityId" width="60" /> -->
-      </a-table>
+      <a-table rowKey="id" :loading="loading" :data-source="historyList" :columns="columnsHistory"> </a-table>
     </div>
     <!-- 进度图片 -->
     <img @error="handleImgError" :src="src" />

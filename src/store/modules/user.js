@@ -1,5 +1,6 @@
 import storage from 'store'
 import { setModuleActionConfigurations } from '/src/utils/moduleActionConfig.js'
+import { resetModuleContexts } from '/src/utils/moduleContext.js'
 import { login, getSession, logout } from '/src/api/user/login.js'
 import { registered } from '/src/api/user/registered.js'
 import { ACCESS_TOKEN, TENANT_ID } from '/src/store/mutation-types.js'
@@ -61,6 +62,7 @@ const user = {
 
   actions: {
     BootstrapSession({ commit }) {
+      resetModuleContexts()
       return getSession().then(res => {
         const currentUser = res.user || {}
         let avatar = null
@@ -86,12 +88,14 @@ const user = {
     },
     Login({ commit }, userInfo) {
       return login(userInfo).then(res => {
+        resetModuleContexts()
         storage.set(ACCESS_TOKEN, res.token, 7 * 24 * 60 * 60 * 1000)
         commit('SET_TOKEN', res.token)
       })
     },
     _registered({ commit }, params) {
       return registered(params).then(res => {
+        resetModuleContexts()
         storage.set(ACCESS_TOKEN, res.token, 7 * 24 * 60 * 60 * 1000)
         commit('SET_TOKEN', res.token)
       })
@@ -108,10 +112,14 @@ const user = {
       return addEnterprise(data)
     },
     _toggleEnterprise(context, id) {
-      return toggleEnterprise(id)
+      return toggleEnterprise(id).then(res => {
+        resetModuleContexts()
+        return res
+      })
     },
     Logout({ commit, state }) {
       return logout(state.token).finally(() => {
+        resetModuleContexts()
         commit('SET_TOKEN', '')
         commit('SET_ROLES', [])
         commit('SET_PERMISSIONS', [])

@@ -100,7 +100,6 @@
 import { listType, delType, exportType, clearCache } from '/src/api/system/dict/type.js'
 import CreateForm from './modules/CreateForm.vue'
 import DictData from './modules/DictData.vue'
-// import CreateDataForm from './modules/CreateDataForm.vue'
 
 export default {
   name: 'Dict',

@@ -44,14 +44,14 @@
       </div>
     </div>
 
-    <a-tabs v-model="activeTab">
-      <a-tab-pane v-if="canView(341201)" key="contracts" :tab="`关联合同（${contractsTotal}）`">
-        <div class="tab-toolbar"><span>合同、收费与回款统一关联当前客户</span><div><a-button type="link" @click="viewContracts">查看全部合同</a-button><a-button v-if="canContractAdd && customer.publicPool !== '1'" type="primary" icon="plus" @click="createContract">新建合同</a-button></div></div>
+    <a-tabs :active-key="activeTab" @change="handleTabChange">
+      <a-tab-pane v-if="showModuleAction('contract')" key="contracts" :tab="`关联合同（${contractsTotal}）`">
+        <div class="tab-toolbar"><span>合同、收费与回款统一关联当前客户</span><div><a-button type="link" @click="viewContracts">查看全部合同</a-button><a-button v-if="canContractAdd && customer.publicPool !== '1'" type="primary" icon="plus" @click="createContract" :loading="!!moduleActionBusy.createContract">新建合同</a-button></div></div>
         <a-alert v-if="customer.contractManaged" type="info" message="客户合同金额、回款和到期日期由已签署生效的合同自动汇总。" style="margin-bottom: 16px" />
-        <a-table :columns="contractColumns" :data-source="contracts" :pagination="false" row-key="id" size="small"><span slot="contractName" slot-scope="text, record"><a @click="openContract(record.id)">{{ text }}</a></span><span slot="contractStatus" slot-scope="text"><a-tag :color="contractColors[text]">{{ contractStatuses[text] }}</a-tag></span><span slot="money" slot-scope="text">{{ formatMoney(text) }}</span></a-table>
+        <a-table :loading="relatedLoading.contracts" :columns="contractColumns" :data-source="contracts" :pagination="false" row-key="id" size="small"><span slot="contractName" slot-scope="text, record"><a @click="openContract(record.id)">{{ text }}</a></span><span slot="contractStatus" slot-scope="text"><a-tag :color="contractColors[text]">{{ contractStatuses[text] }}</a-tag></span><span slot="money" slot-scope="text">{{ formatMoney(text) }}</span></a-table>
       </a-tab-pane>
-      <a-tab-pane v-if="canView(341101)" key="risks" :tab="`客户风险（${risks.length}）`">
-        <a-table :columns="riskColumns" :data-source="risks" :pagination="false" row-key="taskId" size="small"><span slot="riskLevel" slot-scope="value"><a-tag :color="value === 'high' ? 'red' : 'orange'">{{ value === 'high' ? '高风险' : '中风险' }}</a-tag></span><span slot="riskAction" slot-scope="_, record"><a-button type="link" @click="record.contractId ? openContract(record.contractId) : activeTab = 'followups'">{{ record.contractId ? '处理关联合同' : '跟进客户' }}</a-button></span></a-table>
+      <a-tab-pane v-if="showModuleAction('risk')" key="risks" :tab="`客户风险（${risks.length}）`">
+        <a-table :loading="relatedLoading.risks" :columns="riskColumns" :data-source="risks" :pagination="false" row-key="taskId" size="small"><span slot="riskLevel" slot-scope="value"><a-tag :color="value === 'high' ? 'red' : 'orange'">{{ value === 'high' ? '高风险' : '中风险' }}</a-tag></span><span slot="riskAction" slot-scope="_, record"><a-button type="link" @click="record.contractId ? openContract(record.contractId) : activeTab = 'followups'">{{ record.contractId ? '处理关联合同' : '跟进客户' }}</a-button></span></a-table>
       </a-tab-pane>
       <a-tab-pane key="overview" tab="客户档案">
         <a-descriptions bordered :column="2" size="small">
@@ -88,7 +88,7 @@
       <a-tab-pane key="followups" tab="跟进时间轴">
         <div class="tab-toolbar">
           <span>共 {{ followups.length }} 条跟进记录</span>
-          <a-button v-if="canTrack" type="primary" ghost icon="plus" @click="openFollowup">新增跟进</a-button>
+          <a-button v-if="canTrack" type="primary" ghost icon="plus" @click="openFollowup" :loading="!!moduleActionBusy.openFollowup">新增跟进</a-button>
         </div>
         <a-empty v-if="!followups.length" description="还没有跟进记录" />
         <a-timeline v-else class="followup-timeline">
@@ -118,17 +118,32 @@
 </template>
 
 <script>
+import { withModuleContexts } from '/src/utils/moduleContext.js'
+import { crmModules } from '/src/views/eos/crm/moduleContexts.js'
 import { listBusiness } from '/src/api/eos/business/business.js'
 import { deleteFollowup, getCustomer, listFollowups, listCustomerRisks } from '/src/api/eos/crm/index.js'
 import { listContracts, normalizeContractId } from '/src/api/eos/crm/contracts.js'
-import { can, canView, statuses, statusColors } from '../../contract/shared.js'
+import { statuses, statusColors } from '../../contract/shared.js'
 import ContractDetail from '../../contract/modules/ContractDetail.vue'
 import ContractForm from '../../contract/modules/ContractForm.vue'
-import store from '/src/store/index.js'
-import { hasModuleAction } from '/src/utils/modulePermission.js'
 import FollowupForm from './FollowupForm.vue'
 
 export default {
+  mixins: [
+    withModuleContexts(
+      { customer: crmModules.customer, contract: crmModules.contract, risk: crmModules.risk, opportunity: crmModules.opportunity },
+      {
+        createContract: { module: 'contract', action: 'add', label: '新建合同' },
+        openContract: { module: 'contract', action: 'view', label: '查看合同详情' },
+        viewContracts: { module: 'contract', action: 'view', label: '查看全部合同' },
+        openFollowup: { module: 'customer', action: 'track', label: '新增跟进' },
+        removeFollowup: { module: 'customer', action: 'track', label: '删除跟进' },
+        handleTabChange: function (key) {
+          return { contracts: { module: 'contract', label: '查看关联合同' }, risks: { module: 'risk', label: '查看客户风险' } }[key]
+        }
+      }
+    )
+  ],
   name: 'CustomerDetail',
   props: {
     formId: { type: Number, required: true },
@@ -137,10 +152,28 @@ export default {
   data() {
     return {
       loading: false,
+      relatedLoading: { contracts: false, risks: false, opportunities: false },
       activeTab: this.initialTab,
-      contracts: [], contractsTotal: 0, risks: [], contractStatuses: statuses, contractColors: statusColors,
-      contractColumns: [{ title: '合同', dataIndex: 'name', scopedSlots: { customRender: 'contractName' } }, { title: '状态', dataIndex: 'status', scopedSlots: { customRender: 'contractStatus' } }, { title: '生效合同金额', dataIndex: 'effectiveAmount', scopedSlots: { customRender: 'money' } }, { title: '已回款', dataIndex: 'receivedAmount', scopedSlots: { customRender: 'money' } }, { title: '生效到期日', dataIndex: 'effectiveEndDate' }],
-      riskColumns: [{ title: '等级', dataIndex: 'level', scopedSlots: { customRender: 'riskLevel' } }, { title: '类型', dataIndex: 'title' }, { title: '关联合同', dataIndex: 'contractName' }, { title: '风险原因', dataIndex: 'reason' }, { title: '负责人', dataIndex: 'ownerUserName' }, { title: '操作', scopedSlots: { customRender: 'riskAction' } }],
+      contracts: [],
+      contractsTotal: 0,
+      risks: [],
+      contractStatuses: statuses,
+      contractColors: statusColors,
+      contractColumns: [
+        { title: '合同', dataIndex: 'name', scopedSlots: { customRender: 'contractName' } },
+        { title: '状态', dataIndex: 'status', scopedSlots: { customRender: 'contractStatus' } },
+        { title: '生效合同金额', dataIndex: 'effectiveAmount', scopedSlots: { customRender: 'money' } },
+        { title: '已回款', dataIndex: 'receivedAmount', scopedSlots: { customRender: 'money' } },
+        { title: '生效到期日', dataIndex: 'effectiveEndDate' }
+      ],
+      riskColumns: [
+        { title: '等级', dataIndex: 'level', scopedSlots: { customRender: 'riskLevel' } },
+        { title: '类型', dataIndex: 'title' },
+        { title: '关联合同', dataIndex: 'contractName' },
+        { title: '风险原因', dataIndex: 'reason' },
+        { title: '负责人', dataIndex: 'ownerUserName' },
+        { title: '操作', scopedSlots: { customRender: 'riskAction' } }
+      ],
       customer: {},
       contacts: [],
       accounts: [],
@@ -172,50 +205,92 @@ export default {
   },
   computed: {
     canTrack() {
-      return hasModuleAction(store.getters.permissions || [], { moduleId: 340352, perms: 'project:merchant:list' }, 'track')
+      return this.showModuleAction('customer', 'track')
     },
-    canContractAdd() { return can(341201, 'add') },
+    canContractAdd() {
+      return this.showModuleAction('contract', 'add')
+    },
     statusColor() {
-      return {
-        合作中: 'green',
-        重点客户: 'purple',
-        潜在客户: 'blue',
-        已流失: 'red',
-        暂停合作: 'orange'
-      }[this.customer.cooperationStatus] || 'default'
+      return (
+        {
+          合作中: 'green',
+          重点客户: 'purple',
+          潜在客户: 'blue',
+          已流失: 'red',
+          暂停合作: 'orange'
+        }[this.customer.cooperationStatus] || 'default'
+      )
     }
   },
   mounted() {
     this.loadCustomer()
   },
   methods: {
-    canView,
-    openContract(id) { const contractId = normalizeContractId(id); if (!contractId) return this.$message.warning('合同编号无效，请刷新客户详情后重试'); this.$createAntdDrawer({ stopPropagation: true, drawerProps: { title: '合同详情', width: '86%', maskClosable: true }, content: { template: ContractDetail, props: { contractId }, on: { changed: () => this.loadCustomer() } } }) },
-    createContract() { this.$createAntdModal({ modalProps: { title: `新建合同 · ${this.customer.name}`, width: 920, maskClosable: false, footer: null }, onOk: ({ payload }) => { if (!normalizeContractId(payload?.id)) { this.$message.error('保存结果缺少有效合同编号，请刷新列表核对'); return false }; this.loadCustomer(); this.openContract(payload.id) }, content: { template: ContractForm, props: { initial: { customerId: this.formId, customerName: this.customer.name } } } }) },
-    viewContracts() { this.$router.push({ path: '/crm/contracts/list', query: { customerId: this.formId } }); this.$emit('close') },
-    loadCustomer() {
+    async handleTabChange(key) {
+      this.activeTab = key
+      if (['contracts', 'risks'].includes(key)) await this.loadRelatedData(key)
+    },
+    openContract(id) {
+      const contractId = normalizeContractId(id)
+      if (!contractId) return this.$message.warning('合同编号无效，请刷新客户详情后重试')
+      this.$createAntdDrawer({
+        stopPropagation: true,
+        drawerProps: { title: '合同详情', width: '86%', maskClosable: true },
+        content: { template: ContractDetail, props: { moduleMeta: this.moduleContexts.contract, contractId }, on: { changed: () => this.loadCustomer() } }
+      })
+    },
+    createContract() {
+      this.$createAntdModal({
+        modalProps: { title: `新建合同 · ${this.customer.name}`, width: 920, maskClosable: false, footer: null },
+        onOk: ({ payload }) => {
+          if (!normalizeContractId(payload?.id)) {
+            this.$message.error('保存结果缺少有效合同编号，请刷新列表核对')
+            return false
+          }
+          this.loadCustomer()
+          this.openContract(payload.id)
+        },
+        content: { template: ContractForm, props: { initial: { customerId: this.formId, customerName: this.customer.name } } }
+      })
+    },
+    viewContracts() {
+      this.$router.push({ path: '/crm/contracts/list', query: { customerId: this.formId } })
+      this.$emit('close')
+    },
+    async loadCustomer() {
       this.loading = true
-      Promise.all([
-        getCustomer(this.formId),
-        listFollowups(this.formId),
-        (store.getters.permissions || []).some(p => p === '*:*:*' || p === 'project:business:list') ? listBusiness({ customerId: this.formId, pageNum: 1, pageSize: 200 }) : Promise.resolve({ rows: [] }),
-        canView(341201) ? listContracts({ customerId: this.formId, pageNum: 1, pageSize: 20 }) : Promise.resolve({ rows: [], total: 0 }),
-        canView(341101) ? listCustomerRisks({ customerId: this.formId }) : Promise.resolve({ rows: [] })
-      ])
-        .then(([customerResponse, followupResponse, opportunityResponse, contractResponse, riskResponse]) => {
+      await Promise.all([getCustomer(this.formId), listFollowups(this.formId)])
+        .then(([customerResponse, followupResponse]) => {
           this.customer = customerResponse.data || {}
           this.contacts = this.customer.sealMerchantUsers || []
           this.accounts = this.customer.sealMerchantAccounts || []
           this.collaborators = this.customer.collaborators || []
           this.followups = followupResponse.data || []
-          this.opportunities = opportunityResponse.rows || []
-          this.contracts = contractResponse.rows || []
-          this.contractsTotal = contractResponse.total || 0
-          this.risks = riskResponse.rows || []
         })
         .finally(() => {
           this.loading = false
         })
+      await Promise.all(['contracts', 'risks', 'opportunities'].map(key => this.loadRelatedData(key)))
+    },
+    async loadRelatedData(key) {
+      if (this.relatedLoading[key]) return
+      this.relatedLoading[key] = true
+      const module = { contracts: 'contract', risks: 'risk', opportunities: 'opportunity' }[key]
+      try {
+        await this.ensureModuleContexts([module]).catch(() => {})
+        if (!this.canViewModule(module)) return
+        if (key === 'contracts') {
+          const response = await listContracts({ customerId: this.formId, pageNum: 1, pageSize: 20 })
+          this.contracts = response.rows || []
+          this.contractsTotal = response.total || 0
+        } else if (key === 'risks') {
+          this.risks = (await listCustomerRisks({ customerId: this.formId })).rows || []
+        } else {
+          this.opportunities = (await listBusiness({ customerId: this.formId, pageNum: 1, pageSize: 200 })).rows || []
+        }
+      } finally {
+        this.relatedLoading[key] = false
+      }
     },
     openFollowup() {
       this.$createAntdModal({
@@ -246,13 +321,15 @@ export default {
       })
     },
     methodIcon(method) {
-      return {
-        电话: 'phone',
-        微信: 'wechat',
-        邮件: 'mail',
-        拜访: 'environment',
-        会议: 'team'
-      }[method] || 'message'
+      return (
+        {
+          电话: 'phone',
+          微信: 'wechat',
+          邮件: 'mail',
+          拜访: 'environment',
+          会议: 'team'
+        }[method] || 'message'
+      )
     },
     formatMoney(value) {
       const number = Number(value || 0)

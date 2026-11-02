@@ -7,9 +7,7 @@ import com.seal.oa.common.JdbcMaps;
 import com.seal.oa.lowcode.LowCodeWorkflowService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -93,7 +91,7 @@ public class ActivityController {
         List<String> protectedTypes = jdbc.queryForList(
                 "SELECT business_type FROM oa_todo WHERE id = ? OR task_id = ?", String.class, protectedId, value(body.get("taskId"), ""));
         if (protectedTypes.stream().anyMatch(type -> "crmRisk".equals(type) || "crmContractApproval".equals(type))) {
-            throw new ApiException(409, "请在客户或合同详情办理，风险消除或完成合同审批后待办自动关闭");
+            throw new ApiException(409, "客户风险请处理对应业务，历史合同审批请在待办详情办理，完成后待办自动关闭");
         }
         if ("lowcode".equals(value(body.get("type"), ""))
                 || workflowService.isManagedTask(

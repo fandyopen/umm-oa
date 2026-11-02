@@ -139,6 +139,37 @@ class CustomerContractIntegrationTest {
     }
 
     @Test
+    void unifiedContractsCannotUseTheLegacyApprovalEndpoint() throws Exception {
+        long id = createDraft(createCustomer("统一审批入口清理客户")).path("id").asLong();
+        JsonNode pending = action(admin, id, "submit", Map.of("revision", 0));
+        call(reviewer, post(base + "/" + id + "/approve"), Map.of("revision", pending.path("revision").asInt(), "decision", "approved"), 409);
+        assertEquals("todo", jdbc.queryForObject("SELECT status FROM oa_process_task WHERE id = ?", String.class, pending.path("workflow").path("taskId").asText()));
+        assertEquals("pending", call(admin, get(base + "/" + id), null, 200).path("data").path("status").asText());
+        completeContractTask(reviewer, pending, true, "统一待办通过", 200);
+        assertEquals("approved", call(admin, get(base + "/" + id), null, 200).path("data").path("status").asText());
+    }
+
+    @Test
+    void legacyPendingContractCanStillBeCompletedFromTodo() throws Exception {
+        long customer = createCustomer("历史在途审批客户");
+        long id = createDraft(customer).path("id").asLong();
+        jdbc.update("UPDATE oa_crm_contract SET status = 'pending', approval_user_id = 901, submit_user_id = 1, revision = 1 WHERE id = ?", id);
+        jdbc.update("INSERT INTO oa_crm_contract_version (contract_id, version_no, snapshot_json, status, submit_user_id, approval_user_id) VALUES (?, 1, ?, 'pending', 1, 901)", id, mapper.writeValueAsString(payload(customer)));
+        String taskId = "crm-contract-approval-" + id + "-v1";
+        jdbc.update("INSERT INTO oa_todo (tenant_id, user_id, title, business_type, business_id, task_id, status) VALUES (1, 901, '历史合同审批', 'crmContractApproval', ?, ?, 'todo')", id, taskId);
+        JsonNode task = call(reviewer, get("/project/activity/taskWaitList").param("businessCategory", "contract"), null, 200).path("rows").get(0);
+        assertEquals("crmContractApproval", task.path("businessType").asText());
+        assertEquals("todo", task.path("status").asText());
+        call(outsider, post(base + "/" + id + "/approve"), Map.of("revision", 1, "decision", "approved"), 403);
+        call(reviewer, post(base + "/" + id + "/approve"), Map.of("revision", 1, "decision", "rejected", "comment", ""), 400);
+        JsonNode approved = call(reviewer, post(base + "/" + id + "/approve"), Map.of("revision", 1, "decision", "approved", "comment", "历史任务办结"), 200).path("data");
+        assertEquals("approved", approved.path("status").asText());
+        assertEquals("approved", jdbc.queryForObject("SELECT status FROM oa_crm_contract_version WHERE contract_id = ?", String.class, id));
+        assertEquals("done", jdbc.queryForObject("SELECT status FROM oa_todo WHERE task_id = ?", String.class, taskId));
+        call(reviewer, post(base + "/" + id + "/approve"), Map.of("revision", 1, "decision", "approved"), 409);
+    }
+
+    @Test
     void approvalSigningAndReceiptUpdateCustomerAndPreserveTaskBoundaries() throws Exception {
         long customerId = createCustomer("合同生命周期客户");
         JsonNode draft = createDraft(customerId);
@@ -155,7 +186,7 @@ class CustomerContractIntegrationTest {
         assertEquals(id, task.path("form").path("contractId").asLong());
         assertEquals(pending.path("workflow").path("taskId").asText(), task.path("taskId").asText());
         assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM oa_todo WHERE business_type = 'crmContractApproval' AND business_id = ?", Integer.class, id));
-        JsonNode approved = action(reviewer, id, "approve", Map.of("revision", 1, "decision", "approved", "comment", "收费与保证期已核对"));
+        JsonNode approved = completeContract(reviewer, id, Map.of("revision", 1, "decision", "approved", "comment", "收费与保证期已核对"));
         assertEquals("approved", approved.path("status").asText());
         call(admin, post(base + "/" + id + "/sign"), Map.of("revision", 2, "signedDate", today.plusDays(1).toString()), 400);
         JsonNode active = action(admin, id, "sign", Map.of("revision", 2, "signedDate", today.toString()));
@@ -191,7 +222,7 @@ class CustomerContractIntegrationTest {
         call(admin, put(base + "/" + id), invalid, 409);
         JsonNode pending = action(admin, id, "submit", Map.of("revision", updated.path("revision").asInt(), "approvalUserId", 901));
         assertEquals(1000, pending.path("effectiveAmount").asInt());
-        JsonNode approved = action(reviewer, id, "approve", Map.of("revision", pending.path("revision").asInt(), "decision", "approved"));
+        JsonNode approved = completeContract(reviewer, id, Map.of("revision", pending.path("revision").asInt(), "decision", "approved"));
         JsonNode signed = action(admin, id, "sign", Map.of("revision", approved.path("revision").asInt(), "signedDate", today.toString()));
         assertEquals(2, signed.path("effectiveVersion").asInt());
         assertEquals(1500, signed.path("effectiveAmount").asInt());
@@ -214,13 +245,13 @@ class CustomerContractIntegrationTest {
         assertEquals(2, detail.path("reminders").size());
         assertEquals(1, detail.path("reminderLogs").size());
         assertEquals("已联系客户财务确认付款计划", detail.path("reminderLogs").get(0).path("content").asText());
-        assertEquals(2, call(admin, get(base + "/reminders").param("customerId", String.valueOf(customer)), null, 200).path("rows").size());
+        assertEquals(2, call(admin, get("/project/crm/risk/list").param("customerId", String.valueOf(customer)), null, 200).path("rows").size());
         call(admin, post(base + "/" + id + "/receipts"), Map.of("termKey", "first", "amount", 1000, "receiptDate", today.toString()), 200);
-        assertEquals(1, call(admin, get(base + "/reminders").param("customerId", String.valueOf(customer)), null, 200).path("rows").size());
+        assertEquals(1, call(admin, get("/project/crm/risk/list").param("customerId", String.valueOf(customer)), null, 200).path("rows").size());
         assertEquals(1, call(admin, get(base + "/" + id), null, 200).path("data").path("reminders").size());
         assertEquals("done", jdbc.queryForObject("SELECT status FROM oa_todo WHERE task_id = ?", String.class, reminderId));
         action(admin, id, "finish", Map.of("revision", active.path("revision").asInt()));
-        assertEquals(0, call(admin, get(base + "/reminders").param("customerId", String.valueOf(customer)), null, 200).path("rows").size());
+        assertEquals(0, call(admin, get("/project/crm/risk/list").param("customerId", String.valueOf(customer)), null, 200).path("rows").size());
         assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM oa_todo WHERE business_type = 'crmRisk' AND business_id = ? AND status = 'todo'", Integer.class, customer));
     }
 
@@ -232,7 +263,7 @@ class CustomerContractIntegrationTest {
         call(admin, get("/project/crm/risk/list").param("customerId", String.valueOf(customer)), null, 200);
         call(admin, post("/project/merchant/" + customer + "/assign"), Map.of("ownerUserId", 901), 200);
         assertEquals(2, jdbc.queryForObject("SELECT COUNT(*) FROM oa_todo WHERE business_type = 'crmRisk' AND business_id = ? AND user_id = 901 AND status = 'todo'", Integer.class, customer));
-        JsonNode risks = call(admin, get(base + "/reminders").param("customerId", String.valueOf(customer)), null, 200).path("rows");
+        JsonNode risks = call(admin, get("/project/crm/risk/list").param("customerId", String.valueOf(customer)), null, 200).path("rows");
         for (JsonNode risk : risks) assertEquals(901, risk.path("ownerUserId").asLong());
         Map<String, Object> renewal = payload(customer);
         renewal.put("parentContractId", id);
@@ -243,7 +274,7 @@ class CustomerContractIntegrationTest {
         renewal.put("feeTerms", List.of(futureTerm));
         activate(call(admin, post(base), renewal, 200).path("data"));
         assertEquals("done", jdbc.queryForObject("SELECT status FROM oa_todo WHERE task_id = ?", String.class, "crm-contract-" + id + "-expiry"));
-        risks = call(admin, get(base + "/reminders").param("customerId", String.valueOf(customer)), null, 200).path("rows");
+        risks = call(admin, get("/project/crm/risk/list").param("customerId", String.valueOf(customer)), null, 200).path("rows");
         assertEquals(1, risks.size());
         assertEquals("payment_overdue", risks.get(0).path("riskType").asText());
     }
@@ -256,12 +287,12 @@ class CustomerContractIntegrationTest {
         call(reviewer, get(base + "/" + id), null, 403);
         JsonNode pending = action(admin, id, "submit", Map.of("revision", 0, "approvalUserId", 901));
         assertEquals(id, call(reviewer, get(base + "/" + id), null, 200).path("data").path("id").asLong());
-        assertEquals(0, call(outsider, get(base).param("view", "approvals"), null, 200).path("total").asInt());
+        assertEquals(0, call(outsider, get(base), null, 200).path("total").asInt());
         call(outsider, get(base + "/" + id), null, 403);
         jdbc.update("INSERT INTO sys_role_module (role_id, module_id) VALUES (991, 341203)");
         call(reviewer, post(base + "/" + id + "/receipts"), Map.of("termKey", "first", "amount", 10, "receiptDate", today.toString()), 403);
-        call(reviewer, post(base + "/" + id + "/approve"), Map.of("revision", pending.path("revision").asInt(), "decision", "rejected", "comment", ""), 400);
-        JsonNode rejected = action(reviewer, id, "approve", Map.of("revision", pending.path("revision").asInt(), "decision", "rejected", "comment", "请补充收费细则"));
+        completeContractTask(reviewer, pending, false, "", 400);
+        JsonNode rejected = completeContract(reviewer, id, Map.of("revision", pending.path("revision").asInt(), "decision", "rejected", "comment", "请补充收费细则"));
         assertEquals("rejected", rejected.path("status").asText());
         call(admin, delete(base + "/" + id), null, 409);
     }
@@ -318,7 +349,7 @@ class CustomerContractIntegrationTest {
         JsonNode unchanged = call(admin, get(base + "/" + newDraft.path("id").asLong()), null, 200).path("data");
         assertEquals("draft", unchanged.path("status").asText());
         assertEquals(0, unchanged.path("revision").asInt());
-        JsonNode approved = action(reviewer, pending.path("id").asLong(), "approve",
+        JsonNode approved = completeContract(reviewer, pending.path("id").asLong(),
                 Map.of("revision", pending.path("revision").asInt(), "decision", "approved", "comment", "在途审批继续处理"));
         assertEquals("approved", approved.path("status").asText());
     }
@@ -344,7 +375,7 @@ class CustomerContractIntegrationTest {
         JsonNode pending = action(admin, id, "submit", Map.of("revision", 0));
         String instanceId = pending.path("workflow").path("instanceId").asText();
         publishContractFlow("17690000901");
-        JsonNode middle = action(reviewer, id, "approve", Map.of("revision", pending.path("revision").asInt(), "decision", "approved", "comment", "一级审核通过"));
+        JsonNode middle = completeContract(reviewer, id, Map.of("revision", pending.path("revision").asInt(), "decision", "approved", "comment", "一级审核通过"));
         assertEquals("pending", middle.path("status").asText());
         assertEquals(902, middle.path("approvalUserId").asLong());
         assertEquals(2, middle.path("workflow").path("history").size());
@@ -378,7 +409,7 @@ class CustomerContractIntegrationTest {
         assertNotEquals(request.path("instanceId").asText(), pending.path("workflow").path("instanceId").asText());
         assertEquals(originalSnapshot, pending.path("versions").get(1).path("snapshot"));
         assertEquals("rejected", pending.path("versions").get(1).path("workflow").path("status").asText());
-        JsonNode approved = action(reviewer, id, "approve", Map.of("revision", pending.path("revision").asInt(), "decision", "approved"));
+        JsonNode approved = completeContract(reviewer, id, Map.of("revision", pending.path("revision").asInt(), "decision", "approved"));
         assertEquals("approved", approved.path("status").asText());
     }
 
@@ -409,7 +440,7 @@ class CustomerContractIntegrationTest {
         long requestId = pending.path("workflow").path("requestId").asLong();
         String instanceId = pending.path("workflow").path("instanceId").asText();
         String oldTaskId = pending.path("workflow").path("taskId").asText();
-        JsonNode middle = action(reviewer, id, "approve", Map.of("revision", pending.path("revision").asInt(), "decision", "approved"));
+        JsonNode middle = completeContract(reviewer, id, Map.of("revision", pending.path("revision").asInt(), "decision", "approved"));
         assertEquals("pending", middle.path("status").asText());
         assertEquals(901, middle.path("approvalUserId").asLong());
         ApiException exception = assertThrows(ApiException.class, () -> contracts.validateWorkflowDecision(
@@ -569,7 +600,7 @@ class CustomerContractIntegrationTest {
     private JsonNode approveDraft(JsonNode draft) throws Exception {
         long id = draft.path("id").asLong();
         JsonNode pending = action(admin, id, "submit", Map.of("revision", draft.path("revision").asInt()));
-        return action(reviewer, id, "approve", Map.of("revision", pending.path("revision").asInt(), "decision", "approved"));
+        return completeContract(reviewer, id, Map.of("revision", pending.path("revision").asInt(), "decision", "approved"));
     }
 
     private void completeSigning(String auth, JsonNode workflow, boolean pass, String comment, int expected) throws Exception {
@@ -617,8 +648,18 @@ class CustomerContractIntegrationTest {
     private JsonNode activate(JsonNode draft) throws Exception {
         long id = draft.path("id").asLong();
         JsonNode pending = action(admin, id, "submit", Map.of("revision", draft.path("revision").asInt(), "approvalUserId", 901));
-        JsonNode approved = action(reviewer, id, "approve", Map.of("revision", pending.path("revision").asInt(), "decision", "approved"));
+        JsonNode approved = completeContract(reviewer, id, Map.of("revision", pending.path("revision").asInt(), "decision", "approved"));
         return action(admin, id, "sign", Map.of("revision", approved.path("revision").asInt(), "signedDate", today.toString()));
+    }
+    private JsonNode completeContract(String auth, long id, Map<String, Object> decision) throws Exception {
+        JsonNode contract = call(admin, get(base + "/" + id), null, 200).path("data");
+        completeContractTask(auth, contract, "approved".equals(decision.get("decision")), String.valueOf(decision.getOrDefault("comment", "")), 200);
+        return call(auth, get(base + "/" + id), null, 200).path("data");
+    }
+    private void completeContractTask(String auth, JsonNode contract, boolean pass, String comment, int expected) throws Exception {
+        JsonNode workflow = contract.path("workflow");
+        call(auth, post("/project/activity/complete"), Map.of("instanceId", workflow.path("instanceId").asText(),
+                "taskId", workflow.path("taskId").asText(), "variables", Map.of("pass", pass, "comment", comment)), expected);
     }
     private JsonNode action(String auth, long id, String action, Object data) throws Exception { return call(auth, post(base + "/" + id + "/" + action), data, 200).path("data"); }
     private String login(String name) throws Exception { return "Bearer " + call(null, post("/login"), Map.of("username", name, "password", "admin123123"), 200).path("token").asText(); }

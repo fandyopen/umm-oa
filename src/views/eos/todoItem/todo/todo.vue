@@ -3,7 +3,9 @@
   <div>
     <template v-if="!simple">
       <s-search placeholder="搜索此列表..." clickTips="搜索姓名、流程名称、审批" @onSearch="onSearch" />
-      <a-select v-model="businessCategory" style="width: 200px; margin-bottom: 16px" @change="changeCategory"><a-select-option value="">全部待办</a-select-option><a-select-option value="contract">合同审批</a-select-option></a-select>
+      <a-select v-model="businessCategory" style="width: 200px; margin-bottom: 16px" @change="changeCategory"
+        ><a-select-option value="">全部待办</a-select-option><a-select-option value="contract">合同审批</a-select-option></a-select
+      >
     </template>
     <!-- 数据表格 -->
     <no-data index v-show="noData" />
@@ -35,7 +37,6 @@ import STable from '/src/components/Table/index.jsx'
 import SSearch from '/src/components/Form/Search.vue'
 import ActivitiApply from '/src/components/Activiti/index.vue'
 import BusDetail from './busDetail.vue'
-import storage from 'store'
 
 export default {
   name: 'Todo',
@@ -84,8 +85,8 @@ export default {
           return {
             data: res.rows,
             totalCount: this.simple ? 0 : res.total,
-            pageNum:  param.pageNum ,
-            pageSize: param.pageSize 
+            pageNum: param.pageNum,
+            pageSize: param.pageSize
           }
         })
       },

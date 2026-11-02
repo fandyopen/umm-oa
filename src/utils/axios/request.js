@@ -20,6 +20,7 @@ const request = axios.create({
 
 // 异常拦截处理器
 const errorHandler = error => {
+  if (error.config && error.config.silentError) return Promise.reject(error)
   console.log('err' + error)
   let { message } = error
   if (message === 'Network Error') {
@@ -80,6 +81,11 @@ request.interceptors.response.use(res => {
   const code = res.data.code || 200
   // 获取错误信息
   const msg = errorCode[code] || res.data.msg || errorCode['default']
+  // Module metadata is prefetched silently; the initiating action supplies the precise message.
+  // Session expiration still follows the normal logout flow below.
+  if (code !== 200 && code !== 401 && res.config.silentError) {
+    return Promise.reject(Object.assign(new Error(res.data.msg || msg), { code }))
+  }
   if (code === 401) {
     // notification.open({
     //   message: '系统提示',

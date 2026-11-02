@@ -7,7 +7,7 @@
           <p>统一维护客户主档、联系人、负责人和合作数据，避免重复建档。</p>
         </div>
         <div class="crm-header-actions">
-          <a-button v-if="canAction('edit')" ghost type="primary" icon="swap" @click="openHandover">批量移交</a-button>
+          <a-button v-if="canAction('edit')" ghost type="primary" icon="swap" @click="openHandover" :loading="!!moduleActionBusy.openHandover">批量移交</a-button>
           <a-upload
             v-if="canAction('add')"
             accept=".xlsx,.xls"
@@ -17,8 +17,8 @@
             <a-button icon="upload" :loading="importing">导入</a-button>
           </a-upload>
           <a-button icon="file-excel" @click="downloadImportTemplate">导入模板</a-button>
-          <a-button v-if="canAction('export')" icon="download" @click="handleExport">导出</a-button>
-          <a-button type="primary" icon="plus" @click="handleAdd" v-hasModuleAction="'add'">新增客户</a-button>
+          <a-button v-if="canAction('export')" icon="download" @click="handleExport" :loading="!!moduleActionBusy.handleExport">导出</a-button>
+          <a-button type="primary" icon="plus" @click="handleAdd" v-hasModuleAction="moduleActionBinding('customer', 'add')" :loading="!!moduleActionBusy.openCustomerForm">新增客户</a-button>
         </div>
       </div>
 
@@ -113,20 +113,13 @@
 </template>
 
 <script lang="jsx">
+import { withModuleContexts } from '/src/utils/moduleContext.js'
+import { crmModules } from '/src/views/eos/crm/moduleContexts.js'
 import STable from '/src/components/Table/index.jsx'
 import { read as readXlsx, utils as xlsxUtils, writeFile as writeXlsxFile } from 'xlsx'
-import store from '/src/store/index.js'
-import { hasModuleAction } from '/src/utils/modulePermission.js'
 import IndustrySelect from '/src/components/IndustrySelect/index.vue'
 import RegionSelect from '/src/components/RegionSelect/index.vue'
-import {
-  claimCustomer,
-  deleteCustomer,
-  exportCustomers,
-  importCustomers,
-  listCustomers,
-  releaseCustomer
-} from '/src/api/eos/crm/index.js'
+import { claimCustomer, deleteCustomer, exportCustomers, importCustomers, listCustomers, releaseCustomer } from '/src/api/eos/crm/index.js'
 import AssignForm from './modules/AssignForm.vue'
 import CustomerDetail from './modules/CustomerDetail.vue'
 import CustomerForm from './modules/CustomerForm.vue'
@@ -163,6 +156,25 @@ const excelColumns = [
 ]
 
 export default {
+  mixins: [
+    withModuleContexts(
+      { customer: crmModules.customer },
+      {
+        openCustomerForm: function (props) {
+          return { module: 'customer', action: props.isUpdate ? 'edit' : 'add', label: props.isUpdate ? '修改客户档案' : props.copySourceId ? '复制新建客户' : '新建客户' }
+        },
+        handleDetail: { module: 'customer', action: 'view', label: '查看客户详情' },
+        openFollowup: { module: 'customer', action: 'track', label: '新增跟进' },
+        openAssign: { module: 'customer', action: 'edit', label: '客户分配' },
+        openHandover: { module: 'customer', action: 'edit', label: '批量移交' },
+        handleRelease: { module: 'customer', action: 'edit', label: '移入客户公海' },
+        handleClaim: { module: 'customer', action: 'view', label: '领取客户' },
+        handleDelete: { module: 'customer', action: 'remove', label: '删除客户' },
+        handleExport: { module: 'customer', action: 'export', label: '导出客户' },
+        importCustomerFile: { module: 'customer', action: 'add', label: '导入客户' }
+      }
+    )
+  ],
   name: 'CrmCustomers',
   components: { IndustrySelect, RegionSelect, STable },
   data() {
@@ -233,10 +245,17 @@ export default {
       ]
     }
   },
-  watch: { '$route.query.customerId': { immediate: true, handler(id) { if (id && Number(id) > 0) this.$nextTick(() => this.handleDetail({ id: Number(id) })) } } },
+  watch: {
+    '$route.query.customerId': {
+      immediate: true,
+      handler(id) {
+        if (id && Number(id) > 0) this.$nextTick(() => this.handleDetail({ id: Number(id) }))
+      }
+    }
+  },
   methods: {
     canAction(action) {
-      return hasModuleAction(store.getters.permissions || [], this.$route.meta, action)
+      return this.showModuleAction('customer', action)
     },
     downloadImportTemplate() {
       const worksheet = xlsxUtils.aoa_to_sheet([excelColumns.map(column => column.label)])
@@ -245,6 +264,10 @@ export default {
       writeXlsxFile(workbook, '客户档案导入模板.xlsx')
     },
     handleImportFile(file) {
+      this.importCustomerFile(file)
+      return false
+    },
+    importCustomerFile(file) {
       const reader = new FileReader()
       this.importing = true
       reader.onload = async event => {
@@ -302,10 +325,7 @@ export default {
       }
       exportCustomers(query).then(response => {
         const rows = response.data || []
-        const worksheet = xlsxUtils.aoa_to_sheet([
-          excelColumns.map(column => column.label),
-          ...rows.map(row => excelColumns.map(column => row[column.key] ?? ''))
-        ])
+        const worksheet = xlsxUtils.aoa_to_sheet([excelColumns.map(column => column.label), ...rows.map(row => excelColumns.map(column => row[column.key] ?? ''))])
         const workbook = xlsxUtils.book_new()
         xlsxUtils.book_append_sheet(workbook, worksheet, '客户档案')
         writeXlsxFile(workbook, `客户档案_${new Date().toISOString().slice(0, 10)}.xlsx`)
@@ -313,9 +333,7 @@ export default {
       })
     },
     handleSearch() {
-      this.queryParam = Object.fromEntries(
-        Object.entries(this.queryParam).filter(([, value]) => value !== '' && value != null)
-      )
+      this.queryParam = Object.fromEntries(Object.entries(this.queryParam).filter(([, value]) => value !== '' && value != null))
       this.$refs.table.refresh(true)
     },
     resetSearch() {
@@ -377,7 +395,7 @@ export default {
         },
         content: {
           template: CustomerDetail,
-          props: { formId: record.id }
+          props: { moduleMeta: this.moduleContexts.customer, formId: record.id }
         }
       })
     },
@@ -468,13 +486,15 @@ export default {
       this.$refs.table.refresh(true)
     },
     statusColor(status) {
-      return {
-        合作中: 'green',
-        重点客户: 'purple',
-        潜在客户: 'blue',
-        暂停合作: 'orange',
-        已流失: 'red'
-      }[status] || 'default'
+      return (
+        {
+          合作中: 'green',
+          重点客户: 'purple',
+          潜在客户: 'blue',
+          暂停合作: 'orange',
+          已流失: 'red'
+        }[status] || 'default'
+      )
     },
     isStale(time) {
       if (!time) return true

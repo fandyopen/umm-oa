@@ -4,6 +4,5 @@
   "printWidth": 230,
   "semi": false,
   "singleQuote": true,
-  "prettier.spaceBeforeFunctionParen": true,
   "trailingComma": "none"
 }

@@ -1,14 +1,5 @@
 import request from '/src/utils/axios/request.js'
 
-// 完成任务（通过、驳回、结束流程）
-// export function completeTask(query) {
-//   return request({
-//     url: '/activiti/process/complete',
-//     method: 'post',
-//     data: query
-//   })
-// }
-
 /* 办理流程 */
 export function completeTask(query) {
   return request({
@@ -63,28 +54,10 @@ export function listDone(query) {
   })
 }
 
-// 获取模型所有节点元素
-export function listFlowElements(pProcessInstanceId) {
-  return request({
-    url: '/activiti/process/listFlowElements',
-    method: 'get',
-    params: { pProcessInstanceId }
-  })
-}
-
 // 获取模型有效节点
 export function listFlowElementsValid(pProcessInstanceId) {
   return request({
     url: '/activiti/process/listFlowElementsValid',
-    method: 'get',
-    params: { pProcessInstanceId }
-  })
-}
-
-// 获取已经经过节点ID和线ID集合
-export function listFlowIds(pProcessInstanceId) {
-  return request({
-    url: '/activiti/process/listFlowIds',
     method: 'get',
     params: { pProcessInstanceId }
   })
@@ -99,13 +72,6 @@ export function findProcessStarted(query) {
   })
 }
 
-// 查询某个业务信息
-export function findProcessBusInfo(moduleName, formId) {
-  return request({
-    url: '/project/' + moduleName + '/' + formId,
-    method: 'get'
-  })
-}
 // 查询首页我的抄送
 export function findTaskCopyList(params) {
   return request({

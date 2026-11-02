@@ -64,37 +64,11 @@ export const indexRouterMap = [
     ]
   },
   {
-    path: '/monitor/job/log',
-    name: 'JobLog',
-    component: 'JobLog',
-    meta: { title: '调度日志', keepAlive: true },
-    hidden: true
-  },
-  {
     path: '/system/notice/form',
     name: 'NoticeForm',
     component: 'NoticeForm',
     meta: { title: '公告编辑', keepAlive: true },
     hidden: true
-  },
-  {
-    path: '/gen/edit',
-    name: 'GenEdit',
-    component: 'GenEdit',
-    meta: { title: '修改生成配置', keepAlive: true },
-    hidden: true
-  }
-]
-/**
-  saas
- */
-export const saasRouterMap = [
-  {
-    path: '/saas',
-    name: 'saas',
-    component: 'Saas',
-    hidden: true,
-    meta: { title: 'saas', keepAlive: true }
   }
 ]
 /**
@@ -191,12 +165,6 @@ export const constantRouterMap = [
     hidden: true,
     component: () => import('/src/views/enterprise/Contacts/index.vue')
   },
-  // {
-  //   path: '/saas/formBackGround/:tenantAppId',
-  //   name: 'FormBackGround',
-  //   hidden: true,
-  //   component: () => import('/src/views/enterprise/FormBackGround')
-  // },
   {
     path: '/404',
     component: () => import('/src/components/exception/404.vue')

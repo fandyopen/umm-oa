@@ -33,11 +33,10 @@
 
 <script>
 import { addMenuPerm } from '/src/api/enterprise/index.js'
-import { roleMenuTree, userMenuTree, deptMenuTree } from '/src/api/system/menu.js'
+import { roleMenuTree } from '/src/api/system/menu.js'
 
 export default {
   name: 'MenuTree',
-  components: {},
   data() {
     return {
       loading: false,
@@ -49,8 +48,6 @@ export default {
       formTitle: '',
       // 表单参数
       form: {
-        userId: undefined,
-        deptId: undefined,
         roleId: undefined,
         tenantModuleIds: [],
         menuCheckStrictly: false
@@ -65,10 +62,6 @@ export default {
       }
     }
   },
-  filters: {},
-  created() {},
-  computed: {},
-  watch: {},
   methods: {
     onExpandMenu(expandedKeys) {
       this.menuExpandedKeys = expandedKeys
@@ -111,7 +104,6 @@ export default {
         if (isExist === -1 && isExistParentIds === -1 && currentIndex === -1) {
           parentIds.push(node.id)
         }
-        // return this.selectNodefilter(node.children, parentIds)
       })
     },
     handleCheckedTreeNodeAll(value) {
@@ -139,20 +131,6 @@ export default {
     /** 根据角色ID查询菜单树结构 */
     getRoleMenuTreeselect(roleId) {
       return roleMenuTree({ roleId: roleId, tenantAppId: this.$store.getters.tenantAppId }).then(response => {
-        this.menuOptions = response.menus
-        return response
-      })
-    },
-    /** 根据部门ID查询菜单树结构 */
-    getDeptMenuTreeselect(deptId) {
-      return deptMenuTree({ deptId: deptId, tenantAppId: this.$store.getters.tenantAppId }).then(response => {
-        this.menuOptions = response.menus
-        return response
-      })
-    },
-    /** 根据用户ID查询菜单树结构 */
-    getUserMenuTreeselect(userId) {
-      return userMenuTree({ userId: userId, tenantAppId: this.$store.getters.tenantAppId }).then(response => {
         this.menuOptions = response.menus
         return response
       })
@@ -194,66 +172,21 @@ export default {
       this.menuCheckedKeys = []
       this.halfCheckedKeys = []
       this.form = {
-        userId: undefined,
-        deptId: undefined,
         roleId: undefined,
         tenantModuleIds: [],
         menuCheckStrictly: false
       }
     },
     /** 修改按钮操作 */
-    handleUpdate(row, type) {
-      if (type === '角色') {
-        this.reset()
-        const roleId = row.roleId
-        const Menu = this.getRoleMenuTreeselect(roleId)
-        this.form.roleId = roleId
-        this.$nextTick(() => {
-          this.open = true
-          Menu.then(res => {
-            this.menuCheckedKeys = res.checkedKeys
-            // 过滤回显时的半选中node(父)
-            if (this.form.menuCheckStrictly) {
-              this.selectNodefilter(this.menuOptions, [])
-            }
-          })
-        })
-        this.formTitle = '角色模块'
-      }
-      if (type === '部门') {
-        this.reset()
-        const deptId = row.deptId
-        const Menu = this.getDeptMenuTreeselect(deptId)
-        this.form.deptId = deptId
-        this.$nextTick(() => {
-          this.open = true
-          Menu.then(res => {
-            this.menuCheckedKeys = res.checkedKeys
-            // 过滤回显时的半选中node(父)
-            if (this.form.menuCheckStrictly) {
-              this.selectNodefilter(this.menuOptions, [])
-            }
-          })
-        })
-        this.formTitle = '部门模块'
-      }
-      if (type === '成员') {
-        this.reset()
-        const userId = row.userId
-        const Menu = this.getUserMenuTreeselect(userId)
-        this.form.userId = userId
-        this.$nextTick(() => {
-          this.open = true
-          Menu.then(res => {
-            this.menuCheckedKeys = res.checkedKeys
-            // 过滤回显时的半选中node(父)
-            if (this.form.menuCheckStrictly) {
-              this.selectNodefilter(this.menuOptions, [])
-            }
-          })
-        })
-        this.formTitle = '成员模块'
-      }
+    handleUpdate(row) {
+      this.reset()
+      this.form.roleId = row.roleId
+      this.formTitle = '角色模块'
+      this.getRoleMenuTreeselect(row.roleId).then(res => {
+        this.menuCheckedKeys = res.checkedKeys
+        if (this.form.menuCheckStrictly) this.selectNodefilter(this.menuOptions, [])
+        this.open = true
+      })
     },
     /** 提交按钮 */
     submitForm: function () {

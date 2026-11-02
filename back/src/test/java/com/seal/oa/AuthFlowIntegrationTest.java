@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.http.HttpMethod;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -18,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.request;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -38,12 +40,12 @@ class AuthFlowIntegrationTest {
 
     @Test
     void loginAndReadRemainingCoreResources() throws Exception {
-        String authorization = "Bearer " + login("17630135660");
+        String authorization = "Bearer " + login("13610316814");
 
         mockMvc.perform(get("/getInfo").header("Authorization", authorization))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
-                .andExpect(jsonPath("$.user.nickName").value("方铭渴"))
+                .andExpect(jsonPath("$.user.nickName").value("欧志锋"))
                 .andExpect(jsonPath("$.roles[0]").value("admin"));
 
         mockMvc.perform(get("/system/user/list").header("Authorization", authorization))
@@ -65,7 +67,7 @@ class AuthFlowIntegrationTest {
 
     @Test
     void sessionEndpointReturnsLoginBootstrapInOneRequest() throws Exception {
-        String authorization = "Bearer " + login("17630135660");
+        String authorization = "Bearer " + login("13610316814");
 
         mockMvc.perform(get("/auth/session").header("Authorization", authorization))
                 .andExpect(status().isOk())
@@ -82,7 +84,7 @@ class AuthFlowIntegrationTest {
 
     @Test
     void waitingTasksHonorsDashboardPageSize() throws Exception {
-        String authorization = "Bearer " + login("17630135660");
+        String authorization = "Bearer " + login("13610316814");
 
         mockMvc.perform(get("/project/activity/taskWaitList")
                         .param("pageNum", "1")
@@ -95,7 +97,7 @@ class AuthFlowIntegrationTest {
 
     @Test
     void memberListSupportsDepartmentAndCreateDateFilters() throws Exception {
-        String authorization = "Bearer " + login("17630135660");
+        String authorization = "Bearer " + login("13610316814");
 
         MvcResult allMembers = mockMvc.perform(get("/system/user/list")
                         .param("pageNum", "1")
@@ -142,7 +144,7 @@ class AuthFlowIntegrationTest {
 
     @Test
     void documentationModuleIsConfiguredForAdministrators() throws Exception {
-        String adminAuthorization = "Bearer " + login("17630135660");
+        String adminAuthorization = "Bearer " + login("13610316814");
 
         MvcResult adminRoutersResult = mockMvc.perform(
                         get("/getRouters").header("Authorization", adminAuthorization))
@@ -177,7 +179,7 @@ class AuthFlowIntegrationTest {
 
     @Test
     void retiredModulesAreAbsentAndTheirDataIsEmpty() throws Exception {
-        String authorization = "Bearer " + login("17630135660");
+        String authorization = "Bearer " + login("13610316814");
 
         MvcResult routersResult = mockMvc.perform(
                         get("/getRouters").header("Authorization", authorization))
@@ -217,7 +219,7 @@ class AuthFlowIntegrationTest {
 
     @Test
     void organizationAndWorkflowPermissionsRemainUsable() throws Exception {
-        String adminAuthorization = "Bearer " + login("17630135660");
+        String adminAuthorization = "Bearer " + login("13610316814");
 
         mockMvc.perform(get("/system/module/341001/actions?workflowOnly=true")
                         .header("Authorization", adminAuthorization))
@@ -238,6 +240,34 @@ class AuthFlowIntegrationTest {
         mockMvc.perform(get("/system/dept/admin/tree").header("Authorization", hrAuthorization))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
+    }
+
+    @Test
+    void retiredAdministrationApisReturnNotFoundAndPreserveData() throws Exception {
+        String authorization = "Bearer " + login("13610316814");
+        int menus = count("sys_menu");
+        int posts = count("sys_post");
+        int members = count("sys_user_post");
+        for (String operation : new String[] {
+                "GET /system/menu/list", "GET /system/menu/treeselect", "GET /system/menu/roleMenuTreeselect/1",
+                "GET /system/menu/1", "POST /system/menu", "PUT /system/menu", "DELETE /system/menu/1",
+                "GET /system/post/list", "GET /system/post/1", "POST /system/post", "PUT /system/post",
+                "DELETE /system/post/1", "POST /system/post/add_member", "DELETE /system/post/remove_member"
+        }) {
+            String[] parts = operation.split(" ", 2);
+            mockMvc.perform(request(HttpMethod.valueOf(parts[0]), parts[1])
+                            .header("Authorization", authorization)
+                            .contentType(MediaType.APPLICATION_JSON).content("{}"))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.code").value(404));
+        }
+        assertEquals(menus, count("sys_menu"));
+        assertEquals(posts, count("sys_post"));
+        assertEquals(members, count("sys_user_post"));
+        mockMvc.perform(get("/system/post/list/all").header("Authorization", authorization))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data").isArray());
     }
 
     private String login(String username) throws Exception {

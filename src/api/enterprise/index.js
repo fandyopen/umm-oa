@@ -1,33 +1,5 @@
 import request from '/src/utils/axios/request.js'
 
-// 根据path获取moduleId，用于跳转菜单提交流程
-// 不能直接通过路由获取，其他页面引用组件就会是其他页面的moduleId
-export function getModuleByPath(query) {
-  return request({
-    url: '/app/user/module/path',
-    method: 'get',
-    params: query
-  })
-}
-
-// 查询App列表
-export function getAppList(query) {
-  return request({
-    url: '/app/user/list',
-    method: 'get',
-    params: query
-  })
-}
-// 获取用户信息
-// 查询应用商店所有应用
-export function getAppSystemList(query) {
-  return request({
-    url: '/app/system/list',
-    method: 'get',
-    params: query
-  })
-}
-
 // 通讯录 部门树
 export function getTreeMenu(query) {
   return request({
@@ -50,15 +22,6 @@ export function getDismissList(params) {
     url: '/system/user/dismiss_list',
     method: 'get',
     params
-  })
-}
-
-// 新增成员
-export function addRole(data) {
-  return request({
-    url: '/system/user/add',
-    method: 'post',
-    data
   })
 }
 
@@ -106,23 +69,6 @@ export function clearDeptPrincipal(deptId, userId) {
   })
 }
 
-// 调整部门成员
-export function adjustDeptUser(params) {
-  return request({
-    url: '/system/dept/addUser',
-    method: 'get',
-    params
-  })
-}
-
-// 删除成员
-export function addUserDismiss(params) {
-  return request({
-    url: '/system/user/dismiss',
-    method: 'get',
-    params
-  })
-}
 // 根据权限查询角色
 export function getRoleByAdmin() {
   return request({
@@ -192,15 +138,6 @@ export function insertRole(data) {
   })
 }
 
-// 成员导入
-export function roleImport(data) {
-  return request({
-    url: '/system/user/excel_import',
-    method: 'post',
-    data
-  })
-}
-
 // 查询固定超级管理员
 export function queryStstemAdmin() {
   return request({
@@ -232,14 +169,6 @@ export function deleteAppItem(params) {
   return request({
     url: '/app/user/delete/' + params,
     method: 'delete'
-  })
-}
-
-// 根据应用id查询表单
-export function queryAppByTenantAppId(tenantAppId) {
-  return request({
-    url: '/app/user/module/' + tenantAppId,
-    method: 'get'
   })
 }
 

@@ -70,13 +70,6 @@ export function deleteCustomer(id) {
   })
 }
 
-export function deleteCustomerContact(id) {
-  return request({
-    url: `/project/merchant/user/${id}`,
-    method: 'delete'
-  })
-}
-
 export function listFollowups(customerId) {
   return request({
     url: `/project/merchant/${customerId}/followups`,

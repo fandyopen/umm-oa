@@ -179,11 +179,6 @@ export default {
       this.$refs[this.confGlobal.formRef].validate(valid => {
         if (!valid) return
         if (!isTableValid) return
-        // this.$notify({
-        //   title: '表单数据',
-        //   message: '请在控制台中查看数据输出',
-        //   position: 'bottom-right'
-        // })
         this.$router.push({
           name: 'saasApp',
           params: { formData: this.formModel }

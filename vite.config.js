@@ -6,7 +6,6 @@ import { createHtmlPlugin } from 'vite-plugin-html'
 import styleImport from 'vite-plugin-style-import'
 import replace from '@rollup/plugin-replace'
 import eslintPlugin from 'vite-plugin-eslint'
-// import resolveExternalsPlugin from 'vite-plugin-resolve-externals'
 
 export const hash = Math.floor(Math.random() * 90000) + 10000
 // 参考vite-plugin-antdv1-momentjs-resolver插件，修改正则表达式，兼容Windows路径
@@ -20,7 +19,7 @@ const AntdMomentResolver = (reg = /ant-design-vue[\/|\\][\w-\\\/]*\.js$/) => {
   return {
     name: 'vite-plugin-antdv1-momentjs-resolver',
     configResolved(config) {
-      //  以来预构建时候替换 esbuild
+      // 依赖预构建时兼容 moment 的默认导出。
       config.optimizeDeps.esbuildOptions.plugins = config.optimizeDeps.esbuildOptions.plugins ? config.optimizeDeps.esbuildOptions.plugins : []
       config.optimizeDeps.esbuildOptions.plugins.push({
         name: 'replace-code',
@@ -35,19 +34,6 @@ const AntdMomentResolver = (reg = /ant-design-vue[\/|\\][\w-\\\/]*\.js$/) => {
               if (source.indexOf('import * as moment from')) {
                 source = source.replace(/import\s\*\sas\smoment\sfrom/g, 'import moment from')
               }
-              // 替换List组件代码，List.Item为undefined
-              //if (source.indexOf('Vue.component(List.Item.name, List.Item);')) {
-              //  source = source.replace(
-              //    'Vue.component(List.Item.name, List.Item);',
-              //    'Vue.component("AListItem", Item);'
-              //  )
-              //}
-              //if (source.indexOf('Vue.component(List.Item.Meta.name, List.Item.Meta);')) {
-              //  source = source.replace(
-              //    'Vue.component(List.Item.Meta.name, List.Item.Meta);',
-              //    'Vue.component("AListItemMeta", Item.Meta);'
-              //  )
-              //}
               return {
                 contents: source
               }
@@ -96,9 +82,6 @@ export default ({ mode }) => {
       'process.env': { ...env }
     },
     plugins: [
-      // resolveExternalsPlugin({
-      //   Cesium: 'Cesium'
-      // }),
       createVuePlugin({
         jsx: true
       }),

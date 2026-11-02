@@ -18,15 +18,14 @@ export default {
     const { ...props } = this.$props
     const { title } = this.$props
     return (
-      <Card bordered={false} size='small'>
-        <a-collapse expand-icon-position='right' defaultActiveKey={title}>
-          <a-collapse-panel key={title} class='custom-collapse-panel'>
-            <span slot='header' class='custom-collapse-panel-header'>
+      <Card bordered={false} size="small">
+        <a-collapse expand-icon-position="right" defaultActiveKey={title}>
+          <a-collapse-panel key={title} class="custom-collapse-panel">
+            <span slot="header" class="custom-collapse-panel-header">
               {title}
             </span>
             <Descriptions>
               {this.formItems.map(item => {
-                // let value = this.formData[item['prop']]
                 let value = this._.get(this.formData, item['prop'], '')
                 if (this._.isFunction(item['formatter'])) {
                   value = item['formatter'](value)
@@ -34,7 +33,7 @@ export default {
                 return <Descriptions.Item label={item.label}>{item.customRender instanceof Function ? item.customRender(value, this.formData) : value}</Descriptions.Item>
               })}
             </Descriptions>
-            <template slot='extra'>{this.$slots.extra}</template>
+            <template slot="extra">{this.$slots.extra}</template>
           </a-collapse-panel>
         </a-collapse>
       </Card>

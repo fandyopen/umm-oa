@@ -146,9 +146,7 @@ export default {
             // 服务端接收文件的参数名，文件数据，文件名
             formData.append('file', blobInfo.blob(), blobInfo.filename())
             commonUpload(formData)
-              .then(res => {
-                // this.$message.success(res.msg)
-              })
+              .then(res => {})
               .catch(() => {
                 failure('上传失败')
               })

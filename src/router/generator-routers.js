@@ -22,12 +22,8 @@ const constantRouterComponents = {
   AccountSettings: () => import('/src/views/user/account/settings/index.vue'),
   BaseSettings: () => import('/src/views/user/account/settings/BaseSetting.vue'),
   SecuritySettings: () => import('/src/views/user/account/settings/Security.vue'),
-  // job log
-  // JobLog: () => import('@/views/monitor/job/log'),
   // 公告新增修改
   NoticeForm: () => import('/src/views/system/notice/CreateForm'),
-  // 修改生成配置
-  // GenEdit: () => import('@/views/tool/gen/modules/GenEdit'),
   // 应用中心
   AppCenter: () => import('/src/views/enterprise/saasIndex/index.vue'),
   // 流程设计器
@@ -109,9 +105,6 @@ export const generator = (routerMap, parent) => {
         item.path = '/' + item.path
       }
     }
-    if (item.path) {
-      // item.path = '/' + item.path
-    }
     if (item.isFrame === 0) {
       item.target = '_blank'
     }
@@ -128,6 +121,7 @@ export const generator = (routerMap, parent) => {
       meta: {
         moduleId: item.moduleId,
         moduleName: item.moduleName,
+        component: item.component,
         perms: item.perms,
         title: title,
         icon: icon,

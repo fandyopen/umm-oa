@@ -5,12 +5,7 @@
       <span class="ant-pro-account-avatar">
         <a-space class="avatar-box">
           <a-avatar size="large" :src="avatar" class="antd-pro-global-header-index-avatar avatar" v-if="avatar !== null" />
-          <a-avatar
-            size="large"
-            :src="imgAvatar"
-            class="avatar"
-            v-else
-          />
+          <a-avatar size="large" :src="imgAvatar" class="avatar" v-else />
           <span class="text">{{ nickname }}</span>
           <a-icon type="caret-down" class="icon" />
         </a-space>
@@ -162,12 +157,9 @@ export default {
         case 'layout':
           if (value === 'sidemenu') {
             this.$store.dispatch('ToggleFixSiderbar', true)
-            // this.settings.contentWidth = CONTENT_WIDTH_TYPE.Fluid
             this.$store.dispatch('ToggleContentWidth', CONTENT_WIDTH_TYPE.Fluid)
           } else {
-            // this.settings.fixSiderbar = false
             this.$store.dispatch('ToggleFixSiderbar', false)
-            // this.settings.contentWidth = CONTENT_WIDTH_TYPE.Fixed
             this.$store.dispatch('ToggleContentWidth', CONTENT_WIDTH_TYPE.Fixed)
           }
           break

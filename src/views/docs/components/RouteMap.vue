@@ -11,13 +11,7 @@
     <div class="route-toolbar">
       <a-input-search v-model="keyword" placeholder="搜索路由、组件、接口或后端类" allow-clear />
       <div class="route-groups">
-        <a-button
-          v-for="group in groups"
-          :key="group"
-          size="small"
-          :type="activeGroup === group ? 'primary' : 'default'"
-          @click="activeGroup = group"
-        >
+        <a-button v-for="group in groups" :key="group" size="small" :type="activeGroup === group ? 'primary' : 'default'" @click="activeGroup = group">
           {{ group }}
         </a-button>
       </div>
@@ -87,12 +81,14 @@ export default {
   data() {
     return {
       entries: routeMapEntries,
-      groups: ['全部', '工作台', '待办', '营销', '人事', '系统', '全局'],
       activeGroup: '全部',
       keyword: ''
     }
   },
   computed: {
+    groups() {
+      return ['全部', ...new Set(this.entries.map(entry => entry.group))]
+    },
     filteredEntries() {
       const keyword = this.keyword.trim().toLowerCase()
       return this.entries.filter(entry => {
@@ -102,21 +98,7 @@ export default {
         if (!keyword) {
           return true
         }
-        return [
-          entry.group,
-          entry.menu,
-          entry.route,
-          entry.component,
-          entry.file,
-          ...entry.related,
-          ...entry.api,
-          ...entry.backend,
-          entry.permission,
-          entry.note
-        ]
-          .join(' ')
-          .toLowerCase()
-          .includes(keyword)
+        return [entry.group, entry.menu, entry.route, entry.component, entry.file, ...entry.related, ...entry.api, ...entry.backend, entry.permission, entry.note].join(' ').toLowerCase().includes(keyword)
       })
     }
   },

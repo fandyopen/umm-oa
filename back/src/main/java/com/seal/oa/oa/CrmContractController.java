@@ -46,25 +46,6 @@ public class CrmContractController {
     })
     public Map<String, Object> customers(@RequestParam(defaultValue = "") String name) { return ApiResult.ok(contracts.customerOptions(name)); }
 
-    @GetMapping("/approvers")
-    @RequiresModuleAction(moduleId = 341201, action = "access")
-    public Map<String, Object> approvers() { return ApiResult.ok(contracts.approvers()); }
-
-    @GetMapping("/fees")
-    @RequiresModuleAction(moduleId = 341203, action = "access")
-    public Map<String, Object> fees(@RequestParam Map<String, String> query) {
-        List<Map<String, Object>> rows = contracts.fees(query);
-        return ApiResult.page(rows, rows.size());
-    }
-
-    @GetMapping("/reminders")
-    @RequiresModuleAction(moduleId = 341205, action = "access")
-    public Map<String, Object> reminders(@RequestParam(required = false) Long customerId) {
-        List<Map<String, Object>> rows = contracts.reminders(true).stream()
-                .filter(row -> customerId == null || customerId.equals(((Number) row.get("customerId")).longValue())).toList();
-        return ApiResult.page(rows, rows.size());
-    }
-
     @GetMapping("/{id}")
     @RequiresAnyModuleAction({
             @ModuleActionRequirement(moduleId = 341201, action = "access"),
@@ -94,7 +75,8 @@ public class CrmContractController {
 
     @PostMapping("/{id}/approve")
     @RequiresModuleAction(moduleId = 341202, action = "approve")
-    public Map<String, Object> approve(@PathVariable long id, @RequestBody Map<String, Object> body) { return ApiResult.ok(workflow.approve(id, body)); }
+    // Compatibility for pending contracts created before the unified workflow was introduced.
+    public Map<String, Object> approve(@PathVariable long id, @RequestBody Map<String, Object> body) { return ApiResult.ok(contracts.approveLegacy(id, body)); }
 
     @PostMapping("/{id}/sign")
     @RequiresModuleAction(moduleId = 341201, action = "sign")

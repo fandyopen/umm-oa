@@ -42,7 +42,6 @@ export default {
   methods: {
     /* 列搜索 */
     handleSearch(selectedKeys, confirm, dataIndex) {
-      // this.queryParam[dataIndex] = selectedKeys[0]
       this.$emit('onSearch', dataIndex, selectedKeys[0])
       confirm()
     },

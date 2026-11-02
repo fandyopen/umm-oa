@@ -32,42 +32,41 @@ const PageHeaderWrapperProps = {
   i18nRender: PropTypes.oneOfType([PropTypes.func, PropTypes.bool]).def(false)
 }
 
-const defaultI18nRender = (t) => t
+const defaultI18nRender = t => t
 
-const useContext = (route) => {
-  return route && {
-    ...route.meta
-  } || null
+const useContext = route => {
+  return (
+    (route && {
+      ...route.meta
+    }) ||
+    null
+  )
 }
 
-const noop = () => {
-}
+const noop = () => {}
 
 // TODO :: tabList tab 支持图标 优化
 const renderFooter = (h, tabConfigProps, i18nRender) => {
-  const {
-    tabList,
-    tabActiveKey,
-    tabChange: onTabChange,
-    tabBarExtraContent,
-    tabProps
-  } = tabConfigProps
-  return tabList && tabList.length > 0 && (
-    <Tabs
-      class={`${prefixedClassName}-tabs`}
-      activeKey={tabActiveKey}
-      onChange={key => {
-        if (onTabChange) {
-          onTabChange(key)
-        }
-      }}
-      tabBarExtraContent={tabBarExtraContent}
-      {...tabProps}
-    >
-      {tabList.map(item => (
-        <Tabs.TabPane {...item} tab={i18nRender(item.tab)} key={item.key}/>
-      ))}
-    </Tabs>
+  const { tabList, tabActiveKey, tabChange: onTabChange, tabBarExtraContent, tabProps } = tabConfigProps
+  return (
+    tabList &&
+    tabList.length > 0 && (
+      <Tabs
+        class={`${prefixedClassName}-tabs`}
+        activeKey={tabActiveKey}
+        onChange={key => {
+          if (onTabChange) {
+            onTabChange(key)
+          }
+        }}
+        tabBarExtraContent={tabBarExtraContent}
+        {...tabProps}
+      >
+        {tabList.map(item => (
+          <Tabs.TabPane {...item} tab={i18nRender(item.tab)} key={item.key} />
+        ))}
+      </Tabs>
+    )
   )
 }
 
@@ -79,14 +78,8 @@ const renderPageHeader = (h, content, extraContent) => {
     <div class={`${prefixedClassName}-detail`}>
       <div class={`${prefixedClassName}-main`}>
         <div class={`${prefixedClassName}-row`}>
-          {content && (
-            <div class={`${prefixedClassName}-content`}>{content}</div>
-          )}
-          {extraContent && (
-            <div class={`${prefixedClassName}-extraContent`}>
-              {extraContent}
-            </div>
-          )}
+          {content && <div class={`${prefixedClassName}-content`}>{content}</div>}
+          {extraContent && <div class={`${prefixedClassName}-extraContent`}>{extraContent}</div>}
         </div>
       </div>
     </div>
@@ -94,17 +87,7 @@ const renderPageHeader = (h, content, extraContent) => {
 }
 
 const defaultPageHeaderRender = (h, props, pageMeta, i18nRender) => {
-  const {
-    title: propTitle,
-    tags,
-    content,
-    pageHeaderRender,
-    extra,
-    extraContent,
-    breadcrumb,
-    back: handleBack,
-    ...restProps
-  } = props
+  const { title: propTitle, tags, content, pageHeaderRender, extra, extraContent, breadcrumb, back: handleBack, ...restProps } = props
   if (pageHeaderRender) {
     return pageHeaderRender({ ...props })
   }
@@ -116,9 +99,7 @@ const defaultPageHeaderRender = (h, props, pageMeta, i18nRender) => {
   }
   // title props 不是 false 且不是 array 则直接渲染 title
   // 反之认为是 VNode, 作为 render 参数直接传入到 PageHeader
-  const title = isArray(pageHeaderTitle)
-    ? pageHeaderTitle
-    : pageHeaderTitle && i18nRender(pageHeaderTitle)
+  const title = isArray(pageHeaderTitle) ? pageHeaderTitle : pageHeaderTitle && i18nRender(pageHeaderTitle)
   const tabProps = {
     breadcrumb,
     extra,
@@ -135,14 +116,13 @@ const defaultPageHeaderRender = (h, props, pageMeta, i18nRender) => {
       {renderPageHeader(h, content, extraContent)}
     </PageHeader>
   )
-  // return
 }
 
 const PageHeaderWrapper = {
   name: 'PageHeaderWrapper',
   props: PageHeaderWrapperProps,
   inject: ['locale', 'contentWidth', 'breadcrumbRender'],
-  render (h) {
+  render(h) {
     const { $route, $listeners } = this
     const children = this.$slots.default
     const title = getComponentFromProp(this, 'title')
@@ -157,14 +137,17 @@ const PageHeaderWrapper = {
     // 当未设置 back props 或未监听 @back，不显示 back
     // props 的 back 事件优先级高于 @back，需要注意
     const onBack = this.$props.back || $listeners.back
-    const back = onBack && (() => {
-      // this.$emit('back')
-      // call props back func
-      onBack && onBack()
-    }) || undefined
+    const back =
+      (onBack &&
+        (() => {
+          // this.$emit('back')
+          // call props back func
+          onBack && onBack()
+        })) ||
+      undefined
 
     const onTabChange = this.$props.tabChange
-    const tabChange = (key) => {
+    const tabChange = key => {
       this.$emit('tabChange', key)
       onTabChange && onTabChange(key)
     }
@@ -181,11 +164,7 @@ const PageHeaderWrapper = {
       })
 
       const defaultItemRender = ({ route, params, routes, paths, h }) => {
-        return (route.redirect === 'noRedirect' || routes.indexOf(route) === routes.length - 1) && (
-          <span>{route.breadcrumbName}</span>
-        ) || (
-          <router-link to={{ path: route.path || '/', params }}>{route.breadcrumbName}</router-link>
-        )
+        return ((route.redirect === 'noRedirect' || routes.indexOf(route) === routes.length - 1) && <span>{route.breadcrumbName}</span>) || <router-link to={{ path: route.path || '/', params }}>{route.breadcrumbName}</router-link>
       }
 
       // If custom breadcrumb render undefined
@@ -214,14 +193,16 @@ const PageHeaderWrapper = {
 
     return (
       <div class="ant-pro-page-header-wrap">
-        { isShowBreadcrumb ? <div class={`${prefixedClassName}-page-header-warp`}>
-          <GridContent>{defaultPageHeaderRender(h, props, pageMeta, i18n)}</GridContent>
-        </div> : <div style="margin-top:40px"></div> }
+        {isShowBreadcrumb ? (
+          <div class={`${prefixedClassName}-page-header-warp`}>
+            <GridContent>{defaultPageHeaderRender(h, props, pageMeta, i18n)}</GridContent>
+          </div>
+        ) : (
+          <div style="margin-top:40px"></div>
+        )}
         {children ? (
           <GridContent contentWidth={contentWidth}>
-            <div class={`${prefixedClassName}-children-content`}>
-              {children}
-            </div>
+            <div class={`${prefixedClassName}-children-content`}>{children}</div>
           </GridContent>
         ) : null}
       </div>

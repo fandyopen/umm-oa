@@ -74,7 +74,7 @@ class OrganizationPermissionUnifiedTest {
     @Test
     @Transactional
     void selectedModuleActionsControlButtonsAndBackendRequests() throws Exception {
-        String adminAuthorization = login("17630135660");
+        String adminAuthorization = login("13610316814");
 
         mockMvc.perform(post("/app/user/addModule")
                         .header("Authorization", adminAuthorization)
@@ -138,7 +138,7 @@ class OrganizationPermissionUnifiedTest {
     @Test
     @Transactional
     void moduleGrantAllowsReadsAndActionGrantControlsWrites() throws Exception {
-        String adminAuthorization = login("17630135660");
+        String adminAuthorization = login("13610316814");
 
         mockMvc.perform(post("/app/user/addModule")
                         .header("Authorization", adminAuthorization)
@@ -210,7 +210,7 @@ class OrganizationPermissionUnifiedTest {
 
     @Test
     void departmentAndUserModuleTreeEndpointsAreRetired() throws Exception {
-        String authorization = login("17630135660");
+        String authorization = login("13610316814");
 
         mockMvc.perform(get("/app/user/deptMenuTree?deptId=324")
                         .header("Authorization", authorization))
@@ -277,7 +277,7 @@ class OrganizationPermissionUnifiedTest {
 
     @Test
     void hrManagerRoleAppearsOnceInProcessDesignGroup() throws Exception {
-        String authorization = login("17630135660");
+        String authorization = login("13610316814");
         MvcResult result = mockMvc.perform(get("/system/role/admin/list")
                         .header("Authorization", authorization))
                 .andExpect(status().isOk())
@@ -339,7 +339,7 @@ class OrganizationPermissionUnifiedTest {
     @Test
     @Transactional
     void businessTrackingUsesDedicatedAction() throws Exception {
-        String adminAuthorization = login("17630135660");
+        String adminAuthorization = login("13610316814");
         String userAuthorization = login("17600000001");
 
         grantBusinessActions(adminAuthorization, 340590L);

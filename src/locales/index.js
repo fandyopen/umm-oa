@@ -38,13 +38,6 @@ export function loadLanguageAsync(lang = defaultLang) {
     storage.set('lang', lang)
     if (i18n.locale !== lang) {
       if (!loadedLanguages.includes(lang)) {
-        // return import(/* @vite-ignore */ `./lang/${lang}.js`).then(msg => {
-        //   const locale = msg.default
-        //   i18n.setLocaleMessage(lang, locale)
-        //   loadedLanguages.push(lang)
-        //   moment.updateLocale(locale.momentName, locale.momentLocale)
-        //   return setI18nLanguage(lang)
-        // })
         for (const path in modules) {
           if (path === `./lang/${lang}.js`) {
             const locale = modules[path].default

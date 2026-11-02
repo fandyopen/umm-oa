@@ -75,10 +75,6 @@ const SiderMenu = {
     const siderCls = ['ant-pro-sider-menu-sider']
     if (fixSiderbar) siderCls.push('fix-sider-bar')
     if (theme === 'light') siderCls.push('light')
-    //
-    // const handleCollapse = (collapsed, type) => {
-    //   this.$emit('collapse', collapsed)
-    // }
 
     const headerDom = defaultRenderLogoAntTitle(h, {
       logo,

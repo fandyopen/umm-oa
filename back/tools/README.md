@@ -2,7 +2,22 @@
 
 这些脚本用于数据生成、参考站比对和部署，不参与 Spring Boot 应用启动。
 
-## 数据构建
+## 源码检查
+
+在项目根目录运行 npm run audit:source，或运行 node back/tools/audit-source.mjs --details 查看详细报告。
+检查入口包括固定路由、全局注册组件、实际模块目录及其依赖，报告输出到 back/target/source-audit.json。
+人事、共享成员和客户合同业务源码同时检查数字模块权限常量；新增页面应按业务组件解析模块上下文。
+动态组件、详情页、预览和历史书签可能没有菜单入口，不能只因隐藏就删除。
+如数据库添加过自定义模块，应先补充 back/target/source-audit-runtime.json 的模块数组，再检查页面可达性。
+审计工具仅生成报告，不会修改源文件、数据库或执行退役 SQL。
+
+## 模块上下文回归
+
+在项目根目录执行 `npm run test:module-context`，验证动态 ID、跨页面权限、异步加载、缓存隔离及成员工作流入参。
+同时验证初始化静默、按钮级提示、缺失模块点击重试、重复点击保护、主数据独立加载及成员操作弹层。
+后端 `ModuleContextIntegrationTest` 使用独立内存库验证查询和权限边界。业务约定见 [业务模块上下文](../docs/module-context.md)。
+
+## 数据构建脚本
 
 ```powershell
 node tools/build-module-sql.mjs

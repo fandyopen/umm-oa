@@ -17,8 +17,7 @@ public class ModuleActionInterceptor implements HandlerInterceptor {
 
     private static final List<PathRule> BUSINESS_PATH_RULES = List.of(
             new PathRule("/project/business", 340590L),
-            new PathRule("/project/merchant", 340352L),
-            new PathRule("/project/bid", 340644L)
+            new PathRule("/project/merchant", 340352L)
     ).stream()
             .sorted(Comparator.comparingInt((PathRule rule) -> rule.prefix().length()).reversed())
             .toList();

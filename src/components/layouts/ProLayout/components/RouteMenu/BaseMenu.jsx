@@ -5,7 +5,6 @@ import Menu from 'ant-design-vue/es/menu'
 import Button from 'ant-design-vue/es/button'
 import 'ant-design-vue/es/icon/style'
 import { mapGetters, mapActions } from 'vuex'
-// import Icon from 'ant-design-vue/es/icon'
 import { IconFont } from '/src/components/IconFont/index.js'
 const { Item: MenuItem, SubMenu } = Menu
 
@@ -84,15 +83,6 @@ const renderIcon = (h, icon) => {
     return null
   }
   const props = {}
-  // if (typeof (icon) === 'object') {
-  //   props.component = icon
-  // } else {
-  //   props.type = icon
-  //   // iconfont图标
-  //   if (typeof (icon) === 'string' && icon.indexOf('iconfont-') !== -1) {
-  //     return <IconFont {...{ props }} />
-  //   }
-  // }
   typeof icon === 'object' ? (props.component = icon) : (props.type = icon)
   return <IconFont {...{ props }} />
 }
@@ -165,7 +155,6 @@ const RouteMenu = {
     })
 
     return <Menu {...dynamicProps}>{menuItems}</Menu>
-    // return <MenuTree nodeList={this.menus} />
   },
   methods: {
     ...mapActions(['SetCurrentLevelOneMenu']),

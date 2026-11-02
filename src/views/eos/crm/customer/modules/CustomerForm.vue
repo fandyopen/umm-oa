@@ -62,9 +62,7 @@
         <a-col :xs="24" :md="12">
           <a-form-model-item label="客户负责人">
             <a-select v-model="form.ownerUserId" show-search :filter-option="false" placeholder="请选择负责人" @search="searchOwners">
-              <a-select-option v-for="owner in owners" :key="owner.userId" :value="owner.userId">
-                {{ owner.nickName }} · {{ owner.deptName || '未分配部门' }}
-              </a-select-option>
+              <a-select-option v-for="owner in owners" :key="owner.userId" :value="owner.userId"> {{ owner.nickName }} · {{ owner.deptName || '未分配部门' }} </a-select-option>
             </a-select>
           </a-form-model-item>
         </a-col>
@@ -119,12 +117,7 @@
             <a-input v-model="contact.email" placeholder="邮箱" />
           </a-col>
           <a-col :xs="24" :md="2">
-            <a-checkbox
-              :checked="contact.primaryContact === '1'"
-              @change="event => setPrimaryContact(index, event.target.checked)"
-            >
-              首要
-            </a-checkbox>
+            <a-checkbox :checked="contact.primaryContact === '1'" @change="event => setPrimaryContact(index, event.target.checked)"> 首要 </a-checkbox>
           </a-col>
         </a-row>
         <a-row :gutter="10">

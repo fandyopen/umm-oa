@@ -30,7 +30,7 @@
           {{ parseTime(record.createTime) }}
         </span>
         <span slot="operation" slot-scope="text, record">
-          <a @click="$refs.MenuTree.handleUpdate(record, '角色')"> <a-icon type="edit" />添加模块 </a>
+          <a @click="$refs.MenuTree.handleUpdate(record)"> <a-icon type="edit" />添加模块 </a>
         </span>
       </a-table>
       <!-- 分页 -->

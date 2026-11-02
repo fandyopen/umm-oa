@@ -35,22 +35,6 @@ export function delBusiness(id) {
   })
 }
 
-// 删除商机干系人
-export function deleteBusinessUser(id) {
-  return request({
-    url: '/project/business/user/' + id,
-    method: 'delete'
-  })
-}
-
-// 删除商机跟踪阶段
-export function deleteBusinessStage(id) {
-  return request({
-    url: '/project/business/stage/' + id,
-    method: 'delete'
-  })
-}
-
 // 查询商机详细
 export function getBusiness(id) {
   return request({

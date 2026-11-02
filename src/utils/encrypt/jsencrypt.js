@@ -1,4 +1,3 @@
-// import { JSEncrypt } from './jdJsencrypt.min.js'
 import JSEncrypt from 'jsencrypt'
 
 // 密钥对生成 http://web.chacuo.net/netrsakeypair

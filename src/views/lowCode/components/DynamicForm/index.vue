@@ -1,16 +1,10 @@
 <template>
   <div class="dynamic-form-container">
     <div class="left-board">
-      <!-- <div class="logo-wrapper">
-        <div class="logo">创建表单</div>
-      </div>-->
       <el-scrollbar class="left-scrollbar">
         <el-tabs v-model="activeTabName" :stretch="true">
           <el-tab-pane label="常用组件" name="common">
             <div class="components-list">
-              <!-- <div class="components-title">
-                <svg-icon icon-class="component" />输入型组件
-              </div>-->
               <draggable class="components-draggable" :list="commonComponents" :group="{ name: 'componentsGroup', pull: 'clone', put: false }" :clone="cloneComponent" draggable=".components-item" :sort="false" @end="onEnd">
                 <div v-for="(element, index) in commonComponents" :key="index" class="components-item" @click="addComponent(element)">
                   <div class="components-body">
@@ -19,86 +13,14 @@
                   </div>
                 </div>
               </draggable>
-              <!-- <div class="components-title">
-                <svg-icon icon-class="component" />选择型组件
-              </div>-->
-              <!-- <draggable
-                class="components-draggable"
-                :list="selectComponents"
-                :group="{ name: 'componentsGroup', pull: 'clone', put: false }"
-                :clone="cloneComponent"
-                draggable=".components-item"
-                :sort="false"
-                @end="onEnd"
-              >
-                <div
-                  v-for="(element, index) in selectComponents"
-                  :key="index"
-                  class="components-item"
-                  @click="addComponent(element)"
-                >
-                  <div class="components-body">
-                    <svg-icon :icon-class="element.tagIcon" />
-                    {{ element.label }}
-                  </div>
-                </div>
-              </draggable>-->
-              <!-- <div class="components-title">
-                <svg-icon icon-class="component" />布局型组件
-              </div>-->
-              <!-- <draggable
-                class="components-draggable"
-                :list="layoutComponents"
-                :group="{ name: 'componentsGroup', pull: 'clone', put: false }"
-                :clone="cloneComponent"
-                draggable=".components-item"
-                :sort="false"
-                @end="onEnd"
-              >
-                <div
-                  v-for="(element, index) in layoutComponents"
-                  :key="index"
-                  class="components-item"
-                  @click="addComponent(element)"
-                >
-                  <div class="components-body">
-                    <svg-icon :icon-class="element.tagIcon" />
-                    {{ element.label }}
-                  </div>
-                </div>
-              </draggable>-->
             </div>
           </el-tab-pane>
-          <!-- <el-tab-pane label="定制组件" name="custom">
-            <div class="components-list">
-              <div class="components-title">
-                <svg-icon icon-class="component" />布局型组件
-              </div>
-              <draggable class="components-draggable" :list="customMadeComponents" :group="{ name: 'componentsGroup', pull: 'clone', put: false }" :clone="cloneComponent" draggable=".components-item" :sort="false" @end="onEnd">
-                <div v-for="(element, index) in customMadeComponents" :key="index" class="components-item custom-component" @click="addComponent(element)">
-                  <div class="components-body">
-                    <svg-icon :icon-class="element.tagIcon" />
-                    {{ element.label }}
-                  </div>
-                </div>
-              </draggable>
-            </div>
-          </el-tab-pane> -->
         </el-tabs>
       </el-scrollbar>
     </div>
 
     <div class="center-board">
       <div class="action-bar">
-        <!-- <el-button icon="el-icon-video-play" type="text" @click="run">
-          运行
-        </el-button>
-        <el-button icon="el-icon-download" type="text" @click="download">
-          导出vue文件
-        </el-button>
-        <el-button class="copy-btn-main" icon="el-icon-document-copy" type="text" @click="copy">
-          复制代码
-        </el-button> -->
         <el-button class="copy-btn-main" icon="el-icon-success" type="text" @click="preview">预览</el-button>
         <el-button class="delete-btn" icon="el-icon-delete" type="text" @click="empty">清空</el-button>
       </div>
@@ -139,89 +61,38 @@
     </div>
 
     <right-panel :active-data="activeData" :form-conf="formConf" :show-field="!!drawingList.length" @tag-change="tagChange" :couldChangeRequire="!isProCondition(activeData)" />
-
-    <!-- <form-drawer
-      :visible.sync="drawerVisible"
-      :form-data="formData"
-      size="100%"
-      :generate-conf="generateConf"
-    />-->
-    <!-- <code-type-dialog
-      :visible.sync="dialogVisible"
-      title="选择生成类型"
-      :show-file-name="showFileName"
-      @confirm="generate"
-    />-->
-    <input id="copyNode" type="hidden" />
   </div>
 </template>
 
 <script>
 import draggable from 'vuedraggable'
-// import { saveAs } from 'file-saver'
-// import beautifier from 'beautifier'
-// import ClipboardJS from 'clipboard'
-import render from './components/render.jsx'
-// import FormDrawer from './FormDrawer'
 import RightPanel from './RightPanel.vue'
-import { inputComponents, selectComponents, layoutComponents, customMadeComponents, commonComponents, formConf } from './components/generator/config'
-// eslint-disable-next-line no-unused-vars
-import { exportDefault, beautifierConf, isNumberStr, titleCase } from './utils/index'
-// eslint-disable-next-line no-unused-vars
-import { makeUpHtml, vueTemplate, vueScript, cssStyle } from './components/generator/html'
-// eslint-disable-next-line no-unused-vars
-import { makeUpJs } from './components/generator/js'
-// eslint-disable-next-line no-unused-vars
-import { makeUpCss } from './components/generator/css'
+import { commonComponents, formConf } from './components/generator/config'
 import drawingDefalut from './components/generator/drawingDefalut.js'
-// import CodeTypeDialog from './CodeTypeDialog'
 import DraggableItem from './DraggableItem.vue'
-import {
-  getDrawingList,
-  saveDrawingList,
-  // getIdGlobal,
-  // saveIdGlobal,
-  getFormConf
-} from './utils/db'
+import { getDrawingList, saveDrawingList, getFormConf } from './utils/db'
 import { debounce } from '../utils/index.js'
 
-// eslint-disable-next-line no-unused-vars
-const emptyActiveData = { style: {}, autosize: {} }
-// eslint-disable-next-line no-unused-vars
-let oldActiveId
 let tempActiveData
 const formConfInDB = getFormConf()
-// const idGlobal = getIdGlobal();
 export default {
   components: {
     draggable,
-    render,
     RightPanel,
     DraggableItem
-    // FormDrawer,
-    // CodeTypeDialog,
   },
   props: ['tabName', 'conf'],
   data() {
     const storageList = getDrawingList()
     const drawingList = Array.isArray(storageList) && storageList.length ? storageList : drawingDefalut
     return {
-      // idGlobal,
       formConf,
-      inputComponents,
-      selectComponents,
-      layoutComponents,
       commonComponents,
-      customMadeComponents,
       labelWidth: 100,
       drawingList,
       drawingData: {},
       activeId: drawingList ? drawingList[0].formId : '',
-      drawerVisible: false,
       formData: {},
-      dialogVisible: false,
-      generateConf: null,
-      showFileName: false,
       activeData: drawingList[0],
       activeTabName: 'common',
       ipadMode: 'portrait'
@@ -230,12 +101,6 @@ export default {
   watch: {
     // eslint-disable-next-line func-names
 
-    activeId: {
-      handler(val) {
-        oldActiveId = val
-      },
-      immediate: true
-    },
     drawingList: {
       handler(val) {
         if (!val) return
@@ -266,21 +131,6 @@ export default {
     }
     this.activeFormItem(this.drawingList[0])
     this.$nextTick(_ => this.getIpadMode())
-
-    // const clipboard = new ClipboardJS('#copyNode', {
-    //   text: trigger => {
-    //     const codeStr = this.generateCode()
-    //     this.$notify({
-    //       title: '成功',
-    //       message: '代码已复制到剪切板，可粘贴。',
-    //       type: 'success'
-    //     })
-    //     return codeStr
-    //   }
-    // })
-    // clipboard.on('error', e => {
-    //   this.$message.error('代码复制失败')
-    // })
   },
   methods: {
     getIpadMode() {
@@ -310,7 +160,6 @@ export default {
       loop(this.drawingList)
       saveDrawingList(this.drawingList)
       this.$store.commit('updateFormItemList', this.drawingList)
-      // if (val.length === 0) this.idGlobal = 100;
     },
     /**
      * 判断是否是常用组件
@@ -498,23 +347,6 @@ export default {
         params: { formData: this.formData }
       })
     },
-    generate(data) {
-      const func = this[`exec${titleCase(this.operationType)}`]
-      this.generateConf = data
-      func && func(data)
-    },
-    // execRun(data) {
-    //   this.AssembleFormData()
-    //   this.drawerVisible = true
-    // },
-    // execDownload(data) {
-    //   const codeStr = this.generateCode()
-    //   const blob = new Blob([codeStr], { type: 'text/plain;charset=utf-8' })
-    //   saveAs(blob, data.fileName)
-    // },
-    execCopy(data) {
-      document.getElementById('copyNode').click()
-    },
     empty() {
       if (this.isFilledPCon()) {
         this.$message.warning('尚有组件已作为流程判断条件，无法删除')
@@ -522,7 +354,6 @@ export default {
       }
       this.$elconfirm('确定要清空所有组件吗？', '提示', { type: 'warning' }).then(() => {
         this.drawingList = []
-        // this.idGlobal = 100;
         this.$store.commit('clearPCondition')
       })
     },
@@ -592,29 +423,6 @@ export default {
         }
       })
     },
-    // generateCode() {
-    //   const { type } = this.generateConf
-    //   this.AssembleFormData()
-    //   const script = vueScript(makeUpJs(this.formData, type))
-    //   const html = vueTemplate(makeUpHtml(this.formData, type))
-    //   const css = cssStyle(makeUpCss(this.formData))
-    //   return beautifier.html(html + script + css, beautifierConf.html)
-    // },
-    // download() {
-    //   this.dialogVisible = true
-    //   this.showFileName = true
-    //   this.operationType = 'download'
-    // },
-    run() {
-      this.dialogVisible = true
-      this.showFileName = false
-      this.operationType = 'run'
-    },
-    // copy() {
-    //   this.dialogVisible = true
-    //   this.showFileName = false
-    //   this.operationType = 'copy'
-    // },
     tagChange(newTag) {
       newTag = this.cloneComponent(newTag)
       newTag.vModel = this.activeData.vModel

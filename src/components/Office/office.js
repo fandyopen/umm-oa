@@ -2,17 +2,11 @@ import router from '/src/router/index.js'
 import request from '/src/utils/axios/request.js'
 import Viewer from 'viewerjs'
 import storage from 'store'
-// import { ACCESS_TOKEN } from '/src/store/mutation-types.js'
 import { TENANT_ID } from '/src/store/mutation-types.js'
 import downloadUtil from '/src/utils/common/download.js'
 
 // 下载文件
 export function downloadDoc(name, url) {
-  // return request({
-  //   url: '/common/download/resource',
-  //   method: 'get',
-  //   params: { resource }
-  // })
   if (name && url) {
     // window.open可以调用，但是不能传递header
     // const convertUrl = import.meta.env.VITE_APP_BASE_API + `/common/download/doc?name=${encodeURIComponent(name)}&url=${url}`
@@ -61,8 +55,6 @@ export function previewDoc(name, url) {
             query: { viewerUrl, fileUrl: convertUrl, url, name }
           })
           window.open(href, '_blank')
-          // const pdfUrl = viewerUrl + '?file=' + encodeURIComponent(convertUrl)
-          // window.open(pdfUrl, '_blank')
           break
         case 'doc':
         case 'docx':

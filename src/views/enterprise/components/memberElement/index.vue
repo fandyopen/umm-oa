@@ -50,8 +50,8 @@
     </div>
     <div class="member-btn-pane">
       <div class="btn-group" v-if="title === '离职成员' ? false : true">
-        <a-button ghost type="primary" @click="inviteMembers" v-hasModuleAction="'invite'"> 邀请成员 </a-button>
-        <a-popover placement="bottom" trigger="click" v-model="adjusDepVisible">
+        <a-button ghost type="primary" @click="inviteMembers" v-hasModuleAction="{ ...moduleMeta, actionCode: 'invite', allowUnresolved: !!moduleActionGuard }" :loading="!!moduleActionBusy.inviteMembers"> 邀请成员 </a-button>
+        <a-popover placement="bottom" :trigger="[]" :visible="adjusDepVisible">
           <template slot="content">
             <div class="setDepTree">
               <SelectDepartmentElement :multiple="false" :treeData="adjusDepTreeData" :replaceFields="adjusReplaceFields" @returnData="returnAdjusData" />
@@ -61,49 +61,27 @@
               <a-button type="primary" @click="adjusting(1)"> 确认 </a-button>
             </div>
           </template>
-          <a-button ghost type="primary" @click="initAdjusDepTreeData" v-hasModuleAction="'transfer'">调整部门</a-button>
+          <a-button ghost type="primary" @click="initAdjusDepTreeData" v-hasModuleAction="{ ...moduleMeta, actionCode: 'transfer', allowUnresolved: !!moduleActionGuard }" :loading="!!moduleActionBusy.initAdjusDepTreeData">调整部门</a-button>
         </a-popover>
-        <a-button ghost type="primary" @click="mitosis" v-hasModuleAction="'dismiss'"> 转为离职 </a-button>
+        <a-button ghost type="primary" @click="mitosis" v-hasModuleAction="{ ...moduleMeta, actionCode: 'dismiss', allowUnresolved: !!moduleActionGuard }" :loading="!!moduleActionBusy.mitosis"> 转为离职 </a-button>
       </div>
       <a-button v-if="canDeleteMembers" type="danger" icon="delete" :disabled="!selectedRowKeys.length" @click="deleteMembers()">删除员工</a-button>
       <div class="member-filter-pane" v-if="showQueryFilters">
-        <a-tree-select
-          v-model="filterDeptId"
-          :tree-data="treeData"
-          :replace-fields="deptFilterFields"
-          placeholder="全部部门"
-          allow-clear
-          show-search
-          tree-default-expand-all
-          style="width: 190px"
-          @change="handleDeptFilterChange"
-        />
-        <a-range-picker
-          v-model="addedDateRange"
-          format="YYYY-MM-DD"
-          :placeholder="['新增开始日期', '新增结束日期']"
-          style="width: 260px"
-          @change="handleAddedDateChange"
-        />
+        <a-tree-select v-model="filterDeptId" :tree-data="treeData" :replace-fields="deptFilterFields" placeholder="全部部门" allow-clear show-search tree-default-expand-all style="width: 190px" @change="handleDeptFilterChange" />
+        <a-range-picker v-model="addedDateRange" format="YYYY-MM-DD" :placeholder="['新增开始日期', '新增结束日期']" style="width: 260px" @change="handleAddedDateChange" />
       </div>
       <div class="earch-input">
         <a-input-search placeholder="搜索成员" size="small" style="width: 200px" allow-clear @search="onSearch" />
       </div>
     </div>
     <div class="member-table-content">
-      <!-- <div class="member-prompt-container">
-        <div class="member-prompt-item">
-          <span>有<span class="prompt-num">0</span>名成员未加入</span>
-          <span class="invite-member-action">全部再次邀请</span>
-        </div>
-      </div> -->
       <div class="member-table">
         <!-- 数据表格 -->
         <s-table ref="table" size="default" rowKey="userId" :columns="visibleColumns" :data="loadData" :rowSelection="rowSelection" :customRow="customRow" :scroll="tableScroll">
           <span slot="deptAction" slot-scope="text, record" class="dept-action" @click.stop>
             <template v-if="showDepartmentActions">
-              <a-button v-if="isDepartmentPrincipal(record)" type="link" class="cancel-principal" @click.stop="clearDepartmentPrincipal(record)">取消主管</a-button>
-              <a-button v-else type="link" @click.stop="setDepartmentPrincipal(record)">设为主管</a-button>
+              <a-button v-if="isDepartmentPrincipal(record)" type="link" class="cancel-principal" @click.stop="clearDepartmentPrincipal(record)" :loading="!!moduleActionBusy.clearDepartmentPrincipal">取消主管</a-button>
+              <a-button v-else type="link" @click.stop="setDepartmentPrincipal(record)" :loading="!!moduleActionBusy.setDepartmentPrincipal">设为主管</a-button>
             </template>
             <a-button v-if="canDeleteMembers && Number(record.userId) !== 1" type="link" class="delete-member" @click.stop="deleteMembers(record)">删除</a-button>
             <span v-else-if="canDeleteMembers && !showDepartmentActions">固定超级管理员</span>
@@ -129,9 +107,6 @@
               <a-form-model-item label="姓名" prop="nickName">
                 <a-input v-model="form.nickName" />
               </a-form-model-item>
-              <!-- <a-form-model-item label="编号" prop="numberID">
-                <a-input v-model="form.numberID" />
-              </a-form-model-item> -->
               <a-form-model-item label="手机" prop="phonenumber">
                 <div class="p-a-c">
                   <countryCodeSelector :countryCode.sync="countryCode" />
@@ -150,7 +125,7 @@
             </div>
           </div>
           <div class="btn-group">
-            <a-button type="primary" @click="onSubmit"> 邀请 </a-button>
+            <a-button type="primary" @click="onSubmit" :loading="!!moduleActionBusy.onSubmit"> 邀请 </a-button>
             <a-button @click="resetForm">清空</a-button>
           </div>
         </div>
@@ -187,18 +162,11 @@
 </template>
 
 <script>
+import { withModuleActionGuards } from '/src/utils/moduleActionGuard.js'
 import { STable, SUpload } from '/src/components/index.js'
 import downloadUtil from '/src/utils/common/download.js'
 import { previewDoc } from '/src/components/Office/office.js'
-import {
-  getUserList,
-  getDismissList,
-  editDeptName,
-  getTreeMenu,
-  addSystemDepchild,
-  setDeptPrincipal,
-  clearDeptPrincipal
-} from '/src/api/enterprise/index.js'
+import { getUserList, getDismissList, editDeptName, getTreeMenu, addSystemDepchild, setDeptPrincipal, clearDeptPrincipal } from '/src/api/enterprise/index.js'
 import { executeWorkflowAction } from '/src/api/workflow/action.js'
 import { delDept } from '/src/api/system/dept.js'
 import { excelImport, delUser } from '/src/api/system/user.js'
@@ -208,8 +176,37 @@ import Details from './details.vue'
 import { hasModuleAction } from '/src/utils/modulePermission.js'
 
 export default {
+  mixins: [
+    withModuleActionGuards({
+      inviteMembers: { module: 'members', action: 'invite', label: '邀请成员' },
+      onSubmit: { module: 'members', action: 'invite', label: '提交成员邀请' },
+      initAdjusDepTreeData: { module: 'members', action: 'transfer', label: '调整部门' },
+      adjusting: function (value) {
+        return value === 1 ? { module: 'members', action: 'transfer', label: '保存部门调整' } : null
+      },
+      mitosis: { module: 'members', action: 'dismiss', label: '转为离职' },
+      executeAction: function (action) {
+        return { module: 'members', action, label: { invite: '邀请成员', transfer: '调整部门', dismiss: '转为离职' }[action] || '提交成员操作' }
+      },
+      setDepartmentPrincipal: { module: 'members', action: 'manage', label: '设为部门主管' },
+      clearDepartmentPrincipal: { module: 'members', action: 'manage', label: '取消部门主管' },
+      editDepName: function (value) {
+        return value === 1 ? { module: 'members', action: 'manage', label: '修改部门名称' } : null
+      },
+      addDepchild: function (value) {
+        return value === 1 ? { module: 'members', action: 'manage', label: '添加子部门' } : null
+      },
+      deleteDept: function (value) {
+        return value ? { module: 'members', action: 'manage', label: '删除部门' } : null
+      }
+    })
+  ],
   components: { STable, SelectDepartmentElement, SUpload, countryCodeSelector },
   props: {
+    moduleActionGuard: { type: Function, default: null },
+    moduleActionVisible: { type: Function, default: null },
+    // The owner (HR or organization) resolves this context; shared members never borrow an unrelated route.
+    moduleMeta: { type: Object, default: null },
     title: {
       type: String,
       default: '',
@@ -321,7 +318,7 @@ export default {
           dataIndex: 'deptPrincipal',
           roleRelated: true,
           align: 'center',
-          customRender: text => Number(text) === 1 ? '部门主管' : '成员'
+          customRender: text => (Number(text) === 1 ? '部门主管' : '成员')
         }
       ],
       /* 标题 */
@@ -409,6 +406,15 @@ export default {
     }
   },
   methods: {
+    async checkModuleAction(check) {
+      if (!this.moduleActionGuard) {
+        this.$message.warning(check.label + '暂不可用：成员模块未配置，请联系管理员。')
+        return false
+      }
+      const allowed = await this.moduleActionGuard(check)
+      await this.$nextTick()
+      return allowed
+    },
     /* 表格多选 */
     onSelectChange(selectedRowKeys, selectedRows) {
       this.selectedRowKeys = selectedRowKeys
@@ -482,15 +488,16 @@ export default {
       this.$antdconfirm({
         title: '设置部门主管',
         content: '确定将“' + record.nickName + '”设为当前部门主管吗？原主管将自动取消。',
-        onOk: () => setDeptPrincipal(deptId, record.userId).then(res => {
-          if (res.code === 200) {
-            if (!this.verifyPrincipalResponse(res, deptId, record.userId, 1)) {
-              return
+        onOk: () =>
+          setDeptPrincipal(deptId, record.userId).then(res => {
+            if (res.code === 200) {
+              if (!this.verifyPrincipalResponse(res, deptId, record.userId, 1)) {
+                return
+              }
+              this.$refs.table.refresh()
+              return this.$message.success('部门主管设置成功')
             }
-            this.$refs.table.refresh()
-            return this.$message.success('部门主管设置成功')
-          }
-        })
+          })
       })
     },
     clearDepartmentPrincipal(record) {
@@ -498,23 +505,21 @@ export default {
       this.$antdconfirm({
         title: '取消部门主管',
         content: '确定取消“' + record.nickName + '”的部门主管身份吗？',
-        onOk: () => clearDeptPrincipal(deptId, record.userId).then(res => {
-          if (res.code === 200) {
-            if (!this.verifyPrincipalResponse(res, deptId, record.userId, 0)) {
-              return
+        onOk: () =>
+          clearDeptPrincipal(deptId, record.userId).then(res => {
+            if (res.code === 200) {
+              if (!this.verifyPrincipalResponse(res, deptId, record.userId, 0)) {
+                return
+              }
+              this.$refs.table.refresh()
+              return this.$message.success('已取消部门主管')
             }
-            this.$refs.table.refresh()
-            return this.$message.success('已取消部门主管')
-          }
-        })
+          })
       })
     },
     verifyPrincipalResponse(res, deptId, userId, principal) {
       const saved = res.data
-      if (!saved
-        || Number(saved.deptId) !== Number(deptId)
-        || Number(saved.userId) !== Number(userId)
-        || Number(saved.deptPrincipal) !== principal) {
+      if (!saved || Number(saved.deptId) !== Number(deptId) || Number(saved.userId) !== Number(userId) || Number(saved.deptPrincipal) !== principal) {
         this.$message.error('未收到主管保存结果，请先重启后端服务后重试')
         return false
       }
@@ -636,15 +641,16 @@ export default {
         content: '确定删除' + name + '吗？删除后员工无法登录，也不会出现在在职或离职列表中，历史业务记录保留。',
         okText: '确认删除',
         okType: 'danger',
-        onOk: () => delUser(userIds.join(',')).then(res => {
-          if (res.code === 200) {
-            this.selectedRowKeys = []
-            this.selectedRows = []
-            this.$refs.table.refresh()
-            this.$emit('saveSuccess')
-            this.$message.success('员工删除成功')
-          }
-        })
+        onOk: () =>
+          delUser(userIds.join(',')).then(res => {
+            if (res.code === 200) {
+              this.selectedRowKeys = []
+              this.selectedRows = []
+              this.$refs.table.refresh()
+              this.$emit('saveSuccess')
+              this.$message.success('员工删除成功')
+            }
+          })
       })
     },
     /* 转为离职 */
@@ -661,16 +667,18 @@ export default {
       })
     },
     executeAction(actionCode, payload) {
+      if (!hasModuleAction(this.$store.getters.permissions || [], this.moduleMeta, actionCode)) {
+        this.$message.error('模块信息未就绪或没有操作权限，请刷新后重试')
+        return Promise.reject(new Error('业务模块不可用'))
+      }
       return executeWorkflowAction({
-        moduleId: Number(this.$route.meta.moduleId),
+        moduleId: this.moduleMeta.moduleId,
         actionCode,
         payload
       })
     },
     actionSuccessMessage(response, completedMessage) {
-      return response.data?.status === 'pendingApproval'
-        ? '已提交审批，请等待审批人处理'
-        : completedMessage
+      return response.data?.status === 'pendingApproval' ? '已提交审批，请等待审批人处理' : completedMessage
     },
     /* 再次邀请 */
     makeInvite(text, record, index) {},
@@ -694,8 +702,9 @@ export default {
     },
     /* 初始化调整部门树 */
     initAdjusDepTreeData() {
-      getTreeMenu().then(res => {
+      return getTreeMenu().then(res => {
         this.adjusDepTreeData = res.data
+        this.adjusDepVisible = true
       })
     },
     /* 调整部门返回数据回调 */
@@ -775,9 +784,7 @@ export default {
       return this.title === '全部成员' || this.title === '离职成员'
     },
     visibleColumns() {
-      const columns = this.showRoleInfo
-        ? this.columns
-        : this.columns.filter(column => !column.roleRelated)
+      const columns = this.showRoleInfo ? this.columns : this.columns.filter(column => !column.roleRelated)
       if (!this.showDepartmentActions && !this.canDeleteMembers) {
         return columns
       }
@@ -791,10 +798,7 @@ export default {
       })
     },
     showDepartmentActions() {
-      return Boolean(this.deptId)
-        && this.title !== '全部成员'
-        && this.title !== '离职成员'
-        && this.canManageDepartment
+      return Boolean(this.deptId) && this.title !== '全部成员' && this.title !== '离职成员' && this.canManageDepartment
     },
     tableScroll() {
       return this.showDepartmentActions || this.canDeleteMembers ? { x: 1230 } : {}
@@ -810,18 +814,18 @@ export default {
       }
     },
     canDeleteMembers() {
-      return (this.$store.getters.roles || []).includes('admin')
-        || (this.$store.getters.permissions || []).includes('*:*:*')
+      return (this.$store.getters.roles || []).includes('admin') || (this.$store.getters.permissions || []).includes('*:*:*')
     },
     canManageMembers() {
       const permissions = this.$store.getters.permissions || []
-      const meta = this.$route.meta
-      return this.canDeleteMembers || hasModuleAction(permissions, meta, 'transfer')
-        || hasModuleAction(permissions, meta, 'dismiss')
+      const meta = this.moduleMeta
+      if (this.moduleActionVisible) return this.canDeleteMembers || this.moduleActionVisible('members', 'transfer') || this.moduleActionVisible('members', 'dismiss')
+      return this.canDeleteMembers || hasModuleAction(permissions, meta, 'transfer') || hasModuleAction(permissions, meta, 'dismiss')
     },
     canManageDepartment() {
+      if (this.moduleActionVisible) return this.moduleActionVisible('members', 'manage')
       const permissions = this.$store.getters.permissions || []
-      return hasModuleAction(permissions, this.$route.meta, 'manage')
+      return hasModuleAction(permissions, this.moduleMeta, 'manage')
     }
   },
   created() {},

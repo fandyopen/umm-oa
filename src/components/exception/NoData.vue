@@ -6,7 +6,7 @@
   </div>
 </template>
 <script>
-import imgNodata from '/src/assets/img/Nodata.png'
+import imgNodata from '/src/assets/img/nodata.png'
 export default {
   props: {
     index: {
@@ -19,12 +19,12 @@ export default {
       imgNodata
     }
   },
-  computed:{
-    divClass(){
-      return this.index? ['no-data-container-index'] : ['no-data-container']
+  computed: {
+    divClass() {
+      return this.index ? ['no-data-container-index'] : ['no-data-container']
     },
-    imgClass(){
-      return this.index? ['no-data-img-index'] : ['no-data-img']
+    imgClass() {
+      return this.index ? ['no-data-img-index'] : ['no-data-img']
     }
   }
 }

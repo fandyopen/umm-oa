@@ -2,6 +2,7 @@ package com.seal.oa.system;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.seal.oa.common.ApiException;
 import com.seal.oa.common.JdbcMaps;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -124,6 +125,26 @@ public class ModuleService {
                 WHERE ur.user_id = ? AND m.status = '0'
                   AND r.status = '0' AND r.del_flag = '0'
                 """, Long.class, userId));
+    }
+
+    public Map<String, Object> resolveContexts(Long tenantId, List<String> components) {
+        String placeholders = String.join(",", java.util.Collections.nCopies(components.size(), "?"));
+        List<Object> parameters = new ArrayList<>();
+        parameters.add(tenantId);
+        parameters.addAll(components);
+        List<Map<String, Object>> rows = JdbcMaps.camelCase(jdbc.queryForList("""
+                SELECT module_id, module_name, component, perms, status
+                FROM sys_module
+                WHERE tenant_id = ? AND status = '0' AND component IN (
+                """ + placeholders + ")", parameters.toArray()));
+        Map<String, Object> contexts = new LinkedHashMap<>();
+        for (Map<String, Object> row : rows) {
+            String component = String.valueOf(row.get("component"));
+            if (contexts.putIfAbsent(component, row) != null) {
+                throw new ApiException(409, "模块组件重复配置，请联系管理员：" + component);
+            }
+        }
+        return contexts;
     }
 
     public List<Map<String, Object>> moduleRows(Long tenantId) {

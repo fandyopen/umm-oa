@@ -134,14 +134,6 @@ export function getTaskCopyList(params) {
   })
 }
 
-// 表单数据详情
-export function getFormDataDetail(data) {
-  return request({
-    url: '/data/detail',
-    method: 'post',
-    data
-  })
-}
 /* 代办同意 */
 export function activitiProcess(params) {
   return request({

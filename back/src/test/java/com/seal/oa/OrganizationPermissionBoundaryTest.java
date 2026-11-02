@@ -43,10 +43,11 @@ class OrganizationPermissionBoundaryTest {
 
     /**
      * sys_user.is_owner / is_admin 是参考站的展示标记，不能单独作为越权依据。
-     * 参考站成员「金么算」两者都是 '1'，但没有 admin 角色，也没有组织机构模块。
+     * 即使历史记录把这两个展示字段设为 '1'，也不能获得管理员或组织权限。
      */
     @Test
     void ownerAndAdminFlagsAloneDoNotGrantOrganizationAccess() throws Exception {
+        jdbc.update("UPDATE sys_user SET is_owner = '1', is_admin = '1' WHERE user_name = '17694407532'");
         String authorization = login("17694407532");
 
         mockMvc.perform(get("/getInfo").header("Authorization", authorization))

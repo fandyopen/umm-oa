@@ -156,9 +156,6 @@ export default {
             break
           }
         }
-        // for (let k = flagCur + 1; k < validFlowEles.length; ++k) {
-        //   retFlows.push(validFlowEles[k])
-        // }
         retFlows = [...retFlows, ...validFlowEles.slice(flagCur + 1)]
       }
       this.historyList = retFlows

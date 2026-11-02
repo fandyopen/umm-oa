@@ -14,21 +14,10 @@
     </a-modal>
     <div class="contacts-internal" :class="{ 'menu-is-collapsed': menuCollapsed }">
       <div class="layout-menu">
-        <button
-          type="button"
-          class="menu-collapse-trigger"
-          :title="menuCollapsed ? '展开左侧栏' : '收起左侧栏'"
-          :aria-label="menuCollapsed ? '展开左侧栏' : '收起左侧栏'"
-          @click="toggleMenuCollapsed"
-        >
+        <button type="button" class="menu-collapse-trigger" :title="menuCollapsed ? '展开左侧栏' : '收起左侧栏'" :aria-label="menuCollapsed ? '展开左侧栏' : '收起左侧栏'" @click="toggleMenuCollapsed">
           <a-icon :type="menuCollapsed ? 'right' : 'left'" />
         </button>
         <div class="menu-header">
-          <!-- <a-radio-group button-style="solid" v-model="gvalue">
-              <a-radio-button value="组织架构"> 组织架构 </a-radio-button>
-              <a-radio-button value="角色"> 角色 </a-radio-button>
-              <a-radio-button value="管理员"> 管理员 </a-radio-button>
-            </a-radio-group> -->
           <a-radio-group button-style="solid" v-model="gvalue">
             <a-radio-button v-for="(item, index) in optionList" :key="index" :value="item">{{ item }}</a-radio-button>
           </a-radio-group>
@@ -49,7 +38,6 @@
           </div>
           <div class="menu-type">部门</div>
           <div class="department-tree">
-            <!-- <a-tree ref="treeRef" :tree-data="treeData" :selectedKeys="selectedTreeKeys" :replaceFields="replaceFields" @select="treeNodeSelect"> </a-tree> -->
             <a-tree ref="treeRef" :selectedKeys="selectedTreeKeys" :tree-data="treeData" :replaceFields="replaceFields" @dragenter="onDragEnter" @drop="onDrop" @select="treeNodeSelect"> </a-tree>
           </div>
         </div>
@@ -125,7 +113,7 @@
       </div>
       <!-- 成员 -->
       <div class="layout-content" v-if="gvalue === '组织架构'">
-        <MemberElement v-if="selectedKeys.includes('全部成员') || selectedKeys.includes('离职成员') || deptId" :title="mTitle" :deptId="deptId" @clearDeptId="clearDeptId" :treeNodeData="treeNodeData" @saveSuccess="saveSuccess" />
+        <MemberElement :module-action-guard="checkModuleAction" :module-action-visible="showModuleAction" :module-meta="moduleContexts.members" v-if="selectedKeys.includes('全部成员') || selectedKeys.includes('离职成员') || deptId" :title="mTitle" :deptId="deptId" @clearDeptId="clearDeptId" :treeNodeData="treeNodeData" @saveSuccess="saveSuccess" />
       </div>
       <!-- 角色 -->
       <div class="layout-content" v-if="gvalue === '角色'">
@@ -140,6 +128,7 @@
 </template>
 
 <script>
+import { withModuleContexts } from '/src/utils/moduleContext.js'
 import MemberElement from '../components/memberElement/index.vue'
 import RoleElement from '../components/roleElement/index.vue'
 import AdminElement from '../components/adminElement/index.vue'
@@ -147,6 +136,7 @@ import { getTreeMenu, deptsort, insertRole, updateRole, updateRoleGroup, getRole
 import { delSaasRole, delRoleGroup } from '/src/api/system/role.js'
 
 export default {
+  mixins: [withModuleContexts({ members: { component: 'enterprise/Contacts/contactsOp', label: '组织机构' } })],
   name: 'ContactsOp',
   components: { MemberElement, RoleElement, AdminElement },
   data() {
@@ -230,18 +220,13 @@ export default {
     },
     // 返回首页
     goIndex() {
-      // this.$router.push('/saas')
       this.$router.push('/index')
     },
     // 根据权限去掉相应模块 => 更新optionList里面的内容
     toshow() {
       const perms = this.$store.getters.userPermission || {}
       const globalPermissions = this.$store.getters.permissions || []
-      const isSuperAdmin =
-        (this.$store.getters.roles || []).includes('admin') ||
-        globalPermissions.includes('*:*:*') ||
-        perms.is_admin ||
-        perms.is_owner
+      const isSuperAdmin = (this.$store.getters.roles || []).includes('admin') || globalPermissions.includes('*:*:*') || perms.is_admin || perms.is_owner
       const teamReadPerms = isSuperAdmin || perms.has_team_read_perms
       const roleReadPerms = isSuperAdmin || perms.has_role_read_perms
       // 先判断有没有管理员这个模块

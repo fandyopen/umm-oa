@@ -23,7 +23,6 @@
               <a-checkbox ref="checkBoxAll" :indeterminate="indeterminate" :checked="checkAll" @change="onCheckAllChange" />
             </div>
             <div class="member-select-list">
-              <!-- <a-checkbox-group v-model="checkedList" :options="plainOptions" @change="onChange" /> -->
               <a-checkbox-group ref="checkGroup">
                 <a-checkbox @change="handleCheckboxChange" v-for="item in plainOptions" :key="item.value" :value="item.value">
                   {{ item.label }}

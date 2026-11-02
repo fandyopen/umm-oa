@@ -338,13 +338,6 @@ public class MetadataController {
         return ApiResult.ok();
     }
 
-    @GetMapping("/system/post/list")
-    public Map<String, Object> posts() {
-        List<Map<String, Object>> rows = JdbcMaps.camelCase(jdbc.queryForList("""
-                SELECT post_id, post_code, post_name, post_sort, status FROM sys_post ORDER BY post_sort
-                """));
-        return ApiResult.page(rows, rows.size());
-    }
 
     @GetMapping("/system/post/list/all")
     public Map<String, Object> postsAll() {
@@ -355,98 +348,6 @@ public class MetadataController {
         return ApiResult.ok(rows);
     }
 
-    @GetMapping("/system/post/{postId}")
-    public Map<String, Object> post(@PathVariable Long postId) {
-        List<Map<String, Object>> rows = JdbcMaps.camelCase(jdbc.queryForList(
-                "SELECT * FROM sys_post WHERE post_id = ?", postId));
-        return ApiResult.ok(rows.isEmpty() ? null : rows.get(0));
-    }
-
-    @PostMapping("/system/post")
-    public Map<String, Object> addPost(@RequestBody Map<String, Object> body) {
-        String postName = string(body.get("postName"));
-        String postCode = StringUtils.hasText(string(body.get("postCode")))
-                ? string(body.get("postCode"))
-                : "POST_" + System.currentTimeMillis();
-        Long nextSort = jdbc.queryForObject(
-                "SELECT COALESCE(MAX(post_sort), -1) + 1 FROM sys_post",
-                Long.class
-        );
-        jdbc.update("INSERT INTO sys_post (post_code, post_name, post_sort, status) VALUES (?, ?, ?, ?)",
-                postCode,
-                postName,
-                number(body.get("postSort"), nextSort == null ? 0L : nextSort),
-                StringUtils.hasText(string(body.get("status"))) ? string(body.get("status")) : "0");
-        Long postId = jdbc.queryForObject("SELECT MAX(post_id) FROM sys_post", Long.class);
-        return ApiResult.ok(postId);
-    }
-
-    @PutMapping("/system/post")
-    public Map<String, Object> updatePost(@RequestBody Map<String, Object> body) {
-        long postId = number(body.get("postId"), 0L);
-        List<Map<String, Object>> rows = JdbcMaps.camelCase(jdbc.queryForList(
-                "SELECT * FROM sys_post WHERE post_id = ?",
-                postId
-        ));
-        if (rows.isEmpty()) {
-            throw new com.seal.oa.common.ApiException(404, "Post not found");
-        }
-        Map<String, Object> existing = rows.get(0);
-        String postCode = body.containsKey("postCode")
-                ? string(body.get("postCode"))
-                : string(existing.get("postCode"));
-        String postName = body.containsKey("postName")
-                ? string(body.get("postName"))
-                : string(existing.get("postName"));
-        long postSort = body.containsKey("postSort")
-                ? number(body.get("postSort"), 0L)
-                : number(existing.get("postSort"), 0L);
-        String status = body.containsKey("status")
-                ? string(body.get("status"))
-                : string(existing.get("status"));
-        jdbc.update(
-                "UPDATE sys_post SET post_code = ?, post_name = ?, post_sort = ?, status = ? WHERE post_id = ?",
-                postCode,
-                postName,
-                postSort,
-                StringUtils.hasText(status) ? status : "0",
-                postId
-        );
-        return ApiResult.ok();
-    }
-
-    @DeleteMapping("/system/post/{postId}")
-    public Map<String, Object> deletePost(@PathVariable Long postId) {
-        jdbc.update("DELETE FROM sys_post WHERE post_id = ?", postId);
-        return ApiResult.ok();
-    }
-
-    @PostMapping("/system/post/add_member")
-    public Map<String, Object> addPostMembers(@RequestBody Map<String, Object> body) {
-        long postId = number(body.get("postId"), 0L);
-        for (Object rawId : values(body.get("userIds"))) {
-            long userId = number(rawId, 0L);
-            if (postId > 0L && userId > 0L) {
-                jdbc.update("""
-                        INSERT INTO sys_user_post (user_id, post_id)
-                        SELECT ?, ? WHERE NOT EXISTS (
-                            SELECT 1 FROM sys_user_post WHERE user_id = ? AND post_id = ?
-                        )
-                        """, userId, postId, userId, postId);
-            }
-        }
-        return ApiResult.ok();
-    }
-
-    @DeleteMapping("/system/post/remove_member")
-    public Map<String, Object> removePostMembers(@RequestBody Map<String, Object> body) {
-        long postId = number(body.get("postId"), 0L);
-        for (Object rawId : values(body.get("userIds"))) {
-            jdbc.update("DELETE FROM sys_user_post WHERE user_id = ? AND post_id = ?",
-                    number(rawId, 0L), postId);
-        }
-        return ApiResult.ok();
-    }
 
     @GetMapping("/monitor/logininfor/list")
     @RequiresModuleAction(moduleId = 340319L)
@@ -551,19 +452,6 @@ public class MetadataController {
         } catch (Exception ignored) {
             return defaultValue;
         }
-    }
-
-    private List<?> values(Object value) {
-        if (value instanceof List<?> list) {
-            return list;
-        }
-        if (value == null) {
-            return List.of();
-        }
-        return java.util.Arrays.stream(String.valueOf(value).split(","))
-                .map(String::trim)
-                .filter(text -> !text.isEmpty())
-                .toList();
     }
 
     private String string(Object value) {

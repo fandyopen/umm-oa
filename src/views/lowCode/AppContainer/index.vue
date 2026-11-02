@@ -41,20 +41,6 @@
           </div>
         </a-menu-item>
       </a-menu>
-      <!--<STreeNodeList-->
-      <!--:nodeList="entryList"-->
-      <!--@getFormData="-->
-      <!--data => {-->
-      <!--formData = data-->
-      <!--}-->
-      <!--"-->
-      <!--@fresh="-->
-      <!--() => {-->
-      <!--this.initMenuList()-->
-      <!--}-->
-      <!--"-->
-      <!--@handleMenu="handlechildMenu"-->
-      <!--/>-->
       <div class="app-manage" @click="toManage">
         <icon-font class="iconfont app-manage-icon" type="iconfont-shezhi" />
         <a-button class="app-manage-btn" type="link">后台管理</a-button>
@@ -82,7 +68,6 @@
 </template>
 
 <script>
-// import STreeNodeList from './TreeNodeList.jsx'
 import FromElement from '../components/formElement/index.jsx'
 import { getFormMenuList, getFormDetail, deleteForm, dataCreate, createdFrom, subumitProcess, updateForm } from '/src/api/processDesign/index.js'
 const req = import.meta.globEager('/src/assets/img/lowCode/approverIcon/*.png')
@@ -317,25 +302,27 @@ export default {
         if (this.submitting) return
         this.submitting = true
         const formId = this.selectedKeys[0]
-        return dataCreate({ tenantAppId: this.$route.params.id, formId, fields: formData }).then(res => {
-          if (res.code !== 200) return
-          if (this.selectedForm && this.selectedForm.type === 'flow') {
-            return subumitProcess({
-              tenantAppId: this.$route.params.id,
-              formId,
-              dataId: res.data
-            }).then(process => {
-              if (process.code === 200) {
-                this.$message.success(`提交成功，已发送给 ${process.data.assigneeName} 审批`)
-                this.$refs.formElement.resetForm()
-              }
-            })
-          }
-          this.$message.success('提交成功')
-          this.$refs.formElement.resetForm()
-        }).finally(() => {
-          this.submitting = false
-        })
+        return dataCreate({ tenantAppId: this.$route.params.id, formId, fields: formData })
+          .then(res => {
+            if (res.code !== 200) return
+            if (this.selectedForm && this.selectedForm.type === 'flow') {
+              return subumitProcess({
+                tenantAppId: this.$route.params.id,
+                formId,
+                dataId: res.data
+              }).then(process => {
+                if (process.code === 200) {
+                  this.$message.success(`提交成功，已发送给 ${process.data.assigneeName} 审批`)
+                  this.$refs.formElement.resetForm()
+                }
+              })
+            }
+            this.$message.success('提交成功')
+            this.$refs.formElement.resetForm()
+          })
+          .finally(() => {
+            this.submitting = false
+          })
       })
     },
     // 重置表单

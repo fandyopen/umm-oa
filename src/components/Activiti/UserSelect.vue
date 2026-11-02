@@ -24,11 +24,6 @@
               <a-col :md="(!advanced && 8) || 24" :sm="24">
                 <span class="table-page-search-submitButtons" :style="(advanced && { float: 'right', overflow: 'hidden' }) || {}">
                   <a-button type="primary" @click="handleQuery"> <a-icon type="search" />查询 </a-button>
-                  <!-- <a-button style="margin-left: 8px" @click="resetQuery"> <a-icon type="redo" />重置 </a-button> -->
-                  <!-- <a @click="toggleAdvanced" style="margin-left: 8px">
-                    {{ advanced ? '收起' : '展开' }}
-                    <a-icon :type="advanced ? 'up' : 'down'" />
-                  </a> -->
                 </span>
               </a-col>
             </a-row>
@@ -39,11 +34,7 @@
           <a-button type="dashed" shape="circle" :loading="userLoading" :style="{ float: 'right' }" icon="reload" @click="getUserList" />
         </div>
         <!-- 表格 -->
-        <a-table rowKey="userId" :loading="userLoading" :data-source="userList" :columns="columnsUser" :row-selection="rowSelection" :pagination="false">
-          <!-- <span slot="createTime" slot-scope="text, record">
-        {{ parseTime(record.createTime) }}
-      </span> -->
-        </a-table>
+        <a-table rowKey="userId" :loading="userLoading" :data-source="userList" :columns="columnsUser" :row-selection="rowSelection" :pagination="false"> </a-table>
         <a-pagination
           v-show="userTotal > 0"
           class="ant-table-pagination"

@@ -1,12 +1,5 @@
 <template>
   <div>
-    <!-- <template v-if="!isEmpty(preAudit)">
-      <a-form-model-item label="上一个审批意见">
-        <div>
-          <span style="font-weight:bold">{{ preAudit.assigneeName }}</span> : <span style="color:#fa541c">{{ preAudit.comment }}</span>
-        </div>
-      </a-form-model-item>
-    </template> -->
     <process-history :instanceId="todoItem.instanceId" :isShowProcessPic="false" :isShowCloseBtn="false" />
     <template v-if="!isOnlyShowProcess && isShowReApply && taskType === 'todo' && formState === busFlowState.reject">
       <a-radio-group v-model="pass">

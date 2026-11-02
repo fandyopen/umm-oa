@@ -29,15 +29,12 @@
             <img class="btn-icon" :src="imgHome" alt="" />
             首页
           </a-button>
-          <!-- <img class="toggle-icon" v-if="!collapsed" @click="handleCollapse(!collapsed)" src="" alt="" /> -->
-          <!-- <img class="toggle-icon" v-else @click="handleCollapse(!collapsed)" src="" alt="" /> -->
           <icon-font type="iconfont-shouqicaidan" class="toggle-icon" v-if="!collapsed" @click.prevent.stop="handleCollapse(!collapsed)" />
           <icon-font type="iconfont-zhankaicaidan" class="toggle-icon" v-else @click.prevent.stop="handleCollapse(!collapsed)" />
         </div>
       </div>
     </template>
 
-    <!-- <setting-drawer v-if="showSettingDrawer" :settings="settings" @change="handleSettingChange" /> -->
     <template v-slot:rightContentRender>
       <right-content :top-menu="settings.layout === 'topmenu'" :is-mobile="isMobile" :theme="settings.theme" />
     </template>
@@ -176,9 +173,7 @@ export default {
       if (!this.isMobile && val['screen-xs']) {
         this.isMobile = true
         this.collapsed = false
-        // this.settings.contentWidth = CONTENT_WIDTH_TYPE.Fluid
         this.$store.dispatch('ToggleContentWidth', CONTENT_WIDTH_TYPE.Fluid)
-        // this.settings.fixSiderbar = false
       }
     },
     handleCollapse(val) {
@@ -198,12 +193,9 @@ export default {
         case 'layout':
           if (value === 'sidemenu') {
             this.$store.dispatch('ToggleFixSiderbar', true)
-            // this.settings.contentWidth = CONTENT_WIDTH_TYPE.Fluid
             this.$store.dispatch('ToggleContentWidth', CONTENT_WIDTH_TYPE.Fluid)
           } else {
-            // this.settings.fixSiderbar = false
             this.$store.dispatch('ToggleFixSiderbar', false)
-            // this.settings.contentWidth = CONTENT_WIDTH_TYPE.Fixed
             this.$store.dispatch('ToggleContentWidth', CONTENT_WIDTH_TYPE.Fixed)
           }
           break

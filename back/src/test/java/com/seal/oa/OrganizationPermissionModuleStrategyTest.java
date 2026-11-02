@@ -74,7 +74,7 @@ class OrganizationPermissionModuleStrategyTest {
      */
     @Test
     void hrManagerIsAnOrdinaryMemberOfTheOrganization() throws Exception {
-        String authorization = login("17630135660");
+        String authorization = login("13610316814");
 
         mockMvc.perform(get("/system/user/list")
                         .param("userName", "17600000001")
@@ -121,7 +121,7 @@ class OrganizationPermissionModuleStrategyTest {
 
     @Test
     void superAdminKeepsUnrestrictedOrganizationPermissions() throws Exception {
-        String authorization = login("17630135660");
+        String authorization = login("13610316814");
 
         mockMvc.perform(get("/crm/user/get_user_info").header("Authorization", authorization))
                 .andExpect(status().isOk())

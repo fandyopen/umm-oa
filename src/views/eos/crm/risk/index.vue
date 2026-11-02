@@ -6,7 +6,7 @@
           <h2>客户风险提醒</h2>
           <p>统一跟进客户及合同风险，记录催收、续约处理过程；实际回款、续约或结案后依据业务条件解除提醒。</p>
         </div>
-        <a-button type="primary" icon="sync" :loading="syncing" @click="synchronize">立即检查</a-button>
+        <a-button type="primary" icon="sync" :loading="syncing || !!moduleActionBusy.synchronize" @click="synchronize">立即检查</a-button>
       </div>
 
       <div class="risk-summary">
@@ -49,18 +49,18 @@
           </a-tag>
         </span>
         <span slot="customer" slot-scope="text, record">
-          <a v-if="canView(340352)" class="customer-link" @click="openCustomer(record.customerId)">{{ text }}</a><span v-else>{{ text }}</span>
+          <a v-if="showModuleAction('customer')" class="customer-link" @click="openCustomer(record.customerId)">{{ text }}</a><span v-else>{{ text }}</span>
         </span>
         <span slot="owner" slot-scope="text">{{ text || '未分配' }}</span>
         <span slot="action" slot-scope="text, record">
           <a-button v-if="record.contractId" type="link" @click="openContract(record)">处理合同</a-button>
-          <a-button v-if="record.contractId && can(341205, 'handle')" type="link" @click="startHandle(record)">记录处理</a-button>
-          <a-button v-if="canView(340352)" type="link" @click="openCustomer(record.customerId)">查看客户</a-button>
+          <a-button v-if="record.contractId && showModuleAction('reminder', 'handle')" type="link" @click="startHandle(record)" :loading="!!moduleActionBusy.startHandle">记录处理</a-button>
+          <a-button v-if="showModuleAction('customer')" type="link" @click="openCustomer(record.customerId)">查看客户</a-button>
         </span>
       </a-table>
       <a-empty v-if="!filteredRisks.length" description="当前没有客户风险" />
     </a-spin>
-    <a-modal :visible="!!handleTarget" title="记录合同风险处理" :confirm-loading="saving" @cancel="handleTarget = null" @ok="saveHandle">
+    <a-modal :visible="!!handleTarget" title="记录合同风险处理" :confirm-loading="saving || !!moduleActionBusy.saveHandle" @cancel="handleTarget = null" @ok="saveHandle">
       <p>{{ handleTarget ? `${handleTarget.customerName} · ${handleTarget.contractName} · ${handleTarget.title}` : '' }}</p>
       <a-alert type="info" message="记录沟通结果不会关闭风险；实际回款、续约或结案后依据业务条件解除提醒。" style="margin-bottom: 16px" />
       <a-textarea v-model="handleContent" :rows="4" :max-length="2000" placeholder="填写催收进度、付款计划或续约沟通结果" />
@@ -69,13 +69,26 @@
 </template>
 
 <script>
+import { withModuleContexts } from '/src/utils/moduleContext.js'
+import { crmModules } from '/src/views/eos/crm/moduleContexts.js'
 import { listCustomerRisks, syncCustomerRisks } from '/src/api/eos/crm/index.js'
 import CustomerDetail from '../customer/modules/CustomerDetail.vue'
 import ContractDetail from '../contract/modules/ContractDetail.vue'
 import { contractAction, normalizeContractId } from '/src/api/eos/crm/contracts.js'
-import { can, canView } from '../contract/shared.js'
 
 export default {
+  mixins: [
+    withModuleContexts(
+      { risk: crmModules.risk, customer: crmModules.customer, contract: crmModules.contract, reminder: crmModules.reminder },
+      {
+        openCustomer: { module: 'customer', action: 'view', label: '查看客户详情' },
+        openContract: { module: 'contract', action: 'view', label: '查看关联合同' },
+        startHandle: { module: 'reminder', action: 'handle', label: '记录风险处理' },
+        saveHandle: { module: 'reminder', action: 'handle', label: '保存风险处理' },
+        synchronize: { module: 'risk', action: 'view', label: '检查风险提醒' }
+      }
+    )
+  ],
   name: 'CrmRisks',
   data() {
     return {
@@ -101,8 +114,12 @@ export default {
     }
   },
   computed: {
-    customerOptions() { return [...new Map(this.risks.map(item => [item.customerId, { id: item.customerId, name: item.customerName }])).values()] },
-    contractOptions() { return [...new Map(this.risks.filter(item => item.contractId && (!this.customerId || Number(item.customerId) === this.customerId)).map(item => [item.contractId, { id: item.contractId, name: item.contractName }])).values()] },
+    customerOptions() {
+      return [...new Map(this.risks.map(item => [item.customerId, { id: item.customerId, name: item.customerName }])).values()]
+    },
+    contractOptions() {
+      return [...new Map(this.risks.filter(item => item.contractId && (!this.customerId || Number(item.customerId) === this.customerId)).map(item => [item.contractId, { id: item.contractId, name: item.contractName }])).values()]
+    },
     highRiskCount() {
       return this.risks.filter(item => item.level === 'high').length
     },
@@ -123,32 +140,60 @@ export default {
         if (!keyword) {
           return true
         }
-        return [item.customerName, item.ownerUserName, item.contractName, item.title, item.reason]
-          .join(' ')
-          .toLowerCase()
-          .includes(keyword)
+        return [item.customerName, item.ownerUserName, item.contractName, item.title, item.reason].join(' ').toLowerCase().includes(keyword)
       })
     }
   },
   watch: {
-    '$route.query': { handler() { this.readRoute() } }
+    '$route.query': {
+      handler() {
+        this.readRoute()
+      }
+    }
   },
   mounted() {
     this.readRoute()
     this.loadData()
   },
   methods: {
-    can, canView,
-    readRoute() { this.customerId = normalizeContractId(this.$route.query.customerId) || undefined; this.contractId = normalizeContractId(this.$route.query.contractId) || undefined; this.riskType = ['no_followup', 'contract_expiry', 'no_payment', 'payment_due', 'payment_overdue'].includes(this.$route.query.riskType) ? this.$route.query.riskType : '' },
-    resetFilters() { this.keyword = ''; this.customerId = undefined; this.contractId = undefined; this.riskType = ''; if (Object.keys(this.$route.query).length) this.$router.replace({ path: this.$route.path, query: {} }) },
-    openContract(record) { const contractId = normalizeContractId(record.contractId); if (!contractId) return this.$message.warning('合同编号无效，请刷新后重试'); this.$createAntdDrawer({ stopPropagation: true, drawerProps: { title: '风险关联合同', width: '85%', maskClosable: true }, content: { template: ContractDetail, props: { contractId, initialTab: record.termKey ? 'terms' : 'reminders' }, on: { changed: () => this.loadData() } } }) },
-    startHandle(record) { this.handleTarget = record; this.handleContent = '' },
+    readRoute() {
+      this.customerId = normalizeContractId(this.$route.query.customerId) || undefined
+      this.contractId = normalizeContractId(this.$route.query.contractId) || undefined
+      this.riskType = ['no_followup', 'contract_expiry', 'no_payment', 'payment_due', 'payment_overdue'].includes(this.$route.query.riskType) ? this.$route.query.riskType : ''
+    },
+    resetFilters() {
+      this.keyword = ''
+      this.customerId = undefined
+      this.contractId = undefined
+      this.riskType = ''
+      if (Object.keys(this.$route.query).length) this.$router.replace({ path: this.$route.path, query: {} })
+    },
+    openContract(record) {
+      const contractId = normalizeContractId(record.contractId)
+      if (!contractId) return this.$message.warning('合同编号无效，请刷新后重试')
+      this.$createAntdDrawer({
+        stopPropagation: true,
+        drawerProps: { title: '风险关联合同', width: '85%', maskClosable: true },
+        content: { template: ContractDetail, props: { moduleMeta: this.moduleContexts.contract, contractId, initialTab: record.termKey ? 'terms' : 'reminders' }, on: { changed: () => this.loadData() } }
+      })
+    },
+    startHandle(record) {
+      this.handleTarget = record
+      this.handleContent = ''
+    },
     async saveHandle() {
       if (this.saving || !this.handleTarget) return
       const content = this.handleContent.trim()
       if (!content) return this.$message.warning('请填写处理内容')
       this.saving = true
-      try { await contractAction(this.handleTarget.contractId, 'reminder-log', { taskId: this.handleTarget.taskId, content }); this.handleTarget = null; this.$message.success('处理记录已保存，实际业务条件解决后解除风险'); await this.loadData() } finally { this.saving = false }
+      try {
+        await contractAction(this.handleTarget.contractId, 'reminder-log', { taskId: this.handleTarget.taskId, content })
+        this.handleTarget = null
+        this.$message.success('处理记录已保存，实际业务条件解决后解除风险')
+        await this.loadData()
+      } finally {
+        this.saving = false
+      }
     },
     loadData() {
       this.loading = true
@@ -181,7 +226,7 @@ export default {
         },
         content: {
           template: CustomerDetail,
-          props: { formId: customerId }
+          props: { moduleMeta: this.moduleContexts.customer, formId: customerId }
         }
       })
     }

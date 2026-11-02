@@ -77,10 +77,7 @@
       <div class="mainItem application">
         <div class="app-list">
           <div class="app-header">
-            <div class="left">
-              我的应用
-              <!-- <a-icon type="setting" class="icon-shezhi" /> -->
-            </div>
+            <div class="left">我的应用</div>
             <div class="right">
               <a-input-search placeholder="输入名称来搜索" @search="onSearch" allowClear />
               <a-button v-if="createTable" @click="visible = true" class="addbtn" icon="plus"> 新建应用 </a-button>
@@ -181,7 +178,6 @@
 <script lang="jsx">
 import { mapActions } from 'vuex'
 import NewApp from '/src/views/appCenter/newApp/index.vue'
-// import TemplateHbu from '/src/views/appCenter/templateHub/index.vue'
 import { createdNewApp, updateApp, deleteAppItem } from '/src/api/enterprise/index.js'
 import { getTaskListCount } from '/src/api/processDesign/index.js'
 

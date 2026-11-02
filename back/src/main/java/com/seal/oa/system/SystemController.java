@@ -891,95 +891,6 @@ public class SystemController {
         return body.containsKey("roleId") ? updateRole(body) : createRole(body);
     }
 
-    @GetMapping("/system/menu/list")
-    @RequiresModuleAction(moduleId = 340771L, action = "access")
-    public Map<String, Object> menus(@RequestParam Map<String, String> query) {
-        return ApiResult.page(JdbcMaps.camelCase(jdbc.queryForList("""
-                SELECT menu_id, menu_name, parent_id, order_num, path, component, query,
-                       is_frame, is_cache, menu_type, visible, status, perms, icon
-                FROM sys_menu ORDER BY parent_id, order_num
-                """)), 0);
-    }
-
-    @GetMapping("/system/menu/treeselect")
-    @RequiresModuleAction(moduleId = 340771L, action = "access")
-    public Map<String, Object> menuTree() {
-        return ApiResult.ok(buildMenuTree(JdbcMaps.camelCase(jdbc.queryForList("""
-                SELECT menu_id, menu_name, parent_id, order_num, path, component, menu_type, icon
-                FROM sys_menu ORDER BY parent_id, order_num
-                """))));
-    }
-
-    @GetMapping("/system/menu/roleMenuTreeselect/{roleId}")
-    @RequiresModuleAction(moduleId = 340597L, action = "access")
-    public Map<String, Object> roleMenuTree(@PathVariable Long roleId) {
-        Map<String, Object> result = ApiResult.ok(buildMenuTree(JdbcMaps.camelCase(jdbc.queryForList("""
-                SELECT menu_id, menu_name, parent_id, order_num, path, component, menu_type, icon
-                FROM sys_menu ORDER BY parent_id, order_num
-                """))));
-        result.put("checkedKeys", jdbc.queryForList(
-                "SELECT menu_id FROM sys_role_menu WHERE role_id = ?", Long.class, roleId));
-        return result;
-    }
-
-    @GetMapping("/system/menu/{menuId}")
-    @RequiresModuleAction(moduleId = 340771L, action = "access")
-    public Map<String, Object> menu(@PathVariable Long menuId) {
-        List<Map<String, Object>> rows = JdbcMaps.camelCase(jdbc.queryForList(
-                "SELECT * FROM sys_menu WHERE menu_id = ?", menuId));
-        return ApiResult.ok(rows.isEmpty() ? null : rows.get(0));
-    }
-
-    @PostMapping("/system/menu")
-    @RequiresModuleAction(moduleId = 340772L, action = "manage")
-    public Map<String, Object> createMenu(@RequestBody Map<String, Object> body) {
-        jdbc.update("""
-                INSERT INTO sys_menu (menu_name, parent_id, order_num, path, component, menu_type, visible, status, perms, icon)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                defaultString(body.get("menuName"), ""),
-                longValue(body.get("parentId"), 0L),
-                longValue(body.get("orderNum"), 0L),
-                defaultString(body.get("path"), ""),
-                defaultString(body.get("component"), ""),
-                defaultString(body.get("menuType"), "C"),
-                defaultString(body.get("visible"), "0"),
-                defaultString(body.get("status"), "0"),
-                defaultString(body.get("perms"), ""),
-                defaultString(body.get("icon"), "")
-        );
-        return ApiResult.ok();
-    }
-
-    @PutMapping("/system/menu")
-    @RequiresModuleAction(moduleId = 340772L, action = "manage")
-    public Map<String, Object> updateMenu(@RequestBody Map<String, Object> body) {
-        jdbc.update("""
-                UPDATE sys_menu SET menu_name = ?, parent_id = ?, order_num = ?, path = ?,
-                    component = ?, menu_type = ?, visible = ?, status = ?, perms = ?, icon = ?
-                WHERE menu_id = ?
-                """,
-                defaultString(body.get("menuName"), ""),
-                longValue(body.get("parentId"), 0L),
-                longValue(body.get("orderNum"), 0L),
-                defaultString(body.get("path"), ""),
-                defaultString(body.get("component"), ""),
-                defaultString(body.get("menuType"), "C"),
-                defaultString(body.get("visible"), "0"),
-                defaultString(body.get("status"), "0"),
-                defaultString(body.get("perms"), ""),
-                defaultString(body.get("icon"), ""),
-                longValue(body.get("menuId"), 0L)
-        );
-        return ApiResult.ok();
-    }
-
-    @DeleteMapping("/system/menu/{menuId}")
-    @RequiresModuleAction(moduleId = 340772L, action = "manage")
-    public Map<String, Object> deleteMenu(@PathVariable Long menuId) {
-        jdbc.update("DELETE FROM sys_menu WHERE menu_id = ?", menuId);
-        return ApiResult.ok();
-    }
 
     @GetMapping("/system/admin/query/admin")
     @RequiresModuleAction(moduleId = 340782L, action = "access")
@@ -1106,30 +1017,6 @@ public class SystemController {
         return roots;
     }
 
-    private List<Map<String, Object>> buildMenuTree(List<Map<String, Object>> rows) {
-        Map<Long, Map<String, Object>> nodes = new LinkedHashMap<>();
-        for (Map<String, Object> row : rows) {
-            Map<String, Object> node = new LinkedHashMap<>(row);
-            Long id = ((Number) row.get("menuId")).longValue();
-            node.put("id", id);
-            node.put("label", row.get("menuName"));
-            node.put("children", new ArrayList<Map<String, Object>>());
-            nodes.put(id, node);
-        }
-        List<Map<String, Object>> roots = new ArrayList<>();
-        for (Map<String, Object> node : nodes.values()) {
-            Long parentId = ((Number) node.get("parentId")).longValue();
-            Map<String, Object> parent = nodes.get(parentId);
-            if (parent == null || parentId == 0L) {
-                roots.add(node);
-            } else {
-                @SuppressWarnings("unchecked")
-                List<Map<String, Object>> children = (List<Map<String, Object>>) parent.get("children");
-                children.add(node);
-            }
-        }
-        return roots;
-    }
 
     private void bind(
             Map<String, Object> body,

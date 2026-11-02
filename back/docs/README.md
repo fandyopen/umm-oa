@@ -2,6 +2,8 @@
 
 ## 当前维护文档
 
+- source-cleanup.md：全系统源码清理范围、保留理由与验证结果
+
 - `implementation-status.md`：后端实现与兼容层边界
 - `permission-code-map.md`：角色、模块、动作和数据范围规则
 - `module-action-catalog.md`：按实际页面维护的模块动作

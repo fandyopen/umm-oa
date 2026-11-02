@@ -24,7 +24,6 @@
           </a-radio-group>
         </a-form-model-item>
         <a-form-model-item label="内容" prop="noticeContent"> </a-form-model-item>
-        <!-- <div id="vditor" name="description"></div> -->
         <TinymceEditor ref="tinymceEditor" />
         <footer-tool-bar>
           <a-space>
@@ -39,8 +38,6 @@
 
 <script>
 import { getNotice, addNotice, updateNotice } from '/src/api/system/notice.js'
-// import Vditor from 'vditor'
-// import 'vditor/dist/index.css'
 import TinymceEditor from './TinymceEditor.vue'
 
 export default {
@@ -88,18 +85,6 @@ export default {
   mounted() {
     this.id = this.$route.params.id
     this.formTitle = this.$route.params.formTitle
-    // this.contentEditor = new Vditor('vditor', {
-    //   height: 360,
-    //   toolbarConfig: {
-    //     pin: true
-    //   },
-    //   cache: {
-    //     enable: false
-    //   },
-    //   after: () => {
-    //     this.contentEditor.setValue(this.form.noticeContent)
-    //   }
-    // })
     if (this.id) {
       this.handleUpdate(this.id)
     } else {
@@ -129,13 +114,11 @@ export default {
       getNotice(noticeId).then(response => {
         this.form = response.data
         this.formTitle = '修改公告'
-        // this.contentEditor.setValue(response.data.noticeContent)
         this.$refs.tinymceEditor.tinymceHtml = response.data.noticeContent
       })
     },
     /** 提交按钮 */
     submitForm: function () {
-      // this.form.noticeContent = this.contentEditor.getValue()
       this.form.noticeContent = this.$refs.tinymceEditor.tinymceHtml
       this.$refs.form.validate(valid => {
         if (valid) {

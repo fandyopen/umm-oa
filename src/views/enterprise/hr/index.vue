@@ -15,16 +15,18 @@
         </a-menu>
       </aside>
       <section class="hr-member-content">
-        <MemberElement :key="memberTitle" :title="memberTitle" :show-role-info="false" />
+        <MemberElement :module-action-guard="checkModuleAction" :module-action-visible="showModuleAction" :module-meta="moduleContexts.members" :key="memberTitle" :title="memberTitle" :show-role-info="false" />
       </section>
     </div>
   </page-header-wrapper>
 </template>
 
 <script>
+import { withModuleContexts } from '/src/utils/moduleContext.js'
 import MemberElement from '../components/memberElement/index.vue'
 
 export default {
+  mixins: [withModuleContexts({ members: { component: 'enterprise/hr/index', label: '人事成员' } })],
   name: 'HrMembers',
   components: { MemberElement },
   data() {

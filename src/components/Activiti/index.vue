@@ -1,8 +1,8 @@
 <template>
   <div>
     <slot name="header" />
-    <a v-if="canTodo" @click.stop="_handleView"> <a-icon v-if="false" class="s-mr-3" type="check" />办理</a>
-    <a v-if="canReApply" @click.stop="_handleReApply"> <a-icon v-if="false" class="s-mr-3" type="check" />调整申请</a>
+    <a v-if="canTodo" @click.stop="_handleView">办理</a>
+    <a v-if="canReApply" @click.stop="_handleReApply">调整申请</a>
     <template v-if="!simple">
       <a-divider type="vertical" />
       <a-dropdown v-if="canTodo || isTodoItem">

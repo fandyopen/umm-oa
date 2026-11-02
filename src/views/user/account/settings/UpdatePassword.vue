@@ -10,16 +10,6 @@
       <a-form-model-item has-feedback label="确认密码" prop="confirmPassword">
         <a-input-password v-model="form.confirmPassword" placeholder="请确认密码" />
       </a-form-model-item>
-      <!-- <a-form-model ref="ruleForm" :model="ruleForm" :rules="rules" v-bind="layout">
-      <a-form-model-item has-feedback label="Password" prop="pass">
-        <a-input v-model="ruleForm.pass" type="password" autocomplete="off" />
-      </a-form-model-item>
-      <a-form-model-item has-feedback label="Confirm" prop="checkPass">
-        <a-input v-model="ruleForm.checkPass" type="password" autocomplete="off" />
-      </a-form-model-item>
-      <a-form-model-item has-feedback label="Age" prop="age">
-        <a-input v-model.number="ruleForm.age" />
-      </a-form-model-item> -->
     </a-form-model>
   </a-modal>
 </template>

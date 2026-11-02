@@ -87,11 +87,6 @@ export default {
         })
     },
     sendToServer(param) {
-      // this.$notify({
-      //   title: '数据已整合完成',
-      //   message: '请在控制台中查看数据输出',
-      //   position: 'bottom-right'
-      // })
       const formId = this.$route.params.formid
       if (this._.isNil(formId) || this._.isEmpty(formId)) {
         const data = {

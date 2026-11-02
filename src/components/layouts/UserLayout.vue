@@ -23,9 +23,8 @@
         </div>
       </div>
       <div class="FormFooter">
-        <div class="FormFooter-icp" >&copy XXX - <a target="_blank" href="https://beian.miit.gov.cn">XICP备XXXXXXXXXX号</a> &nbsp;</div>
+        <div class="FormFooter-icp">&copy XXX - <a target="_blank" href="https://beian.miit.gov.cn">XICP备XXXXXXXXXX号</a> &nbsp;</div>
         <a class="FormFooter-ga" target="_blank" href="http://www.beian.gov.cn/portal/index.do">
-          <!-- <img :src="gonganImg" /> -->
           <p>X公网安备 XXXXXXXXXXXXXX号</p>
         </a>
       </div>
@@ -135,10 +134,10 @@ export default {
     }
   }
   .FormFooter {
-      width: 100%;
-      display: flex;
-      justify-content: center;
-      align-items: center;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 
     .FormFooter-icp {
       color: #aaa;
@@ -150,7 +149,7 @@ export default {
       }
     }
     .FormFooter-ga {
-      display:flex;
+      display: flex;
       text-decoration: none;
       height: 18px;
       line-height: 18px;

@@ -1,112 +1,55 @@
-# Implementation Status
+# 当前实现说明
 
-## 2026-10-26 Organization and System Settings Parity
+截至 2026-11-02。本文描述当前代码，历史参考站的模块数量和兼容成功响应不代表本地功能。
 
-- Added account-scoped reference waiting tasks. `13686621113` now receives the
-  same two pending approvals as the reference site: payment by 昌远把 and
-  invoice application by 奚哭芬.
-- The `sys_admin_identity` list is now the source of truth for organization
-  administrator privileges. Members receive the `admin` role and the full
-  236-permission set without changing their business roles.
-- Synchronized `isAdmin` and `isOwner` flags for all reference demo users.
-- Checked all 34 local accounts; all three local users present in the reference
-  system-administrator list can open team management and role permissions.
-- Department rename now performs a partial update, preserving parent department,
-  order, leader, phone, email and status.
-- Department creation calculates ancestors and the next child order from the
-  selected parent instead of using fixed demo values.
-- Added independent department principal and leader relationship tables and
-  working assign/query APIs.
-- Department drag sorting now updates parent, ancestors and order through
-  `/system/dept/sort`.
-- Imported the reference system settings: 34 dictionary types, 130 dictionary
-  values and 6 parameter records.
-- Dictionary type/data and parameter list APIs now support filtering and
-  pagination.
-- Project type dictionary lookups now use `seal_project_type`, matching the
-  reference frontend.
+## 当前模块
 
-## 2026-10-26 Full Page Parity Audit
+- 待办：我的待办、我的已办、我的发起、抄送我的。
+- 客户与合同：客户档案、商机、合同统一列表、客户分析、风险提醒。
+- 人事：成员邀请、调岗、离职，以及组织关系维护。
+- 系统：组织机构、角色权限、模块及动作、字典、参数、公告和日志。
+- 低代码应用及流程设计器仍在使用，表单设计、预览、应用容器和流程办理的隐藏路由保留。
+- 旧项目、采购、财务和仓库模块已经退役，不能以历史 SQL 或参考资料推断它们仍可用。
 
-- Audited all 67 accessible desktop leaf routes with the same administrator
-  account against the public reference site.
-- Added explicit implementations for 27 project, finance and low-code list APIs
-  that previously reached the compatibility fallback.
-- Imported 121 representative first-page records from public reference API
-  responses into `parity-data.sql`.
-- Expanded the super-administrator permission set from 17 to the reference set
-  of 236 permissions, restoring add, edit, delete, export and audit actions.
-- Added the complete administrator organization data: the `企业管理` group,
-  member relationships, detail endpoint and update operations.
-- Replaced H2-incompatible mobile chart SQL with Java-side aggregation.
-- Desktop audit result: 67/67 routes, 0 fallback responses, 0 page/API errors,
-  0 missing buttons.
-- Mobile runtime audit result: 67/67 paths, 0 fallback responses, 0 HTTP errors.
+## 入口与权限
 
-## 2026-10-26 Local Parity Update
+前端固定路由在 `src/config/router.config.js`，动态页面由 `src/router/generator-routers.js` 按后端模块目录解析。`import.meta.glob` 是组件查找表，不表示所有 Vue 页面都有入口。
 
-- Dynamic routes now come from 85 records in `sys_module`, matching the public reference module tree.
-- The system area now includes 组织机构、角色权限、基础数据、流程设置、参数设置、通知公告、操作日志、登录日志.
-- `/system/module` adds list, tree, detail, create, update and delete operations without changing the RBAC `sys_menu` contract.
-- All 68 leaf route components exist locally. The three previously missing pages reuse existing fund-plan and purchase-payment components.
-- H5 inventory now covers 56 pages and 68 API paths. The main local business paths have explicit controllers; WeChat, DingTalk and slider-captcha integrations remain configuration-dependent.
-- The demo account model now includes separate finance accountant, cashier, contract archive, production VP, purchasing, comprehensive manager, seal-confirmation and void-recovery roles.
-- Merchant headers, contacts and bank accounts now have normalized local tables and CRUD APIs.
+- 固定超级管理员为欧志锋（13610316814），身份与角色初始化定义在 `administrator-model.sql`。
+- 页面授权使用 `sys_role_module`，按钮及业务动作使用 `sys_module_action` 和 `sys_role_module_action`。
+- 人事及客户合同页面通过传参、匹配的路由或 `/system/module-context` 解析模块，不在业务页面写死数字 ID；跨模块权限分别解析。见 [业务模块上下文](module-context.md)。
+- 部门主管是部门内的任职关系；角色负责业务职责和权限，二者不能相互替代。
+- 部门和成员直接授予模块的旧接口返回 410，授权统一从角色维护。
+- 旧 `sys_menu` 管理接口已删除，当前页面和按钮维护使用 `/system/module`。旧表仍供历史权限迁移读取，不能直接删除。
+- 岗位管理页面和岗位增删改接口已删除。低代码历史选择器仍读取 `/system/post/list/all`；已有岗位关系和删除员工时的关联清理保留。
 
-## Summary
+## 客户与合同
 
-| Area | Status | Notes |
-| --- | --- | --- |
-| Authentication | Implemented | Captcha, RSA-compatible password input, BCrypt, JWT |
-| System management | Implemented | User, dept, role, menu, dict, config, notice, post, logs |
-| Application center | Implemented | Apps, modules, tenants, basic admin groups |
-| Project | Implemented | Project CRUD, members, tree, submit-status transition |
-| Contract | Implemented | Contract CRUD, line items, submit-status transition |
-| Purchase | Implemented | Purchase application CRUD and line items |
-| Expense | Implemented | Expense CRUD, items, invoices |
-| Budget | Implemented | Budget header/items and list/detail |
-| Warehouse | Implemented | Warehouse and inbound list foundation |
-| Todo/process | Partial | Todo list and task completion; no BPMN engine |
-| Analysis/report | Compatibility | Empty compatible payloads |
-| Invoice/fund/CRM | Partial | Schema and core list fields; full workflows pending |
-| Third-party services | Not reconstructed | Baidu OCR, WPS, DingTalk, WebSocket need credentials/contracts |
+合同提交、签署及审批使用统一动作和待办体系。详情中的重复审批入口已清理；历史单人审批只允许原待办按身份、状态和权限校验办理。详见 [客户与合同生命周期](customer-contract-lifecycle.md)。
 
-## Endpoint Coverage
+合同审批、收费、版本和提醒的旧页面仅负责历史书签跳转；相应模块编号仍承载独立操作权限，不能因为隐藏就删除。旧流程设置地址同样跳转到统一模块管理。
 
-The frontend calls 722 endpoint operations across 84 API modules.
+## 接口行为
 
-- Explicit backend mappings: 131 mapping annotations, including multiple URL aliases per method.
-- Real domain implementation: authentication, system administration, application center, upload/download, project, contract, purchase, expense, budget, warehouse and todo foundations.
-- Compatibility implementation: all unmatched routes are caught by `CompatController`. List-like paths return empty pagination, tree/select paths return empty arrays, details return an empty object, and writes return `code=200`.
+`CompatController` 仅处理没有匹配实现的请求，返回 HTTP 404 和业务码 404，并保留 `X-UMM-OA-Compatible: fallback` 诊断头。未知读接口不再伪装成空数据，未知写接口不再伪装保存成功。
 
-Compatibility responses intentionally include:
+第三方文档、OCR、钉钉等集成需要相应配置和服务；保留实际前端调用与代理配置，不把缺少本地第三方环境等同于废代码。
 
-```text
-X-UMM-OA-Compatible: fallback
-```
+## 数据与开发资料
 
-This header makes remaining stubs observable during migration.
+- `back/data` 是本地运行数据库和上传文件，不属于源码清理范围。
+- `back/src/main/resources` 是 H2 建库及升级脚本；`back/db/mysql` 提供 MySQL 初始化、迁移脚本。它们不是运行库的自动同步副本。
+- `LocalDatabaseBootstrap` 区分初次初始化与存量升级，不应通过重新灌入演示数据解决成员跨电脑不同步的问题。
+- `back/db/retired-modules.json` 记录退役范围，生成工具和历史迁移脚本继续保留。
+- `back/tools` 是开发与数据生成工具；`back/docs` 中部分参考 JSON 是其输入。删除参考资料前必须核对工具依赖。
 
-## Database Scope
+## 维护检查
 
-The SQL contains normalized system tables and core OA tables:
+在项目根目录运行 `npm run audit:source` 检查失联源码、无用 API 导出、未使用导入和转导出、缺失页面及本地引用；运行 `npm run build` 验证前端构建。
 
-- Tenant, department, user, role, menu, post and their relations
-- Dictionaries, system configuration, notices and logs
-- Applications and application modules
-- Project and project member
-- Contract and contract line item
-- Purchase application and line item
-- Expense, expense item and invoice
-- Loan, budget and budget item
-- Fund plan, warehouse and warehouse movement
-- Business opportunity, todo, process definition, instance and task
-- Generic `biz_record` for modules not yet normalized
+审计以固定入口及版本内 SQL 模块目录为起点。如果数据库新增自定义页面，可先将只读导出的模块数组放到 `back/target/source-audit-runtime.json` 再审计；不要仅凭静态报告删除自定义入口。
 
-## Not Claimed
+后端使用 Java 17，执行 Maven `test` 验证认证、组织权限、部门主管、成员删除、客户合同及统一流程。测试使用独立内存数据库。
 
-- No source code was recovered from the remote service.
-- No undisclosed private business rules are asserted.
-- No production data was copied into the seed SQL.
-- Public demo credentials from the frontend README are intentionally not used as local production passwords.
+源码变更需要重新构建后端 JAR 并手动重启才会进入正在运行的服务；本次清理没有停止本地后端或操作业务数据。
 
