@@ -1,4 +1,7 @@
+import { recruitmentGuide } from './recruitmentGuide.js'
+
 export const moduleGroups = [
+  recruitmentGuide,
   {
     id: 'workbench',
     name: '工作台',

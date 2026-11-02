@@ -5,6 +5,7 @@ import com.seal.oa.common.ApiException;
 import com.seal.oa.common.ApiResult;
 import com.seal.oa.common.JdbcMaps;
 import com.seal.oa.system.DataScopeService;
+import com.seal.oa.recruitment.RecruitmentService;
 import com.seal.oa.web.RequiresModuleAction;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,11 +39,13 @@ public class MerchantController {
     private final JdbcTemplate jdbc;
     private final DataScopeService dataScopeService;
     private final CrmContractService contracts;
+    private final RecruitmentService recruitment;
 
-    public MerchantController(JdbcTemplate jdbc, DataScopeService dataScopeService, CrmContractService contracts) {
+    public MerchantController(JdbcTemplate jdbc, DataScopeService dataScopeService, CrmContractService contracts, RecruitmentService recruitment) {
         this.jdbc = jdbc;
         this.dataScopeService = dataScopeService;
         this.contracts = contracts;
+        this.recruitment = recruitment;
     }
 
     @GetMapping("/project/merchant/list")
@@ -325,6 +328,7 @@ public class MerchantController {
         saveCollaborators(id, body);
         contracts.syncCustomer(id);
         contracts.syncOwnership(id);
+        if (recruitment.managedCustomer(id)) recruitment.syncCustomer(id);
         return ApiResult.ok(id);
     }
 
@@ -333,6 +337,7 @@ public class MerchantController {
     @RequiresModuleAction(moduleId = CUSTOMER_MODULE_ID, action = "remove")
     public Map<String, Object> delete(@PathVariable Long id) {
         Map<String, Object> customer = requireAccessibleMerchant(id);
+        if (recruitment.managedCustomer(id)) throw new ApiException(409, "客户已有合作职位，请保留客户及招聘历史");
         if (jdbc.queryForObject("SELECT COUNT(*) FROM oa_crm_contract WHERE customer_id = ?", Long.class, id) > 0) {
             throw new ApiException(409, "客户已关联合同，请保留客户档案和合同历史");
         }
@@ -621,6 +626,7 @@ public class MerchantController {
     }
 
     private void decorateCustomer(Map<String, Object> row) {
+        row.put("recruitmentManaged", recruitment.managedCustomer(number(row.get("id"), 0L)));
         row.put("contractManaged", contracts.managedCustomer(number(row.get("id"), 0L)));
         row.put("publicPool", "1".equals(String.valueOf(row.get("publicPool"))) ? "1" : "0");
         row.put("createTime", formatted(row.get("createTime")));

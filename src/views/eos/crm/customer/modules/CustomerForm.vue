@@ -138,17 +138,17 @@
           <a-row :gutter="16">
             <a-col :xs="24" :md="8">
               <a-form-model-item label="合作职位数">
-                <a-input-number v-model="form.cooperationPositions" :min="0" style="width: 100%" />
+                <a-input-number v-model="form.cooperationPositions" :disabled="form.recruitmentManaged" :min="0" style="width: 100%" />
               </a-form-model-item>
             </a-col>
             <a-col :xs="24" :md="8">
               <a-form-model-item label="推荐人数">
-                <a-input-number v-model="form.referralCount" :min="0" style="width: 100%" />
+                <a-input-number v-model="form.referralCount" :disabled="form.recruitmentManaged" :min="0" style="width: 100%" />
               </a-form-model-item>
             </a-col>
             <a-col :xs="24" :md="8">
               <a-form-model-item label="入职人数">
-                <a-input-number v-model="form.hireCount" :min="0" style="width: 100%" />
+                <a-input-number v-model="form.hireCount" :disabled="form.recruitmentManaged" :min="0" style="width: 100%" />
               </a-form-model-item>
             </a-col>
             <a-col :xs="24" :md="8">

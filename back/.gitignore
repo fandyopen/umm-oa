@@ -1,5 +1,5 @@
 target/
-data/*.mv.db
+data/recruit-private/
 data/*.trace.db
 data/*.lock.db
 data/uploads/

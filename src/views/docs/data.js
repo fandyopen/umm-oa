@@ -1,4 +1,15 @@
 export const routeMapEntries = [
+  ...[
+    ['职位管理', 'jobs', 'jobs', 'job'],
+    ['人才库', 'talents', 'talents', 'talent'],
+    ['招聘流程', 'pipeline', 'applications', 'pipeline']
+  ].map(([menu, route, endpoint, permission]) => ({
+    group: '招聘管理', menu, route: '/recruitment/' + route,
+    component: 'eos/recruitment/' + route + '/index', file: 'src/views/eos/recruitment/' + route + '/index.vue',
+    related: ['src/views/eos/recruitment/components/RecruitmentWorkspace.vue', 'src/views/eos/recruitment/components/RecruitmentForm.vue'],
+    api: ['src/api/eos/recruitment/index.js'], backend: ['RecruitmentController', 'RecruitmentService', 'RecruitmentPipelineService', 'RecruitmentApprovalService'],
+    permission: 'recruit:' + permission + ':list', note: '服务端入口 /project/recruitment/' + endpoint + '；完整操作流程见模块说明中的招聘管理。'
+  })),
   {
     related: ['src/views/eos/todoItem/todo/todo.vue', 'src/views/eos/todoItem/todo/busDetail.vue'],
     api: ['src/api/activiti/process.js', 'src/api/workflow/action.js'],

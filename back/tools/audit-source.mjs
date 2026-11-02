@@ -149,10 +149,13 @@ function sqlValues(input) {
 
 const retired = new Set(JSON.parse(read('back/db/retired-modules.json')).moduleIds.map(String))
 const catalog = new Map()
-for (const sql of ['back/src/main/resources/module-data.sql', 'back/src/main/resources/customer-contract-menu.sql']) {
-  for (const line of read(sql).split(/\r?\n/)) {
-    const match = line.match(/MERGE INTO sys_module\s*\(([^)]+)\).*?VALUES\s*\((.*)\);/i)
-    if (!match) continue
+for (const sql of ['back/src/main/resources/module-data.sql', 'back/src/main/resources/customer-contract-menu.sql', 'back/src/main/resources/recruitment-menu.sql']) {
+  const source = read(sql)
+  const matches = [
+    ...source.matchAll(/MERGE INTO sys_module\s*\(([^)]+)\)[^;]*?VALUES\s*\(([^;]*)\);/gi),
+    ...source.matchAll(/INSERT INTO sys_module\s*\(([^)]+)\)\s*SELECT\s+([^;]*?)\s+WHERE NOT EXISTS\s*\([^;]*\);/gi)
+  ]
+  for (const match of matches) {
     const values = sqlValues(match[2])
     const row = Object.fromEntries(match[1].split(',').map((column, index) => [column.trim(), values[index]]))
     if (!retired.has(row.module_id)) catalog.set(row.module_id, row)

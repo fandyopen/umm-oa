@@ -188,7 +188,8 @@ class AuthFlowIntegrationTest {
                 .andReturn();
         JsonNode roots = objectMapper.readTree(routersResult.getResponse().getContentAsString())
                 .path("data");
-        assertEquals(6, roots.size());
+        assertEquals(7, roots.size());
+        assertTrue(containsModule(roots, 341300L));
         for (JsonNode root : roots) {
             String name = root.path("moduleName").asText();
             assertFalse("项目".equals(name));

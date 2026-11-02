@@ -2,6 +2,8 @@
 
 ## 当前维护文档
 
+- recruitment-lifecycle.md：招聘管理闭环、权限、简历隐私、部署及验证说明
+
 - source-cleanup.md：全系统源码清理范围、保留理由与验证结果
 
 - `implementation-status.md`：后端实现与兼容层边界

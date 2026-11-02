@@ -53,6 +53,14 @@
       <a-tab-pane v-if="showModuleAction('risk')" key="risks" :tab="`客户风险（${risks.length}）`">
         <a-table :loading="relatedLoading.risks" :columns="riskColumns" :data-source="risks" :pagination="false" row-key="taskId" size="small"><span slot="riskLevel" slot-scope="value"><a-tag :color="value === 'high' ? 'red' : 'orange'">{{ value === 'high' ? '高风险' : '中风险' }}</a-tag></span><span slot="riskAction" slot-scope="_, record"><a-button type="link" @click="record.contractId ? openContract(record.contractId) : activeTab = 'followups'">{{ record.contractId ? '处理关联合同' : '跟进客户' }}</a-button></span></a-table>
       </a-tab-pane>
+      <a-tab-pane v-if="showModuleAction('jobs')" key="recruitJobs" tab="合作职位">
+        <div class="tab-toolbar"><span>职位名额与实际入职自动汇总至客户档案</span><a-button type="primary" @click="viewRecruitJobs">进入职位管理</a-button></div>
+        <a-table :loading="relatedLoading.recruitJobs" :columns="recruitJobColumns" :data-source="recruitJobs" :pagination="false" row-key="id" size="small"><span slot="recruitJob" slot-scope="text, row"><a @click="viewRecruitJobs(row.id)">{{ text }}</a></span></a-table>
+      </a-tab-pane>
+      <a-tab-pane v-if="showModuleAction('applications')" key="recruitApplications" tab="招聘进展">
+        <div class="tab-toolbar"><span>推荐、面试、Offer、入职和保证期由招聘流程统一维护</span><a-button @click="viewRecruitApplications">进入招聘流程</a-button></div>
+        <a-table :loading="relatedLoading.recruitApplications" :columns="recruitApplicationColumns" :data-source="recruitApplications" :pagination="false" row-key="id" size="small"><span slot="recruitApplication" slot-scope="text, row"><a @click="viewRecruitApplications(row.id)">{{ text }}</a></span><span slot="recruitStage" slot-scope="text">{{ recruitStages[text] || text }}</span></a-table>
+      </a-tab-pane>
       <a-tab-pane key="overview" tab="客户档案">
         <a-descriptions bordered :column="2" size="small">
           <a-descriptions-item label="客户编号">{{ customer.serial || '-' }}</a-descriptions-item>
@@ -127,19 +135,23 @@ import { statuses, statusColors } from '../../contract/shared.js'
 import ContractDetail from '../../contract/modules/ContractDetail.vue'
 import ContractForm from '../../contract/modules/ContractForm.vue'
 import FollowupForm from './FollowupForm.vue'
+import { recruitmentModules, stages as recruitStages } from '/src/views/eos/recruitment/shared.js'
+import { recruitmentRequest } from '/src/api/eos/recruitment/index.js'
 
 export default {
   mixins: [
     withModuleContexts(
-      { customer: crmModules.customer, contract: crmModules.contract, risk: crmModules.risk, opportunity: crmModules.opportunity },
+      { customer: crmModules.customer, contract: crmModules.contract, risk: crmModules.risk, opportunity: crmModules.opportunity, jobs: recruitmentModules.jobs, applications: recruitmentModules.applications },
       {
         createContract: { module: 'contract', action: 'add', label: '新建合同' },
         openContract: { module: 'contract', action: 'view', label: '查看合同详情' },
         viewContracts: { module: 'contract', action: 'view', label: '查看全部合同' },
+        viewRecruitJobs: { module: 'jobs', action: 'view', label: '查看客户职位' },
+        viewRecruitApplications: { module: 'applications', action: 'view', label: '查看客户招聘进展' },
         openFollowup: { module: 'customer', action: 'track', label: '新增跟进' },
         removeFollowup: { module: 'customer', action: 'track', label: '删除跟进' },
         handleTabChange: function (key) {
-          return { contracts: { module: 'contract', label: '查看关联合同' }, risks: { module: 'risk', label: '查看客户风险' } }[key]
+          return { contracts: { module: 'contract', label: '查看关联合同' }, risks: { module: 'risk', label: '查看客户风险' }, recruitJobs: { module: 'jobs', label: '查看客户职位' }, recruitApplications: { module: 'applications', label: '查看客户招聘进展' } }[key]
         }
       }
     )
@@ -152,7 +164,12 @@ export default {
   data() {
     return {
       loading: false,
-      relatedLoading: { contracts: false, risks: false, opportunities: false },
+      relatedLoading: { contracts: false, risks: false, opportunities: false, recruitJobs: false, recruitApplications: false },
+      recruitJobs: [],
+      recruitApplications: [],
+      recruitStages,
+      recruitJobColumns: [{ title: '职位', dataIndex: 'title', scopedSlots: { customRender: 'recruitJob' } }, { title: '负责人', dataIndex: 'ownerName' }, { title: '需求人数', dataIndex: 'headcount' }, { title: '已入职', dataIndex: 'hired' }, { title: '剩余名额', dataIndex: 'vacancies' }],
+      recruitApplicationColumns: [{ title: '候选人', dataIndex: 'talentName', scopedSlots: { customRender: 'recruitApplication' } }, { title: '职位', dataIndex: 'jobTitle' }, { title: '顾问', dataIndex: 'consultantName' }, { title: '阶段', dataIndex: 'stage', scopedSlots: { customRender: 'recruitStage' } }, { title: '实际入职', dataIndex: 'actualEntryDate' }, { title: '保证期结束', dataIndex: 'guaranteeEnd' }],
       activeTab: this.initialTab,
       contracts: [],
       contractsTotal: 0,
@@ -226,9 +243,17 @@ export default {
     this.loadCustomer()
   },
   methods: {
+    viewRecruitJobs(id) {
+      this.$router.push({ name: 'RecruitmentJobs', query: { customerId: this.formId, ...(Number.isSafeInteger(id) ? { recordId: id } : {}) } })
+      this.$emit('close')
+    },
+    viewRecruitApplications(id) {
+      this.$router.push({ name: 'RecruitmentPipeline', query: { customerId: this.formId, ...(Number.isSafeInteger(id) ? { recordId: id } : {}) } })
+      this.$emit('close')
+    },
     async handleTabChange(key) {
       this.activeTab = key
-      if (['contracts', 'risks'].includes(key)) await this.loadRelatedData(key)
+      if (['contracts', 'risks', 'recruitJobs', 'recruitApplications'].includes(key)) await this.loadRelatedData(key)
     },
     openContract(id) {
       const contractId = normalizeContractId(id)
@@ -270,12 +295,12 @@ export default {
         .finally(() => {
           this.loading = false
         })
-      await Promise.all(['contracts', 'risks', 'opportunities'].map(key => this.loadRelatedData(key)))
+      await Promise.all(['contracts', 'risks', 'opportunities', 'recruitJobs', 'recruitApplications'].map(key => this.loadRelatedData(key)))
     },
     async loadRelatedData(key) {
       if (this.relatedLoading[key]) return
       this.relatedLoading[key] = true
-      const module = { contracts: 'contract', risks: 'risk', opportunities: 'opportunity' }[key]
+      const module = { contracts: 'contract', risks: 'risk', opportunities: 'opportunity', recruitJobs: 'jobs', recruitApplications: 'applications' }[key]
       try {
         await this.ensureModuleContexts([module]).catch(() => {})
         if (!this.canViewModule(module)) return
@@ -285,6 +310,10 @@ export default {
           this.contractsTotal = response.total || 0
         } else if (key === 'risks') {
           this.risks = (await listCustomerRisks({ customerId: this.formId })).rows || []
+        } else if (key === 'recruitJobs') {
+          this.recruitJobs = (await recruitmentRequest('/jobs', 'get', { customerId: this.formId, pageSize: 200 })).rows || []
+        } else if (key === 'recruitApplications') {
+          this.recruitApplications = (await recruitmentRequest('/applications', 'get', { customerId: this.formId, pageSize: 200 })).rows || []
         } else {
           this.opportunities = (await listBusiness({ customerId: this.formId, pageNum: 1, pageSize: 200 })).rows || []
         }

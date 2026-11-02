@@ -2,6 +2,8 @@
 
 ## 运行时
 
+- mysql/recruitment-upgrade.sql：已有 MySQL 数据库新增招聘管理表及三项菜单后执行，随后重启后端初始化可编辑按钮。招聘使用流程见 docs/recruitment-lifecycle.md。
+
 - `mysql/umm_oa.sql`：完整 MySQL 8 初始化脚本，生产部署只使用该文件。
 - `mysql/upgrade-workflow-action.sql`：已有 MySQL 数据库增加动作级流程绑定表时执行一次。
 - `mysql/upgrade-administrator-model.sql`：已有 MySQL 数据库收敛为唯一固定超级管理员时执行一次。

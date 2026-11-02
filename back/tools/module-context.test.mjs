@@ -685,7 +685,7 @@ test('customer primary data renders while related module queries are still pendi
   assert.equal(vm.customer.name, '主档正常')
   assert.equal(vm.loading, false)
   assert.deepEqual(vm.contacts, [{ id: 1 }])
-  assert.equal(releases.length, 3)
+  assert.equal(releases.length, 5)
   releases.forEach(resolve => resolve())
   await pending
 })
@@ -769,4 +769,95 @@ test('action table prevents duplicate dispatch while a guarded callback is pendi
   release('ok')
   assert.equal(await first, 'ok')
   assert.equal(vm.actionPending, false)
+})
+
+const recruitmentFile = 'src/views/eos/recruitment/components/RecruitmentWorkspace.vue'
+const recruitmentFields = await importSource(read('src/views/eos/recruitment/shared.js'))
+const recruitmentMethod = (name, dependencies = {}) => componentMethod(recruitmentFile, 'methods', name, Object.keys(dependencies), Object.values(dependencies))
+const recruitmentPath = (kind, id) => '/' + kind + '/' + id
+
+test('recommendation candidate selection only allows contacting and available with an inline label hint', async () => {
+  const create = recruitmentMethod('create', recruitmentFields)
+  let fields
+  const vm = {
+    kind: 'applications', query: {}, allowedAction: async () => true, loadOptions: async () => {},
+    options: { users: [], jobs: [], talents: ['draft', 'uncontacted', 'contacting', 'available', 'archived'].map((status, index) => ({ id: index + 1, name: status, status })) },
+    form: (_, items) => { fields = items }
+  }
+  await create.call(vm)
+  const candidate = fields.find(item => item.key === 'talentId')
+  assert.equal(candidate.type, 'select')
+  assert.deepEqual(candidate.options.map(option => option.value), [3, 4])
+  assert.equal(candidate.labelHint, '只允许「沟通中、可推荐」两种状态可选')
+})
+
+test('recruitment menus follow record state and permissions in all three modules', () => {
+  const actions = recruitmentMethod('actionsForRecord')
+  const vm = { kind: 'jobs', showModuleAction: (_, permission) => permission !== 'assign' }
+  let keys = actions.call(vm, { demandStatus: 'draft' }).map(action => action.key)
+  assert.ok(keys.includes('demand') && keys.includes('remove') && keys.includes('copy'))
+  assert.ok(!keys.includes('change') && !keys.includes('assign'))
+  keys = actions.call(vm, { demandStatus: 'approved' }).map(action => action.key)
+  assert.ok(keys.includes('change') && !keys.includes('demand') && !keys.includes('remove'))
+  vm.kind = 'talents'
+  keys = actions.call(vm, { status: 'available', approvals: [{ status: 'pending' }] }).map(action => action.key)
+  assert.ok(keys.includes('withdraw') && !keys.includes('copy') && !keys.includes('edit'))
+  vm.kind = 'applications'
+  keys = actions.call(vm, { stage: 'offer', offerStatus: 'issued' }).map(action => action.key)
+  assert.ok(keys.includes('acceptOffer') && keys.includes('rejectOffer'))
+  assert.ok(!keys.includes('issueOffer') && !keys.includes('remove') && !keys.includes('copy'))
+})
+
+test('recruitment row menus ignore an earlier record response after switching rows', async () => {
+  const pending = new Map()
+  const prepare = recruitmentMethod('prepareRowActions', { api: path => new Promise(resolve => pending.set(path, resolve)), recordPath: recruitmentPath })
+  const vm = { kind: 'jobs', rowMenuRequest: 0 }
+  const first = prepare.call(vm, { id: 1 }, true)
+  const second = prepare.call(vm, { id: 2 }, true)
+  pending.get('/jobs/2')({ data: { id: 2, demandStatus: 'approved' } })
+  await second
+  pending.get('/jobs/1')({ data: { id: 1, demandStatus: 'draft' } })
+  await first
+  assert.equal(vm.rowMenuRecord.id, 2)
+  assert.equal(vm.rowMenuLoading, false)
+})
+
+test('recruitment row actions recheck current state and never use an unrelated open detail', async () => {
+  let latest = { id: 2, demandStatus: 'draft', revision: 4 }
+  const execute = recruitmentMethod('runRecordAction', { api: async path => { assert.equal(path, '/jobs/2'); return { data: latest } }, recordPath: recruitmentPath })
+  const actions = recruitmentMethod('actionsForRecord')
+  const calls = []; const warnings = []
+  const vm = { kind: 'jobs', detail: { id: 1 }, actionLoadingId: null, showModuleAction: () => true, actionsForRecord: d => actions.call(vm, d), loadOptions: async () => {}, runAction: async (action, d) => calls.push([action.key, d]), $message: { warning: message => warnings.push(message) } }
+  await execute.call(vm, 'demand', { id: 2 })
+  assert.equal(calls[0][1], latest)
+  assert.equal(vm.detail.id, 1)
+  assert.equal(vm.actionLoadingId, null)
+  latest = { id: 2, demandStatus: 'approved', revision: 5 }
+  await execute.call(vm, 'demand', { id: 2 })
+  assert.equal(calls.length, 1)
+  assert.equal(warnings.length, 1)
+})
+
+test('recruitment offer entry and guarantee use attachments and revisions from the selected row', async () => {
+  const requests = []
+  const run = recruitmentMethod('runAction', { ...recruitmentFields, recordPath: recruitmentPath, api: async (...args) => requests.push(args) })
+  const attachment = recruitmentMethod('attachmentField', recruitmentFields)
+  const selected = { id: 2, revision: 7, attachments: [{ id: 21, originalName: 'current.pdf' }], guaranteeTerms: [{ key: 'term', title: '合同', guaranteeDays: 30 }] }
+  let fields; let save
+  const vm = { kind: 'applications', detail: { id: 1, attachments: [{ id: 11 }] }, allowedAction: async () => true, attachmentField: (required, d) => attachment.call(vm, required, d), form: (_, f, initial, callback) => { fields = f; save = callback } }
+  for (const key of ['offer', 'entry', 'guarantee']) {
+    await run.call(vm, { key, permission: key, label: key }, selected)
+    assert.deepEqual(fields.find(f => f.key === 'attachmentId').options, [{ value: 21, label: 'current.pdf' }])
+    await save({ reason: 'test' })
+    assert.equal(requests.at(-1)[0], '/applications/2/actions/' + key)
+    assert.equal(requests.at(-1)[2].revision, 7)
+  }
+})
+
+test('recruitment interview replacement and deletion keep the selected row context', async () => {
+  const run = recruitmentMethod('runAction', { ...recruitmentFields, recordPath: recruitmentPath })
+  const selected = { id: 2 }; const calls = []
+  const vm = { kind: 'applications', detail: { id: 1 }, allowedAction: async () => true, editInterview: (_, d) => calls.push(d), createReplacement: d => calls.push(d), remove: id => calls.push(id) }
+  for (const key of ['interview', 'replacement', 'remove']) await run.call(vm, { key, permission: key }, selected)
+  assert.deepEqual(calls, [selected, selected, 2])
 })
