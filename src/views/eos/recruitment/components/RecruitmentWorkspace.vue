@@ -37,6 +37,7 @@
       <a-table row-key="id" :columns="columns" :data-source="rows" :loading="loading" :pagination="pagination" :row-selection="kind === 'talents' ? { selectedRowKeys: selected, onChange: selectRows } : undefined" :scroll="{ x: tableWidth }" size="middle" @change="changePage">
         <span slot="name" slot-scope="text, row"><a @click="openDetail(row.id)">{{ text }}</a><small class="subline">{{ row.code || (kind === 'applications' ? row.jobTitle : row.skills) }}</small><small v-if="row.duplicateIds && row.duplicateIds.length" class="subline">重复记录 #{{ row.duplicateIds.join(' / #') }}</small></span>
         <span slot="state" slot-scope="value"><a-tag color="blue">{{ stateLabel(value) }}</a-tag></span>
+        <span slot="applicationStage" slot-scope="value, row"><a-tag color="blue">{{ stateLabel(value) }}</a-tag><small v-if="stageSubstatus(row)" class="subline">{{ stageSubstatus(row) }}</small></span>
         <span slot="demand" slot-scope="value"><a-tag>{{ approvalStates[value] || value }}</a-tag></span>
         <span slot="tags" slot-scope="value"><a-tag v-for="t in value || []" :key="t">{{ t }}</a-tag></span>
         <span slot="warnings" slot-scope="value"><a-tag v-for="w in value || []" :key="w" color="orange">{{ w }}</a-tag><span v-if="!value || !value.length">—</span></span>
@@ -44,9 +45,10 @@
         <span slot="progress" slot-scope="_, row">{{ row.recommendations }} / {{ row.interviews }} / {{ row.offers }} / {{ row.hired }}<small class="subline">入职完成率 {{ row.completionRate }}% · 招聘 {{ row.recruitingDays }} 天</small><small class="subline">推荐转化：面试 {{ row.interviewRate }}% / Offer {{ row.offerRate }}% / 入职 {{ row.hireRate }}%</small></span>
         <span slot="actions" slot-scope="_, row" class="row-actions">
           <a-button type="link" size="small" @click="openDetail(row.id)">详情</a-button>
+          <a-button v-if="hasInterviewResultAction(row)" type="link" size="small" :loading="actionLoadingId === row.id" @click="runRecordAction('interviewResult', row)">{{ row.interviewStatus === 'completed' && row.interviewResult === 'pending' ? '补充结果' : '登记结果' }}</a-button>
           <a-button v-if="kind !== 'applications' && showModuleAction(kind, 'edit')" type="link" size="small" @click="edit(row.id)">修改</a-button>
           <a-button v-if="kind === 'jobs' && showModuleAction(kind, 'copy')" type="link" size="small" @click="copy(row.id)">复制</a-button>
-          <a-dropdown :trigger="['click']" @visibleChange="prepareRowActions(row, $event)">
+          <a-dropdown v-if="hasRowActions(row)" :trigger="['click']" @visibleChange="prepareRowActions(row, $event)">
             <a-button type="link" size="small" :loading="actionLoadingId === row.id" @click.stop>更多<a-icon type="down" /></a-button>
             <a-menu slot="overlay" @click="({ key }) => runRecordAction(key, row)">
               <a-menu-item v-if="rowMenuLoading && rowMenuId === row.id" key="loading" disabled>正在加载操作…</a-menu-item>
@@ -82,10 +84,10 @@
             <a-tab-pane v-if="kind === 'talents'" key="disputes" tab="归属争议"><a-alert type="info" message="指定处理人核实后可保留归属结案，或按转交按钮审批调整归属；审批通过前负责人不变。" style="margin-bottom: 12px" /><a-table :columns="disputeColumns" :data-source="detail.disputes || []" row-key="id" :pagination="false" size="small"><span slot="state" slot-scope="v">{{ label(v) }}</span><span slot="disputeAction" slot-scope="_, d"><template v-if="d.status === 'open' && d.handlerUserId === options.currentUserId && showModuleAction('talents', 'dispute')"><a @click="retainOwnership(d)">保留归属结案</a><a-divider type="vertical" /><a v-if="showModuleAction('talents', 'handover')" @click="transferOwnership(d)">发起归属调整</a></template></span></a-table></a-tab-pane>
             <a-tab-pane v-if="kind === 'jobs'" key="versions" tab="需求版本"><a-collapse><a-collapse-panel v-for="v in detail.versions || []" :key="v.id" :header="'V' + v.versionNo + ' · ' + (v.reason || '') + ' · ' + v.createTime"><a-descriptions bordered :column="2" size="small"><a-descriptions-item v-for="item in versionFields" :key="item.key" :label="item.label">{{ versionValue(v, item.key) }}</a-descriptions-item></a-descriptions></a-collapse-panel></a-collapse></a-tab-pane>
             <a-tab-pane v-if="kind !== 'applications'" key="approvals" tab="审批记录"><a-alert message="审批人在“我的待办”办理。本次申请冻结提交内容，修改未发布的流程不会影响已发起申请。" type="info" style="margin-bottom: 12px" /><a-table :columns="approvalColumns" :data-source="detail.approvals || []" row-key="id" :pagination="false" size="small"><span slot="state" slot-scope="v">{{ approvalStates[v] || v }}</span></a-table></a-tab-pane>
-            <a-tab-pane v-if="kind === 'applications'" key="interviews" tab="面试轮次"><a-table :columns="interviewColumns" :data-source="detail.interviews || []" row-key="id" :pagination="false" size="small"><span slot="state" slot-scope="v">{{ label(v) }}</span><span slot="interviewState" slot-scope="v">{{ { scheduled: '待面试', completed: '已完成', cancelled: '已取消' }[v] || v }}</span><span slot="interviewResult" slot-scope="v">{{ { pass: '通过', fail: '不通过', pending: '待定' }[v] || '—' }}</span><span slot="notice" slot-scope="v">{{ v ? '已登记通知' : '未登记通知' }}</span><span slot="interviewActions" slot-scope="_, interview"><template v-if="interview.status === 'scheduled' && ['feedback', 'interview'].includes(detail.stage) && showModuleAction('applications', 'interview')"><a @click="editInterview(interview)">编辑 / 改期</a><a-divider type="vertical" /><a @click="interviewOperation(interview, 'notify')">登记通知</a><a-divider type="vertical" /><a @click="interviewOperation(interview, 'result')">评价结果</a><a-divider type="vertical" /><a @click="interviewOperation(interview, 'cancel')">取消</a></template><a v-if="interview.status === 'completed' && interview.result === 'pending' && detail.stage === 'interview' && showModuleAction('applications', 'interview')" @click="interviewOperation(interview, 'result')">补充待定结果</a></span></a-table></a-tab-pane>
+            <a-tab-pane v-if="kind === 'applications'" key="interviews" tab="面试轮次"><a-table :columns="interviewColumns" :data-source="detail.interviews || []" row-key="id" :pagination="false" size="small"><span slot="state" slot-scope="v">{{ label(v) }}</span><span slot="interviewState" slot-scope="v">{{ { scheduled: '待面试', completed: '已完成', cancelled: '已取消' }[v] || v }}</span><span slot="interviewResult" slot-scope="v">{{ { pass: '通过', fail: '不通过', pending: '待定' }[v] || '—' }}</span><span slot="notice" slot-scope="v">{{ v ? '已登记通知' : '未登记通知' }}</span><span slot="interviewActions" slot-scope="_, interview"><template v-if="showModuleAction('applications', 'interview')"><a v-if="hasInterviewOperation(interview, 'save')" @click="editInterview(interview)">编辑 / 改期</a><a-divider v-if="hasInterviewOperation(interview, 'save')" type="vertical" /><a v-if="hasInterviewOperation(interview, 'notify')" @click="interviewOperation(interview, 'notify')">登记通知</a><a-divider v-if="hasInterviewOperation(interview, 'notify')" type="vertical" /><a v-if="hasInterviewOperation(interview, 'result')" @click="interviewOperation(interview, 'result')">{{ interview.status === 'completed' ? '补充结果' : '登记结果' }}</a><a-divider v-if="hasInterviewOperation(interview, 'result') && hasInterviewOperation(interview, 'cancel')" type="vertical" /><a v-if="hasInterviewOperation(interview, 'cancel')" @click="interviewOperation(interview, 'cancel')">取消</a></template></span></a-table></a-tab-pane>
             <a-tab-pane v-if="kind === 'applications'" key="attachments" tab="Offer / 入职凭证"><a-upload v-if="showModuleAction('applications', 'offer') || showModuleAction('applications', 'entry')" :custom-request="uploadEvidence" :show-upload-list="false" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"><a-button icon="upload" :loading="uploading">上传凭证</a-button></a-upload><p class="muted">先上传文件，再在Offer或入职登记中选择对应凭证。</p><a-table :columns="attachmentColumns" :data-source="detail.attachments || []" row-key="id" :pagination="false" size="small"><span slot="files" slot-scope="_, file"><a-button v-if="previewable(file)" type="link" @click="fileAction('attachments', file, true)">预览</a-button><a-button type="link" @click="fileAction('attachments', file, false)">下载</a-button></span></a-table></a-tab-pane>
             <a-tab-pane v-if="kind === 'applications'" key="guarantee" tab="保证期处理"><a-alert v-if="detail.replacementFor" type="info" :message="'本记录替换原招聘记录 #' + detail.replacementFor" style="margin-bottom: 12px" /><a-table :columns="guaranteeColumns" :data-source="detail.guaranteeHandlings || []" row-key="id" :pagination="false" size="small"><span slot="state" slot-scope="v">{{ label(v) }}</span></a-table><h4 style="margin-top: 20px">关联替换候选人</h4><a-table :columns="replacementColumns" :data-source="detail.replacements || []" row-key="id" :pagination="false" size="small"><span slot="state" slot-scope="v">{{ label(v) }}</span><span slot="replacementAction" slot-scope="_, r"><a @click="openDetail(r.replacementApplicationId)">查看替换流程</a></span></a-table></a-tab-pane>
-            <a-tab-pane v-if="kind === 'applications'" key="exceptions" tab="异常处理"><a-table :columns="exceptionColumns" :data-source="detail.exceptions || []" row-key="id" :pagination="false" size="small"><span slot="state" slot-scope="v">{{ label(v) }}</span><span slot="exceptionAction" slot-scope="_, e"><a-button v-if="e.status === 'open' && showModuleAction('applications', 'exception')" type="link" @click="resolveException(e)">登记处理结果</a-button></span></a-table></a-tab-pane>
+            <a-tab-pane v-if="kind === 'applications'" key="exceptions" tab="跟进事项"><a-table :columns="exceptionColumns" :data-source="detail.exceptions || []" row-key="id" :pagination="false" size="small"><span slot="state" slot-scope="v">{{ label(v) }}</span><span slot="followupType" slot-scope="value">{{ followupType(value) }}</span><span slot="exceptionAction" slot-scope="_, e"><a-button v-if="e.status === 'open' && e.exceptionType !== 'guarantee_replacement' && showModuleAction('applications', 'exception')" type="link" @click="resolveException(e)">登记跟进结果</a-button></span></a-table></a-tab-pane>
             <a-tab-pane v-if="kind !== 'applications' && showModuleAction('applications')" key="related" tab="关联招聘流程"><a-button type="primary" @click="createRecommendation">为当前{{ kind === 'jobs' ? '职位' : '人才' }}创建推荐</a-button><a-table :columns="relatedColumns" :data-source="related" row-key="id" :pagination="false" size="small" style="margin-top: 16px"><span slot="relatedAction" slot-scope="_, row"><a @click="goPipeline(row.id)">进入招聘流程</a></span></a-table></a-tab-pane>
             <a-tab-pane key="history" tab="操作日志"><a-table :columns="eventColumns" :data-source="detail.events || []" row-key="id" :pagination="{ pageSize: 15 }" size="small" /></a-tab-pane>
           </a-tabs>
@@ -102,7 +104,7 @@
 <script>
 import { withModuleContexts } from '/src/utils/moduleContext.js'
 import { recruitmentRequest as api, recordPath, uploadRecruitmentFile, getRecruitmentFile } from '/src/api/eos/recruitment/index.js'
-import { recruitmentModules, jobStates, talentStates, stages, approvalStates, label, choices, optionRows, field, reasonField, jobFields, talentFields } from '../shared.js'
+import { recruitmentModules, jobStates, talentStates, stages, approvalStates, feedbackStates, offerStates, guaranteeStates, followupTypes, applicationSubstate, applicationActions, label, choices, optionRows, field, reasonField, jobFields, talentFields } from '../shared.js'
 import RecruitmentForm from './RecruitmentForm.vue'
 
 const col = (title, dataIndex, slot, width) => ({ title, dataIndex, ...(width ? { width } : {}), ...(slot ? { scopedSlots: { customRender: slot } } : {}) })
@@ -122,7 +124,7 @@ export default {
       replacementColumns: [col('替换记录', 'replacementApplicationId'), col('候选人', 'talentName'), col('招聘阶段', 'stage', 'state'), col('创建日期', 'createTime'), col('入职完成日期', 'completeTime'), col('操作', 'actions', 'replacementAction')],
       taskColumns: [col('任务', 'title'), col('负责人', 'ownerName'), col('期限', 'dueDate'), col('状态', 'status', 'state'), col('跟进结果', 'result'), col('操作', 'actions', 'taskAction')],
       interviewColumns: [col('轮次', 'roundNo'), col('面试时间', 'interviewTime'), col('地点 / 会议', 'location'), col('面试官', 'interviewer'), col('状态', 'status', 'interviewState'), col('通知', 'notified', 'notice'), col('结果', 'result', 'interviewResult'), col('评价', 'evaluation'), col('操作', 'actions', 'interviewActions')],
-      exceptionColumns: [col('类型', 'exceptionType'), col('异常说明', 'content'), col('处理人', 'ownerName'), col('状态', 'status', 'state'), col('结果', 'result'), col('操作', 'actions', 'exceptionAction')],
+      exceptionColumns: [col('业务事项', 'exceptionType', 'followupType'), col('跟进说明', 'content'), col('处理人', 'ownerName'), col('状态', 'status', 'state'), col('结果', 'result'), col('操作', 'actions', 'exceptionAction')],
       relatedColumns: [col('候选人', 'talentName'), col('职位', 'jobTitle'), col('客户', 'customerName'), col('顾问', 'consultantName'), col('操作', 'actions', 'relatedAction')],
       warningColumns: [col('事项', 'name'), col('客户', 'customerName'), col('预警', 'warning'), col('处理', 'actions', 'warningAction')],
       tagColumns: [col('标签名称', 'name'), col('状态', 'status'), col('操作', 'actions', 'tagAction')]
@@ -142,7 +144,7 @@ export default {
     columns() {
       if (this.kind === 'jobs') return [col('职位 / 编号', 'title', 'name', 220), col('客户', 'customerName', null, 160), col('状态', 'status', 'state', 100), col('需求确认', 'demandStatus', 'demand', 110), col('负责人', 'ownerName', null, 110), col('人数 / 剩余', 'headcount', 'quota', 100), col('推荐 / 面试 / Offer / 入职', 'progress', 'progress', 230), col('预警', 'warnings', 'warnings', 180), { ...col('操作', 'actions', 'actions', 250), fixed: 'right' }]
       if (this.kind === 'talents') return [col('候选人 / 技能', 'name', 'name', 220), col('手机号', 'phone', null, 160), col('邮箱', 'email', null, 180), col('城市', 'city', null, 100), col('经验（年）', 'experienceYears', null, 100), col('状态', 'status', 'state', 110), col('标签', 'tags', 'tags', 180), col('负责人', 'ownerName', null, 110), col('最近联系', 'lastContactTime', null, 175), { ...col('操作', 'actions', 'actions', 190), fixed: 'right' }]
-      return [col('候选人 / 职位', 'talentName', 'name', 240), col('客户', 'customerName', null, 170), col('顾问', 'consultantName', null, 110), col('阶段', 'stage', 'state', 110), col('推荐日期', 'submittedDate', null, 120), col('预计入职', 'expectedEntryDate', null, 120), col('实际入职', 'actualEntryDate', null, 120), col('保证期结束', 'guaranteeEnd', null, 120), col('提醒', 'warnings', 'warnings', 180), { ...col('操作', 'actions', 'actions', 140), fixed: 'right' }]
+      return [col('候选人 / 职位', 'talentName', 'name', 240), col('客户', 'customerName', null, 170), col('顾问', 'consultantName', null, 110), col('阶段', 'stage', 'applicationStage', 170), col('推荐日期', 'submittedDate', null, 120), col('预计入职', 'expectedEntryDate', null, 120), col('实际入职', 'actualEntryDate', null, 120), col('保证期结束', 'guaranteeEnd', null, 120), col('提醒', 'warnings', 'warnings', 180), { ...col('操作', 'actions', 'actions', 220), fixed: 'right' }]
     },
     detailFields() {
       const pairs = this.kind === 'jobs' ? [['code', '职位编号'], ['customerName', '所属客户'], ['status', '职位状态'], ['demandStatus', '需求确认'], ['ownerName', '负责人'], ['city', '城市'], ['industry', '行业'], ['experience', '经验要求'], ['salaryMin', '月薪下限'], ['salaryMax', '月薪上限'], ['headcount', '招聘人数'], ['vacancies', '剩余名额'], ['hired', '实际入职人数'], ['completionRate', '完成率（%）'], ['targetDate', '目标日期'], ['cycleDays', '周期（天）'], ['minRecommendations', '推荐阈值'], ['feedbackDays', '反馈期限（天）'], ['requirements', '岗位要求', 2], ['feeTerms', '收费条件', 2]] : this.kind === 'talents' ? [['name', '姓名'], ['status', '人才状态'], ['phone', '手机号'], ['email', '邮箱'], ['ownerName', '负责人'], ['lastContactTime', '最近联系'], ['city', '城市'], ['industry', '行业'], ['experienceYears', '经验（年）'], ['expectedSalary', '期望月薪'], ['skills', '技能', 2], ['tags', '标签', 2], ['source', '来源'], ['remark', '备注', 2]] : [['talentName', '候选人'], ['jobTitle', '职位'], ['customerName', '客户'], ['consultantName', '负责顾问'], ['stage', '招聘阶段'], ['feedbackStatus', '客户反馈'], ['offerStatus', 'Offer状态'], ['offerSalary', 'Offer月薪'], ['submittedDate', '推荐日期'], ['feedbackDueDate', '反馈期限'], ['expectedEntryDate', '预计入职'], ['actualEntryDate', '实际入职'], ['guaranteeDays', '合同保证期（天）'], ['guaranteeStatus', '保证期状态'], ['guaranteeStart', '保证期开始'], ['guaranteeEnd', '保证期结束'], ['recommendation', '推荐说明', 2]]
@@ -155,9 +157,20 @@ export default {
   async mounted() { await this.loadOptions(); this.readRoute() },
   beforeDestroy() { this.closePreview() },
   methods: {
+    hasInterviewResultAction(row) { return this.kind === 'applications' && this.actionsForRecord(row).some(action => action.key === 'interviewResult') },
+    hasRowActions(row) { return this.kind !== 'applications' || this.actionsForRecord(row).some(action => !action.detailsOnly && action.key !== 'interviewResult') },
+    hasInterviewOperation(interview, operation) { return (interview.availableOperations || []).includes(operation) },
+    followupType(value) { return followupTypes[value] || value },
+    followupFields(label = '是否需要后续跟进') {
+      return [field('followupRequired', label, 'boolean', { required: true, hint: '开启后生成待处理事项；关闭时仅记录业务事件。保证期替换始终自动跟进至替换人入职。' }), field('ownerUserId', '跟进负责人', 'select', { options: optionRows(this.options.users), hint: '仅生成待处理事项时使用。' })]
+    },
+    guaranteeOptions(d) {
+      const allowed = new Set(d.availableOperations || [])
+      return [{ value: 'complete', label: '期满结案', operation: 'completeGuarantee' }, { value: 'exit', label: '登记离职', operation: 'guaranteeExit' }, { value: 'replacement', label: '登记替换', operation: 'guaranteeReplacement' }, { value: 'refund', label: '登记退费', operation: 'guaranteeRefund' }].filter(option => allowed.has(option.operation))
+    },
     rowMoreActions(row) {
       if (this.rowMenuId !== row.id || !this.rowMenuRecord) return []
-      return this.actionsForRecord(this.rowMenuRecord).filter(action => !['edit', 'copy'].includes(action.key))
+      return this.actionsForRecord(this.rowMenuRecord).filter(action => !action.detailsOnly && !['edit', 'copy', 'interviewResult'].includes(action.key))
     },
     async prepareRowActions(row, visible) {
       const request = ++this.rowMenuRequest
@@ -183,27 +196,19 @@ export default {
     },
     actionsForRecord(d) {
       const actions = []
-      const add = (key, name, permission, primary = false) => { if (this.showModuleAction(this.kind, permission || key)) actions.push({ key, label: name, permission: permission || key, primary }) }
+      const add = (key, name, permission, primary = false, detailsOnly = false) => { if (this.showModuleAction(this.kind, permission || key)) actions.push({ key, label: name, permission: permission || key, primary, detailsOnly }) }
       if (this.kind === 'jobs') {
         if (['draft', 'rejected', 'withdrawn'].includes(d.demandStatus)) { add('edit', '修改职位'); add('demand', '提交需求确认', 'demand', true) }
         if (d.demandStatus === 'approved') add('change', '提交职位变更')
-        add('assign', '负责人 / 协作顾问'); add('status', '暂停 / 重开 / 关闭'); add('warning', '配置预警'); add('copy', '复制职位')
+        add('assign', '负责人 / 协作顾问'); add('status', '变更职位状态'); add('warning', '配置预警'); add('copy', '复制职位')
       } else if (this.kind === 'talents') {
         if (d.contactVisible) add('edit', '修改档案')
         add('status', '状态 / 重新激活'); add('contact', '记录联系'); add('task', '分配跟进任务', 'assign'); add('collaborators', '协作人', 'assign'); add('handover', '申请转交'); add('merge', '申请合并'); add('dispute', '登记归属争议')
       } else {
-        if (['draft', 'withdrawn'].includes(d.stage)) add('recommend', '提交客户推荐', 'recommend', true)
-        if (['recommended', 'feedback'].includes(d.stage)) add('withdrawRecommendation', '撤回推荐', 'recommend')
-        if (['recommended', 'feedback', 'interview'].includes(d.stage)) add('feedback', '客户反馈')
-        if (['feedback', 'interview'].includes(d.stage)) add('interview', '安排面试')
-        if (d.stage === 'interview' || d.stage === 'offer' && d.offerStatus === 'draft') add('offer', '创建 / 编辑Offer', 'offer', true)
-        if (d.stage === 'offer' && d.offerStatus === 'draft') add('issueOffer', '登记发放Offer', 'offer')
-        if (d.stage === 'offer' && d.offerStatus === 'issued') { add('acceptOffer', '登记接受Offer', 'offer', true); add('rejectOffer', '登记拒绝Offer', 'offer') }
-        if (d.stage === 'offer') add('withdrawOffer', '撤回Offer', 'offer')
-        if (d.stage === 'entry') { add('expectedEntry', '调整预计入职', 'entry'); add('entry', '确认实际入职', 'entry', true) }
-        if (d.stage === 'guarantee') { add('correctEntry', '纠正入职登记', 'entry'); add('guarantee', '保证期结束 / 离职 / 退费', 'guarantee') }
-        if (d.stage === 'exited' && d.guaranteeStatus === 'replacement' && this.showModuleAction('applications', 'add')) add('replacement', '创建关联替换推荐', 'guarantee', true)
-        if (!['completed', 'exited'].includes(d.stage)) add('exception', '登记异常')
+        applicationActions(d).forEach(action => {
+          if (action.key === 'replacement' && !this.showModuleAction('applications', 'add')) return
+          add(action.key, action.label, action.permission, false, action.detailsOnly)
+        })
       }
       if ((d.approvals || []).some(a => a.status === 'pending')) add('withdraw', '撤回审批申请')
       if (this.kind !== 'applications' && (this.kind === 'jobs' ? d.demandStatus : d.status) === 'draft') add('remove', '删除未引用草稿')
@@ -212,13 +217,16 @@ export default {
     label,
     filterOption(input, option) { return String(option.componentOptions.children[0].text).toLowerCase().includes(input.toLowerCase()) },
     stateLabel(value) { return this.stateMap[value] || value },
+    stageSubstatus(row) { return applicationSubstate(row) },
     displayValue(key, value) {
       if (value === undefined || value === null || value === '') return '—'
       if (Array.isArray(value)) return value.join('、') || '—'
       if (key === 'status') return this.stateMap[value] || value
       if (key === 'demandStatus') return approvalStates[value] || value
       if (key === 'stage') return stages[value] || value
-      if (['feedbackStatus', 'offerStatus', 'guaranteeStatus'].includes(key)) return label(value)
+      if (key === 'feedbackStatus') return feedbackStates[value] || value
+      if (key === 'offerStatus') return offerStates[value] || value
+      if (key === 'guaranteeStatus') return guaranteeStates[value] || value
       return value
     },
     versionValue(v, key) { try { return this.displayValue(key, JSON.parse(v.snapshotJson)[key]) } catch (e) { return '—' } },
@@ -273,7 +281,7 @@ export default {
       await this.loadOptions()
       const userId = Number(this.options.currentUserId) || undefined
       if (this.kind === 'applications') {
-        this.form('创建候选人推荐', [field('jobId', '招聘职位', 'select', { required: true, options: optionRows((this.options.jobs || []).filter(j => j.status === 'recruiting')) }), field('talentId', '候选人', 'select', { required: true, labelHint: '只允许「沟通中、可推荐」两种状态可选', options: optionRows((this.options.talents || []).filter(t => ['available', 'contacting'].includes(t.status))) }), field('consultantId', '负责顾问', 'select', { required: true, options: optionRows(this.options.users) }), field('recommendation', '推荐说明', 'textarea', { required: true })], { jobId: Number(this.query.jobId) || undefined, talentId: Number(this.query.talentId) || undefined, consultantId: userId }, b => api('/applications', 'post', b), '保存为推荐草稿，随后在列表“更多”中点击“提交客户推荐”。同一候选人和职位仅保留一条持续跟进记录。')
+        this.form('创建候选人推荐', [field('jobId', '招聘职位', 'select', { required: true, options: optionRows((this.options.jobs || []).filter(j => j.status === 'recruiting')) }), field('talentId', '候选人', 'select', { required: true, labelHint: '只允许「沟通中、可推荐」两种状态可选', options: optionRows((this.options.talents || []).filter(t => ['available', 'contacting'].includes(t.status))) }), field('consultantId', '负责顾问', 'select', { required: true, options: optionRows(this.options.users) }), field('recommendation', '推荐说明', 'textarea', { required: true })], { jobId: Number(this.query.jobId) || undefined, talentId: Number(this.query.talentId) || undefined, consultantId: userId }, b => api('/applications', 'post', b), '创建后直接进入“已推荐”，自动记录推荐日期、反馈期限并更新客户推荐统计。同一候选人和职位仅保留一条持续跟进记录。', '创建推荐')
       } else if (this.kind === 'jobs') {
         this.form('新建职位', jobFields(this.options), { customerId: Number(this.query.customerId) || undefined, ownerUserId: userId, headcount: 1, salaryMin: 0, salaryMax: 0, cycleDays: 30, minRecommendations: 3, feedbackDays: 3, collaborators: [] }, b => api('/jobs', 'post', b))
       } else this.form('新建候选人', talentFields(this.options), { ownerUserId: userId, tags: [], collaborators: [], experienceYears: 0, expectedSalary: 0 }, b => api('/talents', 'post', b), '手机号或邮箱至少填写一项；创建后可上传简历并设置为可推荐。')
@@ -295,7 +303,7 @@ export default {
     async runAction(action, d = this.detail) {
       if (!await this.allowedAction(action.permission)) return
       const id = d.id; const base = recordPath(this.kind, id)
-      const initial = { ...d, reason: '', ownerUserId: d.ownerUserId, collaborators: d.collaborators || [] }
+      const initial = { ...d, reason: '', ownerUserId: d.ownerUserId || d.consultantId, followupRequired: false, collaborators: d.collaborators || [] }
       const post = (name, extra = {}, request = false) => b => api(base + (request ? '/requests/' : '/actions/') + name, 'post', { revision: d.revision, ...extra, ...b })
       const simple = (fields, save, hint = '') => this.form(action.label, [...fields, reasonField], initial, save, hint)
       switch (action.key) {
@@ -305,7 +313,11 @@ export default {
         case 'demand': return simple([], post('demand', {}, true), '如按钮有已发布且启用的审批流程，将进入统一待办；否则直接确认需求并开始招聘。')
         case 'change': return this.form('申请职位变更', [...jobFields(this.options).filter(f => !['customerId', 'ownerUserId', 'collaborators', 'cycleDays', 'minRecommendations', 'feedbackDays'].includes(f.key)), reasonField], initial, b => api(base + '/requests/change', 'post', { revision: d.revision, reason: b.reason, fields: b }), '审批期间原需求继续生效；最终通过后保存新的需求版本。')
         case 'assign': return simple([field('ownerUserId', '负责人', 'select', { required: true, options: optionRows(this.options.users) }), field('collaborators', '协作顾问', 'multiple', { options: optionRows(this.options.users) })], post('assign'))
-        case 'status': return simple([field('status', '目标状态', 'select', { required: true, options: choices(this.kind === 'jobs' ? jobStates : talentStates).filter(x => !['draft', 'merged'].includes(x.value)) })], post('status'))
+        case 'status': {
+          const options = this.recordStatusOptions(d)
+          if (!options.some(option => option.value === initial.status && !option.disabled)) initial.status = undefined
+          return simple([field('status', '目标状态', 'select', { required: true, options })], post('status'))
+        }
         case 'warning': return simple([field('cycleDays', '招聘周期（天）', 'number', { required: true, min: 1, precision: 0 }), field('minRecommendations', '最低推荐数量', 'number', { required: true, precision: 0 }), field('feedbackDays', '反馈期限（天）', 'number', { required: true, min: 1, precision: 0 })], post('warning'))
         case 'contact': return simple([], post('contact'))
         case 'collaborators': return simple([field('collaborators', '协作人', 'multiple', { options: optionRows(this.options.users) })], post('collaborators'))
@@ -316,32 +328,52 @@ export default {
         case 'withdraw': return simple([], post('withdraw'))
         case 'recommend': return simple([], post('recommend', { operation: 'submit' }))
         case 'withdrawRecommendation': return simple([], post('recommend', { operation: 'withdraw' }))
-        case 'feedback': return simple([field('status', '反馈结果', 'select', { required: true, options: choices({ pending: '待反馈', interested: '有意向 / 邀约面试', rejected: '不合适', need_info: '需补充资料' }) }), field('dueDate', '下次反馈期限', 'date')], post('feedback'))
+        case 'interviewResult': {
+          const interview = (d.interviews || []).find(item => (item.availableOperations || []).includes('result'))
+          if (!interview) return this.$message.warning('当前没有可登记结果的面试，请刷新后重试')
+          return this.interviewOperation(interview, 'result', d)
+        }
+        case 'replacementManage': await this.openDetail(id); this.detailTab = 'guarantee'; return
+        case 'followupManage': await this.openDetail(id); this.detailTab = 'exceptions'; return
+        case 'finishRecommendation': return this.form('结束本次推荐', [reasonField], initial, post('exception', { operation: 'finish' }), '确认不再推进当前人岗推荐后结束，保留反馈、面试和操作历史；此操作不会自动重新开启。', '确认结束')
+        case 'candidateWithdraw': case 'customerCancel': return this.form(action.label, [...this.followupFields(), reasonField], initial, post('exception', { operation: 'create', type: action.key === 'candidateWithdraw' ? 'candidate_withdraw' : 'customer_cancel' }), '确认后停止当前推进，取消未完成面试并保留历史。只有需要后续处理时才生成待处理事项。', '确认登记')
+        case 'entryDelay': initial.followupRequired = true; return simple([field('expectedEntryDate', '调整后预计入职日期', 'date'), ...this.followupFields()], post('exception', { operation: 'create', type: 'entry_delay' }), '登记延期原因，可同步调整预计入职日期；重复跟进同类未结事项会更新原事项，操作历史保留。')
+        case 'feedback': return simple([field('status', '反馈结果', 'select', { required: true, options: choices(feedbackStates) }), field('dueDate', '下次反馈期限', 'date')], post('feedback'), '只有“有意向 / 邀约面试”才能安排面试；待反馈、不合适、需补充资料均停留在客户反馈阶段。')
         case 'interview': return this.editInterview(undefined, d)
         case 'offer': return simple([field('salary', 'Offer月薪（元）', 'number', { required: true }), this.attachmentField(false, d)], post('offer', { operation: 'save' }), '上传Offer文件后可在此选择，保存草稿后再登记发放。')
         case 'issueOffer': return simple([], post('offer', { operation: 'issue' }), '请在实际向候选人发放Offer后登记。')
         case 'acceptOffer': return simple([field('expectedEntryDate', '预计入职日期', 'date', { required: true })], post('offer', { operation: 'accept' }))
-        case 'rejectOffer': return simple([], post('offer', { operation: 'reject' }))
-        case 'withdrawOffer': return simple([], post('offer', { operation: 'withdraw' }))
+        case 'rejectOffer': return simple(this.followupFields(), post('offer', { operation: 'reject' }), '仅已发放Offer可登记拒绝，拒绝后结束当前推进；需要后续处理时才生成跟进事项。')
+        case 'withdrawOffer': return simple(d.offerStatus === 'draft' ? [] : this.followupFields(), post('offer', { operation: 'withdraw' }), d.offerStatus === 'draft' ? '取消未发放草稿，返回面试阶段；保留操作历史，不生成异常事项。' : '撤回已发放Offer并返回面试阶段；需要后续处理时才生成跟进事项。')
         case 'expectedEntry': return simple([field('expectedEntryDate', '预计入职日期', 'date', { required: true })], post('entry', { operation: 'expected' }))
         case 'entry': case 'correctEntry': return simple([field('actualEntryDate', '实际入职日期', 'date', { required: true }), this.attachmentField(true, d), field('termKey', '合同保证期条款', 'select', { required: true, options: (d.guaranteeTerms || []).map(t => ({ value: t.key, label: t.title + ' · 保证期 ' + (t.guaranteeDays || 0) + ' 天' })) })], post('entry', { operation: action.key === 'correctEntry' ? 'correct' : 'confirm' }), '保证期按所选签署合同条款自动计算；先到“Offer / 入职凭证”上传证明。')
         case 'replacement': return this.createReplacement(d)
-        case 'guarantee': return simple([field('operation', '处理方式', 'select', { required: true, options: choices({ complete: '期满结案', exit: '登记离职', replacement: '登记替换', refund: '登记退费' }) }), field('exitDate', '离职 / 退出日期', 'date', { hint: '期满结案无需填写，其余处理须填写。' }), field('amount', '退费登记金额（元）', 'number', { hint: '登记退费时须填写正数金额。' }), this.attachmentField(false, d)], post('guarantee'), '退费须上传并选择凭证，本操作仅记录已办理的事项。替换释放原名额后，从详情创建关联替换推荐；替换候选人实际入职后，原替换异常自动结案。')
-        case 'exception': return simple([field('type', '异常类型', 'select', { required: true, options: choices({ candidate_withdraw: '候选人撤回', customer_cancel: '客户取消', offer_reject: 'Offer拒绝', entry_delay: '入职延期', other: '其他异常' }) }), field('ownerUserId', '处理负责人', 'select', { required: true, options: optionRows(this.options.users) })], post('exception', { operation: 'create' }))
+        case 'guarantee': return simple([field('operation', '处理方式', 'select', { required: true, options: this.guaranteeOptions(d) }), field('exitDate', '离职 / 退出日期', 'date', { hint: '期满结案无需填写，其余处理须填写。' }), field('amount', '退费登记金额（元）', 'number', { hint: '登记退费时须填写正数金额。' }), this.attachmentField(false, d), ...this.followupFields('离职 / 退费是否需要跟进')], post('guarantee'), '到期后才开放期满结案。退费须有金额和凭证，仅记录已办理事项；替换自动跟进至替换人实际入职，其他事项按选择生成跟进。')
         default: return undefined
       }
+    },
+    recordStatusOptions(d) {
+      if (this.kind !== 'jobs') return choices(talentStates).filter(option => !['draft', 'merged'].includes(option.value))
+      return choices(jobStates).map(option => {
+        let disabledReason = ''
+        if (option.value === 'draft' && d.demandStatus !== 'draft') disabledReason = '已提交需求的职位不能退回待启动'
+        else if (d.demandStatus !== 'approved' && !['draft', 'closed'].includes(option.value)) disabledReason = '请先完成需求确认'
+        else if (option.value === 'recruiting' && Number(d.hired) >= Number(d.headcount)) disabledReason = '职位名额已满'
+        else if (option.value === 'completed' && Number(d.hired) < Number(d.headcount)) disabledReason = '入职人数尚未达到需求'
+        return { ...option, disabled: !!disabledReason, disabledReason }
+      })
     },
     attachmentField(required = false, d = this.detail) { return field('attachmentId', '凭证附件', 'select', { required, options: (d.attachments || []).map(f => ({ value: f.id, label: f.originalName })) }) },
     async editInterview(interview, d = this.detail) {
       if (!await this.allowedAction('interview')) return
-      const existing = interview || {}; const initial = { ...existing, roundNo: existing.roundNo || (d.interviews || []).length + 1, interviewTime: (existing.interviewTime || '').slice(0, 16).replace(' ', 'T'), reason: '' }
+      const existing = interview || {}; const initial = { ...existing, roundNo: existing.roundNo || Math.max(0, ...(d.interviews || []).map(item => Number(item.roundNo) || 0)) + 1, interviewTime: (existing.interviewTime || '').slice(0, 16).replace(' ', 'T'), reason: '' }
       this.form(interview ? '编辑面试 / 改期' : '安排面试', [field('roundNo', '面试轮次', 'number', { required: true, min: 1, max: 100, precision: 0 }), field('interviewTime', '面试时间', 'datetime', { required: true }), field('location', '地点 / 会议地址', 'text', { required: true, max: 500 }), field('interviewer', '面试官', 'text', { required: true }), reasonField], initial, b => api(recordPath('applications', d.id) + '/interviews' + (interview ? '/' + interview.id : ''), interview ? 'put' : 'post', { ...b, revision: d.revision, operation: 'save' }))
     },
-    async interviewOperation(interview, operation) {
+    async interviewOperation(interview, operation, d = this.detail) {
       if (!await this.allowedAction('interview')) return
       const fields = operation === 'result' ? [field('result', '面试结果', 'select', { required: true, options: choices({ pass: '通过', fail: '不通过', pending: '待定' }) }), reasonField] : [reasonField]
-      const id = this.detail.id; const revision = this.detail.revision
-      this.form({ notify: '登记已通知候选人与客户', result: '录入面试评价与结果', cancel: '取消面试' }[operation], fields, {}, b => api(recordPath('applications', id) + '/interviews/' + interview.id, 'put', { ...b, revision, operation }), operation === 'notify' ? '此操作记录已完成的通知，请先实际联系候选人与客户。' : '')
+      const id = d.id; const revision = d.revision
+      this.form({ notify: '登记已通知候选人与客户', result: '登记面试结果', cancel: '取消面试' }[operation], fields, {}, b => api(recordPath('applications', id) + '/interviews/' + interview.id, 'put', { ...b, revision, operation }), operation === 'notify' ? '此操作记录已完成的通知，请先实际联系候选人与客户。' : operation === 'result' ? '请确认面试已实际完成后登记，预约时间不限制录入。面试通过后可继续创建Offer；不通过则结束本次推进，待定则等待补充结果。' : '')
     },
     async retainOwnership(dispute) {
       if (!await this.allowedAction('dispute')) return
@@ -353,9 +385,9 @@ export default {
     },
     async createReplacement(d = this.detail) {
       if (!await this.allowedAction('guarantee') || !await this.allowedAction('add')) return
-      this.form('创建关联替换推荐', [field('talentId', '替换候选人', 'select', { required: true, labelHint: '只允许「沟通中、可推荐」两种状态可选', options: optionRows((this.options.talents || []).filter(t => ['available', 'contacting'].includes(t.status) && t.id !== d.talentId)) }), field('consultantId', '负责顾问', 'select', { required: true, options: optionRows(this.options.users) }), field('recommendation', '推荐说明', 'textarea', { required: true })], { consultantId: d.consultantId }, async b => { const r = await api(recordPath('applications', d.id) + '/replacement', 'post', { ...b, revision: d.revision }); await this.openDetail(r.data.id); return r }, '沿用原职位创建替换推荐草稿，继续办理反馈、面试、Offer和入职。进行中的替换记录不能重复创建。')
+      this.form('创建关联替换推荐', [field('talentId', '替换候选人', 'select', { required: true, labelHint: '只允许「沟通中、可推荐」两种状态可选', options: optionRows((this.options.talents || []).filter(t => ['available', 'contacting'].includes(t.status) && t.id !== d.talentId)) }), field('consultantId', '负责顾问', 'select', { required: true, options: optionRows(this.options.users) }), field('recommendation', '推荐说明', 'textarea', { required: true })], { consultantId: d.consultantId }, async b => { const r = await api(recordPath('applications', d.id) + '/replacement', 'post', { ...b, revision: d.revision }); await this.openDetail(r.data.id); return r }, '沿用原职位创建替换推荐后直接进入“已推荐”，继续办理反馈、面试、Offer和入职。进行中的替换记录不能重复创建。', '创建推荐')
     },
-    async resolveException(e) { if (!await this.allowedAction('exception')) return; const id = this.detail.id; const revision = this.detail.revision; this.form('登记异常处理结果', [reasonField], {}, b => api(recordPath('applications', id) + '/actions/exception', 'post', { ...b, revision, operation: 'resolve', exceptionId: e.id })) },
+    async resolveException(e) { if (!await this.allowedAction('exception')) return; const id = this.detail.id; const revision = this.detail.revision; this.form('登记跟进结果', [reasonField], {}, b => api(recordPath('applications', id) + '/actions/exception', 'post', { ...b, revision, operation: 'resolve', exceptionId: e.id })) },
     async finishTask(task) { if (!await this.allowedAction('contact')) return; this.form('完成跟进任务', [field('result', '联系结果 / 下一步', 'textarea', { required: true })], {}, b => api('/tasks/' + task.id + '/complete', 'post', b)) },
     async remove(id = this.detail.id) {
       if (!await this.allowedAction('remove')) return

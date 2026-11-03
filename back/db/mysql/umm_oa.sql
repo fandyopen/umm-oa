@@ -2795,7 +2795,7 @@ CREATE TABLE IF NOT EXISTS oa_recruit_application (
     job_id BIGINT NOT NULL,
     talent_id BIGINT NOT NULL,
     consultant_id BIGINT NOT NULL,
-    stage VARCHAR(32) NOT NULL DEFAULT 'draft',
+    stage VARCHAR(32) NOT NULL DEFAULT 'recommended',
     recommendation VARCHAR(2000),
     submitted_date DATE,
     feedback_due_date DATE,
@@ -2967,6 +2967,19 @@ CREATE TABLE IF NOT EXISTS oa_recruit_guarantee_handling (
     create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (application_id) REFERENCES oa_recruit_application(id)
 );
+
+-- Retire only the application draft stage. Unsubmitted history is not a customer recommendation.
+ALTER TABLE oa_recruit_application ALTER COLUMN stage SET DEFAULT 'recommended';
+INSERT INTO oa_recruit_event (entity_type,entity_id,event_type,content,payload_json,operator_id)
+SELECT 'application',a.id,'retire_recommendation_draft',
+       '系统升级：取消推荐草稿阶段，历史未提交记录转为已撤回；核对职位和候选人后可重新提交推荐。','{}',0
+FROM oa_recruit_application a
+WHERE a.stage='draft' AND NOT EXISTS (
+    SELECT 1 FROM oa_recruit_event e
+    WHERE e.entity_type='application' AND e.entity_id=a.id AND e.event_type='retire_recommendation_draft'
+);
+UPDATE oa_recruit_application SET stage='withdrawn',revision=revision+1,update_time=CURRENT_TIMESTAMP
+WHERE stage='draft';
 
 
 -- Insert once: module and button edits remain authoritative on subsequent restarts.

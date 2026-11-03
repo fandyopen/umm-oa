@@ -5,8 +5,44 @@ export const recruitmentModules = {
 }
 export const jobStates = { draft: '待启动', recruiting: '招聘中', paused: '暂停', completed: '已完成', closed: '已关闭' }
 export const talentStates = { draft: '草稿', uncontacted: '待联系', contacting: '沟通中', available: '可推荐', not_now: '暂不考虑', dormant: '休眠', archived: '已归档', disabled: '已停用', merged: '已合并' }
-export const stages = { draft: '推荐草稿', recommended: '已推荐', feedback: '客户反馈', interview: '面试中', offer: 'Offer', entry: '待入职', guarantee: '保证期', completed: '已结案', rejected: '已淘汰', withdrawn: '已撤回', exited: '已离职 / 退出' }
+export const stages = { recommended: '已推荐', feedback: '客户反馈', interview: '面试中', offer: 'Offer', entry: '待入职', guarantee: '保证期', completed: '已结案', rejected: '已淘汰', withdrawn: '已撤回', exited: '已离职 / 退出', ended: '已结束' }
 export const approvalStates = { draft: '未提交', pending: '审批中', approved: '已通过', rejected: '已退回', withdrawn: '已撤回' }
+export const feedbackStates = { pending: '待反馈', interested: '有意向 / 邀约面试', rejected: '不合适', need_info: '需补充资料' }
+export const offerStates = { draft: 'Offer草稿', issued: '已发放', accepted: '已接受', rejected: '已拒绝', withdrawn: '已撤回' }
+export const guaranteeStates = { active: '保证期中', completed: '期满结案', exit: '已离职', replacement: '替换处理中', refund: '已登记退费' }
+export const followupTypes = { candidate_withdraw: '候选人退出', customer_cancel: '客户取消招聘', offer_reject: 'Offer拒绝', offer_withdraw: 'Offer撤回', entry_delay: '入职延期', guarantee_exit: '保证期离职', guarantee_refund: '保证期退费', guarantee_replacement: '保证期替换', other: '历史其他事项' }
+export const applicationSubstate = row => {
+  if (['recommended', 'feedback'].includes(row.stage)) return feedbackStates[row.feedbackStatus] || ''
+  if (row.stage === 'interview') {
+    if (row.interviewStatus === 'completed') return { pass: '面试通过', fail: '面试未通过', pending: '结果待定' }[row.interviewResult] || '已完成'
+    return { scheduled: '待面试', cancelled: '已取消' }[row.interviewStatus] || ''
+  }
+  if (['offer', 'entry'].includes(row.stage)) return offerStates[row.offerStatus] || ''
+  if (['guarantee', 'completed', 'exited'].includes(row.stage)) return guaranteeStates[row.guaranteeStatus] || ''
+  if (row.stage === 'rejected' && row.offerStatus === 'rejected') return 'Offer已拒绝'
+  if (row.stage === 'rejected' && row.interviewResult === 'fail') return '面试未通过'
+  if (row.stage === 'ended') return '已确认不再推进'
+  return ''
+}
+export const applicationActions = row => {
+  const definitions = [
+    ['feedback', row.stage === 'recommended' ? '登记客户反馈' : row.stage === 'interview' ? '更正客户反馈' : '更新反馈', 'feedback', row.stage === 'interview'],
+    ['interviewResult', row.interviewStatus === 'completed' && row.interviewResult === 'pending' ? '补充面试结果' : '登记面试结果', 'interview'],
+    ['interview', row.stage === 'interview' && row.interviewStatus === 'completed' ? '安排下一轮面试' : '安排面试', 'interview', row.stage === 'interview' && row.interviewStatus === 'completed' && row.interviewResult === 'pass'],
+    ['offer', row.stage === 'offer' ? '编辑Offer' : '创建Offer', 'offer'],
+    ['issueOffer', '登记发放Offer', 'offer'], ['acceptOffer', '登记接受Offer', 'offer'], ['rejectOffer', '登记拒绝Offer', 'offer'],
+    ['withdrawOffer', row.offerStatus === 'draft' ? '取消Offer草稿' : '撤回Offer', 'offer'],
+    ['entry', '确认实际入职', 'entry'], ['expectedEntry', '调整预计入职', 'entry'], ['entryDelay', '登记入职延期', 'exception'],
+    ['guarantee', '保证期处理', 'guarantee'], ['correctEntry', '纠正入职登记', 'entry', true],
+    ['replacement', '创建关联替换推荐', 'guarantee'], ['replacementManage', '查看替换进度', 'guarantee'],
+    ['withdrawRecommendation', '撤回推荐', 'recommend'], ['recommend', '重新提交推荐', 'recommend'],
+    ['finishRecommendation', '结束本次推荐', 'exception'],
+    ['candidateWithdraw', row.stage === 'entry' ? '登记放弃入职' : '候选人退出', 'exception', true],
+    ['customerCancel', '客户取消招聘', 'exception', true], ['followupManage', '处理跟进事项', 'exception']
+  ]
+  const available = new Set(row.availableOperations || [])
+  return definitions.filter(([key]) => available.has(key)).map(([key, label, permission, detailsOnly = false]) => ({ key, label, permission, detailsOnly }))
+}
 export const statuses = { ...jobStates, ...talentStates, ...stages, ...approvalStates, active: '有效', disabled: '停用', scheduled: '待面试', cancelled: '已取消', issued: '已发放', accepted: '已接受', pass: '通过', fail: '未通过', interested: '有意向', need_info: '待补充', open: '待处理', closed: '已关闭', todo: '待跟进', done: '已完成', refund: '退费', replacement: '替换', exit: '离职' }
 export const label = value => statuses[value] || value || '—'
 export const choices = obj => Object.entries(obj).map(([value, label]) => ({ value, label }))

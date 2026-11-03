@@ -4,8 +4,9 @@
     <a-form-model-item v-for="item in fields" :key="item.key" :required="item.required">
       <span slot="label">{{ item.label }}<small v-if="item.labelHint" class="field-label-hint">{{ item.labelHint }}</small></span>
       <a-select v-if="['select', 'multiple', 'contract'].includes(item.type)" v-model="form[item.key]" :mode="item.type === 'multiple' ? 'multiple' : 'default'" show-search allow-clear :filter-option="filterOption" :disabled="item.disabled" :placeholder="'请选择' + item.label" style="width: 100%">
-        <a-select-option v-for="option in optionsFor(item)" :key="option.value" :value="option.value" :disabled="option.disabled">{{ option.label }}</a-select-option>
+        <a-select-option v-for="option in optionsFor(item)" :key="option.value" :value="option.value" :disabled="option.disabled" :title="option.disabledReason || option.label">{{ option.label }}</a-select-option>
       </a-select>
+      <a-switch v-else-if="item.type === 'boolean'" v-model="form[item.key]" :disabled="item.disabled" checked-children="需要跟进" un-checked-children="无需跟进" />
       <a-input-number v-else-if="item.type === 'number'" v-model="form[item.key]" :min="item.min || 0" :max="item.max || 10000000000" :precision="item.precision === undefined ? 2 : item.precision" :disabled="item.disabled" style="width: 100%" />
       <a-textarea v-else-if="item.type === 'textarea'" v-model="form[item.key]" :rows="4" :max-length="item.max || 2000" :disabled="item.disabled" />
       <a-input v-else v-model="form[item.key]" :type="item.type === 'date' ? 'date' : item.type === 'datetime' ? 'datetime-local' : 'text'" :max-length="item.max || 200" :disabled="item.disabled" />

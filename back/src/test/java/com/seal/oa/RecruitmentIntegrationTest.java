@@ -61,6 +61,172 @@ class RecruitmentIntegrationTest {
         }
     }
 
+    @Test void directRecommendationUpdatesMetricsAndWithdrawalCanBeResubmitted()throws Exception{
+        JsonNode j=job(),t=talent("直接推荐人才","13800002601"),a=recommend(j,t);long id=a.path("id").asLong();
+        assertEquals(1,jdbc.queryForObject("SELECT referral_count FROM oa_merchant WHERE id=?",Integer.class,customer));
+        assertEquals(1,getJob(j.path("id").asLong()).path("recommendations").asInt());
+        assertEquals("创建并提交客户推荐",a.path("events").get(0).path("content").asText());
+        call(admin,post(base+"/applications/"+id+"/actions/recommend"),Map.of("revision",a.path("revision").asInt(),"reason","不能二次提交"),409);
+        a=act(a,"recommend",Map.of("operation","withdraw"));assertEquals("withdrawn",a.path("stage").asText());
+        assertEquals(0,jdbc.queryForObject("SELECT referral_count FROM oa_merchant WHERE id=?",Integer.class,customer));
+        jdbc.update("UPDATE oa_recruit_talent SET status='archived' WHERE id=?",t.path("id").asLong());
+        call(admin,post(base+"/applications/"+id+"/actions/recommend"),Map.of("revision",a.path("revision").asInt(),"reason","候选状态需重检"),409);
+        jdbc.update("UPDATE oa_recruit_talent SET status='available' WHERE id=?",t.path("id").asLong());
+        a=act(a,"recommend",Map.of());assertEquals("recommended",a.path("stage").asText());
+        assertEquals(1,jdbc.queryForObject("SELECT COUNT(*) FROM oa_recruit_application WHERE job_id=? AND talent_id=?",Integer.class,j.path("id").asLong(),t.path("id").asLong()));
+        assertEquals(1,jdbc.queryForObject("SELECT referral_count FROM oa_merchant WHERE id=?",Integer.class,customer));
+        a=act(a,"feedback",Map.of("status","interested"));assertEquals("feedback",a.path("stage").asText());
+    }
+
+    @Test void onlyInterestedFeedbackCanAdvanceAndOtherResultsRemainInFeedback()throws Exception{
+        JsonNode a=recommend(job(),talent("反馈阶段校验","13800002602"));long id=a.path("id").asLong();
+        for(String feedback:List.of("pending","rejected","need_info")){
+            a=act(a,"feedback",Map.of("status",feedback));
+            assertEquals("feedback",a.path("stage").asText());assertEquals(feedback,a.path("feedbackStatus").asText());
+            JsonNode row=call(admin,get(base+"/applications"),null,200).path("rows").get(0);
+            assertEquals("feedback",row.path("stage").asText());assertEquals(feedback,row.path("feedbackStatus").asText());
+            call(admin,post(base+"/applications/"+id+"/interviews"),Map.of("revision",a.path("revision").asInt(),"reason","不可越过反馈"),409);
+            call(admin,post(base+"/applications/"+id+"/actions/offer"),Map.of("revision",a.path("revision").asInt(),"reason","不可越过反馈","salary",10000),409);
+            assertEquals(0,jdbc.queryForObject("SELECT COUNT(*) FROM oa_recruit_interview WHERE application_id=?",Integer.class,id));
+        }
+        a=act(a,"feedback",Map.of("status","interested"));assertEquals("feedback",a.path("stage").asText());
+        a=call(admin,post(base+"/applications/"+id+"/interviews"),Map.of("revision",a.path("revision").asInt(),"roundNo",1,"interviewTime",LocalDateTime.now(ZoneId.of("Asia/Shanghai")).plusDays(1).withNano(0).toString(),"location","会议室","interviewer","客户主管","reason","客户确认有意向"),200).path("data");
+        assertEquals("interview",a.path("stage").asText());assertEquals("scheduled",a.path("interviewStatus").asText());
+        a=act(a,"feedback",Map.of("status","need_info"));assertEquals("feedback",a.path("stage").asText());
+        call(admin,post(base+"/applications/"+id+"/interviews"),Map.of("revision",a.path("revision").asInt(),"reason","补资料期间不能继续安排"),409);
+        a=act(a,"feedback",Map.of("status","rejected"));assertEquals("feedback",a.path("stage").asText());
+        assertEquals("cancelled",a.path("interviews").get(0).path("status").asText());
+        a=act(a,"feedback",Map.of("status","interested"));
+        a=call(admin,post(base+"/applications/"+id+"/interviews"),Map.of("revision",a.path("revision").asInt(),"roundNo",1,"interviewTime",LocalDateTime.now(ZoneId.of("Asia/Shanghai")).plusDays(2).withNano(0).toString(),"location","会议室","interviewer","客户主管","reason","重新确认有意向"),200).path("data");
+        assertEquals(2,a.path("interviews").size());assertEquals("scheduled",a.path("interviewStatus").asText());
+        JsonNode row=call(admin,get(base+"/applications"),null,200).path("rows").get(0);assertEquals("scheduled",row.path("interviewStatus").asText());
+    }
+
+    @Test void interviewSubstateUsesTheLatestActiveRoundWithoutLosingHistory()throws Exception{
+        JsonNode a=act(recommend(job(),talent("最新面试状态","13800002603")),"feedback",Map.of("status","interested"));long id=a.path("id").asLong();
+        for(int round=1;round<=2;round++){
+            a=call(admin,post(base+"/applications/"+id+"/interviews"),Map.of("revision",a.path("revision").asInt(),"roundNo",round,"interviewTime",LocalDateTime.now(ZoneId.of("Asia/Shanghai")).plusDays(round).withNano(0).toString(),"location","会议室","interviewer","客户主管","reason","第"+round+"轮"),200).path("data");
+            JsonNode row=call(admin,get(base+"/applications"),null,200).path("rows").get(0);assertEquals("scheduled",row.path("interviewStatus").asText());assertTrue(row.path("interviewResult").isMissingNode()||row.path("interviewResult").isNull());
+            jdbc.update("UPDATE oa_recruit_interview SET status='completed',result='pass' WHERE application_id=? AND round_no=?",id,round);
+            a=call(admin,get(base+"/applications/"+id),null,200).path("data");assertEquals("completed",a.path("interviewStatus").asText());assertEquals("pass",a.path("interviewResult").asText());
+        }
+        assertEquals(2,a.path("interviews").size());
+    }
+
+    @Test void declinedFeedbackOnlyAllowsUpdateOrExplicitFinishAndPreservesHistory()throws Exception{
+        JsonNode a=act(recommend(job(),talent("手动结束人才","13800002701")),"feedback",Map.of("status","rejected"));long id=a.path("id").asLong();
+        assertEquals(Set.of("feedback","finishRecommendation"),operations(a));
+        assertEquals(operations(a),operations(call(admin,get(base+"/applications"),null,200).path("rows").get(0)));
+        call(admin,post(base+"/applications/"+id+"/actions/recommend"),Map.of("revision",a.path("revision").asInt(),"operation","withdraw","reason","不合适无需撤回"),409);
+        call(admin,post(base+"/applications/"+id+"/actions/exception"),Map.of("revision",a.path("revision").asInt(),"type","offer_reject","reason","反馈阶段不能拒绝Offer"),400);
+        call(admin,post(base+"/applications/"+id+"/actions/exception"),Map.of("revision",a.path("revision").asInt(),"operation","finish"),400);
+        a=act(a,"exception",Map.of("operation","finish"));assertEquals("ended",a.path("stage").asText());assertTrue(operations(a).isEmpty());
+        assertEquals("rejected",a.path("feedbackStatus").asText());assertEquals("技能匹配",a.path("recommendation").asText());assertTrue(a.path("events").size()>=3);assertEquals(0,a.path("exceptions").size());
+        call(admin,post(base+"/applications/"+id+"/actions/feedback"),Map.of("revision",a.path("revision").asInt(),"status","interested","reason","终结后不能普通推进"),409);
+        assertEquals(1,jdbc.queryForObject("SELECT referral_count FROM oa_merchant WHERE id=?",Integer.class,customer));
+    }
+
+    @Test void interviewEntriesFollowRoundAndResultBeforeOfferAppears()throws Exception{
+        JsonNode a=schedule(act(recommend(job(),talent("轮次入口人才","13800002702")),"feedback",Map.of("status","interested")),1);long id=a.path("id").asLong(),interview=a.path("interviews").get(0).path("id").asLong();
+        assertFalse(operations(a).contains("interviewManage"));assertTrue(operations(a).contains("interviewResult"));assertFalse(operations(a).contains("interview"));assertFalse(operations(a).contains("offer"));
+        assertEquals(Set.of("save","notify","result","cancel"),operations(a.path("interviews").get(0)));
+        call(admin,put(base+"/applications/"+id+"/interviews/"+interview),Map.of("revision",a.path("revision").asInt(),"operation","result","result","pass"),400);
+        a=call(admin,put(base+"/applications/"+id+"/interviews/"+interview),Map.of("revision",a.path("revision").asInt(),"operation","notify","reason","实际已通知"),200).path("data");assertFalse(operations(a.path("interviews").get(0)).contains("notify"));
+        call(admin,post(base+"/applications/"+id+"/interviews"),Map.of("revision",a.path("revision").asInt(),"reason","不能跳过当前轮次"),409);
+        jdbc.update("UPDATE oa_recruit_interview SET interview_time=? WHERE id=?",LocalDateTime.now(ZoneId.of("Asia/Shanghai")).minusHours(1),interview);
+        a=call(admin,get(base+"/applications/"+id),null,200).path("data");assertEquals(Set.of("result","cancel"),operations(a.path("interviews").get(0)));
+        assertTrue(operations(a).contains("interviewResult"));assertEquals(interview,a.path("activeInterviewId").asLong());
+        assertEquals(operations(a),operations(call(admin,get(base+"/applications"),null,200).path("rows").get(0)));
+        a=call(admin,put(base+"/applications/"+id+"/interviews/"+interview),Map.of("revision",a.path("revision").asInt(),"operation","result","result","pending","reason","等待结论"),200).path("data");
+        assertFalse(operations(a).contains("offer"));assertFalse(operations(a).contains("interview"));assertTrue(operations(a).contains("interviewResult"));assertEquals(Set.of("result"),operations(a.path("interviews").get(0)));
+        a=call(admin,put(base+"/applications/"+id+"/interviews/"+interview),Map.of("revision",a.path("revision").asInt(),"operation","result","result","pass","reason","补充通过结论"),200).path("data");
+        assertTrue(operations(a).containsAll(Set.of("interview","offer")));assertFalse(operations(a).contains("interviewResult"));assertFalse(operations(a).contains("interviewManage"));
+        a=schedule(a,2);assertFalse(operations(a).contains("offer"));assertEquals(2,a.path("interviews").size());
+    }
+
+    @Test void directInterviewResultCanFinishAnEarlierPendingRoundAndThenContinueToOffer()throws Exception{
+        JsonNode a=schedule(act(recommend(job(),talent("直接结果人才","13800002801")),"feedback",Map.of("status","interested")),1);long id=a.path("id").asLong(),first=a.path("interviews").get(0).path("id").asLong();
+        LocalDateTime past=LocalDateTime.now(ZoneId.of("Asia/Shanghai")).minusHours(2);
+        jdbc.update("UPDATE oa_recruit_interview SET interview_time=?,status='completed',result='pending' WHERE id=?",past,first);
+        jdbc.update("INSERT INTO oa_recruit_interview (application_id,round_no,interview_time,status,result) VALUES (?,2,?,'completed','pass')",id,past.plusHours(1));
+        a=call(admin,get(base+"/applications/"+id),null,200).path("data");
+        assertEquals("pass",a.path("interviewResult").asText());assertEquals(first,a.path("activeInterviewId").asLong());assertTrue(operations(a).contains("interviewResult"));assertFalse(operations(a).contains("offer"));
+        a=call(admin,put(base+"/applications/"+id+"/interviews/"+first),Map.of("revision",a.path("revision").asInt(),"operation","result","result","pass","reason","补齐上一轮待定结论"),200).path("data");
+        assertFalse(operations(a).contains("interviewResult"));assertTrue(operations(a).contains("offer"));assertEquals(2,a.path("interviews").size());
+        a=act(a,"offer",Map.of("salary",15000));assertEquals("offer",a.path("stage").asText());
+    }
+
+    @Test void futureAppointmentDoesNotHideResultEntryOrPreventActualResultRegistration()throws Exception{
+        JsonNode a=schedule(act(recommend(job(),talent("提前完成面试人才","13800002803")),"feedback",Map.of("status","interested")),1);long id=a.path("id").asLong(),interview=a.path("interviews").get(0).path("id").asLong();
+        String appointment=a.path("interviews").get(0).path("interviewTime").asText();
+        assertTrue(operations(a).contains("interviewResult"));assertTrue(operations(a.path("interviews").get(0)).contains("result"));
+        assertTrue(operations(call(admin,get(base+"/applications"),null,200).path("rows").get(0)).contains("interviewResult"));
+        a=call(admin,put(base+"/applications/"+id+"/interviews/"+interview),Map.of("revision",a.path("revision").asInt(),"operation","result","result","pending","reason","实际已完成面试，等待客户最终结论"),200).path("data");
+        assertEquals("pending",a.path("interviewResult").asText());assertTrue(operations(a).contains("interviewResult"));assertEquals(Set.of("result"),operations(a.path("interviews").get(0)));assertFalse(operations(a).contains("offer"));
+        a=call(admin,put(base+"/applications/"+id+"/interviews/"+interview),Map.of("revision",a.path("revision").asInt(),"operation","result","result","pass","reason","客户确认面试通过"),200).path("data");
+        assertEquals(appointment,a.path("interviews").get(0).path("interviewTime").asText());assertTrue(operations(a).contains("offer"));assertFalse(operations(a).contains("interviewResult"));
+        a=act(a,"offer",Map.of("salary",18000));assertEquals("offer",a.path("stage").asText());
+    }
+
+    @Test void failedInterviewEndsProgressAndCancelledInterviewCanBeArrangedAgain()throws Exception{
+        JsonNode a=schedule(act(recommend(job(),talent("失败结果人才","13800002802")),"feedback",Map.of("status","interested")),1);long id=a.path("id").asLong(),first=a.path("interviews").get(0).path("id").asLong();
+        a=call(admin,put(base+"/applications/"+id+"/interviews/"+first),Map.of("revision",a.path("revision").asInt(),"operation","cancel","reason","客户改期，保留原安排"),200).path("data");
+        assertTrue(operations(a).contains("interview"));assertFalse(operations(a).contains("interviewResult"));assertFalse(operations(a).contains("interviewManage"));
+        a=schedule(a,2);long second=a.path("interviews").get(1).path("id").asLong();
+        jdbc.update("UPDATE oa_recruit_interview SET interview_time=? WHERE id=?",LocalDateTime.now(ZoneId.of("Asia/Shanghai")).minusHours(1),second);
+        a=call(admin,put(base+"/applications/"+id+"/interviews/"+second),Map.of("revision",a.path("revision").asInt(),"operation","result","result","fail","reason","面试不通过"),200).path("data");
+        assertEquals("rejected",a.path("stage").asText());assertTrue(operations(a).isEmpty());assertEquals(2,a.path("interviews").size());
+    }
+
+    @Test void draftOfferCannotBeAcceptedOrRejectedAndCancelDoesNotCreateFollowup()throws Exception{
+        JsonNode a=act(passedInterview("Offer入口人才","13800002703"),"offer",Map.of("salary",15000));long id=a.path("id").asLong();
+        assertEquals(Set.of("offer","issueOffer","withdrawOffer","candidateWithdraw","customerCancel"),operations(a));
+        call(admin,post(base+"/applications/"+id+"/actions/offer"),Map.of("revision",a.path("revision").asInt(),"operation","reject","reason","草稿尚未发放"),409);
+        a=act(a,"offer",Map.of("operation","withdraw"));assertEquals("interview",a.path("stage").asText());assertEquals(0,a.path("exceptions").size());assertTrue(operations(a).contains("offer"));
+        a=act(a,"offer",Map.of("salary",16000));a=act(a,"offer",Map.of("operation","issue"));assertFalse(operations(a).contains("offer"));assertTrue(operations(a).containsAll(Set.of("acceptOffer","rejectOffer","withdrawOffer")));
+        a=act(a,"offer",Map.of("operation","reject"));assertEquals("rejected",a.path("stage").asText());assertTrue(operations(a).isEmpty());assertEquals(0,a.path("exceptions").size());
+    }
+
+    @Test void entryDelayFollowupsAreExplicitDeduplicatedAndResolvable()throws Exception{
+        JsonNode a=progressToEntry(recommend(job(),talent("延期跟进人才","13800002704")));long id=a.path("id").asLong();
+        a=act(a,"exception",Map.of("type","entry_delay","expectedEntryDate",today.plusDays(1).toString(),"followupRequired",true,"ownerUserId",901));long followup=a.path("exceptions").get(0).path("id").asLong();
+        a=act(a,"exception",Map.of("type","entry_delay","expectedEntryDate",today.plusDays(2).toString(),"followupRequired",true,"ownerUserId",901));
+        assertEquals(1,a.path("exceptions").size());assertEquals(followup,a.path("exceptions").get(0).path("id").asLong());assertEquals(today.plusDays(2).toString(),a.path("expectedEntryDate").asText());assertTrue(operations(a).contains("followupManage"));
+        a=act(a,"exception",Map.of("operation","resolve","exceptionId",followup));assertFalse(operations(a).contains("followupManage"));assertEquals("entry",a.path("stage").asText());
+        a=act(a,"exception",Map.of("type","candidate_withdraw"));assertEquals("withdrawn",a.path("stage").asText());assertEquals("withdrawn",a.path("offerStatus").asText());assertFalse(operations(a).contains("recommend"));
+        call(admin,post(base+"/applications/"+id+"/actions/recommend"),Map.of("revision",a.path("revision").asInt(),"reason","不能复用旧Offer推荐"),409);assertEquals(1,a.path("interviews").size());
+    }
+
+    @Test void guaranteeCompletionOnlyAppearsAtMaturityAndTerminalRecordsCannotBeCorrected()throws Exception{
+        JsonNode a=progressToEntry(recommend(job(),talent("保证期入口人才","13800002705")));long id=a.path("id").asLong();
+        jdbc.update("UPDATE oa_crm_contract_version SET snapshot_json=? WHERE contract_id=? AND version_no=1",mapper.writeValueAsString(Map.of("feeTerms",List.of(Map.of("key","entry","title","入职服务费","guaranteeDays",30)))),contract);
+        a=act(a,"entry",Map.of("actualEntryDate",today.toString(),"termKey","entry","attachmentId",uploadEvidence(id)));
+        assertTrue(operations(a).containsAll(Set.of("guarantee","correctEntry")));assertFalse(operations(a).contains("completeGuarantee"));
+        call(admin,post(base+"/applications/"+id+"/actions/guarantee"),Map.of("revision",a.path("revision").asInt(),"operation","complete","reason","保证期未到"),409);
+        jdbc.update("UPDATE oa_recruit_application SET guarantee_end=? WHERE id=?",today,id);a=call(admin,get(base+"/applications/"+id),null,200).path("data");assertTrue(operations(a).contains("completeGuarantee"));
+        a=act(a,"guarantee",Map.of("operation","complete"));assertEquals("completed",a.path("stage").asText());assertTrue(operations(a).isEmpty());
+        call(admin,post(base+"/applications/"+id+"/actions/entry"),Map.of("revision",a.path("revision").asInt(),"operation","correct","reason","终结后不能普通纠正"),409);
+    }
+
+    @Test void manuallyEndedReplacementAllowsAnotherCandidateWithoutClosingOriginalFollowup()throws Exception{
+        JsonNode original=progressToEntry(recommend(job(),talent("替换原人才","13800002706")));long id=original.path("id").asLong();
+        original=act(original,"entry",Map.of("actualEntryDate",today.toString(),"termKey","entry","attachmentId",uploadEvidence(id)));
+        original=act(original,"guarantee",Map.of("operation","replacement","exitDate",today.toString()));assertTrue(operations(original).contains("replacement"));
+        JsonNode t=talent("替换未通过人才","13800002707");JsonNode replacement=call(admin,post(base+"/applications/"+id+"/replacement"),Map.of("revision",original.path("revision").asInt(),"talentId",t.path("id").asLong(),"recommendation","替换推荐"),200).path("data");
+        original=call(admin,get(base+"/applications/"+id),null,200).path("data");assertFalse(operations(original).contains("replacement"));assertTrue(operations(original).contains("replacementManage"));
+        replacement=act(replacement,"feedback",Map.of("status","rejected"));replacement=act(replacement,"exception",Map.of("operation","finish"));assertEquals("ended",replacement.path("stage").asText());
+        original=call(admin,get(base+"/applications/"+id),null,200).path("data");assertTrue(operations(original).contains("replacement"));assertEquals("open",original.path("exceptions").get(0).path("status").asText());
+    }
+
+    @Test void jobStatusKeepsDraftUntilDemandIsConfirmed()throws Exception{
+        JsonNode j=createJob();long id=j.path("id").asLong();assertEquals("draft",j.path("status").asText());
+        call(admin,post(base+"/jobs/"+id+"/actions/status"),Map.of("revision",0,"status","recruiting","reason","尚未确认"),409);
+        call(admin,post(base+"/jobs/"+id+"/actions/status"),Map.of("revision",0,"status","draft","reason","仍待启动"),200);
+        j=getJob(id);call(admin,post(base+"/jobs/"+id+"/requests/demand"),Map.of("revision",j.path("revision").asInt(),"reason","确认需求"),200);
+        j=getJob(id);assertEquals("recruiting",j.path("status").asText());
+        call(admin,post(base+"/jobs/"+id+"/actions/status"),Map.of("revision",j.path("revision").asInt(),"status","draft","reason","不可退回待启动"),409);
+    }
+
     @Test void lifecycleUpdatesVacanciesAndCustomerMetricsAndClosesGuarantee()throws Exception{
         JsonNode job=job(),talent=talent("人才一","13800001001");long jobId=job.path("id").asLong();
         JsonNode app=recommend(job,talent);long id=app.path("id").asLong();
@@ -85,7 +251,7 @@ class RecruitmentIntegrationTest {
     @Test void guaranteeExitRestoresVacancyAndCreatesResolvableException()throws Exception{
         JsonNode job=job(),talent=talent("人才二","13800001002");JsonNode app=progressToEntry(recommend(job,talent));long id=app.path("id").asLong();
         app=act(app,"entry",Map.of("actualEntryDate",today.toString(),"termKey","entry","attachmentId",uploadEvidence(id)));
-        app=act(app,"guarantee",Map.of("operation","exit","exitDate",today.toString()));assertEquals("exited",app.path("stage").asText());
+        app=act(app,"guarantee",Map.of("operation","exit","exitDate",today.toString(),"followupRequired",true));assertEquals("exited",app.path("stage").asText());
         assertEquals("recruiting",getJob(job.path("id").asLong()).path("status").asText());assertEquals(0,jdbc.queryForObject("SELECT hire_count FROM oa_merchant WHERE id=?",Integer.class,customer));
         JsonNode exception=app.path("exceptions").get(0);assertEquals("open",exception.path("status").asText());app=act(app,"exception",Map.of("operation","resolve","exceptionId",exception.path("id").asLong()));assertEquals("closed",app.path("exceptions").get(0).path("status").asText());
     }
@@ -190,7 +356,8 @@ class RecruitmentIntegrationTest {
         assertEquals(id,replacement.path("replacementFor").asLong());
         original=call(admin,get(base+"/applications/"+id),null,200).path("data");assertEquals("open",original.path("exceptions").get(0).path("status").asText());
         call(admin,post(base+"/applications/"+id+"/replacement"),Map.of("revision",original.path("revision").asInt(),"talentId",t.path("id").asLong(),"recommendation","不能重复办理"),409);
-        replacement=progressToEntry(act(replacement,"recommend",Map.of()));
+        assertEquals("recommended",replacement.path("stage").asText());
+        replacement=progressToEntry(replacement);
         replacement=act(replacement,"entry",Map.of("actualEntryDate",today.toString(),"termKey","entry","attachmentId",uploadEvidence(replacement.path("id").asLong())));
         original=call(admin,get(base+"/applications/"+id),null,200).path("data");assertEquals("closed",original.path("exceptions").get(0).path("status").asText());assertEquals("completed",original.path("replacements").get(0).path("status").asText());
         assertEquals(1,jdbc.queryForObject("SELECT hire_count FROM oa_merchant WHERE id=?",Integer.class,customer));assertEquals("completed",getJob(j.path("id").asLong()).path("status").asText());
@@ -209,7 +376,7 @@ class RecruitmentIntegrationTest {
         call(admin,post(base+"/applications/"+id+"/actions/recommend"),Map.of("revision",a.path("revision").asInt(),"reason","无效操作","operation","unexpected"),400);
         a=call(admin,post(base+"/applications/"+id+"/interviews"),Map.of("revision",a.path("revision").asInt(),"roundNo",1,"interviewTime",LocalDateTime.now(ZoneId.of("Asia/Shanghai")).plusDays(1).withNano(0).toString(),"location","客户会议室","interviewer","主管","reason","安排第一轮"),200).path("data");
         long interview=a.path("interviews").get(0).path("id").asLong();
-        call(admin,put(base+"/applications/"+id+"/interviews/"+interview),Map.of("revision",a.path("revision").asInt(),"operation","result","result","pass","reason","尚未开始"),409);
+        assertTrue(operations(a.path("interviews").get(0)).contains("result"));
         jdbc.update("UPDATE oa_recruit_interview SET interview_time=?,status='completed',result='pass' WHERE id=?",LocalDateTime.now(ZoneId.of("Asia/Shanghai")).minusDays(1),interview);
         jdbc.update("INSERT INTO oa_recruit_interview (application_id,round_no,interview_time,status,result) VALUES (?,2,?,'completed','pending')",id,LocalDateTime.now(ZoneId.of("Asia/Shanghai")).minusHours(1));
         call(admin,post(base+"/applications/"+id+"/actions/offer"),Map.of("revision",a.path("revision").asInt(),"operation","save","salary",10000,"reason","最后一轮仍待定"),409);
@@ -232,12 +399,15 @@ class RecruitmentIntegrationTest {
         call(admin,post(base+"/talents"),Map.of("name","新档案不得赋停用标签","phone","13800001018","ownerUserId",1,"tags",List.of("历史技能")),400);
     }
 
+    Set<String> operations(JsonNode row){Set<String>out=new LinkedHashSet<>();row.path("availableOperations").forEach(value->out.add(value.asText()));return out;}
+    JsonNode schedule(JsonNode a,int round)throws Exception{return call(admin,post(base+"/applications/"+a.path("id").asLong()+"/interviews"),Map.of("revision",a.path("revision").asInt(),"roundNo",round,"interviewTime",LocalDateTime.now(ZoneId.of("Asia/Shanghai")).plusDays(1).withNano(0).toString(),"location","会议室","interviewer","客户主管","reason","安排面试"),200).path("data");}
+    JsonNode passedInterview(String name,String phone)throws Exception{JsonNode a=schedule(act(recommend(job(),talent(name,phone)),"feedback",Map.of("status","interested")),1);long id=a.path("id").asLong(),interview=a.path("interviews").get(0).path("id").asLong();jdbc.update("UPDATE oa_recruit_interview SET interview_time=? WHERE id=?",LocalDateTime.now(ZoneId.of("Asia/Shanghai")).minusHours(1),interview);return call(admin,put(base+"/applications/"+id+"/interviews/"+interview),Map.of("revision",a.path("revision").asInt(),"operation","result","result","pass","reason","面试通过"),200).path("data");}
     Map<String,Object>jobBody(){Map<String,Object>b=new LinkedHashMap<>();b.put("title","软件工程师");b.put("customerId",customer);b.put("contractId",contract);b.put("ownerUserId",1);b.put("headcount",1);b.put("requirements","Java开发经验");return b;}
     JsonNode createJob()throws Exception{return call(admin,post(base+"/jobs"),jobBody(),200).path("data");}
     JsonNode getJob(long id)throws Exception{return call(admin,get(base+"/jobs/"+id),null,200).path("data");}
     JsonNode job()throws Exception{JsonNode j=createJob();long id=j.path("id").asLong();call(admin,post(base+"/jobs/"+id+"/requests/demand"),Map.of("revision",0,"reason","需求已核实"),200);return getJob(id);}
     JsonNode talent(String name,String phone)throws Exception{JsonNode t=call(admin,post(base+"/talents"),Map.of("name",name,"phone",phone,"ownerUserId",1),200).path("data");return call(admin,post(base+"/talents/"+t.path("id").asLong()+"/actions/status"),Map.of("revision",0,"status","available","reason","本人确认可以推荐"),200).path("data");}
-    JsonNode recommend(JsonNode job,JsonNode talent)throws Exception{JsonNode a=call(admin,post(base+"/applications"),Map.of("jobId",job.path("id").asLong(),"talentId",talent.path("id").asLong(),"consultantId",1,"recommendation","技能匹配"),200).path("data");return act(a,"recommend",Map.of());}
+    JsonNode recommend(JsonNode job,JsonNode talent)throws Exception{JsonNode a=call(admin,post(base+"/applications"),Map.of("jobId",job.path("id").asLong(),"talentId",talent.path("id").asLong(),"consultantId",1,"recommendation","技能匹配"),200).path("data");assertEquals("recommended",a.path("stage").asText());assertEquals(today.toString(),a.path("submittedDate").asText());assertEquals(today.plusDays(job.path("feedbackDays").asInt()).toString(),a.path("feedbackDueDate").asText());assertEquals("pending",a.path("feedbackStatus").asText());return a;}
     JsonNode progressToEntry(JsonNode a)throws Exception{a=act(a,"feedback",Map.of("status","interested"));long id=a.path("id").asLong();a=call(admin,post(base+"/applications/"+id+"/interviews"),Map.of("revision",a.path("revision").asInt(),"roundNo",1,"interviewTime",LocalDateTime.now(ZoneId.of("Asia/Shanghai")).plusDays(1).withNano(0).toString(),"location","会议室","interviewer","客户主管","reason","客户面试"),200).path("data");long interview=a.path("interviews").get(0).path("id").asLong();jdbc.update("UPDATE oa_recruit_interview SET interview_time=? WHERE id=?",LocalDateTime.now().minusMinutes(1),interview);a=call(admin,put(base+"/applications/"+id+"/interviews/"+interview),Map.of("revision",a.path("revision").asInt(),"operation","result","result","pass","reason","面试通过"),200).path("data");a=act(a,"offer",Map.of("salary",20000,"operation","save"));a=act(a,"offer",Map.of("operation","issue"));return act(a,"offer",Map.of("operation","accept","expectedEntryDate",today.toString()));}
     JsonNode act(JsonNode a,String action,Map<String,Object>extra)throws Exception{Map<String,Object>b=new LinkedHashMap<>(extra);b.put("revision",a.path("revision").asInt());b.put("reason","业务记录");return call(admin,post(base+"/applications/"+a.path("id").asLong()+"/actions/"+action),b,200).path("data");}
     long uploadEvidence(long id)throws Exception{return call(admin,multipart(base+"/applications/"+id+"/attachments").file(new MockMultipartFile("file","入职凭证.pdf","application/pdf","%PDF-1.4\nevidence".getBytes(StandardCharsets.UTF_8))),null,200).path("data").path("id").asLong();}
