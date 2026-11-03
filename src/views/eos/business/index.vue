@@ -239,11 +239,11 @@ export default {
         stopPropagation: true,
         modalProps: {
           title: '推进商机阶段',
-          width: 620,
+          width: 880,
           centered: true,
-          maskClosable: true
+          maskClosable: false,
+          footer: null
         },
-        footer: false,
         content: {
           template: BusinessStageForm,
           props: {

@@ -23,9 +23,8 @@
         </a-col>
         <a-col :xs="24" :md="12">
           <a-form-model-item label="商机阶段" prop="stage">
-            <a-select v-model="form.stage">
-              <a-select-option v-for="item in stages" :key="item" :value="item">{{ item }}</a-select-option>
-            </a-select>
+            <a-input :value="form.stage" disabled />
+            <span class="stage-hint">通过“推进商机阶段”按顺序流转</span>
           </a-form-model-item>
         </a-col>
         <a-col :xs="24" :md="12">
@@ -53,9 +52,7 @@
         <a-col :xs="24" :md="12">
           <a-form-model-item label="商机负责人">
             <a-select v-model="form.ownerUserId" show-search :filter-option="false" placeholder="请选择负责人" @search="searchOwners" @change="handleOwnerChange">
-              <a-select-option v-for="owner in owners" :key="owner.userId" :value="owner.userId">
-                {{ owner.nickName }} · {{ owner.deptName || '未分配部门' }}
-              </a-select-option>
+              <a-select-option v-for="owner in owners" :key="owner.userId" :value="owner.userId"> {{ owner.nickName }} · {{ owner.deptName || '未分配部门' }} </a-select-option>
             </a-select>
           </a-form-model-item>
         </a-col>
@@ -88,7 +85,6 @@
 import { addBusiness, getBusiness, updateBusiness } from '/src/api/eos/business/business.js'
 import { listCustomerOptions, listCustomerOwners } from '/src/api/eos/crm/index.js'
 
-const stages = ['初步接洽', '需求确认', '方案报价', '商务谈判', '赢单', '输单']
 const intents = ['高', '中', '低', '待评估']
 
 function emptyForm() {
@@ -123,7 +119,6 @@ export default {
       form: emptyForm(),
       customers: [],
       owners: [],
-      stages,
       intents,
       rules: {
         name: [{ required: true, message: '请输入商机名称', trigger: 'blur' }],
@@ -221,6 +216,10 @@ export default {
 </script>
 
 <style scoped>
+.stage-hint {
+  color: #8c8c8c;
+  font-size: 12px;
+}
 .form-actions {
   display: flex;
   gap: 10px;

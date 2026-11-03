@@ -24,7 +24,10 @@
       <a-descriptions-item label="客户需求" :span="2">{{ data.requirement || data.remark || '-' }}</a-descriptions-item>
       <a-descriptions-item label="备注" :span="2">{{ data.remark || '-' }}</a-descriptions-item>
     </a-descriptions>
-    <div v-if="data.customerId && canCreateContract" style="margin-top: 18px"><a-button type="primary" icon="file-text" @click="createContract" :loading="!!moduleActionBusy.createContract">从此商机起草合同</a-button><span style="margin-left: 12px; color: #667085">自动关联客户与商机，延续报价到签约流程</span></div>
+    <div v-if="data.customerId && canCreateContract" style="margin-top: 18px">
+      <a-button type="primary" icon="file-text" @click="createContract" :loading="!!moduleActionBusy.createContract">从此商机创建合同</a-button
+      ><span style="margin-left: 12px; color: #667085">自动关联客户与商机，创建后可继续完善并提交审批</span>
+    </div>
 
     <div v-if="stages.length" class="stage-section">
       <h3>阶段记录</h3>
@@ -44,6 +47,9 @@ import { withModuleContexts } from '/src/utils/moduleContext.js'
 import { crmModules } from '/src/views/eos/crm/moduleContexts.js'
 import { getBusiness } from '/src/api/eos/business/business.js'
 import ContractForm from '../../crm/contract/modules/ContractForm.vue'
+import { normalizeContractId } from '/src/api/eos/crm/contracts.js'
+
+const ContractDetail = () => import('../../crm/contract/modules/ContractDetail.vue')
 
 export default {
   mixins: [
@@ -96,7 +102,18 @@ export default {
     createContract() {
       this.$createAntdModal({
         modalProps: { title: '商机转合同', width: 920, maskClosable: false, footer: null },
-        onOk: () => this.$message.success('合同草稿已建立，可前往合同列表提交审批'),
+        onOk: ({ payload }) => {
+          const contractId = normalizeContractId(payload?.id)
+          if (!contractId) {
+            this.$message.error('创建结果缺少有效合同编号，请刷新合同列表核对')
+            return false
+          }
+          this.$createAntdDrawer({
+            stopPropagation: true,
+            drawerProps: { title: '合同详情', width: '85%', maskClosable: true },
+            content: { template: ContractDetail, props: { moduleMeta: this.moduleContexts.contract, contractId } }
+          })
+        },
         content: {
           template: ContractForm,
           props: { initial: { customerId: Number(this.data.customerId), customerName: this.data.customerName, opportunityId: this.formId, name: this.data.name, amount: Number(this.data.expectedAmount || this.data.amount || 0) } }

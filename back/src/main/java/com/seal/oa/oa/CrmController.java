@@ -38,17 +38,20 @@ public class CrmController {
     private final DataScopeService dataScopeService;
     private final ParityRecordService parityRecords;
     private final CrmContractService contracts;
+    private final CustomerAccessService customerAccess;
 
     public CrmController(
             JdbcTemplate jdbc,
             DataScopeService dataScopeService,
             ParityRecordService parityRecords,
-            CrmContractService contracts
+            CrmContractService contracts,
+            CustomerAccessService customerAccess
     ) {
         this.jdbc = jdbc;
         this.dataScopeService = dataScopeService;
         this.parityRecords = parityRecords;
         this.contracts = contracts;
+        this.customerAccess = customerAccess;
     }
 
     @GetMapping("/analysis/overview")
@@ -129,12 +132,7 @@ public class CrmController {
         if (!scoped) {
             return rows;
         }
-        return dataScopeService.filterRows(
-                AuthContext.userId(),
-                rows,
-                List.of("ownerDeptId"),
-                List.of("ownerUserId", "ownerUserName", "createBy")
-        );
+        return customerAccess.filterRows(AuthContext.userId(), rows, "ownerUserId");
     }
 
     private List<Map<String, Object>> risks(boolean scoped) {

@@ -7,7 +7,10 @@
     "build": "node --no-deprecation node_modules/vite/bin/vite.js build --base=/",
     "preview": "node --no-deprecation node_modules/vite/bin/vite.js preview",
     "audit:source": "node back/tools/audit-source.mjs --check",
-    "test:module-context": "node --test back/tools/module-context.test.mjs"
+    "test:module-context": "node --test back/tools/module-context.test.mjs",
+    "test:business-stage": "node --test back/tools/business-stage.test.mjs",
+    "test:contract-conversion": "node --test back/tools/contract-conversion.test.mjs",
+    "test:customer-reminder": "node --test back/tools/customer-reminder.test.mjs"
   },
   "devDependencies": {
     "@ljharb/eslint-config": "^21.0.0",

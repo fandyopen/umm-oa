@@ -8,6 +8,8 @@ import com.seal.oa.common.ApiResult;
 import com.seal.oa.system.DataScopeService;
 import com.seal.oa.web.RequiresModuleAction;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -31,6 +33,7 @@ import java.util.Map;
 public class BusinessQueryController {
 
     private static final String MODULE = "/project/business/list";
+    private static final List<String> ACTIVE_STAGES = List.of("初步接洽", "需求确认", "方案报价", "商务谈判");
     private static final TypeReference<Map<String, Object>> MAP_TYPE = new TypeReference<>() {
     };
 
@@ -93,27 +96,42 @@ public class BusinessQueryController {
         payload.put("id", id);
         payload.putIfAbsent("code", "SJ-" + LocalDateTime.now()
                 .format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
-        payload.putIfAbsent("stage", "初步接洽");
-        payload.putIfAbsent("businessState", payload.get("stage"));
+        payload.put("stage", ACTIVE_STAGES.get(0));
+        payload.put("businessState", ACTIVE_STAGES.get(0));
         payload.putIfAbsent("ownerUserName", AuthContext.username());
         payload.putIfAbsent("ownerUserId", AuthContext.userId());
         payload.putIfAbsent("deptId", currentDeptId());
         payload.put("createBy", AuthContext.username());
         payload.put("createTime", LocalDateTime.now().toString());
+        payload.put("sealBusinessStages", List.of(Map.of(
+                "state", ACTIVE_STAGES.get(0),
+                "recordTime", payload.get("createTime"),
+                "remark", value(body.get("remark"), ""),
+                "attachment", ""
+        )));
         insertRecord(payload);
         return ApiResult.ok(id);
     }
 
     @PutMapping
     @RequiresModuleAction(moduleId = 340590L, action = "edit")
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public Map<String, Object> update(@RequestBody Map<String, Object> body) {
         long id = number(body.get("id"), 0L);
-        Map<String, Object> existing = requireAccessibleOpportunity(String.valueOf(id));
-        existing.putAll(body);
-        existing.put("id", id);
-        if (body.containsKey("stage")) {
-            existing.put("businessState", body.get("stage"));
+        Map<String, Object> existing = lockOpportunity(id);
+        String current = currentStage(existing);
+        for (String key : List.of("stage", "businessState")) {
+            if (body.containsKey(key) && !current.equals(body.get(key))) {
+                throw new ApiException(400, "商机阶段只能通过阶段推进按顺序更新，请刷新后重试");
+            }
         }
+        Map<String, Object> changes = new LinkedHashMap<>(body);
+        // Ordinary editing must never replace the stage history loaded before another progression.
+        for (String key : List.of("stage", "businessState", "sealBusinessStages")) {
+            changes.remove(key);
+        }
+        existing.putAll(changes);
+        existing.put("id", id);
         replaceRecord(id, existing);
         return ApiResult.ok(id);
     }
@@ -131,6 +149,7 @@ public class BusinessQueryController {
 
     @PostMapping("/stage/insert")
     @RequiresModuleAction(moduleId = 340590L, action = "track")
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public Map<String, Object> addStage(@RequestBody Map<String, Object> body) {
         String code = value(body.get("businessCode"), "");
         Map<String, Object> opportunity = parityRecords.rows(MODULE).stream()
@@ -138,6 +157,20 @@ public class BusinessQueryController {
                 .filter(row -> code.equals(value(row.get("code"), "")))
                 .findFirst()
                 .orElseThrow(() -> new ApiException(404, "商机不存在"));
+        opportunity = lockOpportunity(number(opportunity.get("id"), 0L));
+        String current = currentStage(opportunity);
+        String target = value(body.get("state"), "");
+        int currentIndex = ACTIVE_STAGES.indexOf(current);
+        boolean allowed = currentIndex >= 0 && (currentIndex < ACTIVE_STAGES.size() - 1
+                ? ACTIVE_STAGES.get(currentIndex + 1).equals(target)
+                : List.of("赢单", "输单").contains(target));
+        if (!allowed) {
+            throw new ApiException(400, "商机只能按顺序推进到下一阶段，不允许跳级、回退或再次推进已结束的商机");
+        }
+        if (value(body.get("recordTime"), "").isBlank()
+                || value(body.get("remark"), "").isBlank()) {
+            throw new ApiException(400, "请填写活动时间和活动事件");
+        }
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> stages = opportunity.get("sealBusinessStages")
                 instanceof List<?> values
@@ -145,10 +178,8 @@ public class BusinessQueryController {
                 : new ArrayList<>();
         stages.add(new LinkedHashMap<>(body));
         opportunity.put("sealBusinessStages", stages);
-        if (body.get("state") != null) {
-            opportunity.put("stage", body.get("state"));
-            opportunity.put("businessState", body.get("state"));
-        }
+        opportunity.put("stage", target);
+        opportunity.put("businessState", target);
         replaceRecord(number(opportunity.get("id"), 0L), opportunity);
         return ApiResult.ok();
     }
@@ -179,6 +210,27 @@ public class BusinessQueryController {
             }
         }
         return ApiResult.ok();
+    }
+
+    private String currentStage(Map<String, Object> opportunity) {
+        for (String key : List.of("stage", "businessState")) {
+            String stage = value(opportunity.get(key), "");
+            if (!stage.isBlank()) return stage;
+        }
+        if (opportunity.get("sealBusinessStages") instanceof List<?> stages && !stages.isEmpty()
+                && stages.get(stages.size() - 1) instanceof Map<?, ?> last) {
+            return value(last.get("state"), ACTIVE_STAGES.get(0));
+        }
+        return ACTIVE_STAGES.get(0);
+    }
+
+    private Map<String, Object> lockOpportunity(long id) {
+        requireAccessibleOpportunity(String.valueOf(id));
+        jdbc.queryForList("""
+                SELECT id FROM biz_record
+                WHERE module = ? AND (business_key = ? OR payload_json LIKE ?) FOR UPDATE
+                """, MODULE, MODULE + ":" + id, "%\"id\":" + id + ",%");
+        return requireAccessibleOpportunity(String.valueOf(id));
     }
 
     private Map<String, Object> requireOpportunity(String id) {

@@ -1,7 +1,7 @@
 <template>
   <div>
     <component :is="detailCompName" :row="row" :formId="formId" :formKey="formKey" :todo-item="todoItem" @changed="handleGetList" @close="handleClose" />
-    <template v-if="!['crmRisk', 'crmContractApproval'].includes(todoItem.businessType)">
+    <template v-if="!['crmRisk', 'crmContractApproval', 'crmCustomerFollowup'].includes(todoItem.businessType)">
       <a-divider>审批意见</a-divider>
       <view-verify :isOnlyShowProcess="isOnlyShowProcess" :isShowReApply="false" :todoItem="todoItem" :allowDelegate="!(todoItem.businessType === 'workflowAction' && row && row.contractId)" @getList="handleGetList" @delegateTask="handleDelegateTask" @close="handleClose" />
     </template>

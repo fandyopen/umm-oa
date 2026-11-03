@@ -597,6 +597,86 @@ class CustomerContractIntegrationTest {
         assertFalse(ModuleActionService.enabled(moduleActions.action(341201, "sign").get("flowDesignEnabled")));
     }
 
+    @Test
+    void opportunityConversionUsesBusinessIdEvenWhenItCollidesWithAnotherStorageId() throws Exception {
+        long customer = createCustomer("商机业务标识客户");
+        long other = createCustomer("另一商机客户");
+        insertOpportunity(8100001L, Map.of("id", 8200001L, "customerId", customer, "ownerUserId", 4));
+        insertOpportunity(8200001L, Map.of("id", 8300001L, "customerId", other, "ownerUserId", 4));
+        JsonNode opportunity = call(admin, get("/project/business/8200001"), null, 200).path("data");
+        Map<String, Object> body = payload(customer);
+        body.put("opportunityId", opportunity.path("id").asLong());
+        JsonNode created = call(admin, post(base), body, 200).path("data");
+        assertEquals(customer, created.path("customerId").asLong());
+        assertEquals(8200001L, created.path("opportunityId").asLong());
+        assertEquals("draft", created.path("status").asText());
+        assertEquals(created.path("id"), call(admin, get(base + "/" + created.path("id").asLong()), null, 200).path("data").path("id"));
+    }
+
+    @Test
+    void legacyOpportunityWithoutPayloadIdUsesTheSameFallbackAsBusinessDetails() throws Exception {
+        long customer = createCustomer("历史商机标识客户");
+        insertOpportunity(8100002L, Map.of("customerId", String.valueOf(customer), "ownerUserId", 4));
+        Map<String, Object> body = payload(customer);
+        body.put("opportunityId", 8100002L);
+        call(admin, get("/project/business/8100002"), null, 200);
+        JsonNode created = call(admin, post(base), body, 200).path("data");
+        assertEquals(8100002L, created.path("opportunityId").asLong());
+    }
+
+    @Test
+    void conversionReportsMissingCustomerMismatchedCustomerAndMissingOpportunitySeparately() throws Exception {
+        long customer = createCustomer("商机归属校验客户");
+        long other = createCustomer("商机错误归属客户");
+        for (Object invalid : List.of("", "不是编号", 0, -1)) {
+            insertOpportunity(8100003L, Map.of("id", 8200003L, "customerId", invalid, "ownerUserId", 4));
+            Map<String, Object> body = payload(customer);
+            body.put("opportunityId", 8200003L);
+            JsonNode result = call(admin, post(base), body, 400);
+            assertTrue(result.path("msg").asText().contains("商机未关联有效客户"));
+            jdbc.update("DELETE FROM biz_record WHERE id = ?", 8100003L);
+        }
+        insertOpportunity(8100003L, Map.of("id", 8200003L, "ownerUserId", 4));
+        Map<String, Object> body = payload(customer);
+        body.put("opportunityId", 8200003L);
+        assertTrue(call(admin, post(base), body, 400).path("msg").asText().contains("商机未关联有效客户"));
+        insertOpportunity(8100004L, Map.of("id", 8200004L, "customerId", other, "ownerUserId", 4));
+        body.put("opportunityId", 8200004L);
+        assertTrue(call(admin, post(base), body, 400).path("msg").asText().contains("商机关联客户与合同客户不一致"));
+        body.put("opportunityId", 8999999L);
+        assertTrue(call(admin, post(base), body, 404).path("msg").asText().contains("关联商机不存在或已删除"));
+        assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM oa_crm_contract WHERE customer_id = ?", Integer.class, customer));
+    }
+
+    @Test
+    void conversionDoesNotFallBackToAStorageIdWhenABusinessIdExists() throws Exception {
+        long customer = createCustomer("商机标识防误关联客户");
+        insertOpportunity(8100005L, Map.of("id", 8200005L, "customerId", customer, "ownerUserId", 4));
+        Map<String, Object> body = payload(customer);
+        body.put("opportunityId", 8100005L);
+        call(admin, post(base), body, 404);
+        insertOpportunity(8100006L, Map.of("id", 8200005L, "customerId", customer, "ownerUserId", 4));
+        body.put("opportunityId", 8200005L);
+        assertTrue(call(admin, post(base), body, 409).path("msg").asText().contains("商机标识重复"));
+    }
+
+    @Test
+    void conversionRequiresAccessToTheOpportunityAsWellAsTheCustomer() throws Exception {
+        long customer = call(admin, post("/project/merchant"), Map.of("name", "商机权限隔离客户", "industry", "软件与信息服务", "ownerUserId", 902), 200).path("data").asLong();
+        jdbc.update("INSERT INTO sys_role_module (role_id, module_id) VALUES (991, 341201)");
+        jdbc.update("INSERT INTO sys_role_module_action (role_id, module_id, action_code) VALUES (991, 341201, 'add')");
+        insertOpportunity(8100007L, Map.of("id", 8200007L, "customerId", customer, "ownerUserId", 901, "createBy", "17690000901"));
+        Map<String, Object> body = payload(customer);
+        body.put("opportunityId", 8200007L);
+        assertTrue(call(outsider, post(base), body, 403).path("msg").asText().contains("无权访问关联商机"));
+        assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM oa_crm_contract WHERE customer_id = ?", Integer.class, customer));
+    }
+
+    private void insertOpportunity(long storageId, Map<String, Object> opportunity) throws Exception {
+        jdbc.update("INSERT INTO biz_record (id, tenant_id, module, business_key, payload_json, status, create_by) VALUES (?, 1, '/project/business/list', ?, ?, 'approved', ?)",
+                storageId, "/project/business/list:" + opportunity.getOrDefault("id", storageId), mapper.writeValueAsString(opportunity), opportunity.getOrDefault("createBy", "13610316814"));
+    }
+
     private JsonNode approveDraft(JsonNode draft) throws Exception {
         long id = draft.path("id").asLong();
         JsonNode pending = action(admin, id, "submit", Map.of("revision", draft.path("revision").asInt()));

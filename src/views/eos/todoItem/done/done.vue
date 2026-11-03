@@ -17,8 +17,10 @@ import Ellipsis from '/src/components/Ellipsis/Ellipsis.vue'
 import STable from '/src/components/Table/index.jsx'
 import SSearch from '/src/components/Form/Search.vue'
 import BusDetail from '../todo/busDetail.vue'
+import customerReminder, { CUSTOMER_FOLLOWUP_TODO } from '../customerReminder.js'
 
 export default {
+  mixins: [customerReminder],
   name: 'Done',
   components: {
     SSearch,
@@ -126,7 +128,8 @@ export default {
     }
   },
   methods: {
-    handleDetail(row, detailCompName) {
+    async handleDetail(row, detailCompName) {
+      if (row.businessType === CUSTOMER_FOLLOWUP_TODO) return this.openCustomerReminder(row)
       if (this.isEmpty(detailCompName)) {
         return this.$message.error('请传递详情组件')
       }

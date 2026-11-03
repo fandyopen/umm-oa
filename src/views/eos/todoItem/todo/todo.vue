@@ -11,7 +11,8 @@
     <no-data index v-show="noData" />
     <s-table :customRow="rowClick" :class="{ 'dashboard-table': simple }" v-show="!noData" :data="loadData" ref="table" size="default" rowKey="taskId" :columns="columns">
       <span slot="action" slot-scope="text, item">
-        <a v-if="['crmRisk', 'crmContractApproval'].includes(item.businessType)" @click.stop="handleDetail(item, 'CrmTodoDetail')">{{ item.businessType === 'crmContractApproval' ? '审批合同' : '处理风险' }}</a>
+        <a v-if="item.businessType === 'crmCustomerFollowup'" @click.stop="openCustomerReminder(item)">跟进客户</a>
+        <a v-else-if="['crmRisk', 'crmContractApproval'].includes(item.businessType)" @click.stop="handleDetail(item, 'CrmTodoDetail')">{{ item.businessType === 'crmContractApproval' ? '审批合同' : '处理风险' }}</a>
         <activiti-apply
           :preAudit="{ comment: item.lastHistoricActivity.comment, assigneeName: item.lastHistoricActivity.assigneeName }"
           :simple="simple"
@@ -37,8 +38,10 @@ import STable from '/src/components/Table/index.jsx'
 import SSearch from '/src/components/Form/Search.vue'
 import ActivitiApply from '/src/components/Activiti/index.vue'
 import BusDetail from './busDetail.vue'
+import customerReminder, { CUSTOMER_FOLLOWUP_TODO } from '../customerReminder.js'
 
 export default {
+  mixins: [customerReminder],
   name: 'Todo',
   props: {
     // 是否展示简单列
@@ -162,7 +165,8 @@ export default {
       if (this.$route.query.businessCategory !== query.businessCategory) this.$router.replace({ path: this.$route.path, query })
       else this.refresh(true)
     },
-    handleDetail(row, detailCompName) {
+    async handleDetail(row, detailCompName) {
+      if (row.businessType === CUSTOMER_FOLLOWUP_TODO) return this.openCustomerReminder(row)
       if (this.isEmpty(detailCompName)) {
         return this.$message.error('请传递详情组件')
       }
@@ -205,6 +209,10 @@ export default {
     handleProcessHistory,
     // 已读事件
     handleReadClick(item) {
+      if (item.businessType === CUSTOMER_FOLLOWUP_TODO) {
+        this.$set(item, 'isRead', true)
+        return
+      }
       updateReadUsers(item.workflowId, item.taskId, 1).then(res => {
         // 设置本地缓存
         this.$set(item, 'isRead', true)

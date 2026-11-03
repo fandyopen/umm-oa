@@ -90,6 +90,9 @@ public class ActivityController {
         long protectedId = number(body.get("todoId"), number(body.get("id"), 0L));
         List<String> protectedTypes = jdbc.queryForList(
                 "SELECT business_type FROM oa_todo WHERE id = ? OR task_id = ?", String.class, protectedId, value(body.get("taskId"), ""));
+        if (protectedTypes.contains(CustomerFollowupReminderService.BUSINESS_TYPE)) {
+            throw new ApiException(409, "请进入客户列表新增跟进，跟进保存成功后待办自动完成");
+        }
         if (protectedTypes.stream().anyMatch(type -> "crmRisk".equals(type) || "crmContractApproval".equals(type))) {
             throw new ApiException(409, "客户风险请处理对应业务，历史合同审批请在待办详情办理，完成后待办自动关闭");
         }
@@ -239,7 +242,8 @@ public class ActivityController {
     private void decorateCrmTasks(List<Map<String, Object>> rows) {
         for (Map<String, Object> row : rows) {
             String type = value(row.get("businessType"), "");
-            if (!"crmRisk".equals(type) && !"crmContractApproval".equals(type)) continue;
+            boolean customerFollowup = CustomerFollowupReminderService.BUSINESS_TYPE.equals(type);
+            if (!customerFollowup && !"crmRisk".equals(type) && !"crmContractApproval".equals(type)) continue;
             Map<String, Object> form = new LinkedHashMap<>();
             form.put("title", row.get("title"));
             long businessId = number(row.get("businessId"), 0L);
@@ -255,8 +259,8 @@ public class ActivityController {
             row.put("form", form);
             row.put("formId", businessId);
             row.put("type", row.get("status"));
-            row.put("processName", "crmRisk".equals(type) ? "客户风险提醒" : "合同审批");
-            row.put("taskName", "crmRisk".equals(type) ? "跟进处理" : "合同及收费审核");
+            row.put("processName", customerFollowup ? "客户首次跟进" : "crmRisk".equals(type) ? "客户风险提醒" : "合同审批");
+            row.put("taskName", customerFollowup ? "请新增客户跟进" : "crmRisk".equals(type) ? "跟进处理" : "合同及收费审核");
             row.put("applyUserName", "客户与合同管理");
             row.put("lastHistoricActivity", Map.of("comment", "", "assigneeName", ""));
         }

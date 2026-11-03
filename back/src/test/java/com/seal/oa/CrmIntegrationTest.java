@@ -428,7 +428,7 @@ class CrmIntegrationTest {
                                   "code": "CRM-OPP-001",
                                   "customerId": %d,
                                   "customerName": "CRM 风险分析客户",
-                                  "stage": "需求确认",
+                                  "stage": "初步接洽",
                                   "potentialCooperation": "年度招聘服务",
                                   "requirement": "需要招聘 20 名技术岗位",
                                   "cooperationIntent": "高",
@@ -451,6 +451,20 @@ class CrmIntegrationTest {
                         .content("""
                                 {
                                   "businessCode": "CRM-OPP-001",
+                                  "state": "需求确认",
+                                  "recordTime": "2026-10-29 10:00:00",
+                                  "remark": "已确认招聘需求"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+
+        mockMvc.perform(post("/project/business/stage/insert")
+                        .header("Authorization", admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "businessCode": "CRM-OPP-001",
                                   "state": "方案报价",
                                   "recordTime": "2026-10-29 11:00:00",
                                   "remark": "已提交年度招聘方案"
@@ -464,7 +478,7 @@ class CrmIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.data.stage").value("方案报价"))
-                .andExpect(jsonPath("$.data.sealBusinessStages.length()").value(1));
+                .andExpect(jsonPath("$.data.sealBusinessStages.length()").value(3));
 
         mockMvc.perform(get("/project/crm/analysis/overview")
                         .header("Authorization", admin))

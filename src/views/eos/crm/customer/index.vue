@@ -65,6 +65,12 @@
         </a-form-item>
       </a-form>
 
+      <a-alert v-if="queryParam.customerId" type="info" show-icon style="margin-bottom: 16px">
+        <template slot="message">
+          已定位消息关联客户，新增跟进后待办自动完成。
+          <a @click="resetSearch">查看全部客户</a>
+        </template>
+      </a-alert>
       <no-data v-show="noData" />
       <s-table
         v-show="!noData"
@@ -249,7 +255,16 @@ export default {
     '$route.query.customerId': {
       immediate: true,
       handler(id) {
-        if (id && Number(id) > 0) this.$nextTick(() => this.handleDetail({ id: Number(id) }))
+        const customerId = Number(id)
+        if (Number.isSafeInteger(customerId) && customerId > 0) {
+          this.activePool = 'mine'
+          this.queryParam = { customerId }
+          if (this.$route.query.source !== 'followupReminder') this.$nextTick(() => this.handleDetail({ id: customerId }))
+        } else {
+          const { customerId: ignored, ...filters } = this.queryParam
+          this.queryParam = filters
+        }
+        this.$nextTick(() => this.$refs.table && this.$refs.table.refresh(true))
       }
     }
   },
@@ -338,10 +353,17 @@ export default {
     },
     resetSearch() {
       this.queryParam = {}
+      this.clearCustomerLink()
       this.$refs.table.refresh(true)
+    },
+    clearCustomerLink() {
+      if (!this.$route.query.customerId) return
+      const { customerId, source, ...query } = this.$route.query
+      this.$router.replace({ path: this.$route.path, query })
     },
     handlePoolChange() {
       this.queryParam = {}
+      this.clearCustomerLink()
       this.$nextTick(() => this.$refs.table.refresh(true))
     },
     handleAction(key, record) {

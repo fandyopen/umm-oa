@@ -4,7 +4,6 @@ import com.seal.oa.auth.AuthContext;
 import com.seal.oa.common.ApiException;
 import com.seal.oa.common.ApiResult;
 import com.seal.oa.common.JdbcMaps;
-import com.seal.oa.system.DataScopeService;
 import com.seal.oa.recruitment.RecruitmentService;
 import com.seal.oa.web.RequiresModuleAction;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -37,13 +36,16 @@ public class MerchantController {
     private static final long CUSTOMER_MODULE_ID = 340352L;
 
     private final JdbcTemplate jdbc;
-    private final DataScopeService dataScopeService;
+    private final CustomerAccessService customerAccess;
+    private final CustomerFollowupReminderService followupReminders;
     private final CrmContractService contracts;
     private final RecruitmentService recruitment;
 
-    public MerchantController(JdbcTemplate jdbc, DataScopeService dataScopeService, CrmContractService contracts, RecruitmentService recruitment) {
+    public MerchantController(JdbcTemplate jdbc, CustomerAccessService customerAccess,
+                              CustomerFollowupReminderService followupReminders, CrmContractService contracts, RecruitmentService recruitment) {
         this.jdbc = jdbc;
-        this.dataScopeService = dataScopeService;
+        this.customerAccess = customerAccess;
+        this.followupReminders = followupReminders;
         this.contracts = contracts;
         this.recruitment = recruitment;
     }
@@ -129,7 +131,9 @@ public class MerchantController {
         appendEquals(where, args, query, "customerSource", "m.customer_source = ?");
         appendEquals(where, args, query, "cooperationStatus", "m.cooperation_status = ?");
         appendEquals(where, args, query, "ownerUserId", "m.owner_user_id = ?");
-        appendEquals(where, args, query, "publicPool", "m.public_pool = ?");
+        where.append(" AND m.public_pool = ?");
+        args.add("1".equals(query.get("publicPool")) ? "1" : "0");
+        appendEquals(where, args, query, "customerId", "m.id = ?");
 
         List<Map<String, Object>> rows = JdbcMaps.camelCase(jdbc.queryForList("""
                 SELECT m.*, d.dept_name AS owner_dept_name, u.dept_id AS owner_dept_id,
@@ -142,12 +146,7 @@ public class MerchantController {
                 ORDER BY m.create_time DESC, m.id DESC
                 """.formatted(where), args.toArray()));
         if (!"1".equals(query.get("publicPool"))) {
-            rows = dataScopeService.filterRows(
-                    AuthContext.userId(),
-                    rows,
-                    List.of("ownerDeptId"),
-                    List.of("ownerUserId", "ownerUserName", "createBy")
-            );
+            rows = customerAccess.filterRows(AuthContext.userId(), rows, "ownerUserId");
         }
         rows.forEach(this::decorateCustomer);
         return rows;
@@ -167,12 +166,7 @@ public class MerchantController {
                 LEFT JOIN sys_user u ON u.user_id = m.owner_user_id
                 %s ORDER BY m.name
                 """.formatted(where), args.toArray()));
-        return ApiResult.ok(dataScopeService.filterRows(
-                AuthContext.userId(),
-                rows,
-                List.of("ownerDeptId"),
-                List.of("ownerUserId", "ownerUserName", "createBy")
-        ));
+        return ApiResult.ok(customerAccess.filterRows(AuthContext.userId(), rows, "ownerUserId"));
     }
 
     @GetMapping("/project/merchant/owner/options")
@@ -190,12 +184,7 @@ public class MerchantController {
                 FROM sys_user u LEFT JOIN sys_dept d ON d.dept_id = u.dept_id
                 %s ORDER BY d.order_num, u.nick_name
                 """.formatted(where), args.toArray()));
-        return ApiResult.ok(dataScopeService.filterRows(
-                AuthContext.userId(),
-                rows,
-                List.of("deptId"),
-                List.of("userId", "userName", "nickName")
-        ));
+        return ApiResult.ok(customerAccess.filterRows(AuthContext.userId(), rows, "userId"));
     }
 
     @GetMapping("/project/merchant/{id:\\d+}")
@@ -271,6 +260,7 @@ public class MerchantController {
         Long id = jdbc.queryForObject("SELECT id FROM oa_merchant WHERE serial = ?", Long.class, serial);
         saveChildren(id, body);
         saveCollaborators(id, body);
+        followupReminders.synchronizeCustomer(id);
         return ApiResult.ok(id);
     }
 
@@ -289,7 +279,9 @@ public class MerchantController {
                     taxpayer_type = ?, industry = ?, company_scale = ?, region = ?,
                     enterprise_nature = ?, customer_source = ?, cooperation_status = ?,
                     owner_user_id = ?, owner_user_name = ?, public_pool = ?,
-                    last_followup_time = ?, contract_expire_date = ?, last_payment_date = ?,
+                    last_followup_time = COALESCE(
+                        (SELECT MAX(followup_time) FROM oa_customer_followup WHERE merchant_id = ?),
+                        ?, last_followup_time), contract_expire_date = ?, last_payment_date = ?,
                     cooperation_positions = ?, referral_count = ?, hire_count = ?,
                     contract_amount = ?, received_amount = ?, remark = ?, attachment = ?,
                     update_time = ? WHERE id = ?
@@ -309,6 +301,7 @@ public class MerchantController {
                 ownerUserId,
                 nickName(ownerUserId),
                 defaultString(body.get("publicPool"), "0"),
+                id,
                 dateTime(body.get("lastFollowupTime")),
                 sqlDate(body.get("contractExpireDate")),
                 sqlDate(body.get("lastPaymentDate")),
@@ -329,6 +322,7 @@ public class MerchantController {
         contracts.syncCustomer(id);
         contracts.syncOwnership(id);
         if (recruitment.managedCustomer(id)) recruitment.syncCustomer(id);
+        followupReminders.synchronizeCustomer(id);
         return ApiResult.ok(id);
     }
 
@@ -354,12 +348,14 @@ public class MerchantController {
         if (!draft || (followupCount != null && followupCount > 0L)
                 || (opportunityCount != null && opportunityCount > 0L)) {
             jdbc.update("UPDATE oa_merchant SET status = '1', update_time = CURRENT_TIMESTAMP WHERE id = ?", id);
+            followupReminders.synchronizeCustomer(id);
             return ApiResult.ok(Map.of("deleted", false, "disabled", true));
         }
         jdbc.update("DELETE FROM oa_merchant_account WHERE merchant_id = ?", id);
         jdbc.update("DELETE FROM oa_merchant_contact WHERE merchant_id = ?", id);
         jdbc.update("DELETE FROM oa_merchant_collaborator WHERE merchant_id = ?", id);
         jdbc.update("DELETE FROM oa_merchant WHERE id = ?", id);
+        followupReminders.synchronizeCustomer(id);
         return ApiResult.ok(Map.of("deleted", true, "disabled", false));
     }
 
@@ -375,6 +371,8 @@ public class MerchantController {
     @RequiresModuleAction(moduleId = CUSTOMER_MODULE_ID, action = "track")
     public Map<String, Object> addFollowup(@PathVariable Long id, @RequestBody Map<String, Object> body) {
         requireAccessibleMerchant(id);
+        String content = value(body.get("content"), "").trim();
+        if (content.isBlank()) throw new ApiException(400, "请填写跟进内容");
         Timestamp followupTime = dateTime(body.get("followupTime"));
         if (followupTime == null) {
             followupTime = Timestamp.valueOf(LocalDateTime.now());
@@ -389,17 +387,19 @@ public class MerchantController {
                 id,
                 followupTime,
                 value(body.get("method"), "电话"),
-                value(body.get("content"), ""),
+                content,
                 value(body.get("nextPlan"), ""),
                 dateTime(body.get("nextFollowupTime")),
                 AuthContext.userId(),
                 nickName(AuthContext.userId()),
                 AuthContext.username());
-        jdbc.update("UPDATE oa_merchant SET last_followup_time = ? WHERE id = ?", followupTime, id);
+        refreshLastFollowup(id);
+        followupReminders.synchronizeCustomer(id);
         return ApiResult.ok();
     }
 
     @DeleteMapping("/project/merchant/followup/{id}")
+    @Transactional
     @RequiresModuleAction(moduleId = CUSTOMER_MODULE_ID, action = "track")
     public Map<String, Object> deleteFollowup(@PathVariable Long id) {
         List<Long> merchantIds = jdbc.queryForList("""
@@ -410,6 +410,8 @@ public class MerchantController {
         }
         requireAccessibleMerchant(merchantIds.get(0));
         jdbc.update("DELETE FROM oa_customer_followup WHERE id = ?", id);
+        refreshLastFollowup(merchantIds.get(0));
+        followupReminders.synchronizeCustomer(merchantIds.get(0));
         return ApiResult.ok();
     }
 
@@ -428,10 +430,12 @@ public class MerchantController {
         jdbc.update("DELETE FROM oa_merchant_collaborator WHERE merchant_id = ?", id);
         saveCollaborators(id, body);
         contracts.syncOwnership(id);
+        followupReminders.synchronizeCustomer(id);
         return ApiResult.ok();
     }
 
     @PostMapping("/project/merchant/{id:\\d+}/release")
+    @Transactional
     @RequiresModuleAction(moduleId = CUSTOMER_MODULE_ID, action = "edit")
     public Map<String, Object> release(@PathVariable Long id) {
         requireAccessibleMerchant(id);
@@ -441,10 +445,12 @@ public class MerchantController {
                     public_pool = '1', assigned_at = CURRENT_TIMESTAMP, update_time = CURRENT_TIMESTAMP
                 WHERE id = ?
                 """, id);
+        followupReminders.synchronizeCustomer(id);
         return ApiResult.ok();
     }
 
     @PostMapping("/project/merchant/{id:\\d+}/claim")
+    @Transactional
     @RequiresModuleAction(moduleId = CUSTOMER_MODULE_ID, action = "access")
     public Map<String, Object> claim(@PathVariable Long id) {
         Map<String, Object> customer = requireAccessibleMerchant(id);
@@ -456,6 +462,7 @@ public class MerchantController {
                     public_pool = '0', assigned_at = CURRENT_TIMESTAMP, update_time = CURRENT_TIMESTAMP
                 WHERE id = ?
                 """, AuthContext.userId(), nickName(AuthContext.userId()), id);
+        followupReminders.synchronizeCustomer(id);
         return ApiResult.ok();
     }
 
@@ -477,6 +484,7 @@ public class MerchantController {
                 WHERE owner_user_id = ?
                 """, toUserId, nickName(toUserId), fromUserId);
         affectedCustomers.forEach(contracts::syncOwnership);
+        affectedCustomers.forEach(followupReminders::synchronizeCustomer);
         return ApiResult.ok(count);
     }
 
@@ -511,7 +519,7 @@ public class MerchantController {
     @GetMapping("/project/merchant/account/query")
     @RequiresModuleAction(moduleId = CUSTOMER_MODULE_ID, action = "access")
     public Map<String, Object> account(@RequestParam Map<String, String> query) {
-        StringBuilder where = new StringBuilder("WHERE 1 = 1");
+        StringBuilder where = new StringBuilder();
         List<Object> args = new ArrayList<>();
         appendContains(where, args, query, "account", "account LIKE ?");
         appendEquals(where, args, query, "merchantId", "merchant_id = ?");
@@ -521,15 +529,10 @@ public class MerchantController {
                 FROM oa_merchant_account a
                 JOIN oa_merchant m ON m.id = a.merchant_id
                 LEFT JOIN sys_user u ON u.user_id = m.owner_user_id
-                WHERE 1 = 1
+                WHERE m.status = '0' AND m.public_pool = '0'
                 %s ORDER BY a.id DESC
                 """.formatted(where), args.toArray()));
-        rows = dataScopeService.filterRows(
-                AuthContext.userId(),
-                rows,
-                List.of("ownerDeptId"),
-                List.of("ownerUserId", "ownerUserName", "createBy")
-        );
+        rows = customerAccess.filterRows(AuthContext.userId(), rows, "ownerUserId");
         return ApiResult.ok(rows.isEmpty() ? null : rows.get(0));
     }
 
@@ -544,6 +547,14 @@ public class MerchantController {
             row.put("createTime", formatted(row.get("createTime")));
         });
         return rows;
+    }
+
+    private void refreshLastFollowup(long customerId) {
+        jdbc.update("""
+                UPDATE oa_merchant SET last_followup_time =
+                    (SELECT MAX(followup_time) FROM oa_customer_followup WHERE merchant_id = ?)
+                WHERE id = ?
+                """, customerId, customerId);
     }
 
     private void saveChildren(Long merchantId, Map<String, Object> body) {
@@ -660,13 +671,7 @@ public class MerchantController {
     private Map<String, Object> requireAccessibleMerchant(Long id) {
         Map<String, Object> merchant = requireMerchant(id);
         if (!"1".equals(String.valueOf(merchant.get("publicPool")))
-                && !dataScopeService.canAccess(
-                        AuthContext.userId(),
-                        merchant.get("ownerDeptId"),
-                        merchant.get("ownerUserId"),
-                        merchant.get("ownerUserName"),
-                        merchant.get("createBy")
-                )) {
+                && !customerAccess.canAccessOwner(AuthContext.userId(), merchant.get("ownerUserId"))) {
             throw new ApiException(403, "无权访问该客户");
         }
         return merchant;
@@ -682,13 +687,7 @@ public class MerchantController {
             throw new ApiException(400, "客户负责人不存在或已停用");
         }
         Map<String, Object> owner = rows.get(0);
-        if (!dataScopeService.canAccess(
-                AuthContext.userId(),
-                owner.get("deptId"),
-                owner.get("userId"),
-                owner.get("userName"),
-                owner.get("nickName")
-        )) {
+        if (!customerAccess.canAccessOwner(AuthContext.userId(), owner.get("userId"))) {
             throw new ApiException(403, "无权将客户分配给该负责人");
         }
     }

@@ -35,6 +35,8 @@ public class CrmContractService {
     private final DataScopeService scopes;
     private final SystemService system;
     private final ModuleFlowBindingService bindings;
+    private final ParityRecordService parityRecords;
+    private final CustomerAccessService customerAccess;
     private static final ZoneId ZONE = ZoneId.of("Asia/Shanghai");
     private static final String SELECT = """
             SELECT c.*, m.name AS customer_name, m.owner_user_id, m.owner_user_name,
@@ -46,12 +48,14 @@ public class CrmContractService {
             """;
 
     public CrmContractService(JdbcTemplate jdbc, ObjectMapper mapper, DataScopeService scopes, SystemService system,
-                              ModuleFlowBindingService bindings) {
+                              ModuleFlowBindingService bindings, ParityRecordService parityRecords, CustomerAccessService customerAccess) {
         this.jdbc = jdbc;
         this.mapper = mapper;
         this.scopes = scopes;
         this.system = system;
         this.bindings = bindings;
+        this.parityRecords = parityRecords;
+        this.customerAccess = customerAccess;
     }
 
     public List<Map<String, Object>> list(Map<String, String> query) {
@@ -644,7 +648,7 @@ public class CrmContractService {
     }
 
     private boolean customerVisible(Map<String, Object> row) {
-        return scopes.canAccess(AuthContext.userId(), row.get("ownerDeptId"), row.get("ownerUserId"));
+        return customerAccess.canAccessOwner(AuthContext.userId(), row.get("ownerUserId"));
     }
 
     private void requireCustomerAccess(Map<String, Object> row) {
@@ -794,8 +798,26 @@ public class CrmContractService {
     }
 
     private void validateOpportunity(long opportunityId, long customerId) {
-        List<String> records = jdbc.queryForList("SELECT payload_json FROM biz_record WHERE id = ? AND module = '/project/business/list'", String.class, opportunityId);
-        if (records.isEmpty() || number(readMap(records.get(0)).get("customerId")) != customerId) throw new ApiException(400, "商机必须归属于合同客户");
+        // Match the business ID exposed by the opportunity API, not the storage row ID.
+        List<Map<String, Object>> matches = parityRecords.rows("/project/business/list").stream()
+                .filter(row -> String.valueOf(opportunityId).equals(text(row.get("id"))))
+                .toList();
+        if (matches.isEmpty()) throw new ApiException(404, "关联商机不存在或已删除，请刷新商机后重试");
+        if (matches.size() > 1) throw new ApiException(409, "商机标识重复，无法确定合同来源，请联系管理员核对商机数据");
+        Map<String, Object> opportunity = matches.get(0);
+        if (!scopes.canAccess(AuthContext.userId(),
+                opportunity.containsKey("deptId") ? opportunity.get("deptId") : opportunity.get("dept_id"),
+                opportunity.get("ownerUserId"), opportunity.get("ownerUserName"), opportunity.get("createBy"))) {
+            throw new ApiException(403, "无权访问关联商机，无法从该商机创建合同");
+        }
+        long opportunityCustomerId;
+        try {
+            opportunityCustomerId = Long.parseLong(text(opportunity.get("customerId")).trim());
+        } catch (NumberFormatException exception) {
+            throw new ApiException(400, "商机未关联有效客户，请先在商机中关联客户后再创建合同");
+        }
+        if (opportunityCustomerId <= 0) throw new ApiException(400, "商机未关联有效客户，请先在商机中关联客户后再创建合同");
+        if (opportunityCustomerId != customerId) throw new ApiException(400, "商机关联客户与合同客户不一致，请核对商机的关联客户");
     }
 
     private void expectRevision(Map<String, Object> row, Map<String, Object> body) {
