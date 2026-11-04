@@ -791,6 +791,57 @@ test('recommendation candidate selection only allows contacting and available wi
   assert.equal(candidate.labelHint, '只允许「沟通中、可推荐」两种状态可选')
 })
 
+test('talent recommendation options enforce server availability and explain recruitment locks', () => {
+  const options = recruitmentFields.talentRecommendationOptions([
+    { id: 1, name: '可用', status: 'available', canRecommend: true },
+    { id: 2, name: '占用', status: 'contacting', canRecommend: false, recruitmentLocked: true, recruitmentAvailabilityLabel: '招聘中锁定', recommendationBlockReason: '已有进行中流程' },
+    { id: 3, name: '待刷新', status: 'available' },
+    { id: 4, name: '归档', status: 'archived', canRecommend: false }
+  ])
+  assert.deepEqual(options.map(row => row.value), [1, 2, 3])
+  assert.equal(options[0].disabled, false)
+  assert.equal(options[1].disabled, true)
+  assert.equal(options[1].disabledReason, '已有进行中流程')
+  assert.ok(options[1].label.includes('招聘中锁定'))
+  assert.equal(options[2].disabled, true)
+  assert.equal(recruitmentFields.talentRecommendationOptions([{ id: 2, status: 'available' }], 2).length, 0)
+})
+
+test('talent intent cannot manually clear a recruitment lock', () => {
+  const options = recruitmentMethod('recordStatusOptions').call({ kind: 'talents' }, { recruitmentLocked: true })
+  for (const state of ['available', 'contacting']) {
+    assert.equal(options.find(row => row.value === state).disabled, true)
+    assert.ok(options.find(row => row.value === state).disabledReason.includes('不能手工'))
+  }
+  assert.equal(options.find(row => row.value === 'not_now').disabled, false)
+})
+
+test('completed placements expose a departure form and preserve completion context', async () => {
+  const actions = recruitmentFields.applicationActions({ availableOperations: ['postGuaranteeExit'] })
+  assert.equal(actions[0].permission, 'guarantee')
+  assert.equal(recruitmentFields.applicationSubstate({ stage: 'exited', guaranteeStatus: 'completed' }), '保证期已结案，后续离职')
+  const requests = []
+  const run = recruitmentMethod('runAction', { recordPath: recruitmentPath, api: async (...args) => requests.push(args) })
+  let fields; let save; let hint
+  await run.call({ kind: 'applications', allowedAction: async () => true, form: (_, items, initial, callback, message) => { fields = items; save = callback; hint = message } }, actions[0], { id: 7, revision: 3 })
+  assert.deepEqual(fields.map(item => item.key), ['exitDate', 'reason'])
+  assert.ok(hint.includes('保留已完成'))
+  await save({ exitDate: '2026-11-04', reason: '实际离职' })
+  assert.deepEqual(requests, [['/applications/7/actions/guarantee', 'post', { revision: 3, operation: 'exit', exitDate: '2026-11-04', reason: '实际离职' }]])
+})
+
+test('locked talent detail explains rejection before opening a recommendation', async () => {
+  const warnings = []; const routes = []
+  const create = recruitmentMethod('createRecommendation')
+  const vm = { kind: 'talents', detail: { id: 9, canRecommend: false, recommendationBlockReason: '候选人已入职' }, allowedAction: async () => true, $message: { warning: value => warnings.push(value) }, $router: { push: value => routes.push(value) } }
+  await create.call(vm)
+  assert.deepEqual(warnings, ['候选人已入职'])
+  assert.equal(routes.length, 0)
+  vm.detail.canRecommend = true
+  await create.call(vm)
+  assert.deepEqual(routes, [{ name: 'RecruitmentPipeline', query: { talentId: 9, create: '1' } }])
+})
+
 test('job status choices retain the Chinese draft label and enforce demand and vacancy rules', () => {
   const options = recruitmentMethod('recordStatusOptions', recruitmentFields)
   const vm = { kind: 'jobs' }

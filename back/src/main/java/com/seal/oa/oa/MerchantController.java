@@ -621,11 +621,12 @@ public class MerchantController {
         args.add(currentId);
         args.add(name);
         StringBuilder where = new StringBuilder(
-                "WHERE id <> ? AND LOWER(TRIM(name)) = LOWER(?)");
+                "WHERE id <> ? AND (LOWER(TRIM(name)) = LOWER(?)");
         if (text(taxNumber)) {
             where.append(" OR (tax_number IS NOT NULL AND tax_number <> '' AND tax_number = ?)");
             args.add(taxNumber);
         }
+        where.append(")");
         Long count = jdbc.queryForObject(
                 "SELECT COUNT(*) FROM oa_merchant " + where,
                 Long.class,

@@ -75,7 +75,6 @@ const newActivity = state => ({ state, recordTime: moment(), remark: '', attachm
 export default {
   name: 'BusinessStageForm',
   props: {
-    businessCode: { type: String, required: true },
     formId: { type: Number, required: true }
   },
   data() {
@@ -215,7 +214,7 @@ export default {
         const state = this.formData.state
         const record = {
           ...this.formData,
-          businessCode: this.businessCode,
+          businessId: this.formId,
           recordTime: moment(this.formData.recordTime).format('YYYY-MM-DD HH:mm:ss')
         }
         await addBusinessStage(record)

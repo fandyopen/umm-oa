@@ -235,7 +235,7 @@ export default {
           潜在客户: 'blue',
           已流失: 'red',
           暂停合作: 'orange'
-        }[this.customer.cooperationStatus] || 'default'
+        }[this.customer.cooperationStatus]
       )
     }
   },

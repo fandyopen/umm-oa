@@ -50,12 +50,12 @@
           {{ record.nodeType === 'action' ? record.permissionCode : record.perms }}
         </span>
         <span slot="status" slot-scope="text, record">
-          <a-tag :color="String(record.status) === '0' ? 'green' : 'default'">
+          <a-tag :color="String(record.status) === '0' ? 'green' : undefined">
             {{ String(record.status) === '0' ? '启用' : '停用' }}
           </a-tag>
         </span>
         <span slot="workflow" slot-scope="text, record">
-          <a-tag v-if="record.nodeType === 'action'" :color="record.flowDesignEnabled ? 'blue' : 'default'">
+          <a-tag v-if="record.nodeType === 'action'" :color="record.flowDesignEnabled ? 'blue' : undefined">
             {{ record.workflowState || '未开启' }}
           </a-tag>
           <span v-else>—</span>

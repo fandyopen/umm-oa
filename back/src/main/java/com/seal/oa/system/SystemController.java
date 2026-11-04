@@ -603,7 +603,14 @@ public class SystemController {
     @GetMapping("/system/role/list")
     @RequiresModuleAction(moduleId = 340597L, action = "access")
     public Map<String, Object> roles(@RequestParam Map<String, String> query) {
+        return roles(query, false);
+    }
+
+    private Map<String, Object> roles(Map<String, String> query, boolean excludeSuperAdmin) {
         String where = "WHERE del_flag = '0'";
+        if (excludeSuperAdmin) {
+            where += " AND role_key <> 'admin'";
+        }
         List<Object> args = new ArrayList<>();
         if (StringUtils.hasText(query.get("roleName"))) {
             where += " AND role_name LIKE ?";
@@ -639,7 +646,7 @@ public class SystemController {
     @GetMapping("/system/role/list/all")
     @RequiresModuleAction(moduleId = 340597L, action = "access")
     public Map<String, Object> rolesAll(@RequestParam Map<String, String> query) {
-        return roles(query);
+        return roles(query, true);
     }
 
     @GetMapping("/system/role/{roleId}")

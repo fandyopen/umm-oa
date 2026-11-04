@@ -515,7 +515,7 @@ export default {
           潜在客户: 'blue',
           暂停合作: 'orange',
           已流失: 'red'
-        }[status] || 'default'
+        }[status]
       )
     },
     isStale(time) {

@@ -83,7 +83,7 @@ export default {
           商务谈判: 'orange',
           方案报价: 'purple',
           需求确认: 'blue'
-        }[this.data.stage || this.data.businessState] || 'default'
+        }[this.data.stage || this.data.businessState]
       )
     }
   },

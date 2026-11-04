@@ -3,17 +3,6 @@
     <div class="role-content-head">
       <div class="head-name">{{ roleTitel }}</div>
       <div class="role-edit-btn">
-        <a-popover v-userPerms="{ bindingPerms: 'roleManage' }" placement="bottom" v-model="editNameVisible" trigger="click">
-          <template slot="content">
-            <a-input placeholder="输入名称" v-model="roleName" />
-            <div class="role-ele-confirmBtn">
-              <a-button class="abtn" @click="editNameConfirm(0)"> 取消 </a-button>
-              <a-button class="abtn" type="primary" @click="editNameConfirm(1)"> 确认 </a-button>
-            </div>
-          </template>
-          <a-button type="link"> 修改名称 </a-button>
-        </a-popover>
-        <a-divider type="vertical" />
         <a-popover v-userPerms="{ bindingPerms: 'roleManage' }" placement="bottom" title="调整分组" v-model="adjustVisible" trigger="click">
           <template slot="content">
             <div class="roleMenu">
@@ -82,8 +71,6 @@ export default {
   components: { STable, MemberSelect },
   data() {
     return {
-      /* 修改名称 */
-      editNameVisible: false,
       /* 调整分组 */
       adjustVisible: false,
       columns: [
@@ -126,8 +113,6 @@ export default {
       visible: false,
       /* 选中的人员 */
       intoCheckedData: [],
-      /* 修改名称val */
-      roleName: '',
       // 角色id
       roleId: -1,
       /* 角色组 */
@@ -139,20 +124,6 @@ export default {
     }
   },
   methods: {
-    /* 修改名称btn */
-    editNameConfirm(v) {
-      if (v === 1) {
-        updateRole({ roleId: this.roleId, roleName: this.roleName }).then(res => {
-          if (res.code === 200) {
-            this.editNameVisible = false
-            this.$emit('modifySuccess')
-            return this.$message.success('修改成功')
-          }
-        })
-      } else {
-        this.editNameVisible = false
-      }
-    },
     /* 调整部门btn */
     adjustConfirm(v) {
       if (v === 1) {
@@ -276,7 +247,6 @@ export default {
       this.$refs.table.refresh()
     },
     title(val) {
-      this.roleName = val
       this.roleTitel = val
     }
   }

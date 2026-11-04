@@ -247,8 +247,7 @@ export default {
         content: {
           template: BusinessStageForm,
           props: {
-            formId: row.id,
-            businessCode: row.code
+            formId: row.id
           },
           on: {
             saveSuccess: () => this.refresh()
@@ -278,8 +277,8 @@ export default {
           商务谈判: 'orange',
           方案报价: 'purple',
           需求确认: 'blue',
-          初步接洽: 'default'
-        }[stage] || 'default'
+          初步接洽: undefined
+        }[stage]
       )
     },
     formatMoney(value) {

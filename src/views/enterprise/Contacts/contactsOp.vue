@@ -36,10 +36,23 @@
               </a-menu-item>
             </a-menu>
           </div>
-          <div class="menu-type">部门</div>
+          <div class="menu-type">公司</div>
           <div class="department-tree">
-            <a-tree ref="treeRef" :selectedKeys="selectedTreeKeys" :tree-data="treeData" :replaceFields="replaceFields" @dragenter="onDragEnter" @drop="onDrop" @select="treeNodeSelect"> </a-tree>
+            <a-tree ref="treeRef" :selectedKeys="selectedTreeKeys" :tree-data="treeData" :replaceFields="replaceFields" @dragenter="onDragEnter" @drop="onDrop" @select="treeNodeSelect">
+              <template slot="title" slot-scope="item">
+                <span class="department-tree-title">
+                  <span class="department-tree-label" :title="item.label">{{ item.label }}</span>
+                  <span class="department-tree-actions" v-if="canManageDepartments">
+                    <a-icon type="edit" title="修改部门名称" @click.stop="openEditDepartment(item)" />
+                    <a-icon type="delete" title="删除部门" @click.stop="deleteDepartment(item)" />
+                  </span>
+                </span>
+              </template>
+            </a-tree>
           </div>
+          <a-modal title="修改部门名称" :visible="editDepartmentVisible" @ok="saveDepartmentName" @cancel="editDepartmentVisible = false">
+            <a-input v-model="editDepartmentName" placeholder="输入部门名称" allowClear @pressEnter="saveDepartmentName" />
+          </a-modal>
         </div>
         <div class="menu-content" v-if="gvalue === '角色'">
           <div v-userPerms="{ bindingPerms: 'roleManage' }" class="menu-type">
@@ -113,7 +126,18 @@
       </div>
       <!-- 成员 -->
       <div class="layout-content" v-if="gvalue === '组织架构'">
-        <MemberElement :module-action-guard="checkModuleAction" :module-action-visible="showModuleAction" :module-meta="moduleContexts.members" v-if="selectedKeys.includes('全部成员') || selectedKeys.includes('离职成员') || deptId" :title="mTitle" :deptId="deptId" @clearDeptId="clearDeptId" :treeNodeData="treeNodeData" @saveSuccess="saveSuccess" />
+        <MemberElement
+          :module-action-guard="checkModuleAction"
+          :module-action-visible="showModuleAction"
+          :module-meta="moduleContexts.members"
+          :hide-department-name-actions="true"
+          v-if="selectedKeys.includes('全部成员') || selectedKeys.includes('离职成员') || deptId"
+          :title="mTitle"
+          :deptId="deptId"
+          @clearDeptId="clearDeptId"
+          :treeNodeData="treeNodeData"
+          @saveSuccess="saveSuccess"
+        />
       </div>
       <!-- 角色 -->
       <div class="layout-content" v-if="gvalue === '角色'">
@@ -129,10 +153,12 @@
 
 <script>
 import { withModuleContexts } from '/src/utils/moduleContext.js'
+import { hasModuleAction } from '/src/utils/modulePermission.js'
 import MemberElement from '../components/memberElement/index.vue'
 import RoleElement from '../components/roleElement/index.vue'
 import AdminElement from '../components/adminElement/index.vue'
-import { getTreeMenu, deptsort, insertRole, updateRole, updateRoleGroup, getRoleByAdmin } from '/src/api/enterprise/index.js'
+import { getTreeMenu, deptsort, editDeptName, insertRole, updateRole, updateRoleGroup, getRoleByAdmin } from '/src/api/enterprise/index.js'
+import { delDept } from '/src/api/system/dept.js'
 import { delSaasRole, delRoleGroup } from '/src/api/system/role.js'
 
 export default {
@@ -160,6 +186,9 @@ export default {
       memberTitle: '',
       /* 部门 */
       treeData: [],
+      editDepartmentVisible: false,
+      editDepartmentId: null,
+      editDepartmentName: '',
       /* tree 字段 */
       replaceFields: { children: 'children', title: 'label', key: 'id' },
       mTitle: '',
@@ -295,7 +324,7 @@ export default {
     treeNodeSelect(expandedKeys, { selected, node }) {
       if (selected) {
         this.selectedTreeKeys = expandedKeys
-        this.mTitle = node.title
+        this.mTitle = node.dataRef ? node.dataRef.label : node.title
         // 全部成员、离职成员
         this.clearMemberSelectedKeys()
         // 岗位树
@@ -304,6 +333,45 @@ export default {
         /* 树节点 */
         this.treeNodeData = node
       }
+    },
+    openEditDepartment(department) {
+      this.editDepartmentId = department.id
+      this.editDepartmentName = department.label
+      this.editDepartmentVisible = true
+    },
+    saveDepartmentName() {
+      const label = (this.editDepartmentName || '').trim()
+      if (!label) {
+        return this.$message.warning('部门名称不能为空')
+      }
+      editDeptName({ deptId: this.editDepartmentId, deptName: label }).then(res => {
+        if (res.code === 200) {
+          if (String(this.deptId) === String(this.editDepartmentId)) this.mTitle = label
+          this.editDepartmentVisible = false
+          this.initTreeMenuList(true)
+          this.$message.success('部门名称修改成功')
+        }
+      })
+    },
+    deleteDepartment(department) {
+      this.$antdconfirm({
+        title: `确定删除部门“${department.label}”吗？`,
+        content: '删除前请确认该部门没有下属部门或成员。',
+        onOk: () =>
+          delDept(department.id).then(res => {
+            if (res.code === 200) {
+              if (String(this.deptId) === String(department.id)) {
+                this.deptId = null
+                this.mTitle = '全部成员'
+                this.selectedTreeKeys = []
+                this.treeNodeData = {}
+                this.selectedKeys = ['全部成员']
+              }
+              this.initTreeMenuList(true)
+              this.$message.success('删除成功')
+            }
+          })
+      })
     },
     /* 点击岗位树节点 */
     treeNodePostSelect(expandedKeys, { selected, node }) {
@@ -595,6 +663,11 @@ export default {
       this.selectRoleGroup = null
     }
   },
+  computed: {
+    canManageDepartments() {
+      return hasModuleAction(this.$store.getters.permissions || [], this.moduleContexts.members, 'manage')
+    }
+  },
   created() {
     this.menuCollapsed = window.localStorage.getItem('enterprise-contacts-menu-collapsed') === '1'
     this.toshow()
@@ -675,6 +748,60 @@ export default {
     visibility: visible;
     pointer-events: auto;
   }
+}
+
+.department-tree-title {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 32px;
+  padding-right: 54px;
+  line-height: 32px;
+  min-width: 0;
+  box-sizing: border-box;
+
+  .department-tree-label {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .department-tree-actions {
+    position: absolute;
+    top: 0;
+    right: 2px;
+    bottom: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.15s ease;
+
+    i {
+      width: 18px;
+      line-height: 32px;
+      text-align: center;
+    }
+
+    i:hover {
+      color: #1890ff;
+    }
+  }
+
+  &:hover .department-tree-actions {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+  }
+}
+
+.department-tree ::v-deep .ant-tree-title {
+  display: block;
+  width: 100%;
 }
 
 .roleMenu {

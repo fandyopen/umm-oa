@@ -25,6 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -292,6 +293,28 @@ class CrmIntegrationTest {
                 "SELECT status FROM oa_merchant WHERE id = ?", String.class, customerId));
         assertEquals(1, jdbc.queryForObject(
                 "SELECT COUNT(*) FROM oa_customer_followup WHERE merchant_id = ?", Integer.class, customerId));
+    }
+
+    @Test
+    @Transactional
+    void customerCanBeUpdatedWithItsExistingTaxNumber() throws Exception {
+        String admin = login("13610316814");
+        long customerId = createCustomer(admin, """
+                {"name":"CRM UPDATE DUPLICATE CHECK","taxNumber":"CRM-TAX-UPDATE-001"}
+                """);
+
+        mockMvc.perform(put("/project/merchant")
+                        .header("Authorization", admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "id": %d,
+                                  "name": "CRM UPDATE DUPLICATE CHECK",
+                                  "taxNumber": "CRM-TAX-UPDATE-001"
+                                }
+                                """.formatted(customerId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
     }
 
     @Test

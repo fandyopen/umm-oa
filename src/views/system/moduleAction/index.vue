@@ -40,10 +40,10 @@
         :pagination="false"
       >
         <span slot="workflow" slot-scope="text, record">
-          <a-tag :color="record.flowDesignEnabled ? 'blue' : 'default'">{{ record.workflowState || '未开启' }}</a-tag>
+          <a-tag :color="record.flowDesignEnabled ? 'blue' : undefined">{{ record.workflowState || '未开启' }}</a-tag>
         </span>
         <span slot="status" slot-scope="text">
-          <a-tag :color="String(text) === '0' ? 'green' : 'default'">
+          <a-tag :color="String(text) === '0' ? 'green' : undefined">
             {{ String(text) === '0' ? '启用' : '停用' }}
           </a-tag>
         </span>

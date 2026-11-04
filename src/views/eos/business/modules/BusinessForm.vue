@@ -82,8 +82,8 @@
 </template>
 
 <script>
-import { addBusiness, getBusiness, updateBusiness } from '/src/api/eos/business/business.js'
-import { listCustomerOptions, listCustomerOwners } from '/src/api/eos/crm/index.js'
+import { addBusiness, getBusiness, listBusinessOwners, updateBusiness } from '/src/api/eos/business/business.js'
+import { listCustomerOptions } from '/src/api/eos/crm/index.js'
 
 const intents = ['高', '中', '低', '待评估']
 
@@ -144,7 +144,7 @@ export default {
       this.loadCustomers(keyword)
     },
     loadOwners(keyword = '') {
-      listCustomerOwners({ keyword }).then(res => {
+      listBusinessOwners({ keyword }).then(res => {
         this.owners = res.data || []
         if (!this.form.ownerUserId && this.owners.length) {
           const current = this.$store.getters.userInfo

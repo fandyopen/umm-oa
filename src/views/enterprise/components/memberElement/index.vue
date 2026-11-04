@@ -12,7 +12,7 @@
         </div>
       </div>
       <div class="depart-operate" v-if="deptId && title !== '全部成员' && title !== '离职成员'">
-        <a-popover trigger="click" v-model="visible">
+        <a-popover v-if="!hideDepartmentNameActions" trigger="click" v-model="visible">
           <template slot="content">
             <div class="editNameInput">
               <a-input placeholder="修改名称" v-model="editNameVal" />
@@ -24,7 +24,7 @@
           </template>
           <a-button type="link">修改名称</a-button>
         </a-popover>
-        <a-divider type="vertical" />
+        <a-divider v-if="!hideDepartmentNameActions" type="vertical" />
         <a-popover trigger="click" v-model="DepVisible">
           <template slot="content">
             <div class="editNameInput">
@@ -37,7 +37,7 @@
           </template>
           <a-button type="link">添加子部门</a-button>
         </a-popover>
-        <a-popover trigger="click">
+        <a-popover v-if="!hideDepartmentNameActions" trigger="click">
           <template slot="content">
             <div class="editNameBtn">
               <a-button @click="deleteDept(false)"> 取消 </a-button>
@@ -224,6 +224,10 @@ export default {
     showRoleInfo: {
       type: Boolean,
       default: true
+    },
+    hideDepartmentNameActions: {
+      type: Boolean,
+      default: false
     }
   },
   data() {

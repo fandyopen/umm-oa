@@ -39,13 +39,17 @@ public class RecruitmentService {
                 SUM(CASE WHEN submitted_date IS NOT NULL AND stage <> 'withdrawn' THEN 1 ELSE 0 END) AS recommendations,
                 SUM(CASE WHEN stage<>'withdrawn' AND EXISTS (SELECT 1 FROM oa_recruit_interview i WHERE i.application_id=a.id AND i.status<>'cancelled') THEN 1 ELSE 0 END) AS interviews,
                 SUM(CASE WHEN stage<>'withdrawn' AND offer_date IS NOT NULL THEN 1 ELSE 0 END) AS offers,
-                SUM(CASE WHEN actual_entry_date IS NOT NULL AND stage IN ('entered','guarantee','completed') THEN 1 ELSE 0 END) AS hired
+                SUM(CASE WHEN actual_entry_date IS NOT NULL AND (stage IN ('entered','guarantee','completed') OR (stage='exited' AND guarantee_status='completed')) THEN 1 ELSE 0 END) AS hired
                 FROM oa_recruit_application a GROUP BY job_id) s ON s.job_id=j.id
             """;
     static final String TALENT_SELECT = """
-            SELECT t.*, u.nick_name AS owner_name, u.dept_id AS owner_dept_id
+            SELECT t.*, u.nick_name AS owner_name, u.dept_id AS owner_dept_id,
+                COALESCE(occupancy.recruitment_lock_count,0) AS recruitment_lock_count,
+                COALESCE(occupancy.employment_count,0) AS employment_count, occupancy.recruitment_stage,
+                (SELECT COUNT(*) FROM oa_recruit_approval p WHERE p.entity_type='talent' AND p.status='pending'
+                    AND (p.entity_id=t.id OR p.related_id=t.id)) AS pending_approval_count
             FROM oa_recruit_talent t LEFT JOIN sys_user u ON u.user_id=t.owner_user_id
-            """;
+            """ + TalentAvailabilityRules.SUMMARY_JOIN;
 
     public RecruitmentService(JdbcTemplate jdbc, ObjectMapper mapper, DataScopeService scopes, SystemService system) {
         this.jdbc=jdbc; this.mapper=mapper; this.scopes=scopes; this.system=system;
@@ -167,18 +171,18 @@ public class RecruitmentService {
     public void syncCustomer(long id){jdbc.update("""
             UPDATE oa_merchant SET cooperation_positions=(SELECT COUNT(*) FROM oa_recruit_job WHERE customer_id=?),
             referral_count=(SELECT COUNT(*) FROM oa_recruit_application a JOIN oa_recruit_job j ON j.id=a.job_id WHERE j.customer_id=? AND a.submitted_date IS NOT NULL AND a.stage<>'withdrawn'),
-            hire_count=(SELECT COUNT(*) FROM oa_recruit_application a JOIN oa_recruit_job j ON j.id=a.job_id WHERE j.customer_id=? AND a.actual_entry_date IS NOT NULL AND a.stage IN ('entered','guarantee','completed'))
+            hire_count=(SELECT COUNT(*) FROM oa_recruit_application a JOIN oa_recruit_job j ON j.id=a.job_id WHERE j.customer_id=? AND a.actual_entry_date IS NOT NULL AND (a.stage IN ('entered','guarantee','completed') OR (a.stage='exited' AND a.guarantee_status='completed')))
             WHERE id=?
             """,id,id,id,id);}
 
-    Map<String,Object> publicTalent(Map<String,Object>r){r.put("tags",array(r.remove("tagsJson")));r.put("collaborators",array(r.remove("collaboratorsJson")));boolean contact=allowed(TALENT,"contact");r.put("contactVisible",contact);if(!contact){r.put("phone",mask(text(r.get("phone"))));r.put("email",mask(text(r.get("email"))));r.remove("remark");}return r;}
+    Map<String,Object> publicTalent(Map<String,Object>r){TalentAvailabilityRules.decorate(r);r.put("tags",array(r.remove("tagsJson")));r.put("collaborators",array(r.remove("collaboratorsJson")));boolean contact=allowed(TALENT,"contact");r.put("contactVisible",contact);if(!contact){r.put("phone",mask(text(r.get("phone"))));r.put("email",mask(text(r.get("email"))));r.remove("remark");}return r;}
     String mask(String v){return v.length()<5?(v.isBlank()?"":"***"):v.substring(0,2)+"****"+v.substring(v.length()-2);}
     public List<Map<String,Object>> talents(Map<String,String>q){return rows(TALENT_SELECT+" WHERE t.tenant_id=1 AND t.status NOT IN ('deleted','merged') ORDER BY t.id DESC").stream().filter(this::visible)
             .filter(r->contains(r.get("name"),q.get("keyword"))||contains(r.get("skills"),q.get("keyword")))
             .filter(r->filter(r,q,"status")&&filter(r,q,"ownerUserId")&&contains(r.get("city"),q.get("city"))&&contains(r.get("industry"),q.get("industry"))&&contains(r.get("skills"),q.get("skills"))&&dates(r,q))
             .filter(r->text(q.get("experienceMin")).isBlank()||num(r.get("experienceYears"))>=num(q.get("experienceMin")))
             .filter(r->text(q.get("tag")).isBlank()||array(r.get("tagsJson")).stream().anyMatch(t->text(t).equals(q.get("tag"))))
-            .map(this::publicTalent).toList();}
+            .map(this::publicTalent).filter(r->filter(r,q,"recruitmentAvailability")).toList();}
     public Map<String,Object> talentDetail(long id){Map<String,Object>r=publicTalent(talent(id,false));r.put("events",events("talent",id));r.put("approvals",approvals("talent",id));r.put("disputes",rows("SELECT d.*,p.nick_name AS proposed_owner_name,h.nick_name AS handler_name FROM oa_recruit_dispute d LEFT JOIN sys_user p ON p.user_id=d.proposed_owner_id LEFT JOIN sys_user h ON h.user_id=d.handler_user_id WHERE d.talent_id=? ORDER BY d.id DESC",id));r.put("resumes",rows("SELECT id,version_no,original_name,content_type,file_size,create_time FROM oa_recruit_resume WHERE talent_id=? ORDER BY version_no DESC",id));r.put("tasks",rows("SELECT t.*,u.nick_name AS owner_name FROM oa_recruit_task t LEFT JOIN sys_user u ON u.user_id=t.owner_user_id WHERE talent_id=? ORDER BY t.id DESC",id));event("talent",id,"view",allowed(TALENT,"contact")?"查看候选人及联系方式":"查看候选人（联系方式脱敏）",Map.of());return r;}
     Map<String,Object> talentFields(Map<String,Object>b){return talentFields(b,Set.of());}
     Map<String,Object> talentFields(Map<String,Object>b,Set<String> retainedTags){Map<String,Object>r=new LinkedHashMap<>();r.put("name",required(b.get("name"),100,"候选人姓名"));String phone=limited(b.get("phone"),40,"手机号").replaceAll("[\\s()+-]","");if(!phone.isBlank()&&!phone.matches("[0-9]{6,20}"))throw new ApiException(400,"手机号须为6至20位数字");String email=limited(b.get("email"),200,"邮箱").toLowerCase(Locale.ROOT);if(!email.isBlank()&&!email.matches("[^\\s@]+@[^\\s@]+\\.[^\\s@]+"))throw new ApiException(400,"邮箱格式无效");if(phone.isBlank()&&email.isBlank())throw new ApiException(400,"手机号和邮箱至少填写一项");r.put("phone",phone);r.put("email",email);
@@ -189,7 +193,7 @@ public class RecruitmentService {
     @Transactional public Map<String,Object> updateTalent(long id,Map<String,Object>b){Map<String,Object>r=talent(id,true);revision(r,b);unlocked("talent",id);if(Set.of("merged","archived","disabled").contains(text(r.get("status"))))throw new ApiException(409,"请先重新激活候选人");if(!allowed(TALENT,"contact"))throw new ApiException(403,"修改档案需要联系方式权限");Map<String,Object>f=talentFields(b,new HashSet<>(array(r.get("tagsJson")).stream().map(RecruitmentService::text).toList()));if(num(f.get("ownerUserId"))!=num(r.get("ownerUserId")))throw new ApiException(400,"负责人变更请提交转交申请");jdbc.update("UPDATE oa_recruit_talent SET name=?,phone=?,email=?,city=?,industry=?,skills=?,experience_years=?,expected_salary=?,source=?,remark=?,tags_json=?,collaborators_json=?,revision=revision+1,update_time=CURRENT_TIMESTAMP WHERE id=?",f.get("name"),f.get("phone"),f.get("email"),f.get("city"),f.get("industry"),f.get("skills"),f.get("experienceYears"),f.get("expectedSalary"),f.get("source"),f.get("remark"),json(f.get("tags")),json(f.get("collaborators")),id);event("talent",id,"edit","更新候选人档案",Map.of());return talentDetail(id);}
     @Transactional public void deleteTalent(long id){Map<String,Object>r=talent(id,true);unlocked("talent",id);if(!"draft".equals(r.get("status"))||jdbc.queryForObject("SELECT COUNT(*) FROM oa_recruit_dispute WHERE talent_id=?",Long.class,id)>0||jdbc.queryForObject("SELECT COUNT(*) FROM oa_recruit_application WHERE talent_id=?",Long.class,id)>0||jdbc.queryForObject("SELECT COUNT(*) FROM oa_recruit_task WHERE talent_id=?",Long.class,id)>0)throw new ApiException(409,"仅未被推荐或跟进任务引用的草稿可删除");jdbc.update("UPDATE oa_recruit_talent SET status='deleted',revision=revision+1,update_time=CURRENT_TIMESTAMP WHERE id=?",id);event("talent",id,"delete","删除未引用草稿",Map.of());}
     @Transactional public Map<String,Object> talentAction(long id,String action,Map<String,Object>b){Map<String,Object>r=talent(id,true);revision(r,b);unlocked("talent",id);String reason=required(b.get("reason"),2000,"原因或跟进内容");if("merged".equals(r.get("status")))throw new ApiException(409,"该档案已合并");
-        if("status".equals(action)){String status=required(b.get("status"),32,"人才状态");if(!Set.of("uncontacted","contacting","available","not_now","dormant","archived","disabled").contains(status))throw new ApiException(400,"人才状态无效");jdbc.update("UPDATE oa_recruit_talent SET status=?,revision=revision+1,update_time=CURRENT_TIMESTAMP WHERE id=?",status,id);}
+        if("status".equals(action)){String status=required(b.get("status"),32,"人才状态");if(!Set.of("uncontacted","contacting","available","not_now","dormant","archived","disabled").contains(status))throw new ApiException(400,"人才状态无效");if(num(r.get("recruitmentLockCount"))>0&&Set.of("available","contacting").contains(status))throw new ApiException(409,"候选人被招聘流程占用，请先在对应流程办理结束或离职，不能手工解除锁定");jdbc.update("UPDATE oa_recruit_talent SET status=?,revision=revision+1,update_time=CURRENT_TIMESTAMP WHERE id=?",status,id);}
         else if("contact".equals(action))jdbc.update("UPDATE oa_recruit_talent SET last_contact_time=CURRENT_TIMESTAMP,revision=revision+1,update_time=CURRENT_TIMESTAMP WHERE id=?",id);
         else if("collaborators".equals(action))jdbc.update("UPDATE oa_recruit_talent SET collaborators_json=?,revision=revision+1,update_time=CURRENT_TIMESTAMP WHERE id=?",json(collaborators(b.get("collaborators"))),id);
         else throw new ApiException(400,"不支持的候选人操作");event("talent",id,action,("status".equals(action)?"人才状态："+text(r.get("status"))+" → "+text(b.get("status"))+"；":"")+reason,Map.of());return talentDetail(id);}
@@ -212,7 +216,7 @@ public class RecruitmentService {
         r.put("users",rows("SELECT user_id AS id,nick_name AS name FROM sys_user WHERE tenant_id=1 AND del_flag='0' AND status='0' ORDER BY user_id"));
         r.put("customers",canJobs?rows("SELECT m.id,m.name,m.owner_user_id,u.dept_id AS owner_dept_id FROM oa_merchant m LEFT JOIN sys_user u ON u.user_id=m.owner_user_id WHERE m.tenant_id=1 AND m.status='0' AND m.public_pool='0'").stream().filter(c->scopes.canAccess(AuthContext.userId(),c.get("ownerDeptId"),c.get("ownerUserId"))).map(c->Map.of("id",c.get("id"),"name",c.get("name"))).toList():List.of());
         r.put("jobs",canJobs?jobs(Map.of()).stream().map(j->Map.of("id",j.get("id"),"name",j.get("title")+" · "+j.get("customerName"),"status",j.get("status"))).toList():List.of());
-        r.put("talents",canTalents?talents(Map.of()).stream().map(t->Map.of("id",t.get("id"),"name",t.get("name"),"status",t.get("status"))).toList():List.of());
+        r.put("talents",canTalents?talents(Map.of()).stream().map(t->Map.of("id",t.get("id"),"name",t.get("name"),"status",t.get("status"),"canRecommend",t.get("canRecommend"),"recruitmentLocked",t.get("recruitmentLocked"),"recruitmentAvailabilityLabel",t.get("recruitmentAvailabilityLabel"),"recommendationBlockReason",t.get("recommendationBlockReason"))).toList():List.of());
         r.put("contracts",canJobs?rows("SELECT c.id,c.name,c.customer_id,m.owner_user_id,u.dept_id AS owner_dept_id FROM oa_crm_contract c JOIN oa_merchant m ON m.id=c.customer_id LEFT JOIN sys_user u ON u.user_id=m.owner_user_id WHERE c.tenant_id=1 AND c.effective_version>0").stream().filter(c->scopes.canAccess(AuthContext.userId(),c.get("ownerDeptId"),c.get("ownerUserId"))).map(c->Map.of("id",c.get("id"),"name",c.get("name"),"customerId",c.get("customerId"))).toList():List.of());
         r.put("tags",canTalents?tags():List.of());r.put("searches",canTalents?searches():List.of());return r;
     }

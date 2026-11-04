@@ -10,8 +10,13 @@ export const approvalStates = { draft: '未提交', pending: '审批中', approv
 export const feedbackStates = { pending: '待反馈', interested: '有意向 / 邀约面试', rejected: '不合适', need_info: '需补充资料' }
 export const offerStates = { draft: 'Offer草稿', issued: '已发放', accepted: '已接受', rejected: '已拒绝', withdrawn: '已撤回' }
 export const guaranteeStates = { active: '保证期中', completed: '期满结案', exit: '已离职', replacement: '替换处理中', refund: '已登记退费' }
+export const recruitmentAvailabilityStates = { free: '未被占用', in_process: '招聘中锁定', employed: '已入职锁定' }
+export const talentRecommendationOptions = (rows = [], excludeId) => rows
+  .filter(row => ['available', 'contacting'].includes(row.status) && Number(row.id) !== Number(excludeId))
+  .map(row => ({ value: row.id, label: row.name + (row.recruitmentLocked ? '（' + row.recruitmentAvailabilityLabel + '）' : ''), disabled: row.canRecommend !== true, disabledReason: row.recommendationBlockReason || '请刷新候选人状态后重试' }))
 export const followupTypes = { candidate_withdraw: '候选人退出', customer_cancel: '客户取消招聘', offer_reject: 'Offer拒绝', offer_withdraw: 'Offer撤回', entry_delay: '入职延期', guarantee_exit: '保证期离职', guarantee_refund: '保证期退费', guarantee_replacement: '保证期替换', other: '历史其他事项' }
 export const applicationSubstate = row => {
+  if (row.stage === 'exited' && row.guaranteeStatus === 'completed') return '保证期已结案，后续离职'
   if (['recommended', 'feedback'].includes(row.stage)) return feedbackStates[row.feedbackStatus] || ''
   if (row.stage === 'interview') {
     if (row.interviewStatus === 'completed') return { pass: '面试通过', fail: '面试未通过', pending: '结果待定' }[row.interviewResult] || '已完成'
@@ -33,7 +38,7 @@ export const applicationActions = row => {
     ['issueOffer', '登记发放Offer', 'offer'], ['acceptOffer', '登记接受Offer', 'offer'], ['rejectOffer', '登记拒绝Offer', 'offer'],
     ['withdrawOffer', row.offerStatus === 'draft' ? '取消Offer草稿' : '撤回Offer', 'offer'],
     ['entry', '确认实际入职', 'entry'], ['expectedEntry', '调整预计入职', 'entry'], ['entryDelay', '登记入职延期', 'exception'],
-    ['guarantee', '保证期处理', 'guarantee'], ['correctEntry', '纠正入职登记', 'entry', true],
+    ['guarantee', '保证期处理', 'guarantee'], ['postGuaranteeExit', '登记离职（保证期已结案）', 'guarantee'], ['correctEntry', '纠正入职登记', 'entry', true],
     ['replacement', '创建关联替换推荐', 'guarantee'], ['replacementManage', '查看替换进度', 'guarantee'],
     ['withdrawRecommendation', '撤回推荐', 'recommend'], ['recommend', '重新提交推荐', 'recommend'],
     ['finishRecommendation', '结束本次推荐', 'exception'],

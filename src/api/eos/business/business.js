@@ -9,6 +9,14 @@ export function listBusiness(query) {
   })
 }
 
+export function listBusinessOwners(query) {
+  return request({
+    url: '/project/business/owner/options',
+    method: 'get',
+    params: query
+  })
+}
+
 // 新增商机管理
 export function addBusiness(data) {
   return request({

@@ -64,6 +64,25 @@ class BusinessStageIntegrationTest {
     }
 
     @Test
+    void advancementUsesBusinessIdWhenCodesAreDuplicated() throws Exception {
+        String code = "STAGE-DUPLICATE-CODE";
+        long firstId = create(code);
+        long secondId = create(code);
+
+        call(post("/project/business/stage/insert"), Map.of(
+                "businessId", secondId, "state", "需求确认", "recordTime", "2026-11-03 10:00:00",
+                "remark", "指定商机推进", "attachment", ""
+        ), 200);
+
+        assertEquals("初步接洽", detail(firstId).path("stage").asText());
+        assertEquals("需求确认", detail(secondId).path("stage").asText());
+        call(post("/project/business/stage/insert"), Map.of(
+                "businessCode", code, "state", "需求确认", "recordTime", "2026-11-03 10:00:00",
+                "remark", "编码无法唯一定位", "attachment", ""
+        ), 400);
+    }
+
+    @Test
     void bothNegotiationOutcomesAreTerminalAndAllNodeRecordsRemainReadable() throws Exception {
         for (String outcome : List.of("赢单", "输单")) {
             String code = "STAGE-END-" + outcome;
@@ -99,6 +118,26 @@ class BusinessStageIntegrationTest {
         assertEquals("可修改名称", after.path("name").asText());
         assertEquals(before.path("stage"), after.path("stage"));
         assertEquals(before.path("sealBusinessStages"), after.path("sealBusinessStages"));
+    }
+
+    @Test
+    void opportunityOwnersAndDataScopeUseTheCustomerSalesDepartment() throws Exception {
+        JsonNode owners = call(get("/project/business/owner/options"), null, 200).path("data");
+        assertTrue(owners.size() > 0);
+        long ownerId = owners.get(0).path("userId").asLong();
+        long departmentId = owners.get(0).path("deptId").asLong();
+        assertEquals(326L, departmentId);
+
+        long id = call(post("/project/business"), Map.of(
+                "name", "销售部负责人商机", "ownerUserId", ownerId
+        ), 200).path("data").asLong();
+        JsonNode opportunity = detail(id);
+        assertEquals(ownerId, opportunity.path("ownerUserId").asLong());
+        assertEquals(departmentId, opportunity.path("deptId").asLong());
+
+        call(post("/project/business"), Map.of(
+                "name", "非销售部负责人商机", "ownerUserId", 1
+        ), 400);
     }
 
     private long create(String code) throws Exception {

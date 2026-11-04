@@ -49,6 +49,91 @@ class RecruitmentIntegrationTest {
         jdbc.update("INSERT INTO oa_crm_contract_version (contract_id,version_no,snapshot_json,status,submit_user_id,approval_user_id) VALUES (?,1,?,'active',1,901)",contract,mapper.writeValueAsString(Map.of("amount",1000,"endDate",today.plusDays(365).toString(),"feeTerms",List.of(Map.of("key","entry","title","入职服务费","guaranteeDays",0)))));
     }
 
+    @Test void recommendationLocksTalentAcrossListDetailOptionsAndApi()throws Exception{
+        JsonNode first=job(),second=job(),t=talent("招聘占用校验","13800002901");long talentId=t.path("id").asLong();
+        recommend(first,t);
+        JsonNode current=talentDetail(talentId);
+        assertTrue(current.path("recruitmentLocked").asBoolean());assertFalse(current.path("canRecommend").asBoolean());
+        assertEquals("available",current.path("status").asText());assertEquals("in_process",current.path("recruitmentAvailability").asText());
+        assertEquals("已推荐",current.path("recruitmentStageLabel").asText());
+        JsonNode list=call(admin,get(base+"/talents").param("recruitmentAvailability","in_process"),null,200).path("rows");
+        assertEquals(1,list.size());assertEquals(talentId,list.get(0).path("id").asLong());
+        JsonNode options=call(admin,get(base+"/options"),null,200).path("data").path("talents");
+        assertFalse(options.get(0).path("canRecommend").asBoolean());assertTrue(options.get(0).path("recommendationBlockReason").asText().contains("占用"));
+        call(admin,post(base+"/applications"),Map.of("jobId",second.path("id").asLong(),"talentId",talentId,"recommendation","不能并行占用"),409);
+        call(admin,post(base+"/talents/"+talentId+"/actions/status"),Map.of("revision",current.path("revision").asInt(),"status","available","reason","不能手工解锁"),409);
+    }
+
+    @Test void allActiveStagesAndCompletedEmploymentKeepTalentLocked()throws Exception{
+        JsonNode a=recommend(job(),talent("阶段占用校验","13800002902"));long id=a.path("id").asLong(),talentId=a.path("talentId").asLong();
+        for(String stage:List.of("recommended","feedback","interview","offer","entry","entered","guarantee","completed")){
+            jdbc.update("UPDATE oa_recruit_application SET stage=?,actual_entry_date=? WHERE id=?",stage,Set.of("entered","guarantee","completed").contains(stage)?today:null,id);
+            JsonNode t=talentDetail(talentId);assertTrue(t.path("recruitmentLocked").asBoolean(),stage);assertFalse(t.path("canRecommend").asBoolean(),stage);
+            assertEquals(Set.of("entered","guarantee","completed").contains(stage)?"employed":"in_process",t.path("recruitmentAvailability").asText());
+        }
+    }
+
+    @Test void rejectedWithdrawnExitedAndEndedApplicationsReleaseTalentForOtherJobs()throws Exception{
+        JsonNode first=job(),second=job();int index=0;
+        for(String stage:List.of("rejected","withdrawn","exited","ended")){
+            JsonNode t=talent("终态释放"+stage,"1380000291"+index++),a=recommend(first,t);
+            jdbc.update("UPDATE oa_recruit_application SET stage=? WHERE id=?",stage,a.path("id").asLong());
+            JsonNode released=talentDetail(t.path("id").asLong());assertFalse(released.path("recruitmentLocked").asBoolean(),stage);assertTrue(released.path("canRecommend").asBoolean(),stage);
+            recommend(second,released);
+        }
+    }
+
+    @Test void declinedFeedbackKeepsLockUntilRecommendationIsExplicitlyEnded()throws Exception{
+        JsonNode t=talent("反馈不合适须结束","13800002921"),a=act(recommend(job(),t),"feedback",Map.of("status","rejected"));
+        assertTrue(talentDetail(t.path("id").asLong()).path("recruitmentLocked").asBoolean());
+        act(a,"exception",Map.of("operation","finish"));
+        assertTrue(talentDetail(t.path("id").asLong()).path("canRecommend").asBoolean());
+    }
+
+    @Test void resubmissionCannotStealTalentFromAnotherActiveApplication()throws Exception{
+        JsonNode t=talent("重新推荐竞争","13800002922"),first=recommend(job(),t);
+        first=act(first,"recommend",Map.of("operation","withdraw"));
+        JsonNode second=recommend(job(),t);
+        call(admin,post(base+"/applications/"+first.path("id").asLong()+"/actions/recommend"),Map.of("revision",first.path("revision").asInt(),"operation","submit","reason","另一职位占用中"),409);
+        act(second,"recommend",Map.of("operation","withdraw"));
+        assertEquals("recommended",act(first,"recommend",Map.of("operation","submit")).path("stage").asText());
+    }
+
+    @Test void endingOneLegacyFlowDoesNotReleaseOtherLocksOrOverrideTalentIntent()throws Exception{
+        JsonNode t=talent("历史多流程占用","13800002923"),a=recommend(job(),t),otherJob=job();long talentId=t.path("id").asLong();
+        jdbc.update("INSERT INTO oa_recruit_application (job_id,talent_id,consultant_id,stage) VALUES (?,?,1,'recommended')",otherJob.path("id").asLong(),talentId);
+        assertEquals(2,talentDetail(talentId).path("recruitmentLockCount").asInt());
+        act(a,"recommend",Map.of("operation","withdraw"));
+        JsonNode current=talentDetail(talentId);assertEquals(1,current.path("recruitmentLockCount").asInt());
+        call(admin,post(base+"/talents/"+talentId+"/actions/status"),Map.of("revision",current.path("revision").asInt(),"status","not_now","reason","本人暂不考虑"),200);
+        jdbc.update("UPDATE oa_recruit_application SET stage='ended' WHERE talent_id=?",talentId);
+        current=talentDetail(talentId);assertFalse(current.path("recruitmentLocked").asBoolean());assertFalse(current.path("canRecommend").asBoolean());assertEquals("not_now",current.path("status").asText());
+    }
+
+    @Test void completedGuaranteeRemainsEmployedUntilDepartureAndPreservesPlacementOutcome()throws Exception{
+        JsonNode first=job(),second=job(),t=talent("结案后离职人才","13800002924"),a=progressToEntry(recommend(first,t));long talentId=t.path("id").asLong();
+        a=act(a,"entry",Map.of("actualEntryDate",today.toString(),"termKey","entry","attachmentId",uploadEvidence(a.path("id").asLong())));
+        assertEquals("employed",talentDetail(talentId).path("recruitmentAvailability").asText());
+        a=act(a,"guarantee",Map.of("operation","complete"));assertFalse(talentDetail(talentId).path("canRecommend").asBoolean());
+        assertTrue(a.path("availableOperations").toString().contains("postGuaranteeExit"));
+        call(admin,post(base+"/applications/"+a.path("id").asLong()+"/actions/guarantee"),Map.of("revision",a.path("revision").asInt(),"operation","exit","exitDate",today.plusDays(1).toString(),"reason","未来离职不可登记"),400);
+        a=act(a,"guarantee",Map.of("operation","exit","exitDate",today.toString()));
+        assertEquals("exited",a.path("stage").asText());assertEquals("completed",a.path("guaranteeStatus").asText());
+        assertTrue(talentDetail(talentId).path("canRecommend").asBoolean());
+        JsonNode original=getJob(first.path("id").asLong());assertEquals("completed",original.path("status").asText());assertEquals(1,original.path("hired").asInt());
+        assertEquals(1,jdbc.queryForObject("SELECT hire_count FROM oa_merchant WHERE id=?",Integer.class,customer));
+        recommend(second,talentDetail(talentId));
+    }
+
+    @Test void guaranteePeriodDepartureImmediatelyRestoresCandidateAvailability()throws Exception{
+        JsonNode t=talent("保证期离职释放","13800002925"),a=progressToEntry(recommend(job(),t));
+        a=act(a,"entry",Map.of("actualEntryDate",today.toString(),"termKey","entry","attachmentId",uploadEvidence(a.path("id").asLong())));
+        act(a,"guarantee",Map.of("operation","exit","exitDate",today.toString()));
+        assertTrue(talentDetail(t.path("id").asLong()).path("canRecommend").asBoolean());
+    }
+
+    JsonNode talentDetail(long id)throws Exception{return call(admin,get(base+"/talents/"+id),null,200).path("data");}
+
     @Test void recommendationCreationOnlyAllowsContactingAndAvailableTalents()throws Exception{
         JsonNode j=job();int index=0;
         for(String state:List.of("draft","uncontacted","not_now","dormant","archived","disabled","contacting","available")){
@@ -204,7 +289,7 @@ class RecruitmentIntegrationTest {
         assertTrue(operations(a).containsAll(Set.of("guarantee","correctEntry")));assertFalse(operations(a).contains("completeGuarantee"));
         call(admin,post(base+"/applications/"+id+"/actions/guarantee"),Map.of("revision",a.path("revision").asInt(),"operation","complete","reason","保证期未到"),409);
         jdbc.update("UPDATE oa_recruit_application SET guarantee_end=? WHERE id=?",today,id);a=call(admin,get(base+"/applications/"+id),null,200).path("data");assertTrue(operations(a).contains("completeGuarantee"));
-        a=act(a,"guarantee",Map.of("operation","complete"));assertEquals("completed",a.path("stage").asText());assertTrue(operations(a).isEmpty());
+        a=act(a,"guarantee",Map.of("operation","complete"));assertEquals("completed",a.path("stage").asText());assertEquals(Set.of("postGuaranteeExit"),operations(a));
         call(admin,post(base+"/applications/"+id+"/actions/entry"),Map.of("revision",a.path("revision").asInt(),"operation","correct","reason","终结后不能普通纠正"),409);
     }
 
@@ -289,6 +374,34 @@ class RecruitmentIntegrationTest {
         call(reviewer,get(base+"/resumes/"+resume.path("id").asLong()+"/file"),null,403);
         byte[]bytes=mvc.perform(get(base+"/resumes/"+resume.path("id").asLong()+"/file?preview=true").header("Authorization",admin)).andExpect(status().isOk()).andReturn().getResponse().getContentAsByteArray();assertArrayEquals(pdf.getBytes(),bytes);
         assertTrue(call(reviewer,get(base+"/talents"),null,200).path("rows").get(0).path("phone").asText().contains("****"));
+    }
+
+    @Test void mergeRejectsTwoOccupiedFilesAndPreservesSingleOccupancy()throws Exception{
+        JsonNode source=talent("占用来源档案","13800002926"),target=talent("占用目标档案","13800002926");
+        JsonNode first=recommend(job(),source),second=recommend(job(),target);
+        long sourceId=source.path("id").asLong(),targetId=target.path("id").asLong();
+        call(admin,post(base+"/talents/"+sourceId+"/requests/merge"),Map.of("revision",source.path("revision").asInt(),"targetId",targetId,"reason","不能合并两个占用"),409);
+        act(second,"recommend",Map.of("operation","withdraw"));
+        call(admin,post(base+"/talents/"+sourceId+"/requests/merge"),Map.of("revision",source.path("revision").asInt(),"targetId",targetId,"reason","仅一个流程占用可迁移"),200);
+        JsonNode merged=talentDetail(targetId);assertTrue(merged.path("recruitmentLocked").asBoolean());assertFalse(merged.path("canRecommend").asBoolean());
+        assertEquals(targetId,jdbc.queryForObject("SELECT talent_id FROM oa_recruit_application WHERE id=?",Long.class,first.path("id").asLong()));
+        assertEquals("merged",talentDetail(sourceId).path("status").asText());
+    }
+
+    @Test void mergeRechecksOccupancyWhenApprovalExecutes()throws Exception{
+        JsonNode source=talent("审批占用来源","13800002927"),target=talent("审批占用目标","13800002927"),otherJob=job();
+        long sourceId=source.path("id").asLong(),targetId=target.path("id").asLong();
+        recommend(job(),source);
+        call(admin,put("/system/module/341302/actions/merge"),Map.of("flowDesignEnabled",true),200);
+        Map<String,Object>process=Map.of("nodes",List.of(Map.of("id","start","type","start","name","发起"),Map.of("id","review","type","approval","name","合并审批","approver","17690000901"),Map.of("id","end","type","end","name","结束")),"edges",List.of(Map.of("source","start","target","review"),Map.of("source","review","target","end")));
+        call(admin,post("/activiti/mongo/setProcess"),Map.of("tenantAppId",1,"menuId",341302,"menuName","人才库","actionCode","merge","approvalEnabled",true,"processData",process),200);
+        JsonNode flow=call(admin,post(base+"/talents/"+sourceId+"/requests/merge"),Map.of("revision",source.path("revision").asInt(),"targetId",targetId,"reason","合并重复档案"),200).path("data");
+        assertFalse(talentDetail(targetId).path("canRecommend").asBoolean());
+        call(admin,post(base+"/applications"),Map.of("jobId",otherJob.path("id").asLong(),"talentId",targetId,"recommendation","审批冻结不能推荐"),409);
+        // 模拟待审期间由历史数据同步产生占用，执行时仍须复核真实流程。
+        jdbc.update("INSERT INTO oa_recruit_application (job_id,talent_id,consultant_id,stage) VALUES (?,?,1,'recommended')",otherJob.path("id").asLong(),targetId);
+        complete(reviewer,flow,true,409);
+        assertEquals("available",talentDetail(sourceId).path("status").asText());
     }
 
     @Test void duplicateMergeKeepsHistoryAndImportIsAtomic()throws Exception{

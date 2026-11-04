@@ -50,7 +50,7 @@ export default {
       form: {
         roleId: undefined,
         tenantModuleIds: [],
-        menuCheckStrictly: false
+        menuCheckStrictly: true
       },
       open: false,
       menuExpand: false,
@@ -174,7 +174,7 @@ export default {
       this.form = {
         roleId: undefined,
         tenantModuleIds: [],
-        menuCheckStrictly: false
+        menuCheckStrictly: true
       }
     },
     /** 修改按钮操作 */

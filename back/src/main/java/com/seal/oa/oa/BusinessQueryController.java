@@ -33,6 +33,8 @@ import java.util.Map;
 public class BusinessQueryController {
 
     private static final String MODULE = "/project/business/list";
+    // Department names are editable; opportunity ownership uses the stable department ID.
+    private static final long CUSTOMER_SALES_DEPARTMENT_ID = 326L;
     private static final List<String> ACTIVE_STAGES = List.of("初步接洽", "需求确认", "方案报价", "商务谈判");
     private static final TypeReference<Map<String, Object>> MAP_TYPE = new TypeReference<>() {
     };
@@ -66,17 +68,48 @@ public class BusinessQueryController {
                 .filter(row -> contains(row, "ownerUserName", query.get("ownerUserName")))
                 .filter(row -> searchAll(row, query.get("queryAll")))
                 .toList();
+        applyOwnerDepartments(rows);
         rows = dataScopeService.filterRows(
                 AuthContext.userId(),
                 rows,
                 List.of("deptId", "dept_id"),
-                List.of("createBy", "create_by", "ownerUserName")
+                List.of("createBy", "create_by", "ownerUserName", "ownerUserId")
         );
         int pageSize = Math.min(Math.max(integer(query.get("pageSize"), 10), 1), 200);
         int pageNum = Math.max(integer(query.get("pageNum"), 1), 1);
         int from = Math.min((pageNum - 1) * pageSize, rows.size());
         int to = Math.min(from + pageSize, rows.size());
         return ApiResult.page(rows.subList(from, to), rows.size());
+    }
+
+    @GetMapping("/owner/options")
+    @RequiresModuleAction(moduleId = 340590L, action = "access")
+    public Map<String, Object> ownerOptions(@RequestParam Map<String, String> query) {
+        StringBuilder where = new StringBuilder("WHERE u.del_flag = '0' AND u.status = '0' AND u.dept_id = ?");
+        List<Object> args = new ArrayList<>();
+        args.add(CUSTOMER_SALES_DEPARTMENT_ID);
+        if (query.get("keyword") != null && !query.get("keyword").isBlank()) {
+            where.append(" AND (u.nick_name LIKE ? OR u.user_name LIKE ?)");
+            args.add("%" + query.get("keyword").trim() + "%");
+            args.add("%" + query.get("keyword").trim() + "%");
+        }
+        where.append(dataScopeService.userFilter(AuthContext.userId(), args));
+        List<Map<String, Object>> owners = jdbc.queryForList("""
+                SELECT u.user_id, u.user_name, u.nick_name, u.dept_id, d.dept_name
+                FROM sys_user u JOIN sys_dept d ON d.dept_id = u.dept_id
+                %s ORDER BY u.nick_name, u.user_id
+                """.formatted(where), args.toArray()).stream()
+                .map(row -> {
+                    Map<String, Object> owner = new LinkedHashMap<>();
+                    owner.put("userId", row.get("user_id"));
+                    owner.put("userName", row.get("user_name"));
+                    owner.put("nickName", row.get("nick_name"));
+                    owner.put("deptId", row.get("dept_id"));
+                    owner.put("deptName", row.get("dept_name"));
+                    return owner;
+                })
+                .toList();
+        return ApiResult.ok(owners);
     }
 
     @GetMapping("/{id}")
@@ -98,9 +131,7 @@ public class BusinessQueryController {
                 .format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
         payload.put("stage", ACTIVE_STAGES.get(0));
         payload.put("businessState", ACTIVE_STAGES.get(0));
-        payload.putIfAbsent("ownerUserName", AuthContext.username());
-        payload.putIfAbsent("ownerUserId", AuthContext.userId());
-        payload.putIfAbsent("deptId", currentDeptId());
+        assignSalesOwner(payload);
         payload.put("createBy", AuthContext.username());
         payload.put("createTime", LocalDateTime.now().toString());
         payload.put("sealBusinessStages", List.of(Map.of(
@@ -131,6 +162,7 @@ public class BusinessQueryController {
             changes.remove(key);
         }
         existing.putAll(changes);
+        assignSalesOwner(existing);
         existing.put("id", id);
         replaceRecord(id, existing);
         return ApiResult.ok(id);
@@ -151,13 +183,20 @@ public class BusinessQueryController {
     @RequiresModuleAction(moduleId = 340590L, action = "track")
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public Map<String, Object> addStage(@RequestBody Map<String, Object> body) {
-        String code = value(body.get("businessCode"), "");
-        Map<String, Object> opportunity = parityRecords.rows(MODULE).stream()
-                .filter(this::canAccess)
-                .filter(row -> code.equals(value(row.get("code"), "")))
-                .findFirst()
-                .orElseThrow(() -> new ApiException(404, "商机不存在"));
-        opportunity = lockOpportunity(number(opportunity.get("id"), 0L));
+        long businessId = number(body.get("businessId"), 0L);
+        Map<String, Object> opportunity;
+        if (businessId > 0L) {
+            opportunity = lockOpportunity(businessId);
+        } else {
+            String code = value(body.get("businessCode"), "");
+            List<Map<String, Object>> matches = parityRecords.rows(MODULE).stream()
+                    .filter(this::canAccess)
+                    .filter(row -> code.equals(value(row.get("code"), "")))
+                    .toList();
+            if (matches.isEmpty()) throw new ApiException(404, "商机不存在");
+            if (matches.size() > 1) throw new ApiException(400, "商机编码重复，请刷新页面后重试");
+            opportunity = lockOpportunity(number(matches.get(0).get("id"), 0L));
+        }
         String current = currentStage(opportunity);
         String target = value(body.get("state"), "");
         int currentIndex = ACTIVE_STAGES.indexOf(current);
@@ -249,6 +288,7 @@ public class BusinessQueryController {
     }
 
     private boolean canAccess(Map<String, Object> opportunity) {
+        applyOwnerDepartment(opportunity);
         Object deptId = opportunity.containsKey("deptId")
                 ? opportunity.get("deptId")
                 : opportunity.get("dept_id");
@@ -261,11 +301,56 @@ public class BusinessQueryController {
         );
     }
 
-    private Long currentDeptId() {
-        List<Long> deptIds = jdbc.queryForList("""
-                SELECT dept_id FROM sys_user WHERE user_id = ? AND del_flag = '0'
-                """, Long.class, AuthContext.userId());
-        return deptIds.isEmpty() ? null : deptIds.get(0);
+    private void applyOwnerDepartments(List<Map<String, Object>> opportunities) {
+        List<Long> ownerIds = opportunities.stream()
+                .map(row -> number(row.get("ownerUserId"), 0L))
+                .filter(id -> id > 0L)
+                .distinct()
+                .toList();
+        if (ownerIds.isEmpty()) return;
+        List<Object> args = new ArrayList<>(ownerIds);
+        Map<Long, Long> ownerDepartments = new LinkedHashMap<>();
+        jdbc.queryForList("SELECT user_id, dept_id FROM sys_user WHERE user_id IN ("
+                        + String.join(",", java.util.Collections.nCopies(ownerIds.size(), "?")) + ")",
+                args.toArray()).forEach(row -> ownerDepartments.put(
+                number(row.get("user_id"), 0L), number(row.get("dept_id"), 0L)));
+        opportunities.forEach(row -> {
+            Long ownerDepartment = ownerDepartments.get(number(row.get("ownerUserId"), 0L));
+            if (ownerDepartment != null && ownerDepartment > 0L) row.put("deptId", ownerDepartment);
+        });
+    }
+
+    private void applyOwnerDepartment(Map<String, Object> opportunity) {
+        long ownerId = number(opportunity.get("ownerUserId"), 0L);
+        if (ownerId <= 0L) return;
+        List<Long> departmentIds = jdbc.queryForList(
+                "SELECT dept_id FROM sys_user WHERE user_id = ?", Long.class, ownerId);
+        if (!departmentIds.isEmpty() && departmentIds.get(0) != null) {
+            opportunity.put("deptId", departmentIds.get(0));
+        }
+    }
+
+    private void assignSalesOwner(Map<String, Object> payload) {
+        long requestedOwnerId = number(payload.get("ownerUserId"), 0L);
+        if (requestedOwnerId <= 0L) {
+            List<Long> owners = jdbc.queryForList("""
+                    SELECT user_id FROM sys_user
+                    WHERE dept_id = ? AND del_flag = '0' AND status = '0'
+                    ORDER BY user_id
+                    """, Long.class, CUSTOMER_SALES_DEPARTMENT_ID);
+            if (owners.isEmpty()) throw new ApiException(400, "客户销售部没有可用成员，无法设置商机负责人");
+            requestedOwnerId = owners.get(0);
+        }
+        List<Map<String, Object>> owners = jdbc.queryForList("""
+                SELECT u.user_id, u.nick_name, u.dept_id, d.dept_name
+                FROM sys_user u JOIN sys_dept d ON d.dept_id = u.dept_id
+                WHERE u.user_id = ? AND u.dept_id = ? AND u.del_flag = '0' AND u.status = '0'
+                """, requestedOwnerId, CUSTOMER_SALES_DEPARTMENT_ID);
+        if (owners.isEmpty()) throw new ApiException(400, "商机负责人必须属于客户销售部");
+        Map<String, Object> owner = owners.get(0);
+        payload.put("ownerUserId", owner.get("user_id"));
+        payload.put("ownerUserName", owner.get("nick_name"));
+        payload.put("deptId", owner.get("dept_id"));
     }
 
     private void insertRecord(Map<String, Object> payload) {

@@ -43,10 +43,13 @@ final class RecruitmentPipelineRules {
                     if(r.get("guaranteeEnd")!=null&&!today().isBefore(date(r.get("guaranteeEnd"),"保证期结束")))out.add("completeGuarantee");
                 }
             }
+            case "completed" -> {
+                if(r.get("actualEntryDate")!=null&&"completed".equals(r.get("guaranteeStatus")))out.add("postGuaranteeExit");
+            }
             case "withdrawn" -> {
                 // Later-stage withdrawals retain their evidence and cannot silently reuse an old Offer/interview.
                 if(!hasInterviews&&offer.isBlank()&&r.get("actualEntryDate")==null
-                        &&jobReady&&num(r.get("talentPendingCount"))==0
+                        &&jobReady&&num(r.get("talentPendingCount"))==0&&num(r.get("talentBlockingCount"))==0
                         &&Set.of("contacting","available").contains(text(r.get("talentStatus"))))out.add("recommend");
             }
             case "exited" -> {

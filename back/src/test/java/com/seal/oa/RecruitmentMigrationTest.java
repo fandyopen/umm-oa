@@ -15,11 +15,14 @@ class RecruitmentMigrationTest {
     @Test void startupRepairsLegacyIconsAndPreservesCustomIcons() throws Exception {
         long[] ids = {341300, 341301, 341302, 341303};
         String[] legacy = {"team", "solution", "contacts", "branches"};
-        String[] expected = {"iconfont-tuanduiguanli", "iconfont-zhiwei", "iconfont-tuandui", "iconfont-zixiangmukanban"};
+        String[] expected = {"iconfont-zhiwei", "iconfont-zhiwei", "iconfont-tuandui", "iconfont-zixiangmukanban"};
         for (int i = 0; i < ids.length; i++) jdbc.update("UPDATE sys_module SET icon=? WHERE module_id=?", legacy[i], ids[i]);
         bootstrap.run(null);
         bootstrap.run(null);
         for (int i = 0; i < ids.length; i++) assertEquals(expected[i], jdbc.queryForObject("SELECT icon FROM sys_module WHERE module_id=?", String.class, ids[i]));
+        jdbc.update("UPDATE sys_module SET icon='iconfont-tuanduiguanli' WHERE module_id=341300");
+        bootstrap.run(null);
+        assertEquals("iconfont-zhiwei", jdbc.queryForObject("SELECT icon FROM sys_module WHERE module_id=341300", String.class));
         jdbc.update("UPDATE sys_module SET icon='iconfont-zuzhijiagou' WHERE module_id=341300");
         bootstrap.run(null);
         assertEquals("iconfont-zuzhijiagou", jdbc.queryForObject("SELECT icon FROM sys_module WHERE module_id=341300", String.class));
