@@ -1,11 +1,16 @@
 <template>
   <div>
-    <s-descriptions :title="row.entityType ? '招聘业务审批申请' : row.contractId ? '合同审批申请' : '业务变更申请'" :formItems="formItems" :formData="normalizedRow" />
+    <s-descriptions :title="row.financeRecord ? '财务审批申请' : row.entityType ? '招聘业务审批申请' : row.contractId ? '合同审批申请' : '业务变更申请'" :formItems="formItems" :formData="normalizedRow" />
+    <template v-if="row.financeRecord">
+      <a-alert type="info" show-icon message="此处展示提交时冻结的财务单据。审批通过后，开票和退款仍需登记实际办理结果；回款、核销、冲销和成本按单据确认入账。" style="margin:16px 0" />
+      <div v-for="(file,index) in financeFiles" :key="index"><a :href="file.fileName" target="_blank" rel="noopener noreferrer">{{ file.name || '查看财务凭证' }}</a></div>
+      <a-button v-if="row.contractId" type="link" icon="file-text" @click="openContract">查看关联合同</a-button>
+    </template>
     <template v-if="row.entityType && row.snapshot">
       <a-alert type="info" show-icon message="此处展示提交时冻结的招聘资料和变更内容。全部审批节点通过后执行，退回不改变正式数据。" style="margin: 16px 0" />
       <a-table :columns="recruitColumns" :data-source="recruitSnapshot" row-key="key" :pagination="false" size="small" />
     </template>
-    <template v-if="row.contractId">
+    <template v-if="row.contractId && !row.financeRecord">
       <a-alert type="info" show-icon message="审批内容为本次提交时冻结的合同版本；完成当前节点后，按已发布流程流转。" style="margin: 16px 0" />
       <a-table :columns="feeColumns" :data-source="row.feeTerms || []" row-key="key" :pagination="false" size="small" />
       <a-button type="link" icon="file-text" @click="openContract">查看关联合同与流程记录</a-button>
@@ -44,6 +49,8 @@ const labels = {
   userIds: '成员ID',
   remark: '备注'
 }
+const financeLabels = {title:'申请事项',recordId:'财务单据编号',recordType:'单据类型',customerName:'客户名称',contractName:'关联合同',receivableTitle:'应收项目',termKey:'收费节点',amount:'本次金额（元）',businessDate:'业务日期',invoiceTitle:'发票抬头',taxNo:'税号',channel:'收付款渠道',referenceNo:'业务流水号',originalReceiptId:'原合同到账编号',originalRecordId:'原财务到账编号',category:'成本类别',payee:'收款对象',reason:'办理原因',remark:'备注'}
+const financeTypes = {invoice:'开票申请',receipt:'回款确认',refund:'退款申请',writeoff:'应收核销',reversal:'到账冲销',cost:'直接成本'}
 
 export default {
   name: 'WorkflowActionTodoDetail',
@@ -61,10 +68,13 @@ export default {
     openContract() {
       const contractId = normalizeContractId(this.row.contractId)
       if (!contractId) return this.$message.warning('合同编号无效，请刷新待办后重试')
-      this.$createAntdDrawer({ drawerProps: { title: '合同详情', width: '86%' }, content: { template: ContractDetail, props: { contractId, initialTab: 'approvals' }, on: { changed: () => this.$emit('changed') } } })
+      this.$createAntdDrawer({ drawerProps: { title: '合同详情', width: '86%' }, content: { template: ContractDetail, props: { contractId, initialTab: this.row.financeRecord ? 'fees' : 'approvals' }, on: { changed: () => this.$emit('changed') } } })
     }
   },
   computed: {
+    financeFiles() {
+      try { return JSON.parse(this.row.attachment || '[]').filter(file => typeof file.fileName === 'string' && file.fileName.startsWith('/profile/') && !file.fileName.includes('..')) } catch (error) { return [] }
+    },
     recruitColumns() {
       return [{ title: '项目', dataIndex: 'name' }, { title: '申请时原资料', dataIndex: 'before' }, { title: '申请后内容', dataIndex: 'after' }]
     },
@@ -80,12 +90,14 @@ export default {
         const value = this.row[key]
         result[key] = Array.isArray(value) ? value.join('、') : value
       })
+      if(this.row.financeRecord)result.recordType=financeTypes[this.row.recordType] || this.row.recordType
       return result
     },
     formItems() {
+      const fields = this.row.financeRecord ? financeLabels : labels
       return Object.keys(this.row || {})
-        .filter(key => labels[key])
-        .map(key => ({ label: labels[key], prop: key }))
+        .filter(key => fields[key])
+        .map(key => ({ label: fields[key], prop: key }))
     }
   }
 }

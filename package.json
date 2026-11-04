@@ -10,7 +10,8 @@
     "test:module-context": "node --test back/tools/module-context.test.mjs",
     "test:business-stage": "node --test back/tools/business-stage.test.mjs",
     "test:contract-conversion": "node --test back/tools/contract-conversion.test.mjs",
-    "test:customer-reminder": "node --test back/tools/customer-reminder.test.mjs"
+    "test:customer-reminder": "node --test back/tools/customer-reminder.test.mjs",
+    "test:customer-finance": "node --test back/tools/customer-finance.test.mjs"
   },
   "devDependencies": {
     "@ljharb/eslint-config": "^21.0.0",

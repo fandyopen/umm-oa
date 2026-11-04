@@ -499,26 +499,6 @@ public class CrmContractService {
         return detail(id);
     }
 
-    @Transactional
-    public void receipt(long id, Map<String, Object> body) {
-        Map<String, Object> row = require(id, true);
-        requireCustomerAccess(row);
-        if (number(row.get("effectiveVersion")) == 0 || "completed".equals(row.get("status"))) throw new ApiException(409, "只能为履约中的生效合同登记回款");
-        String key = text(body.get("termKey"));
-        Map<String, Object> term = feeRows(row).stream().filter(item -> key.equals(item.get("key"))).findFirst()
-                .orElseThrow(() -> new ApiException(400, "请关联生效版本中的收费条款"));
-        BigDecimal amount = money(body.get("amount"));
-        if (amount.signum() <= 0 || amount.compareTo(money(term.get("outstandingAmount"))) > 0) throw new ApiException(400, "回款须大于0且不能超过该条款未收金额");
-        LocalDate day = date(body.get("receiptDate"), "回款日期");
-        if (day.isAfter(LocalDate.now(ZONE))) throw new ApiException(400, "回款日期不能晚于今天");
-        jdbc.update("INSERT INTO oa_crm_contract_receipt (contract_id, term_key, amount, receipt_date, remark, create_by) VALUES (?, ?, ?, ?, ?, ?)",
-                id, key, amount, Date.valueOf(day), limited(body.get("remark"), 1000, "回款说明"), AuthContext.username());
-        syncCustomer(number(row.get("customerId")));
-        if (amount.compareTo(money(term.get("outstandingAmount"))) == 0) {
-            jdbc.update("UPDATE oa_todo SET status = 'done' WHERE business_type = 'crmRisk' AND task_id = ?", "crm-contract-" + id + "-fee-" + key);
-        }
-    }
-
     private void closeResolvedReminders(long contractId) {
         Set<String> active = new HashSet<>();
         reminders(false).stream().filter(row -> number(row.get("contractId")) == contractId)
@@ -592,7 +572,7 @@ public class CrmContractService {
                 """, BigDecimal.class, customerId);
         Date latest = jdbc.queryForObject("""
                 SELECT MAX(r.receipt_date) FROM oa_crm_contract_receipt r
-                JOIN oa_crm_contract c ON c.id = r.contract_id WHERE c.customer_id = ?
+                JOIN oa_crm_contract c ON c.id = r.contract_id WHERE c.customer_id = ? AND r.amount > 0
                 """, Date.class, customerId);
         jdbc.update("""
                 UPDATE oa_merchant SET contract_amount = ?, received_amount = ?, contract_expire_date = ?,
@@ -674,8 +654,8 @@ public class CrmContractService {
         row.put("effectiveAmount", effective.isEmpty() ? BigDecimal.ZERO : money(effective.get("amount")));
         row.put("effectiveEndDate", effective.get("endDate"));
         row.put("effectiveFeeTerms", effective.isEmpty() ? List.of() : feeRows(row));
-        row.put("receivedAmount", jdbc.queryForObject("SELECT COALESCE(SUM(amount), 0) FROM oa_crm_contract_receipt WHERE contract_id = ?", BigDecimal.class, row.get("id")));
-        row.put("outstandingAmount", money(row.get("effectiveAmount")).subtract(money(row.get("receivedAmount"))));
+        row.put("receivedAmount", netReceived(number(row.get("id")), null));
+        row.put("outstandingAmount", feeRows(row).stream().map(term -> money(term.get("outstandingAmount"))).reduce(BigDecimal.ZERO, BigDecimal::add));
         row.put("canEditCustomer", customerVisible(row));
         row.put("signingPending", "running".equals(signingWorkflow(number(row.get("id")), false).get("status")));
         return row;
@@ -699,9 +679,11 @@ public class CrmContractService {
             term.put("ownerUserName", row.get("ownerUserName"));
             term.put("effectiveVersion", row.get("effectiveVersion"));
             term.put("contractStatus", row.get("status"));
-            BigDecimal received = jdbc.queryForObject("SELECT COALESCE(SUM(amount), 0) FROM oa_crm_contract_receipt WHERE contract_id = ? AND term_key = ?", BigDecimal.class, row.get("id"), term.get("key"));
+            BigDecimal received = netReceived(number(row.get("id")), text(term.get("key")));
             term.put("receivedAmount", received);
-            BigDecimal outstanding = money(term.get("amount")).subtract(received);
+            BigDecimal writtenOff = jdbc.queryForObject("SELECT COALESCE(SUM(amount),0) FROM oa_finance_record WHERE contract_id=? AND term_key=? AND record_type='writeoff' AND status='confirmed'", BigDecimal.class, row.get("id"), term.get("key"));
+            term.put("writeoffAmount", writtenOff);
+            BigDecimal outstanding = money(term.get("amount")).subtract(received).subtract(writtenOff);
             term.put("outstandingAmount", outstanding);
             term.put("paymentStatus", outstanding.signum() <= 0 ? "paid" : date(term.get("dueDate"), "收费到期日").isBefore(LocalDate.now(ZONE)) ? "overdue" : "unpaid");
             term.put("rowKey", row.get("id") + "-" + term.get("key"));
@@ -762,11 +744,31 @@ public class CrmContractService {
     private void protectPaidTerms(long id, Map<String, Object> fields) {
         Map<String, BigDecimal> amounts = new LinkedHashMap<>();
         readTerms(fields.get("feeTerms")).forEach(term -> amounts.put(text(term.get("key")), money(term.get("amount"))));
-        for (Map<String, Object> paid : JdbcMaps.camelCase(jdbc.queryForList("SELECT term_key, SUM(amount) AS paid FROM oa_crm_contract_receipt WHERE contract_id = ? GROUP BY term_key", id))) {
-            if (!amounts.containsKey(text(paid.get("termKey"))) || amounts.get(text(paid.get("termKey"))).compareTo(money(paid.get("paid"))) < 0) {
+        List<Map<String,Object>> obligations = JdbcMaps.camelCase(jdbc.queryForList("""
+                SELECT term_key,
+                  (SELECT COALESCE(SUM(amount),0) FROM oa_crm_contract_receipt r
+                    WHERE r.contract_id=c.contract_id AND r.term_key=c.term_key) AS net_received,
+                  (SELECT COALESCE(SUM(amount),0) FROM oa_finance_record w WHERE w.contract_id=c.contract_id
+                    AND w.term_key=c.term_key AND w.record_type='writeoff' AND w.status IN ('approving','approved','confirmed')) AS writeoff_amount,
+                  (SELECT COALESCE(SUM(amount),0) FROM oa_finance_record i WHERE i.contract_id=c.contract_id
+                    AND i.term_key=c.term_key AND i.record_type='invoice' AND i.status IN ('approving','approved','confirmed')) AS invoiced_amount
+                FROM (SELECT DISTINCT term_key, ? AS contract_id FROM oa_crm_contract_receipt WHERE contract_id=?
+                      UNION SELECT DISTINCT term_key, ? AS contract_id FROM oa_finance_record WHERE contract_id=?) c
+                """, id,id,id,id));
+        for (Map<String, Object> paid : obligations) {
+            BigDecimal cashAndWriteoff = money(paid.get("netReceived")).add(money(paid.get("writeoffAmount")));
+            BigDecimal protectedAmount = cashAndWriteoff.max(money(paid.get("invoicedAmount")));
+            if (!amounts.containsKey(text(paid.get("termKey"))) || amounts.get(text(paid.get("termKey"))).compareTo(protectedAmount) < 0) {
                 throw new ApiException(409, "已收款条款不能删除，条款金额不能低于已收金额");
             }
         }
+    }
+
+    private BigDecimal netReceived(long contractId, String termKey) {
+        String suffix = termKey == null ? "" : " AND term_key = ?";
+        Object[] args = termKey == null ? new Object[] {contractId} : new Object[] {contractId, termKey};
+        BigDecimal received = jdbc.queryForObject("SELECT COALESCE(SUM(amount), 0) FROM oa_crm_contract_receipt WHERE contract_id = ?" + suffix, BigDecimal.class, args);
+        return received == null ? BigDecimal.ZERO : received;
     }
 
     private boolean hasSignedRenewal(long id, LocalDate end) {

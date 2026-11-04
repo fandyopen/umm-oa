@@ -14,9 +14,11 @@ import java.util.Map;
 public class CrmContractController {
     private final CrmContractService contracts;
     private final CrmContractWorkflowService workflow;
-    public CrmContractController(CrmContractService contracts, CrmContractWorkflowService workflow) {
+    private final CustomerFinanceService finance;
+    public CrmContractController(CrmContractService contracts, CrmContractWorkflowService workflow, CustomerFinanceService finance) {
         this.contracts = contracts;
         this.workflow = workflow;
+        this.finance = finance;
     }
 
     @GetMapping
@@ -92,7 +94,7 @@ public class CrmContractController {
 
     @PostMapping("/{id}/receipts")
     @RequiresModuleAction(moduleId = 341203, action = "receive")
-    public Map<String, Object> receipt(@PathVariable long id, @RequestBody Map<String, Object> body) { contracts.receipt(id, body); return ApiResult.ok(); }
+    public Map<String, Object> receipt(@PathVariable long id, @RequestBody Map<String, Object> body) { return ApiResult.ok(finance.registerFromContract(id, body)); }
 
     @PostMapping("/{id}/reminder-log")
     @RequiresModuleAction(moduleId = 341205, action = "handle")

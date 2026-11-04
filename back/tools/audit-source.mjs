@@ -149,7 +149,7 @@ function sqlValues(input) {
 
 const retired = new Set(JSON.parse(read('back/db/retired-modules.json')).moduleIds.map(String))
 const catalog = new Map()
-for (const sql of ['back/src/main/resources/module-data.sql', 'back/src/main/resources/customer-contract-menu.sql', 'back/src/main/resources/recruitment-menu.sql']) {
+for (const sql of ['back/src/main/resources/module-data.sql', 'back/src/main/resources/customer-contract-menu.sql', 'back/src/main/resources/recruitment-menu.sql', 'back/src/main/resources/customer-finance-menu.sql']) {
   const source = read(sql)
   const matches = [
     ...source.matchAll(/MERGE INTO sys_module\s*\(([^)]+)\)[^;]*?VALUES\s*\(([^;]*)\);/gi),

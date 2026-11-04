@@ -50,6 +50,8 @@ public class LocalDatabaseBootstrap implements ApplicationRunner {
             "retire-business-modules.sql",
             "customer-contract-schema.sql",
             "customer-contract-menu.sql",
+            "customer-finance-schema.sql",
+            "customer-finance-menu.sql",
             "recruitment-schema.sql",
             "recruitment-menu.sql",
             "administrator-model.sql",

@@ -305,9 +305,15 @@ export default {
       if (this.saving) return
       this.saving = true
       try {
+        const operation = this.operation
         const result = await contractAction(this.contractId, this.operation, this.actionForm)
         this.operation = ''
-        this.$message.success(result.data?.signingPending ? '签署申请已提交，审批通过后生效' : '操作成功')
+        const successMessage = result.data?.signingPending
+          ? '签署申请已提交，审批通过后生效'
+          : operation === 'receipts'
+            ? '回款申请草稿已创建，请到财务与回款管理-回款登记提交审批'
+            : '操作成功'
+        this.$message.success(successMessage)
         await this.load()
         this.$emit('changed')
       } finally {
