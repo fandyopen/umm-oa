@@ -93,6 +93,8 @@ public class ActivityController {
         if (protectedTypes.contains(CustomerFollowupReminderService.BUSINESS_TYPE)) {
             throw new ApiException(409, "请进入客户列表新增跟进，跟进保存成功后待办自动完成");
         }
+        if (protectedTypes.stream().anyMatch(type -> List.of("hrPayroll","hrPayslip","hrHandover").contains(type)))
+            throw new ApiException(409, "请进入对应人事业务办理，发放、交接或查看工资条后待办自动完成");
         if (protectedTypes.stream().anyMatch(type -> "crmRisk".equals(type) || "crmContractApproval".equals(type))) {
             throw new ApiException(409, "客户风险请处理对应业务，历史合同审批请在待办详情办理，完成后待办自动关闭");
         }
@@ -242,6 +244,14 @@ public class ActivityController {
     private void decorateCrmTasks(List<Map<String, Object>> rows) {
         for (Map<String, Object> row : rows) {
             String type = value(row.get("businessType"), "");
+            if (List.of("hrPayroll","hrPayslip","hrHandover").contains(type)) {
+                row.put("form",Map.of("title",value(row.get("title"),""),"businessId",row.get("businessId")));
+                row.put("formId",row.get("businessId"));
+                row.put("processName","hrPayroll".equals(type)?"工资发放":"hrPayslip".equals(type)?"工资条查阅":"离职业务交接");
+                row.put("taskName","进入业务办理"); row.put("applyUserName","人事管理");
+                row.put("lastHistoricActivity",Map.of("comment","","assigneeName",""));
+                continue;
+            }
             boolean customerFollowup = CustomerFollowupReminderService.BUSINESS_TYPE.equals(type);
             if (!customerFollowup && !"crmRisk".equals(type) && !"crmContractApproval".equals(type)) continue;
             Map<String, Object> form = new LinkedHashMap<>();

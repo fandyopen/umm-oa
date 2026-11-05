@@ -1,6 +1,8 @@
 package com.seal.oa.system;
 
 import com.seal.oa.common.ApiException;
+import com.seal.oa.hr.HrEmployeeService;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -15,10 +17,12 @@ public class HrMemberService {
 
     private final JdbcTemplate jdbc;
     private final PasswordEncoder passwordEncoder;
+    private final ObjectProvider<HrEmployeeService> employees;
 
-    public HrMemberService(JdbcTemplate jdbc, PasswordEncoder passwordEncoder) {
+    public HrMemberService(JdbcTemplate jdbc, PasswordEncoder passwordEncoder, ObjectProvider<HrEmployeeService> employees) {
         this.jdbc = jdbc;
         this.passwordEncoder = passwordEncoder;
+        this.employees = employees;
     }
 
     public void validateInvite(Map<String, Object> body) {
@@ -72,6 +76,7 @@ public class HrMemberService {
         );
         bind(body, "roleIds", id, "sys_user_role", "user_id", "role_id");
         bind(body, "postIds", id, "sys_user_post", "user_id", "post_id");
+        if (id != null) employees.getObject().memberCreated(id);
         return id == null ? 0L : id;
     }
 
@@ -95,10 +100,8 @@ public class HrMemberService {
         validateTransfer(deptId, userIds);
         int count = 0;
         for (Long userId : userIds) {
-            count += jdbc.update("""
-                    UPDATE sys_user SET dept_id = ?, update_time = CURRENT_TIMESTAMP
-                    WHERE user_id = ? AND del_flag = '0'
-                    """, deptId, userId);
+            employees.getObject().memberChanged(userId, "transfer", Map.of("deptId", deptId), "成员管理调整部门");
+            count++;
         }
         return count;
     }
@@ -117,10 +120,8 @@ public class HrMemberService {
         validateDismiss(userIds);
         int count = 0;
         for (Long userId : userIds) {
-            count += jdbc.update("""
-                    UPDATE sys_user SET del_flag = '2', update_time = CURRENT_TIMESTAMP
-                    WHERE user_id = ? AND del_flag = '0'
-                    """, userId);
+            employees.getObject().memberChanged(userId, "dismiss", Map.of(), "成员管理办理离职");
+            count++;
         }
         return count;
     }
@@ -144,6 +145,7 @@ public class HrMemberService {
             }
         }
         for (Long userId : uniqueIds) {
+            employees.getObject().memberRemoved(userId);
             jdbc.update("""
                     UPDATE sys_dept SET leader = '', update_time = CURRENT_TIMESTAMP
                     WHERE dept_id IN (SELECT dept_id FROM sys_dept_principal WHERE user_id = ?)

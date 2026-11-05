@@ -3085,13 +3085,272 @@ CREATE TABLE IF NOT EXISTS oa_finance_collection (
 );
 
 
-INSERT INTO sys_module (module_id, tenant_id, parent_id, module_name, route_name, path, component, icon, module_sort, hidden, perms, has_flow, no_cache, status)
-SELECT 341400, 1, 0, '财务与回款管理', 'CustomerFinance', '/finance', 'eos/crm/finance/index', 'iconfont-caiwuguanli', 5, 0, 'finance:ledger:list', 0, 0, '0'
+INSERT INTO sys_module (module_id, tenant_id, parent_id, module_name, route_name, path, component, icon, module_sort, hidden, perms, has_flow, no_cache, redirect, status)
+SELECT 341400, 1, 0, '财务与回款管理', 'CustomerFinance', '/finance', 'eos/crm/finance/index', 'iconfont-caiwuguanli', 5, 0, 'finance:ledger:list', 0, 0, '/finance/ledger', '0'
 WHERE NOT EXISTS (SELECT 1 FROM sys_module WHERE module_id = 341400);
 
 -- Promote the legacy CRM child once; keep its permissions, buttons and workflows.
 UPDATE sys_module SET parent_id = 0, path = '/finance', module_sort = 5
 WHERE module_id = 341400 AND parent_id = 340310;
+
+-- Existing roles keep access when a workspace menu is first introduced.
+-- Later restarts preserve administrator edits to individual menu grants.
+INSERT INTO sys_role_module (role_id, module_id)
+SELECT source.role_id, 341401 FROM sys_role_module source
+WHERE source.module_id = 341400
+  AND NOT EXISTS (SELECT 1 FROM sys_module WHERE module_id = 341401)
+  AND NOT EXISTS (SELECT 1 FROM sys_role_module existing WHERE existing.role_id = source.role_id AND existing.module_id = 341401);
+INSERT INTO sys_module (module_id, tenant_id, parent_id, module_name, route_name, path, component, icon, module_sort, hidden, perms, has_flow, no_cache, status)
+SELECT 341401, 1, 341400, '应收台账', 'FinanceLedger', 'ledger', 'eos/crm/finance/ledger', 'iconfont-caiwuguanli', 1, 0, 'finance:ledger:list', 0, 0, '0'
+WHERE NOT EXISTS (SELECT 1 FROM sys_module WHERE module_id = 341401);
+
+INSERT INTO sys_role_module (role_id, module_id)
+SELECT source.role_id, 341402 FROM sys_role_module source
+WHERE source.module_id = 341400
+  AND NOT EXISTS (SELECT 1 FROM sys_module WHERE module_id = 341402)
+  AND NOT EXISTS (SELECT 1 FROM sys_role_module existing WHERE existing.role_id = source.role_id AND existing.module_id = 341402);
+INSERT INTO sys_module (module_id, tenant_id, parent_id, module_name, route_name, path, component, icon, module_sort, hidden, perms, has_flow, no_cache, status)
+SELECT 341402, 1, 341400, '开票管理', 'FinanceInvoices', 'invoice', 'eos/crm/finance/invoice', 'iconfont-caiwuguanli', 2, 0, 'finance:ledger:list', 0, 0, '0'
+WHERE NOT EXISTS (SELECT 1 FROM sys_module WHERE module_id = 341402);
+
+INSERT INTO sys_role_module (role_id, module_id)
+SELECT source.role_id, 341403 FROM sys_role_module source
+WHERE source.module_id = 341400
+  AND NOT EXISTS (SELECT 1 FROM sys_module WHERE module_id = 341403)
+  AND NOT EXISTS (SELECT 1 FROM sys_role_module existing WHERE existing.role_id = source.role_id AND existing.module_id = 341403);
+INSERT INTO sys_module (module_id, tenant_id, parent_id, module_name, route_name, path, component, icon, module_sort, hidden, perms, has_flow, no_cache, status)
+SELECT 341403, 1, 341400, '回款登记', 'FinanceReceipts', 'receipt', 'eos/crm/finance/receipt', 'iconfont-caiwuguanli', 3, 0, 'finance:ledger:list', 0, 0, '0'
+WHERE NOT EXISTS (SELECT 1 FROM sys_module WHERE module_id = 341403);
+
+INSERT INTO sys_role_module (role_id, module_id)
+SELECT source.role_id, 341404 FROM sys_role_module source
+WHERE source.module_id = 341400
+  AND NOT EXISTS (SELECT 1 FROM sys_module WHERE module_id = 341404)
+  AND NOT EXISTS (SELECT 1 FROM sys_role_module existing WHERE existing.role_id = source.role_id AND existing.module_id = 341404);
+INSERT INTO sys_module (module_id, tenant_id, parent_id, module_name, route_name, path, component, icon, module_sort, hidden, perms, has_flow, no_cache, status)
+SELECT 341404, 1, 341400, '退款管理', 'FinanceRefunds', 'refund', 'eos/crm/finance/refund', 'iconfont-caiwuguanli', 4, 0, 'finance:ledger:list', 0, 0, '0'
+WHERE NOT EXISTS (SELECT 1 FROM sys_module WHERE module_id = 341404);
+
+INSERT INTO sys_role_module (role_id, module_id)
+SELECT source.role_id, 341405 FROM sys_role_module source
+WHERE source.module_id = 341400
+  AND NOT EXISTS (SELECT 1 FROM sys_module WHERE module_id = 341405)
+  AND NOT EXISTS (SELECT 1 FROM sys_role_module existing WHERE existing.role_id = source.role_id AND existing.module_id = 341405);
+INSERT INTO sys_module (module_id, tenant_id, parent_id, module_name, route_name, path, component, icon, module_sort, hidden, perms, has_flow, no_cache, status)
+SELECT 341405, 1, 341400, '核销与冲销', 'FinanceAdjustments', 'adjustment', 'eos/crm/finance/adjustment', 'iconfont-caiwuguanli', 5, 0, 'finance:ledger:list', 0, 0, '0'
+WHERE NOT EXISTS (SELECT 1 FROM sys_module WHERE module_id = 341405);
+
+INSERT INTO sys_role_module (role_id, module_id)
+SELECT source.role_id, 341406 FROM sys_role_module source
+WHERE source.module_id = 341400
+  AND NOT EXISTS (SELECT 1 FROM sys_module WHERE module_id = 341406)
+  AND NOT EXISTS (SELECT 1 FROM sys_role_module existing WHERE existing.role_id = source.role_id AND existing.module_id = 341406);
+INSERT INTO sys_module (module_id, tenant_id, parent_id, module_name, route_name, path, component, icon, module_sort, hidden, perms, has_flow, no_cache, status)
+SELECT 341406, 1, 341400, '成本记录', 'FinanceCosts', 'cost', 'eos/crm/finance/cost', 'iconfont-caiwuguanli', 6, 0, 'finance:ledger:list', 0, 0, '0'
+WHERE NOT EXISTS (SELECT 1 FROM sys_module WHERE module_id = 341406);
+
+INSERT INTO sys_role_module (role_id, module_id)
+SELECT source.role_id, 341407 FROM sys_role_module source
+WHERE source.module_id = 341400
+  AND NOT EXISTS (SELECT 1 FROM sys_module WHERE module_id = 341407)
+  AND NOT EXISTS (SELECT 1 FROM sys_role_module existing WHERE existing.role_id = source.role_id AND existing.module_id = 341407);
+INSERT INTO sys_module (module_id, tenant_id, parent_id, module_name, route_name, path, component, icon, module_sort, hidden, perms, has_flow, no_cache, status)
+SELECT 341407, 1, 341400, '逾期催收', 'FinanceCollectionTasks', 'collections', 'eos/crm/finance/collections', 'iconfont-caiwuguanli', 7, 0, 'finance:ledger:list', 0, 0, '0'
+WHERE NOT EXISTS (SELECT 1 FROM sys_module WHERE module_id = 341407);
+
+INSERT INTO sys_role_module (role_id, module_id)
+SELECT source.role_id, 341408 FROM sys_role_module source
+WHERE source.module_id = 341400
+  AND NOT EXISTS (SELECT 1 FROM sys_module WHERE module_id = 341408)
+  AND NOT EXISTS (SELECT 1 FROM sys_role_module existing WHERE existing.role_id = source.role_id AND existing.module_id = 341408);
+INSERT INTO sys_module (module_id, tenant_id, parent_id, module_name, route_name, path, component, icon, module_sort, hidden, perms, has_flow, no_cache, status)
+SELECT 341408, 1, 341400, '对账报表', 'FinanceReports', 'reconcile', 'eos/crm/finance/reconcile', 'iconfont-caiwuguanli', 8, 0, 'finance:ledger:list', 0, 0, '0'
+WHERE NOT EXISTS (SELECT 1 FROM sys_module WHERE module_id = 341408);
+
+UPDATE sys_module SET redirect = '/finance/ledger'
+WHERE module_id = 341400 AND (redirect IS NULL OR redirect = '');
+
+
+-- Personnel extension: additive and restart-safe; never infer employment dates from account creation.
+CREATE TABLE IF NOT EXISTS oa_hr_employee (
+    user_id BIGINT PRIMARY KEY,
+    employee_no VARCHAR(64) NOT NULL UNIQUE,
+    dingtalk_user_id VARCHAR(128) UNIQUE,
+    entry_date DATE,
+    regular_date DATE,
+    exit_date DATE,
+    employment_status VARCHAR(32) NOT NULL DEFAULT 'active',
+    employment_type VARCHAR(64),
+    emergency_contact VARCHAR(100),
+    emergency_phone VARCHAR(32),
+    contract_start DATE,
+    contract_end DATE,
+    account_name VARCHAR(100),
+    bank_name VARCHAR(200),
+    bank_account VARCHAR(100),
+    revision INT NOT NULL DEFAULT 0,
+    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+INSERT INTO oa_hr_employee (user_id, employee_no, employment_status)
+SELECT user_id, CONCAT('EMP', user_id), CASE WHEN del_flag = '2' THEN 'departed' ELSE 'active' END
+FROM sys_user u WHERE del_flag IN ('0','2')
+AND NOT EXISTS (SELECT 1 FROM oa_hr_employee e WHERE e.user_id = u.user_id);
+
+CREATE TABLE IF NOT EXISTS oa_hr_employment_period (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    entry_date DATE NOT NULL,
+    exit_date DATE,
+    UNIQUE (user_id, entry_date)
+);
+INSERT INTO oa_hr_employment_period(user_id,entry_date,exit_date)
+SELECT user_id,entry_date,exit_date FROM oa_hr_employee e WHERE e.entry_date IS NOT NULL
+AND NOT EXISTS (SELECT 1 FROM oa_hr_employment_period p WHERE p.user_id=e.user_id AND p.entry_date=e.entry_date);
+
+CREATE TABLE IF NOT EXISTS oa_hr_event (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    event_type VARCHAR(32) NOT NULL,
+    revision INT NOT NULL DEFAULT 0,
+    workflow_request_id BIGINT,
+    effective_date DATE NOT NULL,
+    reason VARCHAR(1000) NOT NULL,
+    before_json TEXT,
+    after_json TEXT,
+    status VARCHAR(32) NOT NULL DEFAULT 'effective',
+    operator_id BIGINT NOT NULL,
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS oa_hr_salary (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    effective_date DATE NOT NULL,
+    pay_type VARCHAR(16) NOT NULL,
+    status VARCHAR(24) NOT NULL DEFAULT 'draft',
+    revision INT NOT NULL DEFAULT 0,
+    workflow_request_id BIGINT,
+    base_amount DECIMAL(18,2) NOT NULL,
+    allowance DECIMAL(18,2) NOT NULL,
+    reason VARCHAR(1000) NOT NULL,
+    operator_id BIGINT NOT NULL,
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (user_id, effective_date)
+);
+CREATE TABLE IF NOT EXISTS oa_hr_attachment (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT,
+    payroll_id BIGINT,
+    file_name VARCHAR(255) NOT NULL,
+    content_base64 MEDIUMTEXT NOT NULL,
+    create_by BIGINT NOT NULL,
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS oa_hr_attendance_batch (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    period VARCHAR(7) NOT NULL,
+    kind VARCHAR(16) NOT NULL,
+    status VARCHAR(24) NOT NULL DEFAULT 'draft',
+    file_id BIGINT NOT NULL,
+    source_hash VARCHAR(64) NOT NULL,
+    revision INT NOT NULL DEFAULT 0,
+    confirmed_by BIGINT,
+    create_by BIGINT NOT NULL,
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (period, kind, source_hash)
+);
+CREATE TABLE IF NOT EXISTS oa_hr_attendance_row (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    batch_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    work_date DATE,
+    data_json TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS oa_hr_payroll (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    period VARCHAR(7) NOT NULL,
+    batch_type VARCHAR(16) NOT NULL,
+    regular_key VARCHAR(7) UNIQUE,
+    attendance_id BIGINT,
+    rules_json TEXT NOT NULL,
+    status VARCHAR(24) NOT NULL DEFAULT 'draft',
+    revision INT NOT NULL DEFAULT 0,
+    workflow_request_id BIGINT,
+    published INT NOT NULL DEFAULT 0,
+    reason VARCHAR(1000),
+    create_by BIGINT NOT NULL,
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS oa_hr_payroll_item (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    payroll_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    snapshot_json TEXT NOT NULL,
+    verified INT NOT NULL DEFAULT 0,
+    base_amount DECIMAL(18,2) NOT NULL,
+    allowance DECIMAL(18,2) NOT NULL,
+    overtime DECIMAL(18,2) NOT NULL DEFAULT 0,
+    bonus DECIMAL(18,2) NOT NULL DEFAULT 0,
+    commission DECIMAL(18,2) NOT NULL DEFAULT 0,
+    adjustment DECIMAL(18,2) NOT NULL DEFAULT 0,
+    deduction DECIMAL(18,2) NOT NULL DEFAULT 0,
+    tax DECIMAL(18,2) NOT NULL DEFAULT 0,
+    contribution DECIMAL(18,2) NOT NULL DEFAULT 0,
+    gross_amount DECIMAL(18,2) NOT NULL,
+    net_amount DECIMAL(18,2) NOT NULL,
+    reason VARCHAR(1000),
+    UNIQUE (payroll_id, user_id)
+);
+CREATE TABLE IF NOT EXISTS oa_hr_payment (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    item_id BIGINT NOT NULL,
+    request_token VARCHAR(64) NOT NULL UNIQUE,
+    amount DECIMAL(18,2) NOT NULL,
+    payment_date DATE NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    reference_no VARCHAR(128) NOT NULL,
+    success_reference VARCHAR(128) UNIQUE,
+    attachment_id BIGINT,
+    reason VARCHAR(1000),
+    operator_id BIGINT NOT NULL,
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS oa_hr_history (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    entity_type VARCHAR(24) NOT NULL,
+    entity_id BIGINT NOT NULL,
+    user_id BIGINT,
+    action VARCHAR(64) NOT NULL,
+    detail_json TEXT,
+    operator_id BIGINT NOT NULL,
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS oa_hr_handover (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    business_type VARCHAR(32) NOT NULL,
+    business_id BIGINT NOT NULL,
+    title VARCHAR(200) NOT NULL,
+    status VARCHAR(16) NOT NULL DEFAULT 'todo',
+    target_user_id BIGINT,
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (user_id, business_type, business_id)
+);
+
+
+-- Personnel menus: create once; preserve subsequent permission edits.
+INSERT INTO sys_role_module (role_id,module_id) SELECT grants.role_id,341002 FROM (SELECT role_id FROM sys_role WHERE role_id=19) grants WHERE NOT EXISTS (SELECT 1 FROM sys_module WHERE module_id=341002) AND NOT EXISTS (SELECT 1 FROM sys_role_module current_grant WHERE current_grant.role_id=grants.role_id AND current_grant.module_id=341002);
+INSERT INTO sys_module (module_id,tenant_id,parent_id,module_name,route_name,path,component,icon,module_sort,hidden,perms,has_flow,no_cache,status) SELECT 341002,1,341000,'员工档案','HrEmployees','employees','enterprise/hr/employees','iconfont-tuandui4',2,0,'hr:employee:list',0,0,'0' WHERE NOT EXISTS (SELECT 1 FROM sys_module WHERE module_id=341002);
+INSERT INTO sys_role_module (role_id,module_id) SELECT grants.role_id,341003 FROM (SELECT role_id FROM sys_role WHERE role_id=19) grants WHERE NOT EXISTS (SELECT 1 FROM sys_module WHERE module_id=341003) AND NOT EXISTS (SELECT 1 FROM sys_role_module current_grant WHERE current_grant.role_id=grants.role_id AND current_grant.module_id=341003);
+INSERT INTO sys_module (module_id,tenant_id,parent_id,module_name,route_name,path,component,icon,module_sort,hidden,perms,has_flow,no_cache,status) SELECT 341003,1,341000,'人事异动','HrChanges','changes','enterprise/hr/changes','iconfont-tuandui4',3,0,'hr:change:list',0,0,'0' WHERE NOT EXISTS (SELECT 1 FROM sys_module WHERE module_id=341003);
+INSERT INTO sys_role_module (role_id,module_id) SELECT grants.role_id,341004 FROM (SELECT role_id FROM sys_role WHERE role_id=19) grants WHERE NOT EXISTS (SELECT 1 FROM sys_module WHERE module_id=341004) AND NOT EXISTS (SELECT 1 FROM sys_role_module current_grant WHERE current_grant.role_id=grants.role_id AND current_grant.module_id=341004);
+INSERT INTO sys_module (module_id,tenant_id,parent_id,module_name,route_name,path,component,icon,module_sort,hidden,perms,has_flow,no_cache,status) SELECT 341004,1,341000,'考勤管理','HrAttendance','attendance','enterprise/hr/attendance','iconfont-tuandui4',4,0,'hr:attendance:list',0,0,'0' WHERE NOT EXISTS (SELECT 1 FROM sys_module WHERE module_id=341004);
+INSERT INTO sys_role_module (role_id,module_id) SELECT grants.role_id,341005 FROM (SELECT role_id FROM sys_role WHERE role_id=19) grants WHERE NOT EXISTS (SELECT 1 FROM sys_module WHERE module_id=341005) AND NOT EXISTS (SELECT 1 FROM sys_role_module current_grant WHERE current_grant.role_id=grants.role_id AND current_grant.module_id=341005);
+INSERT INTO sys_module (module_id,tenant_id,parent_id,module_name,route_name,path,component,icon,module_sort,hidden,perms,has_flow,no_cache,status) SELECT 341005,1,341000,'工资管理','HrPayroll','payroll','enterprise/hr/payroll','iconfont-tuandui4',5,0,'hr:payroll:list',0,0,'0' WHERE NOT EXISTS (SELECT 1 FROM sys_module WHERE module_id=341005);
+INSERT INTO sys_role_module (role_id,module_id) SELECT grants.role_id,341006 FROM (SELECT role_id FROM sys_role WHERE status='0') grants WHERE NOT EXISTS (SELECT 1 FROM sys_module WHERE module_id=341006) AND NOT EXISTS (SELECT 1 FROM sys_role_module current_grant WHERE current_grant.role_id=grants.role_id AND current_grant.module_id=341006);
+INSERT INTO sys_module (module_id,tenant_id,parent_id,module_name,route_name,path,component,icon,module_sort,hidden,perms,has_flow,no_cache,status) SELECT 341006,1,341000,'我的考勤与工资','HrSelf','self','enterprise/hr/self','iconfont-tuandui4',6,0,'hr:self:list',0,0,'0' WHERE NOT EXISTS (SELECT 1 FROM sys_module WHERE module_id=341006);
+INSERT INTO sys_role_module (role_id,module_id) SELECT grants.role_id,341409 FROM (SELECT role_id FROM sys_role_module WHERE module_id=341400) grants WHERE NOT EXISTS (SELECT 1 FROM sys_module WHERE module_id=341409) AND NOT EXISTS (SELECT 1 FROM sys_role_module current_grant WHERE current_grant.role_id=grants.role_id AND current_grant.module_id=341409);
+INSERT INTO sys_module (module_id,tenant_id,parent_id,module_name,route_name,path,component,icon,module_sort,hidden,perms,has_flow,no_cache,status) SELECT 341409,1,341400,'工资发放','FinancePayroll','payroll','eos/crm/finance/payroll','iconfont-tuandui4',9,0,'finance:payroll:list',0,0,'0' WHERE NOT EXISTS (SELECT 1 FROM sys_module WHERE module_id=341409);
+
 
 
 SET FOREIGN_KEY_CHECKS = 1;

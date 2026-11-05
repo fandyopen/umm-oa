@@ -1,14 +1,15 @@
 <template>
   <page-header-wrapper :breadcrumb="$store.getters.breadcrumb">
     <a-card :bordered="false">
-      <div class="head">
+      <div v-if="!isPayroll" class="head">
         <div>
-          <h2>财务与回款管理</h2>
-          <span>合同应收按签署生效版本计算，到账、退款和核销分别留痕。</span>
+          <h2>{{ $route.meta.title || '财务与回款管理' }}</h2>
+          <span>{{ isPayroll ? '工资审批、实际发放与工资条发布分别留痕。' : '合同应收按签署生效版本计算，到账、退款和核销分别留痕。' }}</span>
         </div>
-        <a-button icon="download" :disabled="!showModuleAction('finance', 'export')" v-hasModuleAction="moduleActionBinding('finance', 'export')" @click="exportCurrent">导出当前工作区</a-button>
+        <a-button v-if="isPayroll" icon="download" @click="exportCurrent">导出工资报表</a-button>
+        <a-button v-else icon="download" :disabled="!showModuleAction('finance', 'export')" v-hasModuleAction="moduleActionBinding('finance', 'export')" @click="exportCurrent">导出当前工作区</a-button>
       </div>
-      <a-row :gutter="16" class="metrics">
+      <a-row v-if="!isPayroll" :gutter="16" class="metrics">
         <a-col v-for="metric in metrics" :key="metric.key" :span="4"
           ><div>
             <span>{{ metric.name }}</span
@@ -16,25 +17,12 @@
           </div></a-col
         >
       </a-row>
-      <a-tabs v-model="tab" @change="changeTab">
-        <a-tab-pane key="ledger" tab="应收台账"><finance-ledger ref="ledger" @changed="loadSummary" /></a-tab-pane>
-        <a-tab-pane key="invoice" tab="开票管理"><finance-records ref="invoice" record-type="invoice" @changed="loadSummary" /></a-tab-pane>
-        <a-tab-pane key="receipt" tab="回款登记"><finance-records ref="receipt" record-type="receipt" @changed="loadSummary" /></a-tab-pane>
-        <a-tab-pane key="refund" tab="退款管理"><finance-records ref="refund" record-type="refund" @changed="loadSummary" /></a-tab-pane>
-        <a-tab-pane key="adjustment" tab="核销与冲销"><finance-records ref="adjustment" record-type="adjustment" @changed="loadSummary" /></a-tab-pane>
-        <a-tab-pane key="cost" tab="成本记录"><finance-records ref="cost" record-type="cost" @changed="loadSummary" /></a-tab-pane>
-        <a-tab-pane key="collections" tab="逾期催收"><finance-collections ref="collections" /></a-tab-pane>
-        <a-tab-pane key="reconcile" tab="对账报表"><finance-reconcile ref="reconcile" /></a-tab-pane>
-      </a-tabs>
+      <router-view ref="workspace" @changed="loadSummary" />
     </a-card>
   </page-header-wrapper>
 </template>
 <script>
 import { withModuleContexts } from '/src/utils/moduleContext.js'
-import FinanceLedger from './modules/FinanceLedger.vue'
-import FinanceRecords from './modules/FinanceRecords.vue'
-import FinanceCollections from './modules/FinanceCollections.vue'
-import FinanceReconcile from './modules/FinanceReconcile.vue'
 import { getFinanceReport, exportFinanceRows } from '/src/api/eos/crm/finance.js'
 import * as XLSX from 'xlsx'
 import { saveAs } from 'file-saver'
@@ -42,10 +30,8 @@ import { saveAs } from 'file-saver'
 const module = { component: 'eos/crm/finance/index', label: '财务与回款管理' }
 export default {
   name: 'CustomerFinance',
-  components: { FinanceLedger, FinanceRecords, FinanceCollections, FinanceReconcile },
   mixins: [withModuleContexts({ finance: module })],
   data: () => ({
-    tab: 'ledger',
     summary: {},
     metrics: [
       { key: 'receivableAmount', name: '应收' },
@@ -56,6 +42,16 @@ export default {
       { key: 'costAmount', name: '直接成本' }
     ]
   }),
+  computed: {
+    isPayroll() {
+      return this.$route?.name === 'FinancePayroll' || this.$route?.path?.endsWith('/finance/payroll') || false
+    }
+  },
+  watch: {
+    isPayroll(value) {
+      if (!value) this.loadSummary()
+    }
+  },
   mounted() {
     this.loadSummary()
   },
@@ -64,20 +60,20 @@ export default {
       return Number(value || 0).toLocaleString('zh-CN', { minimumFractionDigits: 2 })
     },
     async loadSummary() {
+      if (this.isPayroll) return
       const res = await getFinanceReport({})
       this.summary = res.data?.summary || {}
     },
-    async changeTab() {
-      await this.$nextTick()
-      const view = this.$refs[this.tab]
-      await Promise.all([this.loadSummary(), view?.load(), view?.loadOptions?.()])
-    },
     async exportCurrent() {
+      if (this.isPayroll) return this.$refs.workspace?.exportRows()
       if (!(await this.checkModuleAction({ module: 'finance', action: 'export', label: '导出财务数据' }))) return
-      const filters = this.$refs[this.tab]?.query || {}
+      const view = this.$refs.workspace
+      const workspace = view?.$options.financeWorkspace
+      if (!workspace) return
+      const filters = view.query || {}
       const exports =
-        this.tab === 'reconcile' ? await Promise.all(['ledger', 'receipts', 'invoice', 'refund', 'adjustment', 'cost', 'reconcile'].map(type => exportFinanceRows(type, filters))) : [await exportFinanceRows(this.tab, filters)]
-      const names = this.tab === 'reconcile' ? ['应收与账龄', '实际到账', '发票', '退款', '核销冲销', '直接成本', '客户对账'] : ['财务数据']
+        workspace === 'reconcile' ? await Promise.all(['ledger', 'receipts', 'invoice', 'refund', 'adjustment', 'cost', 'reconcile'].map(type => exportFinanceRows(type, filters))) : [await exportFinanceRows(workspace, filters)]
+      const names = workspace === 'reconcile' ? ['应收与账龄', '实际到账', '发票', '退款', '核销冲销', '直接成本', '客户对账'] : ['财务数据']
       const book = XLSX.utils.book_new()
       for (let i = 0; i < exports.length; i++) {
         const rows = exports[i].data || []

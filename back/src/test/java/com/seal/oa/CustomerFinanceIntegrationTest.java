@@ -1,5 +1,6 @@
 package com.seal.oa;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.seal.oa.auth.AuthContext;
 import com.seal.oa.common.ApiException;
 import com.seal.oa.oa.CrmContractService;
@@ -12,6 +13,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.ConnectionCallback;
 import org.springframework.core.io.ClassPathResource;
@@ -24,17 +28,24 @@ import java.util.Map;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest(properties = """
         spring.datasource.url=jdbc:h2:mem:finance_test;MODE=MySQL;DATABASE_TO_LOWER=TRUE;CASE_INSENSITIVE_IDENTIFIERS=TRUE;DB_CLOSE_DELAY=-1
         """)
 @Transactional
+@AutoConfigureMockMvc
 class CustomerFinanceIntegrationTest {
     @Autowired private JdbcTemplate jdbc;
     @Autowired private CustomerFinanceService finance;
     @Autowired private WorkflowActionRequestService requests;
     @Autowired private CrmContractService contracts;
     @Autowired private ModuleService modules;
+    @Autowired private MockMvc mvc;
+    @Autowired private ObjectMapper mapper;
     private long customerId;
 
     @BeforeEach void prepare() {
@@ -48,6 +59,9 @@ class CustomerFinanceIntegrationTest {
 
     @Test
     void financeMenuMigratesToHeaderWithoutChangingButtonOrWorkflowSettings() {
+        jdbc.update("DELETE FROM sys_role_module WHERE module_id BETWEEN 341401 AND 341408");
+        jdbc.update("DELETE FROM sys_module WHERE module_id BETWEEN 341401 AND 341408");
+        jdbc.update("INSERT INTO sys_role_module (role_id,module_id) SELECT 7,341400 WHERE NOT EXISTS (SELECT 1 FROM sys_role_module WHERE role_id=7 AND module_id=341400)");
         jdbc.update("UPDATE sys_module SET parent_id=340310,path='finance',module_sort=6 WHERE module_id=341400");
         jdbc.update("UPDATE sys_module_action SET action_name='自定义回款确认',flow_design_enabled=1 WHERE module_id=341400 AND action_code='receipt_confirm'");
         var buttons = jdbc.queryForList("SELECT * FROM sys_module_action WHERE module_id=341400 ORDER BY action_code");
@@ -59,16 +73,71 @@ class CustomerFinanceIntegrationTest {
         var menu = roots.stream().filter(row -> number(row.get("moduleId")) == 341400L).findFirst().orElseThrow();
         assertEquals(0L, number(menu.get("parentId")));
         assertEquals("/finance", menu.get("path"));
+        assertEquals("/finance/ledger", menu.get("redirect"));
         assertEquals("eos/crm/finance/index", menu.get("component"));
+        @SuppressWarnings("unchecked")
+        var children = (java.util.List<Map<String,Object>>) menu.get("children");
+        assertEquals(java.util.List.of("ledger", "invoice", "receipt", "refund", "adjustment", "cost", "collections", "reconcile", "payroll"),
+                children.stream().map(child -> child.get("path")).toList());
+        assertEquals(9L, children.stream().map(child -> child.get("component")).distinct().count());
+        assertTrue(children.stream().allMatch(child -> Boolean.FALSE.equals(child.get("hidden"))));
+        assertEquals(8, jdbc.queryForObject("SELECT COUNT(*) FROM sys_role_module WHERE role_id=7 AND module_id BETWEEN 341401 AND 341408", Integer.class));
+        var allowed = new java.util.HashSet<>(jdbc.queryForList("SELECT module_id FROM sys_role_module WHERE role_id=7", Long.class));
+        var roleMenu = modules.routers(1L, false, java.util.Set.of("finance:ledger:list"), allowed).stream()
+                .filter(row -> number(row.get("moduleId")) == 341400L).findFirst().orElseThrow();
+        assertEquals(children.stream().filter(child -> number(child.get("moduleId")) != 341409L).toList(), roleMenu.get("children"));
         assertTrue(roots.stream().anyMatch(row -> number(row.get("moduleId")) == 341300L));
         assertEquals(buttons, jdbc.queryForList("SELECT * FROM sys_module_action WHERE module_id=341400 ORDER BY action_code"));
 
         jdbc.update("UPDATE sys_module SET module_sort=8 WHERE module_id=341400");
+        jdbc.update("UPDATE sys_module SET module_name='自定义开票',hidden=1,module_sort=20 WHERE module_id=341402");
+        jdbc.update("DELETE FROM sys_role_module WHERE role_id=7 AND module_id=341402");
         jdbc.execute((ConnectionCallback<Void>) connection -> {
             ScriptUtils.executeSqlScript(connection, new ClassPathResource("customer-finance-menu.sql"));
             return null;
         });
         assertEquals(8, jdbc.queryForObject("SELECT module_sort FROM sys_module WHERE module_id=341400", Integer.class));
+        assertEquals("自定义开票", jdbc.queryForObject("SELECT module_name FROM sys_module WHERE module_id=341402", String.class));
+        assertEquals(1, jdbc.queryForObject("SELECT hidden FROM sys_module WHERE module_id=341402", Integer.class));
+        assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM sys_role_module WHERE role_id=7 AND module_id=341402", Integer.class));
+        assertEquals(buttons, jdbc.queryForList("SELECT * FROM sys_module_action WHERE module_id=341400 ORDER BY action_code"));
+    }
+
+    @Test
+    void receiptsEndpointCombinesContractAndManualReceiptsWithoutDraftsOrDuplicateRows() throws Exception {
+        long source = confirmedReceivable("100.00");
+        Map<String,Object> manualReceipt = draft("receipt", source, "50.00");
+        approveDirect(manualReceipt, "receipt_confirm");
+        draft("receipt", source, "5.00");
+
+        jdbc.update("INSERT INTO oa_crm_contract(customer_id,code,name,service_type,amount,start_date,end_date,status,terms_json) VALUES(?,?,?,'猎头服务',100,'2026-01-01','2027-12-31','active','[]')",
+                customerId, "FIN-RECEIPTS-" + UUID.randomUUID(), "原到账查询合同");
+        long contractId = jdbc.queryForObject("SELECT MAX(id) FROM oa_crm_contract", Long.class);
+        jdbc.update("INSERT INTO oa_crm_contract_receipt(contract_id,term_key,amount,receipt_date) VALUES(?,'fee-main',20,'2026-11-01')", contractId);
+        jdbc.update("INSERT INTO oa_crm_contract_receipt(contract_id,term_key,amount,receipt_date) VALUES(?,'fee-main',-5,'2026-11-02')", contractId);
+
+        Map<String,String> query = Map.of("customerId", String.valueOf(customerId), "pageNum", "1", "pageSize", "1000");
+        var rows = finance.receipts(query);
+        assertEquals(2, rows.size());
+        var manual = rows.stream().filter(row -> row.get("originalRecordId") != null).findFirst().orElseThrow();
+        assertEquals(manualReceipt.get("id"), manual.get("originalRecordId"));
+        assertEquals(source, number(manual.get("receivableId")));
+        assertEquals(1, rows.stream().filter(row -> row.get("originalReceiptId") != null).count());
+        assertEquals(rows, finance.exportRows("receipts", query));
+        assertEquals(1, finance.receipts(Map.of("customerId", String.valueOf(customerId), "contractId", String.valueOf(contractId))).size());
+        assertTrue(finance.receipts(Map.of("customerId", String.valueOf(customerId), "startDate", "2026-11-02")).isEmpty());
+
+        AuthContext.set(new AuthContext.CurrentUser(999999L, "unrelated-user"));
+        assertTrue(finance.receipts(query).isEmpty());
+        AuthContext.set(new AuthContext.CurrentUser(1L, "13610316814"));
+        var login = mvc.perform(post("/login").contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(Map.of("username", "13610316814", "password", "admin123123"))))
+                .andExpect(status().isOk()).andReturn();
+        String token = mapper.readTree(login.getResponse().getContentAsByteArray()).path("token").asText();
+        mvc.perform(get("/project/crm/finance/receipts").header("Authorization", "Bearer " + token)
+                        .param("customerId", String.valueOf(customerId)).param("pageNum", "1").param("pageSize", "1000"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.length()").value(2));
     }
 
     @Test

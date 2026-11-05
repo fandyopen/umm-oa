@@ -38,6 +38,7 @@ class CustomerContractIntegrationTest {
     @Autowired JdbcTemplate jdbc;
     @Autowired CrmContractService contracts;
     @Autowired ModuleActionService moduleActions;
+    @Autowired com.seal.oa.oa.CustomerFinanceService finance;
     String admin;
     String reviewer;
     String outsider;
@@ -195,8 +196,8 @@ class CustomerContractIntegrationTest {
         call(admin, post("/project/merchant/" + customerId + "/release"), null, 409);
         call(admin, put("/project/merchant"), Map.of("id", customerId, "publicPool", "1"), 409);
         call(admin, delete("/project/merchant/" + customerId), null, 409);
-        call(admin, post(base + "/" + id + "/receipts"), Map.of("termKey", "first", "amount", 1001, "receiptDate", today.toString()), 400);
-        call(admin, post(base + "/" + id + "/receipts"), Map.of("termKey", "first", "amount", 400, "receiptDate", today.toString()), 200);
+        call(admin, post(base + "/" + id + "/receipts"), Map.of("termKey", "first", "amount", 1001, "receiptDate", today.toString()), 409);
+        confirmReceipt(id, 400);
         assertEquals(new BigDecimal("400.00"), jdbc.queryForObject("SELECT received_amount FROM oa_merchant WHERE id = ?", BigDecimal.class, customerId));
         assertEquals("合作中", jdbc.queryForObject("SELECT cooperation_status FROM oa_merchant WHERE id = ?", String.class, customerId));
         call(admin, post(base + "/" + id + "/finish"), Map.of("revision", active.path("revision").asInt()), 409);
@@ -207,7 +208,7 @@ class CustomerContractIntegrationTest {
         long customer = createCustomer("版本隔离客户");
         JsonNode active = activate(createDraft(customer));
         long id = active.path("id").asLong();
-        call(admin, post(base + "/" + id + "/receipts"), Map.of("termKey", "first", "amount", 400, "receiptDate", today.toString()), 200);
+        confirmReceipt(id, 400);
         JsonNode draft = action(admin, id, "revision", Map.of("revision", active.path("revision").asInt()));
         Map<String, Object> changed = mapper.convertValue(draft, new com.fasterxml.jackson.core.type.TypeReference<LinkedHashMap<String, Object>>() {});
         changed.put("amount", 1500);
@@ -246,13 +247,32 @@ class CustomerContractIntegrationTest {
         assertEquals(1, detail.path("reminderLogs").size());
         assertEquals("已联系客户财务确认付款计划", detail.path("reminderLogs").get(0).path("content").asText());
         assertEquals(2, call(admin, get("/project/crm/risk/list").param("customerId", String.valueOf(customer)), null, 200).path("rows").size());
-        call(admin, post(base + "/" + id + "/receipts"), Map.of("termKey", "first", "amount", 1000, "receiptDate", today.toString()), 200);
+        confirmReceipt(id, 1000);
         assertEquals(1, call(admin, get("/project/crm/risk/list").param("customerId", String.valueOf(customer)), null, 200).path("rows").size());
         assertEquals(1, call(admin, get(base + "/" + id), null, 200).path("data").path("reminders").size());
         assertEquals("done", jdbc.queryForObject("SELECT status FROM oa_todo WHERE task_id = ?", String.class, reminderId));
         action(admin, id, "finish", Map.of("revision", active.path("revision").asInt()));
         assertEquals(0, call(admin, get("/project/crm/risk/list").param("customerId", String.valueOf(customer)), null, 200).path("rows").size());
         assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM oa_todo WHERE business_type = 'crmRisk' AND business_id = ? AND status = 'todo'", Integer.class, customer));
+    }
+
+    private void confirmReceipt(long contractId, int amount) throws Exception {
+        JsonNode row = call(admin, post(base + "/" + contractId + "/receipts"),
+                Map.of("termKey", "first", "amount", amount, "receiptDate", today.toString()), 200).path("data");
+        assertEquals("draft", row.path("status").asText());
+        assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM oa_crm_contract_receipt WHERE contract_id=?", Integer.class, contractId));
+        com.seal.oa.auth.AuthContext.set(new com.seal.oa.auth.AuthContext.CurrentUser(1L, "13610316814"));
+        try {
+            long recordId = row.path("id").asLong();
+            Map<String, Object> body = new LinkedHashMap<>(finance.detail(recordId));
+            body.put("attachment", mapper.writeValueAsString(List.of(Map.of("name", "到账凭证.pdf", "url", "/profile/finance/proof.pdf", "fileName", "/profile/finance/proof.pdf"))));
+            Map<String, Object> saved = finance.save("receipt", recordId, body);
+            finance.execute(new com.seal.oa.workflow.WorkflowActionContext(0, com.seal.oa.oa.CustomerFinanceService.MODULE,
+                    "receipt_confirm", "crm.finance.receipt_confirm", Map.of(),
+                    new LinkedHashMap<>(Map.of("recordId", recordId, "revision", saved.get("revision"))), 1L, "13610316814"));
+        } finally {
+            com.seal.oa.auth.AuthContext.clear();
+        }
     }
 
     @Test

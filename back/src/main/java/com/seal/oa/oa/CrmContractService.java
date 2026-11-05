@@ -752,9 +752,9 @@ public class CrmContractService {
                     AND w.term_key=c.term_key AND w.record_type='writeoff' AND w.status IN ('approving','approved','confirmed')) AS writeoff_amount,
                   (SELECT COALESCE(SUM(amount),0) FROM oa_finance_record i WHERE i.contract_id=c.contract_id
                     AND i.term_key=c.term_key AND i.record_type='invoice' AND i.status IN ('approving','approved','confirmed')) AS invoiced_amount
-                FROM (SELECT DISTINCT term_key, ? AS contract_id FROM oa_crm_contract_receipt WHERE contract_id=?
-                      UNION SELECT DISTINCT term_key, ? AS contract_id FROM oa_finance_record WHERE contract_id=?) c
-                """, id,id,id,id));
+                FROM (SELECT DISTINCT term_key, contract_id FROM oa_crm_contract_receipt WHERE contract_id=?
+                      UNION SELECT DISTINCT term_key, contract_id FROM oa_finance_record WHERE contract_id=?) c
+                """, id,id));
         for (Map<String, Object> paid : obligations) {
             BigDecimal cashAndWriteoff = money(paid.get("netReceived")).add(money(paid.get("writeoffAmount")));
             BigDecimal protectedAmount = cashAndWriteoff.max(money(paid.get("invoicedAmount")));

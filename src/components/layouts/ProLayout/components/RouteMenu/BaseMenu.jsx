@@ -137,9 +137,7 @@ const RouteMenu = {
     }
     let templateMenus = null
     if (showFirstLevelMenu) {
-      this.currentFirstLevelMenu[0] = this.currentFirstLevelMenu[0] ? this.currentFirstLevelMenu[0] : []
-      this.currentFirstLevelMenu[0].children = this.currentFirstLevelMenu[0].children ? this.currentFirstLevelMenu[0].children : []
-      templateMenus = this.layout === 'sidemenu' ? this.currentFirstLevelMenu[0].children : menus
+      templateMenus = this.layout === 'sidemenu' ? this.currentFirstLevelMenu[0]?.children || [] : menus
     } else {
       const filteredRouters = this.addRouters[0].children.filter((item, index) => {
         return item.hidden !== true

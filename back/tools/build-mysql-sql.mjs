@@ -11,6 +11,8 @@ const recruitmentSchema = fs.readFileSync(path.join(projectDir, 'src/main/resour
 const recruitmentMenu = fs.readFileSync(path.join(projectDir, 'src/main/resources/recruitment-menu.sql'), 'utf8')
 const customerFinanceSchema = fs.readFileSync(path.join(projectDir, 'src/main/resources/customer-finance-schema.sql'), 'utf8')
 const customerFinanceMenu = fs.readFileSync(path.join(projectDir, 'src/main/resources/customer-finance-menu.sql'), 'utf8')
+const hrSchema = fs.readFileSync(path.join(projectDir, 'src/main/resources/hr-schema.sql'), 'utf8')
+const hrMenu = fs.readFileSync(path.join(projectDir, 'src/main/resources/hr-menu.sql'), 'utf8')
 const data = fs.readFileSync(path.join(projectDir, 'src/main/resources/data.sql'), 'utf8')
 const moduleDataPath = path.join(mysqlSourceDir, 'module-data.sql')
 const moduleData = fs.existsSync(moduleDataPath)
@@ -107,6 +109,10 @@ ${customerFinanceSchema}
 
 ${customerFinanceMenu}
 
+${hrSchema}
+
+${hrMenu}
+
 SET FOREIGN_KEY_CHECKS = 1;
 `
 
@@ -115,4 +121,5 @@ fs.mkdirSync(outputDir, { recursive: true })
 fs.writeFileSync(path.join(outputDir, 'umm_oa.sql'), output)
 fs.writeFileSync(path.join(outputDir, 'recruitment-upgrade.sql'), '-- Existing MySQL 8 databases: recruitment upgrade; preserves business data.\n' + recruitmentSchema + '\n' + recruitmentMenu)
 fs.writeFileSync(path.join(outputDir, 'customer-finance-upgrade.sql'), '-- Existing MySQL 8 databases: customer finance upgrade; preserves business data.\n' + customerFinanceSchema + '\n' + customerFinanceMenu)
+fs.writeFileSync(path.join(outputDir, 'hr-upgrade.sql'), '-- Existing MySQL 8 databases: personnel, attendance and payroll upgrade; preserves business data.\n' + hrSchema + '\n' + hrMenu)
 console.log(`Generated ${path.join(outputDir, 'umm_oa.sql')}`)

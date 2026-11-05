@@ -1,10 +1,11 @@
 import { withModuleContexts } from '/src/utils/moduleContext.js'
 import { crmModules } from '/src/views/eos/crm/moduleContexts.js'
+import { hrModules } from './hrReminder.js'
 
 export const CUSTOMER_FOLLOWUP_TODO = 'crmCustomerFollowup'
 
 export default {
-  mixins: [withModuleContexts({ customer: crmModules.customer })],
+  mixins: [withModuleContexts({ customer: crmModules.customer, ...hrModules })],
   methods: {
     async openCustomerReminder(row) {
       const customerId = Number(row.form?.customerId || row.businessId)

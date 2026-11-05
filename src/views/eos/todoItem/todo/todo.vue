@@ -11,7 +11,8 @@
     <no-data index v-show="noData" />
     <s-table :customRow="rowClick" :class="{ 'dashboard-table': simple }" v-show="!noData" :data="loadData" ref="table" size="default" rowKey="taskId" :columns="columns">
       <span slot="action" slot-scope="text, item">
-        <a v-if="item.businessType === 'crmCustomerFollowup'" @click.stop="openCustomerReminder(item)">跟进客户</a>
+        <a v-if="isHrReminder(item)" @click.stop="openHrReminder(item)">进入办理</a>
+        <a v-else-if="item.businessType === 'crmCustomerFollowup'" @click.stop="openCustomerReminder(item)">跟进客户</a>
         <a v-else-if="['crmRisk', 'crmContractApproval'].includes(item.businessType)" @click.stop="handleDetail(item, 'CrmTodoDetail')">{{ item.businessType === 'crmContractApproval' ? '审批合同' : '处理风险' }}</a>
         <activiti-apply
           :preAudit="{ comment: item.lastHistoricActivity.comment, assigneeName: item.lastHistoricActivity.assigneeName }"
@@ -39,9 +40,10 @@ import SSearch from '/src/components/Form/Search.vue'
 import ActivitiApply from '/src/components/Activiti/index.vue'
 import BusDetail from './busDetail.vue'
 import customerReminder, { CUSTOMER_FOLLOWUP_TODO } from '../customerReminder.js'
+import hrReminder from '../hrReminder.js'
 
 export default {
-  mixins: [customerReminder],
+  mixins: [customerReminder,hrReminder],
   name: 'Todo',
   props: {
     // 是否展示简单列
@@ -166,6 +168,7 @@ export default {
       else this.refresh(true)
     },
     async handleDetail(row, detailCompName) {
+      if(this.isHrReminder(row)) return this.openHrReminder(row)
       if (row.businessType === CUSTOMER_FOLLOWUP_TODO) return this.openCustomerReminder(row)
       if (this.isEmpty(detailCompName)) {
         return this.$message.error('请传递详情组件')
@@ -209,6 +212,7 @@ export default {
     handleProcessHistory,
     // 已读事件
     handleReadClick(item) {
+      if(this.isHrReminder(item))return
       if (item.businessType === CUSTOMER_FOLLOWUP_TODO) {
         this.$set(item, 'isRead', true)
         return

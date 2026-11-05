@@ -129,13 +129,13 @@ export default {
     },
     changeCurrentFirstLevelMenu(item) {
       this.SetCurrentLevelOneMenu([])
-      if (!item.children) {
+      if (!item.children || !item.children.length) {
         this.$router.push({ name: item.name })
         return
       }
       this.SetCurrentLevelOneMenu([item])
-      let child = item.children.find(route => route.hidden === false) || item.children[0]
-      while (child && child.children && child.children.length) child = child.children[0]
+      let child = item.children.find(route => !route.hidden)
+      while (child && child.children && child.children.length) child = child.children.find(route => !route.hidden)
       if (child) this.$router.push({ name: child.name })
     }
   }

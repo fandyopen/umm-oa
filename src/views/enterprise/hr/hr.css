@@ -1,0 +1,113 @@
+.hr-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+.hr-heading h2 {
+  font-size: 22px;
+  margin: 0 0 8px;
+  color: #202b3d;
+}
+.hr-heading p {
+  color: #7b8493;
+  margin: 0;
+  max-width: 650px;
+}
+.hr-heading .ant-space {
+  flex-wrap: wrap;
+}
+.hr-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0;
+}
+.hr-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 20px;
+}
+.employee-name {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.employee-name h2 {
+  margin: 0 0 4px;
+}
+.employee-name span {
+  color: #7b8493;
+}
+.hr-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border: 1px solid #edf0f3;
+  border-radius: 8px;
+  margin: 20px 0;
+}
+.hr-metrics > div {
+  padding: 16px 20px;
+  border-right: 1px solid #edf0f3;
+}
+.hr-metrics span {
+  display: block;
+  color: #7b8493;
+  font-size: 12px;
+}
+.hr-metrics strong {
+  display: block;
+  margin-top: 6px;
+  font-size: 22px;
+  color: #202b3d;
+}
+.hr-metrics > div:last-child {
+  border: 0;
+}
+.hr-note {
+  color: #858e9d;
+  font-size: 12px;
+  line-height: 1.8;
+}
+.hr-section-title {
+  margin: 24px 0 16px;
+  font-weight: 600;
+  font-size: 16px;
+}
+.calendar-cell {
+  display: block;
+  min-height: 44px;
+  padding: 5px;
+  cursor: pointer;
+  color: #526477;
+  border: 1px solid #e5eaf0;
+  border-radius: 4px;
+  font-size: 12px;
+}
+.calendar-cell.warn {
+  background: #fff7e6;
+  border-color: #ffe0a3;
+  color: #ad6800;
+}
+.calendar-cell.empty {
+  color: #c4cad3;
+  border-style: dashed;
+}
+.hr-file {
+  margin: 10px 0;
+}
+@media (max-width: 800px) {
+  .hr-form-grid {
+    grid-template-columns: 1fr;
+  }
+  .hr-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .hr-heading {
+    gap: 12px;
+  }
+}

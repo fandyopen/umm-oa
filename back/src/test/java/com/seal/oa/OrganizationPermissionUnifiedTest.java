@@ -347,7 +347,7 @@ class OrganizationPermissionUnifiedTest {
                         .header("Authorization", userAuthorization)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"businessCode":"20240125110507","state":"需求确认","remark":"track"}
+                                {"businessCode":"20240125110507","state":"需求确认","recordTime":"2026-11-05 09:00:00","remark":"track"}
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(403));
@@ -357,7 +357,7 @@ class OrganizationPermissionUnifiedTest {
                         .header("Authorization", userAuthorization)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"businessCode":"20240125110507","state":"需求确认","remark":"track"}
+                                {"businessCode":"20240125110507","state":"需求确认","recordTime":"2026-11-05 09:00:00","remark":"track"}
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));

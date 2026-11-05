@@ -22,16 +22,17 @@
         ><template slot-scope="r"
           ><a-button v-if="r.status === 'open' && showModuleAction('finance', 'collect')" type="link" @click="updatePlan(r)">更新计划</a-button
           ><a-button v-if="r.status === 'open' && showModuleAction('finance', 'collect')" type="link" @click="closePlan(r)">关闭任务</a-button
-          ><a-popover v-if="r.history && r.history.length"
-            ><template slot="content"
-              ><div v-for="h in r.history" :key="h.id" class="history-item">
-                {{ h.action }} · {{ h.createBy }} · {{ h.createTime }}<small>{{ h.content }}</small>
-              </div></template
-            ><a>历史</a></a-popover
+          ><a-button type="link" @click="historyPlan = r">历史</a-button
           ></template
         ></a-table-column
       >
     </a-table>
+    <a-modal :visible="!!historyPlan" title="催收记录历史" :footer="null" width="800px" :body-style="{ maxHeight: '72vh', overflowY: 'auto' }" @cancel="historyPlan = null">
+      <template v-if="historyPlan">
+        <a-descriptions size="small" bordered :column="{ xs: 1, sm: 2 }"><a-descriptions-item label="客户">{{ historyPlan.customerName || '—' }}</a-descriptions-item><a-descriptions-item label="负责人">{{ historyPlan.ownerName || '—' }}</a-descriptions-item></a-descriptions>
+        <finance-history-timeline :history="historyPlan.history || []" />
+      </template>
+    </a-modal>
     <a-modal :visible="visible" title="催收计划" :confirm-loading="saving" @cancel="visible = false" @ok="save">
       <a-form-model :model="form" :label-col="{ span: 6 }" :wrapper-col="{ span: 16 }">
         <a-form-model-item label="应收项目"
@@ -53,9 +54,11 @@
 <script>
 import { withModuleContexts } from '/src/utils/moduleContext.js'
 import { listFinanceOptions, listCollections, createCollection } from '/src/api/eos/crm/finance.js'
+import FinanceHistoryTimeline from './FinanceHistoryTimeline.vue'
 const context = { component: 'eos/crm/finance/index', label: '财务与回款管理' }
 export default {
   name: 'FinanceCollections',
+  components: { FinanceHistoryTimeline },
   mixins: [
     withModuleContexts(
       { finance: context },
@@ -67,7 +70,7 @@ export default {
       }
     )
   ],
-  data: () => ({ rows: [], sources: [], owners: [], loading: false, saving: false, visible: false, query: { keyword: '', status: 'open' }, form: {} }),
+  data: () => ({ rows: [], sources: [], owners: [], loading: false, saving: false, visible: false, historyPlan: null, query: { keyword: '', status: 'open' }, form: {} }),
   mounted() {
     this.load()
     this.loadOptions()
@@ -145,15 +148,5 @@ export default {
 }
 .toolbar .ant-btn-primary {
   margin-left: auto;
-}
-.history-item {
-  max-width: 260px;
-  padding: 6px 0;
-  border-bottom: 1px solid #eee;
-}
-.history-item small {
-  display: block;
-  color: #858b96;
-  word-break: break-word;
 }
 </style>

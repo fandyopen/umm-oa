@@ -1,3 +1,4 @@
+import { hrGuide } from './hrGuide.js'
 import { recruitmentGuide } from './recruitmentGuide.js'
 
 export const moduleGroups = [
@@ -244,59 +245,7 @@ export const moduleGroups = [
     ],
     note: '合同审批统一在待办处理，收费与回款、审批记录和版本记录收进合同详情，合同提醒合并到客户风险提醒。旧链接自动跳转，历史版本、流程及原有操作权限保留。客户是统一业务主键。'
   },
-  {
-    id: 'hr',
-    name: '人事管理',
-    icon: 'team',
-    purpose: '维护成员入职建档、部门调整和离职状态，并按动作审批配置执行变更。',
-    audience: '人事、部门管理者、指定审批人',
-    prerequisites: ['先建立部门和岗位，准备成员手机号等资料。', '操作人须具备成员页面及对应动作权限；需要审批时，管理员先配置动作流程。'],
-    flow: ['准备部门与角色', '发起成员变更', '按配置审批', '执行人员变更', '核对权限与业务交接'],
-    pages: ['成员管理 · 全部成员', '成员管理 · 离职成员'],
-    permissions: ['hr:member:list', 'hr.member.invite', 'hr.member.transfer', 'hr.member.dismiss'],
-    backend: ['SystemController', 'HrMemberService', 'HrMemberActionHandler'],
-    data: ['sys_user', 'sys_user_role', 'sys_user_post', 'sys_dept', 'oa_workflow_request'],
-    workflows: [
-      {
-        name: '邀请成员',
-        entry: '人事管理 → 成员管理 → 全部成员 → 邀请成员',
-        roles: '具备邀请权限的人事或管理员',
-        steps: [
-          { title: '准备成员资料', description: '核对姓名、手机号、所属部门等资料，手机号不能与已有或离职成员重复。' },
-          { title: '提交邀请动作', description: '点击“邀请成员”填写表单并提交，按系统反馈判断是已直接执行还是已提交审批。' },
-          { title: '等待或核对执行结果', description: '启用审批时由审批人到待办处理，通过后再执行邀请；未启用时按动作配置直接执行。' },
-          { title: '配置实际工作权限', description: '在成员列表核对新增记录，再由管理员配置岗位、角色及业务所需权限。' }
-        ],
-        outcome: '成员进入在职成员列表，并按授权参与后续业务。',
-        tips: ['当前“邀请成员”用于建立成员账号，是否另有短信投递需以实际接入能力为准。']
-      },
-      {
-        name: '调整部门',
-        entry: '人事管理 → 成员管理 → 全部成员 → 选择成员 → 调整部门',
-        roles: '具备调岗权限的人事或管理员',
-        steps: [
-          { title: '筛选并选择成员', description: '按部门、姓名或新增日期定位成员，勾选需要调整的人。' },
-          { title: '选择有效目标部门', description: '点击“调整部门”，选择目标部门并提交对应动作。' },
-          { title: '按流程完成变更', description: '需要审批时等待通过后执行，完成后重新查询成员的部门信息。' },
-          { title: '复核业务范围', description: '部门变化可能影响数据权限，核对成员角色与可见数据；客户负责人变更需另到客户模块交接。' }
-        ],
-        outcome: '成员所属部门更新，相关数据范围按权限规则重新判断。'
-      },
-      {
-        name: '转为离职与离职查询',
-        entry: '人事管理 → 成员管理 → 全部成员 / 离职成员',
-        roles: '具备离职权限的人事或管理员',
-        steps: [
-          { title: '先完成业务交接', description: '确认客户、履约合同及未完成审批已有接手成员；在客户模块办理分配或交接。' },
-          { title: '提交离职动作', description: '在全部成员中勾选成员，点击“转为离职”，确认后按配置提交审批或直接执行。' },
-          { title: '核对离职记录', description: '执行成功后切换“离职成员”，查询对应人员，确认状态及在职列表结果。' }
-        ],
-        outcome: '成员退出在职管理范围，离职记录保留供查询。',
-        tips: ['转为离职不会自动替你办理客户交接；固定超级管理员不能转为离职。']
-      }
-    ],
-    note: '人事动作是否进入审批由动作流程配置决定；提交成功和业务执行完成需要分别确认。'
-  },
+  hrGuide,
   {
     id: 'system',
     name: '系统',

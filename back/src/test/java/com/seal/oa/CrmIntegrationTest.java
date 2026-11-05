@@ -457,8 +457,8 @@ class CrmIntegrationTest {
                                   "cooperationIntent": "高",
                                   "expectedAmount": 260000,
                                   "expectedCloseDate": "2026-12-31",
-                                  "ownerUserId": 1,
-                                  "ownerUserName": "方铭渴",
+                                  "recordTime": "2026-10-29 09:00:00",
+                                  "remark": "初步接洽，核对客户需求",
                                   "statusLabel": "推进中"
                                 }
                                 """.formatted(customerId)))

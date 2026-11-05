@@ -146,20 +146,9 @@
         >
       </a-form-model>
     </a-modal>
-    <a-modal :visible="!!detail" title="财务记录历史" :footer="null" width="760px" @cancel="detail = null"
-      ><a-descriptions v-if="detail" size="small" bordered :column="2"
-        ><a-descriptions-item label="编号">{{ detail.id }}</a-descriptions-item
-        ><a-descriptions-item label="状态">{{ statusLabel[detail.status] || detail.status }}</a-descriptions-item
-        ><a-descriptions-item label="金额">{{ money(detail.amount) }}</a-descriptions-item
-        ><a-descriptions-item label="客户">{{ detail.customerName }}</a-descriptions-item
-        ><a-descriptions-item label="备注" :span="2">{{ detail.remark || detail.reason || '—' }}</a-descriptions-item></a-descriptions
-      ><a-timeline style="margin-top: 18px"
-        ><a-timeline-item v-for="h in (detail && detail.history) || []" :key="h.id"
-          >{{ h.action }} · {{ h.createBy }} · {{ h.createTime }}
-          <div>{{ h.content }}</div></a-timeline-item
-        ></a-timeline
-      ></a-modal
-    >
+    <a-modal :visible="!!detail" title="财务记录历史" :footer="null" width="860px" :body-style="{ maxHeight: '72vh', overflowY: 'auto' }" @cancel="detail = null">
+      <finance-record-history v-if="detail" :record="detail" />
+    </a-modal>
     <a-modal :visible="!!previewFile" title="凭证" :footer="null" @cancel="previewFile = null"
       ><div v-for="(file, index) in previewFile || []" :key="file.fileName || index" style="margin-bottom: 10px">
         <a :href="file.fileName" target="_blank" rel="noopener noreferrer">{{ file.name || '打开凭证 ' + (index + 1) }}</a>
@@ -174,12 +163,14 @@ import { withModuleContexts } from '/src/utils/moduleContext.js'
 import { executeWorkflowAction } from '/src/api/workflow/action.js'
 import { handleProcessHistory } from '/src/views/eos/config/busUtil.js'
 import { today } from '../../contract/shared.js'
+import FinanceRecordHistory from './FinanceRecordHistory.vue'
 import { listFinanceRecords, getFinanceRecord, listFinanceOptions, listFinanceReceipts, createFinanceRecord, updateFinanceRecord, financeRecordAction } from '/src/api/eos/crm/finance.js'
 const ctx = { component: 'eos/crm/finance/index', label: '财务与回款管理' }
 const labels = { invoice: '开票申请', receipt: '回款申请', refund: '退款申请', reversal: '到账冲销', writeoff: '应收核销', cost: '直接成本' }
 const actions = { invoice: 'invoice_submit', receipt: 'receipt_confirm', refund: 'refund_submit', reversal: 'adjust_confirm', writeoff: 'adjust_confirm', cost: 'cost_confirm' }
 export default {
   name: 'FinanceRecords',
+  components: { FinanceRecordHistory },
   mixins: [
     withModuleContexts(
       { finance: ctx },

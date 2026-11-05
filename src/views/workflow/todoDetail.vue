@@ -1,5 +1,6 @@
 <template>
   <div>
+    <hr-approval-detail v-if="row.payrollId || row.salaryId || row.eventId" :row="row" />
     <s-descriptions :title="row.financeRecord ? '财务审批申请' : row.entityType ? '招聘业务审批申请' : row.contractId ? '合同审批申请' : '业务变更申请'" :formItems="formItems" :formData="normalizedRow" />
     <template v-if="row.financeRecord">
       <a-alert type="info" show-icon message="此处展示提交时冻结的财务单据。审批通过后，开票和退款仍需登记实际办理结果；回款、核销、冲销和成本按单据确认入账。" style="margin:16px 0" />
@@ -20,6 +21,7 @@
 
 <script>
 import SDescriptions from '/src/components/Descriptions/index.jsx'
+import HrApprovalDetail from '/src/components/HrApprovalDetail/index.vue'
 import ContractDetail from '/src/views/eos/crm/contract/modules/ContractDetail.vue'
 import { normalizeContractId } from '/src/api/eos/crm/contracts.js'
 
@@ -54,7 +56,7 @@ const financeTypes = {invoice:'开票申请',receipt:'回款确认',refund:'退�
 
 export default {
   name: 'WorkflowActionTodoDetail',
-  components: { SDescriptions },
+  components: { SDescriptions, HrApprovalDetail },
   data() {
     return { feeColumns: [{ title: '收费名称', dataIndex: 'title' }, { title: '触发条件', dataIndex: 'trigger' }, { title: '收费金额（元）', dataIndex: 'amount' }, { title: '收费到期', dataIndex: 'dueDate' }, { title: '保证期（天）', dataIndex: 'guaranteeDays' }] }
   },

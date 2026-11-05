@@ -387,11 +387,11 @@ public class CustomerFinanceService {
     public List<Map<String, Object>> receipts(Map<String, String> query) {
         Set<Long> customers = new HashSet<>();
         JdbcMaps.camelCase(jdbc.queryForList("SELECT id,owner_user_id FROM oa_merchant")).stream().filter(this::visible).forEach(c -> customers.add(id(c.get("id"))));
-        List<Map<String, Object>> rows = JdbcMaps.camelCase(jdbc.queryForList("""
+        List<Map<String, Object>> rows = new ArrayList<>(JdbcMaps.camelCase(jdbc.queryForList("""
                 SELECT r.id AS original_receipt_id,r.contract_id,r.term_key,r.amount,r.receipt_date AS business_date,
                        c.customer_id,c.name AS contract_name,m.name AS customer_name FROM oa_crm_contract_receipt r
                 JOIN oa_crm_contract c ON c.id=r.contract_id JOIN oa_merchant m ON m.id=c.customer_id WHERE r.amount>0 ORDER BY r.id DESC
-                """));
+                """)));
         for (Map<String, Object> doc : rawRecords()) if ("receipt".equals(doc.get("recordType")) && "confirmed".equals(doc.get("status")) && id(doc.get("contractId")) == 0) {
             Map<String, Object> r = new LinkedHashMap<>(doc); r.put("originalRecordId", r.get("id")); rows.add(r);
         }

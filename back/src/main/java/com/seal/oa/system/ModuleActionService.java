@@ -53,6 +53,12 @@ public class ModuleActionService {
     );
 
     private static final Map<Long, List<ActionDefinition>> MODULE_ACTIONS = Map.ofEntries(
+            Map.entry(341002L, List.of(EDIT, EXPORT, new ActionDefinition("salary_view", "查看薪资与发薪账户"), new ActionDefinition("salary_manage", "维护薪资与发薪账户"), new ActionDefinition("salary_submit", "提交定薪调薪", "hr.salary.submit"), new ActionDefinition("approve", "审批薪资标准"))),
+            Map.entry(341003L, List.of(EDIT, EXPORT, new ActionDefinition("submit", "提交人事异动", "hr.change.submit"), new ActionDefinition("approve", "审批人事异动"), new ActionDefinition("handover", "办理离职交接"))),
+            Map.entry(341004L, List.of(EXPORT, new ActionDefinition("import", "导入钉钉考勤"), new ActionDefinition("confirm", "确认考勤"))),
+            Map.entry(341005L, List.of(EDIT, EXPORT, new ActionDefinition("generate", "生成或重算工资"), new ActionDefinition("submit", "提交工资审批", "hr.payroll.submit"), new ActionDefinition("approve", "审批工资"), new ActionDefinition("publish", "发布工资条"), new ActionDefinition("pay", "登记工资发放"))),
+            Map.entry(341006L, List.of()),
+            Map.entry(341409L, List.of(EXPORT, new ActionDefinition("pay", "登记工资发放"))),
             Map.entry(341301L, List.of(ADD, EDIT, REMOVE, EXPORT,
                     new ActionDefinition("import", "批量导入"), new ActionDefinition("copy", "复制职位"),
                     new ActionDefinition("demand", "提交需求确认", "recruit.job.demand"),
@@ -150,6 +156,12 @@ public class ModuleActionService {
                 "manage"
         );
         mergeDuplicateHrRole();
+        applyDefaultRoleActions("hr_archive_actions_v1",19L,341002L,List.of("edit","export","salary_view","salary_manage","salary_submit"));
+        applyDefaultRoleActions("hr_change_actions_v1",19L,341003L,List.of("edit","export","submit","handover"));
+        applyDefaultRoleActions("hr_attendance_actions_v1",19L,341004L,List.of("import","confirm","export"));
+        applyDefaultRoleActions("hr_payroll_actions_v1",19L,341005L,List.of("generate","edit","export","submit","publish"));
+        for(Long financeRole:jdbc.queryForList("SELECT DISTINCT role_id FROM sys_role_module_action WHERE module_id=341400 AND action_code='refund_pay'",Long.class))
+            applyDefaultRoleActions("hr_finance_pay_"+financeRole+"_v1",financeRole,341409L,List.of("pay","export"));
         migrateWorkflowAdministration();
         migrateContractNavigation();
         migrateContractSigning();
