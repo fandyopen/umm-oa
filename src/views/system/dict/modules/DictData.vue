@@ -5,7 +5,7 @@
       <div class="table-operations">
         <a-button type="primary" size="small" @click="$refs.createDataForm.handleAdd()" v-hasPermi="['system:dict:add']" ghost> <a-icon type="plus" />新增 </a-button>
         <a-button type="danger" :disabled="multiple" @click="handleDelete" size="small" v-hasPermi="['system:dict:remove']" ghost> <a-icon type="delete" />删除 </a-button>
-        <a-button type="dashed" shape="circle" :loading="loading" :style="{ float: 'right' }" icon="reload" size="small" @click="getList" />
+        <a-button type="dashed" shape="circle" :loading="loading" class="tw-float-right" icon="reload" size="small" @click="getList" />
       </div>
       <a-table :loading="loading" rowKey="dictCode" size="small" :columns="columns" :data-source="list" :row-selection="{ selectedRowKeys: selectedRowKeys, onChange: onSelectChange }" :pagination="false">
         <span slot="status" slot-scope="text, record">

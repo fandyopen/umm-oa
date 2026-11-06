@@ -42,7 +42,7 @@ export default {
           return (
             <div class="fc-amount">
               <el-input-number
-                style="width: 100%;"
+                class="tw-w-full"
                 vModel={form[options.vModel]}
                 onChange={this.handleInput}
                 stepStrictly={options['step-strictly']}

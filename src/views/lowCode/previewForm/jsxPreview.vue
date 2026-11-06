@@ -122,7 +122,7 @@ const layouts = {
       if (conf.cmpType === 'custom' && conf.explain) {
         explain = (
           <el-tooltip effect="dark" content="组件说明" placement="top">
-            <i class="el-icon-info" onClick={ctx.showExplain.bind(this, conf.explain, conf.label)} style="margin-right: 8px; color: #E6A23C;cursor: pointer;"></i>
+            <i class="el-icon-info tw-mr-2 tw-text-[#E6A23C] tw-cursor-pointer" onClick={ctx.showExplain.bind(this, conf.explain, conf.label)}></i>
           </el-tooltip>
         )
       }
@@ -217,7 +217,7 @@ export default {
     },
 
     buildDrawer(h) {
-      var content = <pre style="padding-left: 1rem;">{this.drawerText}</pre>
+      var content = <pre class="tw-pl-[1rem]">{this.drawerText}</pre>
       return h(
         'el-drawer',
         {
@@ -249,7 +249,7 @@ export default {
       }
       const btns = (
         <el-col span={24}>
-          <el-form-item style="text-align:right;">
+          <el-form-item class="tw-text-right">
             <el-button type="success" onClick={this.submitForm}>
               提交
             </el-button>
@@ -285,7 +285,7 @@ export default {
     }
     return (
       <div class="preview-container" style={'width:' + this.containerWidth + '%;'}>
-        <el-row gutter={this.confGlobal.gutter} style="padding: 2rem 2rem 0;">
+        <el-row gutter={this.confGlobal.gutter} class="tw-pt-[2rem] tw-pr-[2rem] tw-pb-0 tw-pl-[2rem]">
           {this.buildForm(h)}
         </el-row>
         <div class="width-slider">

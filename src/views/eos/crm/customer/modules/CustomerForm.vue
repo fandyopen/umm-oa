@@ -6,7 +6,7 @@
       show-icon
       message="已复制基础资料、联系人和银行账户，请修改公司名称并填写新客户税号后保存。"
       description="客户编号留空自动生成，负责人默认为当前用户，合作状态重置为潜在客户；合作数据、合同、回款及跟进历史不复制。"
-      style="margin-bottom: 16px"
+      class="tw-mb-4"
     />
     <a-form-model ref="form" :model="form" :rules="rules" :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }">
       <div class="form-section-title">客户主档</div>
@@ -138,37 +138,37 @@
           <a-row :gutter="16">
             <a-col :xs="24" :md="8">
               <a-form-model-item label="合作职位数">
-                <a-input-number v-model="form.cooperationPositions" :disabled="form.recruitmentManaged" :min="0" style="width: 100%" />
+                <a-input-number v-model="form.cooperationPositions" :disabled="form.recruitmentManaged" :min="0" class="tw-w-full" />
               </a-form-model-item>
             </a-col>
             <a-col :xs="24" :md="8">
               <a-form-model-item label="推荐人数">
-                <a-input-number v-model="form.referralCount" :disabled="form.recruitmentManaged" :min="0" style="width: 100%" />
+                <a-input-number v-model="form.referralCount" :disabled="form.recruitmentManaged" :min="0" class="tw-w-full" />
               </a-form-model-item>
             </a-col>
             <a-col :xs="24" :md="8">
               <a-form-model-item label="入职人数">
-                <a-input-number v-model="form.hireCount" :disabled="form.recruitmentManaged" :min="0" style="width: 100%" />
+                <a-input-number v-model="form.hireCount" :disabled="form.recruitmentManaged" :min="0" class="tw-w-full" />
               </a-form-model-item>
             </a-col>
             <a-col :xs="24" :md="8">
               <a-form-model-item label="合同金额">
-                <a-input-number v-model="form.contractAmount" :disabled="form.contractManaged" :min="0" :precision="2" style="width: 100%" />
+                <a-input-number v-model="form.contractAmount" :disabled="form.contractManaged" :min="0" :precision="2" class="tw-w-full" />
               </a-form-model-item>
             </a-col>
             <a-col :xs="24" :md="8">
               <a-form-model-item label="回款金额">
-                <a-input-number v-model="form.receivedAmount" :disabled="form.contractManaged" :min="0" :precision="2" style="width: 100%" />
+                <a-input-number v-model="form.receivedAmount" :disabled="form.contractManaged" :min="0" :precision="2" class="tw-w-full" />
               </a-form-model-item>
             </a-col>
             <a-col :xs="24" :md="8">
               <a-form-model-item label="合同到期">
-                <a-date-picker v-model="form.contractExpireDate" :disabled="form.contractManaged" value-format="YYYY-MM-DD" style="width: 100%" />
+                <a-date-picker v-model="form.contractExpireDate" :disabled="form.contractManaged" value-format="YYYY-MM-DD" class="tw-w-full" />
               </a-form-model-item>
             </a-col>
             <a-col :xs="24" :md="8">
               <a-form-model-item label="最近回款">
-                <a-date-picker v-model="form.lastPaymentDate" :disabled="form.contractManaged" value-format="YYYY-MM-DD" style="width: 100%" />
+                <a-date-picker v-model="form.lastPaymentDate" :disabled="form.contractManaged" value-format="YYYY-MM-DD" class="tw-w-full" />
               </a-form-model-item>
             </a-col>
           </a-row>

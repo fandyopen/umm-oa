@@ -6,6 +6,7 @@
 - 前端：安装依赖后运行 npm run dev；发布前运行 npm run audit:source 和 npm run build。
 - 后端：使用 Java 17，通过 back/start-local.bat 或桌面启动脚本启动，脚本负责构建最新 JAR。
 - 当前结构及保留的隐藏入口见 [实现说明](back/docs/implementation-status.md)。
+- 通用工具类及动态样式的维护规则见 [前端样式约定](back/docs/frontend-styles.md)。
 - 客户和合同的审批、版本、回款规则见 [客户与合同生命周期](back/docs/customer-contract-lifecycle.md)。
 - 开发脚本与数据生成说明见 [工具说明](back/tools/README.md)。
 

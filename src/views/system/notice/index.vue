@@ -18,7 +18,7 @@
             <template v-if="advanced">
               <a-col :md="8" :sm="24">
                 <a-form-item label="公告类型">
-                  <a-select placeholder="请选择" v-model="queryParam.noticeType" style="width: 100%" allow-clear>
+                  <a-select placeholder="请选择" v-model="queryParam.noticeType" class="tw-w-full" allow-clear>
                     <a-select-option v-for="(d, index) in typeOptions" :key="index" :value="d.dictValue">{{ d.dictLabel }}</a-select-option>
                   </a-select>
                 </a-form-item>
@@ -27,8 +27,8 @@
             <a-col :md="(!advanced && 8) || 24" :sm="24">
               <span class="table-page-search-submitButtons" :style="(advanced && { float: 'right', overflow: 'hidden' }) || {}">
                 <a-button type="primary" @click="handleQuery"><a-icon type="search" />查询</a-button>
-                <a-button style="margin-left: 8px" @click="resetQuery"><a-icon type="redo" />重置</a-button>
-                <a @click="toggleAdvanced" style="margin-left: 8px">
+                <a-button class="tw-ml-2" @click="resetQuery"><a-icon type="redo" />重置</a-button>
+                <a @click="toggleAdvanced" class="tw-ml-2">
                   {{ advanced ? '收起' : '展开' }}
                   <a-icon :type="advanced ? 'up' : 'down'" />
                 </a>
@@ -42,7 +42,7 @@
         <a-button type="primary" @click="handleAdd()" v-hasPermi="['system:notice:add']"> <a-icon type="plus" />新增 </a-button>
         <a-button type="primary" :disabled="single" @click="handleUpdate(undefined, ids)" v-hasPermi="['system:notice:edit']"> <a-icon type="edit" />修改 </a-button>
         <a-button type="danger" :disabled="multiple" @click="handleDelete" v-hasPermi="['system:notice:remove']"> <a-icon type="delete" />删除 </a-button>
-        <a-button type="dashed" shape="circle" :loading="loading" :style="{ float: 'right' }" icon="reload" @click="getList" />
+        <a-button type="dashed" shape="circle" :loading="loading" class="tw-float-right" icon="reload" @click="getList" />
       </div>
       <!-- 数据展示 -->
       <a-table :loading="loading" :size="tableSize" rowKey="noticeId" :columns="columns" :data-source="list" :row-selection="{ selectedRowKeys: selectedRowKeys, onChange: onSelectChange }" :pagination="false">

@@ -122,7 +122,7 @@ export default {
 
       return (
         <a-dropdown overlay={menu} trigger={['contextmenu']}>
-          <span style={{ userSelect: 'none' }}>{title} </span>
+          <span class="tw-select-none">{title} </span>
         </a-dropdown>
       )
     }
@@ -148,7 +148,7 @@ export default {
     const panes = pages.map(page => {
       return (
         <a-tab-pane
-          style={{ height: 0 }}
+          class="tw-h-0"
           tab={this.renderTabPane(page.meta.customTitle || page.meta.title, page.fullPath)}
           key={page.fullPath}
           closable={pages.length > 1 && (page.path === this.activeKey || page.path === '/processDesign')}

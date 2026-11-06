@@ -91,7 +91,7 @@ export default {
           customRender: (text, record) => {
             const { busFieldProp, busDetailCompName } = busFlowMap[record.type]
             return (
-              <div style="cursor: pointer">
+              <div class="tw-cursor-pointer">
                 <Ellipsis length={80} tooltip>
                   {this._.get(record.form, busFieldProp, '')}
                 </Ellipsis>

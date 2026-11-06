@@ -15,9 +15,9 @@
       >
     </div>
     <div class="hr-toolbar">
-      <a-month-picker v-model="period" value-format="YYYY-MM" placeholder="考勤月份" @change="load" /><a-select v-model="kind" style="width: 160px" @change="load"
+      <a-month-picker v-model="period" format="YYYY-MM" value-format="YYYY-MM" :allow-clear="false" placeholder="考勤月份" @change="load" /><a-select v-model="kind" class="tw-w-40" @change="load"
         ><a-select-option value="monthly">月度汇总</a-select-option><a-select-option value="daily">每日考勤</a-select-option><a-select-option value="leave">请假记录</a-select-option></a-select
-      ><a-select v-model="batchId" style="min-width: 280px" placeholder="选择导入批次" @change="loadDetail"
+      ><a-select v-model="batchId" class="tw-min-w-[280px]" placeholder="选择导入批次" @change="loadDetail"
         ><a-select-option v-for="b in batches" :key="b.id" :value="b.id">{{ b.period }} · #{{ b.id }} · {{ statusNames[b.status] }}</a-select-option></a-select
       ><a-button icon="reload" @click="load">刷新</a-button>
     </div>
@@ -30,7 +30,7 @@
         ><a-button v-if="!selfMode && showModuleAction('attendance', 'export')" @click="downloadSource">下载原始文件</a-button
         ><a-radio-group v-if="kind === 'daily'" v-model="dailyView" button-style="solid"><a-radio-button value="calendar">员工考勤日历</a-radio-button><a-radio-button value="table">明细表</a-radio-button></a-radio-group>
       </div>
-      <a-alert v-if="detail.status === 'superseded'" type="warning" show-icon message="这是历史版本，已有新的考勤数据；历史工资保留原始引用，新工资应使用已确认版本。" style="margin-bottom: 16px" />
+      <a-alert v-if="detail.status === 'superseded'" type="warning" show-icon message="这是历史版本，已有新的考勤数据；历史工资保留原始引用，新工资应使用已确认版本。" class="tw-mb-4" />
       <a-table
         v-if="kind !== 'daily' || dailyView === 'table'"
         :loading="loading"
@@ -85,6 +85,7 @@ export default {
       return templates.daily.fields
     },
     dayCount() {
+      if (!this.period) return 0
       const [year, month] = this.period.split('-').map(Number)
       return new Date(year, month, 0).getDate()
     },
@@ -108,6 +109,12 @@ export default {
   },
   methods: {
     async load() {
+      if (!this.period) {
+        this.batches = []
+        this.batchId = undefined
+        this.detail = null
+        return
+      }
       this.loading = true
       try {
         const response = await hr(this.selfMode ? '/self/attendance' : '/attendance', 'get', { period: this.period, kind: this.kind })

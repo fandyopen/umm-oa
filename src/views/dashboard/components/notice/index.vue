@@ -5,7 +5,7 @@
     <a slot="extra" @click="handleNoticeMore">更多</a>
     <List :bordered="false" :data-source="noticeData">
       <ListItem slot="renderItem" slot-scope="item">
-        <span style="margin: 0 30px 0 30px">{{ item }}</span>
+        <span class="tw-my-0 tw-mx-[30px]">{{ item }}</span>
       </ListItem>
     </List>
   </a-card>

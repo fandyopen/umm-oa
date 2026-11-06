@@ -1,24 +1,57 @@
 <template>
   <page-header-wrapper :breadcrumb="$store.getters.breadcrumb">
     <a-card :bordered="false">
-      <div class="workspace-head"><div><h2>合同列表</h2><p>以客户为中心管理合同，从起草、审批、签署到履约、回款与续约。</p></div><a-button v-if="showModuleAction('contract', 'add')" type="primary" icon="plus" @click="create" v-hasModuleAction="moduleActionBinding('contract', 'add')" :loading="!!moduleActionBusy.openForm">新建合同</a-button></div>
-      <div class="lifecycle"><span>客户建档</span><a-icon type="right" /><span>合同起草</span><a-icon type="right" /><span>审批签署</span><a-icon type="right" /><span>收费回款</span><a-icon type="right" /><span>到期续约</span></div>
+      <div class="workspace-head">
+        <div>
+          <h2>合同列表</h2>
+          <p>以客户为中心管理合同，从起草、审批、签署到履约、回款与续约。</p>
+        </div>
+        <a-button v-if="showModuleAction('contract', 'add')" type="primary" icon="plus" @click="create" v-hasModuleAction="moduleActionBinding('contract', 'add')" :loading="!!moduleActionBusy.openForm">新建合同</a-button>
+      </div>
+      <div class="lifecycle">
+        <span>客户建档</span><a-icon type="right" /><span>合同起草</span><a-icon type="right" /><span>审批签署</span><a-icon type="right" /><span>收费回款</span><a-icon type="right" /><span>到期续约</span>
+      </div>
       <a-alert class="workspace-guide" type="info" show-icon message="合同审批在统一待办办理；收费、回款和版本在合同详情查看；到期与逾期风险统一进入风险提醒。" />
-      <div class="workspace-metrics"><div v-for="item in metrics" :key="item.label" class="workspace-metric"><span>{{ item.label }}</span><strong>{{ item.value }}</strong></div></div>
+      <div class="workspace-metrics">
+        <div v-for="item in metrics" :key="item.label" class="workspace-metric">
+          <span>{{ item.label }}</span
+          ><strong>{{ item.value }}</strong>
+        </div>
+      </div>
       <div class="workspace-filters">
-        <a-input-search v-model="query.keyword" placeholder="搜索合同名称、编号或客户" allow-clear style="width: 290px" @search="refresh" />
-        <a-select v-model="query.customerId" allow-clear show-search :filter-option="false" placeholder="全部客户" style="width: 220px" @search="searchCustomers" @change="refresh"><a-select-option v-for="item in customers" :key="item.id" :value="item.id">{{ item.name }}</a-select-option></a-select>
-        <a-select v-model="query.status" allow-clear placeholder="全部合同状态" style="width: 150px" @change="refresh"><a-select-option v-for="(label, key) in statuses" :key="key">{{ label }}</a-select-option></a-select>
+        <a-input-search v-model="query.keyword" placeholder="搜索合同名称、编号或客户" allow-clear class="tw-w-[290px]" @search="refresh" />
+        <a-select v-model="query.customerId" allow-clear show-search :filter-option="false" placeholder="全部客户" class="tw-w-[220px]" @search="searchCustomers" @change="refresh"
+          ><a-select-option v-for="item in customers" :key="item.id" :value="item.id">{{ item.name }}</a-select-option></a-select
+        >
+        <a-select v-model="query.status" allow-clear placeholder="全部合同状态" class="tw-w-[150px]" @change="refresh"
+          ><a-select-option v-for="(label, key) in statuses" :key="key">{{ label }}</a-select-option></a-select
+        >
         <a-button icon="reload" @click="reset">重置</a-button>
       </div>
       <a-table :loading="loading" :columns="columns" :data-source="rows" row-key="id" :pagination="pagination" :scroll="{ x: 1150 }" size="middle" @change="changePage">
-        <span slot="contract" slot-scope="text, record"><a @click="openDetail(record.id)">{{ text }}</a><small class="subline">{{ record.code }}</small></span>
-        <span slot="customer" slot-scope="text, record"><a v-if="showModuleAction('customer')" @click="openCustomer(record.customerId)">{{ text }}</a><span v-else>{{ text }}</span></span>
+        <span slot="contract" slot-scope="text, record"
+          ><a @click="openDetail(record.id)">{{ text }}</a
+          ><small class="subline">{{ record.code }}</small></span
+        >
+        <span slot="customer" slot-scope="text, record"
+          ><a v-if="showModuleAction('customer')" @click="openCustomer(record.customerId)">{{ text }}</a
+          ><span v-else>{{ text }}</span></span
+        >
         <span slot="money" slot-scope="value">{{ money(value) }}</span>
-        <span slot="status" slot-scope="value, record"><a-tag :color="statusColors[value]">{{ statuses[value] }}</a-tag><a-tag v-if="record.signingPending" color="blue">签署审批中</a-tag><small v-if="record.effectiveVersion && !['active', 'completed'].includes(value)" class="subline">V{{ record.effectiveVersion }} 继续生效</small></span>
+        <span slot="status" slot-scope="value, record"
+          ><a-tag :color="statusColors[value]">{{ statuses[value] }}</a-tag
+          ><a-tag v-if="record.signingPending" color="blue">签署审批中</a-tag><small v-if="record.effectiveVersion && !['active', 'completed'].includes(value)" class="subline">V{{ record.effectiveVersion }} 继续生效</small></span
+        >
         <span slot="action" slot-scope="_, record">
           <a-button type="link" size="small" @click="openDetail(record.id, detailTab)">查看详情</a-button>
-          <a-button v-if="record.status === 'draft' && record.versionNo === 1 && !record.effectiveVersion && showModuleAction('contract', 'remove')" type="link" size="small" @click="remove(record)" v-hasModuleAction="moduleActionBinding('contract', 'remove')">删除草稿</a-button>
+          <a-button
+            v-if="record.status === 'draft' && record.versionNo === 1 && !record.effectiveVersion && showModuleAction('contract', 'remove')"
+            type="link"
+            size="small"
+            @click="remove(record)"
+            v-hasModuleAction="moduleActionBinding('contract', 'remove')"
+            >删除草稿</a-button
+          >
         </span>
       </a-table>
     </a-card>
@@ -210,12 +243,89 @@ export default {
 </script>
 
 <style lang="less" scoped>
-.workspace-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; h2 { color: #17212b; margin: 0; font-size: 22px; font-weight: 600; } p { margin: 7px 0 0; color: #667085; max-width: 900px; } }
-.lifecycle { display: flex; align-items: center; flex-wrap: wrap; gap: 14px; padding: 14px 18px; background: #f4f8fc; color: #42617b; border: 1px solid #e5edf4; border-radius: 5px; margin: 20px 0 12px; font-size: 13px; .anticon { color: #a6b5c3; font-size: 10px; } }
-.workspace-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 22px; }
-.workspace-metric { padding: 16px 20px; border: 1px solid #e5e9ee; border-left: 3px solid #1769aa; border-radius: 5px; span { display: block; color: #667085; font-size: 12px; } strong { display: block; margin-top: 7px; font-size: 24px; font-weight: 600; color: #17212b; } .danger { color: #cf3e36; } }
-.workspace-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 18px; }
-.workspace-guide { margin-bottom: 18px; }
-.subline { display: block; color: #98a2b3; font-size: 12px; margin-top: 4px; }
-@media (max-width: 900px) { .workspace-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } .workspace-metric strong { font-size: 20px; } }
+.workspace-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  h2 {
+    color: #17212b;
+    margin: 0;
+    font-size: 22px;
+    font-weight: 600;
+  }
+  p {
+    margin: 7px 0 0;
+    color: #667085;
+    max-width: 900px;
+  }
+}
+.lifecycle {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding: 14px 18px;
+  background: #f4f8fc;
+  color: #42617b;
+  border: 1px solid #e5edf4;
+  border-radius: 5px;
+  margin: 20px 0 12px;
+  font-size: 13px;
+  .anticon {
+    color: #a6b5c3;
+    font-size: 10px;
+  }
+}
+.workspace-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 22px;
+}
+.workspace-metric {
+  padding: 16px 20px;
+  border: 1px solid #e5e9ee;
+  border-left: 3px solid #1769aa;
+  border-radius: 5px;
+  span {
+    display: block;
+    color: #667085;
+    font-size: 12px;
+  }
+  strong {
+    display: block;
+    margin-top: 7px;
+    font-size: 24px;
+    font-weight: 600;
+    color: #17212b;
+  }
+  .danger {
+    color: #cf3e36;
+  }
+}
+.workspace-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.workspace-guide {
+  margin-bottom: 18px;
+}
+.subline {
+  display: block;
+  color: #98a2b3;
+  font-size: 12px;
+  margin-top: 4px;
+}
+@media (max-width: 900px) {
+  .workspace-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .workspace-metric strong {
+    font-size: 20px;
+  }
+}
 </style>

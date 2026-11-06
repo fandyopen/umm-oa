@@ -1,16 +1,16 @@
 <!-- 表格列搜索 -->
 <template>
-  <div style="padding: 8px">
+  <div class="tw-p-2">
     <a-input
       ref="searchInput"
       :placeholder="`搜索${column.title}`"
       :value="selectedKeys[0]"
-      style="width: 188px; margin-bottom: 8px; display: block"
+      class="tw-w-[188px] tw-mb-2 tw-block"
       @change="e => setSelectedKeys(e.target.value ? [e.target.value] : [])"
       @pressEnter="() => handleSearch(selectedKeys, confirm, column.dataIndex)"
     />
-    <a-button type="primary" ghost size="small" style="width: 90px; margin-right: 8px" @click="() => handleSearch(selectedKeys, confirm, column.dataIndex)"> 搜索 </a-button>
-    <a-button size="small" style="width: 90px" @click="() => handleReset(clearFilters)"> 重置 </a-button>
+    <a-button type="primary" ghost size="small" class="tw-w-[90px] tw-mr-2" @click="() => handleSearch(selectedKeys, confirm, column.dataIndex)"> 搜索 </a-button>
+    <a-button size="small" class="tw-w-[90px]" @click="() => handleReset(clearFilters)"> 重置 </a-button>
   </div>
 </template>
 

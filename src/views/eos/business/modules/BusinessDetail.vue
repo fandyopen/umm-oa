@@ -24,9 +24,9 @@
       <a-descriptions-item label="客户需求" :span="2">{{ data.requirement || data.remark || '-' }}</a-descriptions-item>
       <a-descriptions-item label="备注" :span="2">{{ data.remark || '-' }}</a-descriptions-item>
     </a-descriptions>
-    <div v-if="data.customerId && canCreateContract" style="margin-top: 18px">
+    <div v-if="data.customerId && canCreateContract" class="tw-mt-[18px]">
       <a-button type="primary" icon="file-text" @click="createContract" :loading="!!moduleActionBusy.createContract">从此商机创建合同</a-button
-      ><span style="margin-left: 12px; color: #667085">自动关联客户与商机，创建后可继续完善并提交审批</span>
+      ><span class="tw-ml-3 tw-text-[#667085]">自动关联客户与商机，创建后可继续完善并提交审批</span>
     </div>
 
     <div v-if="stages.length" class="stage-section">
@@ -76,15 +76,13 @@ export default {
       return this.showModuleAction('contract', 'add')
     },
     stageColor() {
-      return (
-        {
-          赢单: 'green',
-          输单: 'red',
-          商务谈判: 'orange',
-          方案报价: 'purple',
-          需求确认: 'blue'
-        }[this.data.stage || this.data.businessState]
-      )
+      return {
+        赢单: 'green',
+        输单: 'red',
+        商务谈判: 'orange',
+        方案报价: 'purple',
+        需求确认: 'blue'
+      }[this.data.stage || this.data.businessState]
     }
   },
   mounted() {

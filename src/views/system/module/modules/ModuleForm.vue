@@ -7,7 +7,7 @@
       <a-form-model-item label="上级模块" prop="parentId">
         <a-tree-select
           v-model="form.parentId"
-          style="width: 100%"
+          class="tw-w-full"
           :dropdown-style="{ maxHeight: '400px', overflow: 'auto' }"
           :tree-data="parentOptions"
           placeholder="请选择上级模块"
@@ -41,7 +41,7 @@
         <a-input v-model="form.icon" placeholder="例如 iconfont-kehuguanli" />
       </a-form-model-item>
       <a-form-model-item label="排序" prop="orderNum">
-        <a-input-number v-model="form.orderNum" :min="0" style="width: 100%" />
+        <a-input-number v-model="form.orderNum" :min="0" class="tw-w-full" />
       </a-form-model-item>
       <a-form-model-item label="显示" prop="visible">
         <a-radio-group v-model="form.visible" button-style="solid">
@@ -92,13 +92,14 @@ export default {
   },
   computed: {
     parentOptions() {
-      const convert = nodes => (nodes || [])
-        .filter(node => node.nodeType === 'module' && node.moduleId !== this.form.moduleId)
-        .map(node => ({
-          moduleId: node.moduleId,
-          moduleName: node.moduleName,
-          children: convert(node.children)
-        }))
+      const convert = nodes =>
+        (nodes || [])
+          .filter(node => node.nodeType === 'module' && node.moduleId !== this.form.moduleId)
+          .map(node => ({
+            moduleId: node.moduleId,
+            moduleName: node.moduleName,
+            children: convert(node.children)
+          }))
       return convert(this.treeData)
     }
   },
@@ -163,9 +164,7 @@ export default {
           const data = {
             ...this.form,
             menuId: this.form.moduleId,
-            component: this.form.menuType === 'M'
-              ? (Number(this.form.parentId) === 0 ? 'Layout' : 'ParentView')
-              : this.form.component,
+            component: this.form.menuType === 'M' ? (Number(this.form.parentId) === 0 ? 'Layout' : 'ParentView') : this.form.component,
             isFrame: this.form.isFrame || '1',
             isCache: this.form.isCache || '0',
             isApp: this.form.isApp || (this.form.menuType === 'M' ? '1' : '0')

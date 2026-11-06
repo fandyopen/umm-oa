@@ -7,13 +7,13 @@
           <p>统一维护任职资料，薪资按生效日期留存版本。</p>
         </div>
         <a-space
-          ><hr-template-downloads /><a-button icon="download" @click="downloadBlank">下载档案模板</a-button><a-button v-if="showModuleAction('employees', 'edit')" @click="openImport('employee')">补录档案</a-button
+          ><hr-template-downloads /><a-button v-if="showModuleAction('employees', 'edit')" icon="import" @click="openImport('employee')">批量导入档案</a-button
           ><a-button v-if="showModuleAction('employees', 'salary_manage')" @click="openImport('salary')">导入薪资标准</a-button
           ><a-button v-if="showModuleAction('employees', 'export')" icon="export" @click="exportEmployees">导出档案</a-button></a-space
         >
       </div>
       <div class="hr-toolbar">
-        <a-input-search v-model="query.keyword" placeholder="工号 / 姓名 / 手机" style="width: 260px" @search="load" /><a-select v-model="query.status" allow-clear placeholder="任职状态" style="width: 140px" @change="load"
+        <a-input-search v-model="query.keyword" placeholder="工号 / 姓名 / 手机" class="tw-w-[260px]" @search="load" /><a-select v-model="query.status" allow-clear placeholder="任职状态" class="tw-w-[140px]" @change="load"
           ><a-select-option value="active">在职</a-select-option><a-select-option value="leaving">待离职</a-select-option><a-select-option value="departed">已离职</a-select-option></a-select
         ><a-button icon="reload" @click="load">刷新</a-button>
       </div>
@@ -44,25 +44,42 @@
         </div>
         <a-tabs v-model="tab"
           ><a-tab-pane key="profile" tab="基本与任职资料"
-            ><a-alert type="info" show-icon message="历史成员的入职日期需补录，不使用账号创建日期代替。账号启停与任职状态分别管理。" style="margin-bottom: 16px" /><a-form-model layout="vertical" :model="employee"
+            ><a-alert type="info" show-icon message="历史成员的入职日期需补录，不使用账号创建日期代替。账号启停与任职状态分别管理。" class="tw-mb-4" /><a-form-model layout="vertical" :model="employee"
               ><div class="hr-form-grid">
                 <a-form-model-item v-for="field in profileFields" :key="field.key" :label="field.label"
-                  ><a-date-picker v-if="field.date" v-model="employee[field.key]" value-format="YYYY-MM-DD" style="width: 100%" /><a-input v-else v-model="employee[field.key]" :max-length="field.max || 100"
+                  ><a-date-picker v-if="field.date" v-model="employee[field.key]" format="YYYY-MM-DD" value-format="YYYY-MM-DD" class="tw-w-full" />
+                  <template v-else-if="field.key === 'employmentType'">
+                    <a-select
+                      v-model="employee.employmentType"
+                      allow-clear
+                      placeholder="请选择用工类型"
+                      :loading="loadingTypes"
+                      :disabled="!employmentTypes.length"
+                      :get-popup-container="trigger => trigger.parentNode"
+                      class="tw-w-full"
+                    >
+                      <a-select-option v-if="employmentTypeNeedsReview" :value="employee.employmentType" disabled>{{ employee.employmentType }}（历史值，待核对）</a-select-option>
+                      <a-select-option v-for="option in employmentTypes" :key="option.value" :value="option.value">{{ option.label }}</a-select-option>
+                    </a-select>
+                    <div v-if="employmentTypeNeedsReview" class="employment-type-warning">历史用工类型尚未归类，请核对后重新选择；未修改时保留原值。</div>
+                    <div v-if="employmentTypesError" class="employment-type-warning">{{ employmentTypesError }} <a @click="loadTypes">重试</a></div>
+                  </template>
+                  <a-input v-else v-model="employee[field.key]" :max-length="field.max || 100"
                 /></a-form-model-item></div></a-form-model
             ><a-button v-if="showModuleAction('employees', 'edit')" type="primary" :loading="saving" @click="save">保存档案</a-button></a-tab-pane
           >
           <a-tab-pane v-if="employee.salaryVisible" key="salary" tab="薪资标准与发薪账户"
-            ><a-alert type="info" show-icon message="定薪、调薪新增生效版本，工资按所属期间自动取值。已生效标准不可覆盖。" style="margin-bottom: 16px" /><a-form-model layout="vertical"
+            ><a-alert type="info" show-icon message="定薪、调薪新增生效版本，工资按所属期间自动取值。已生效标准不可覆盖。" class="tw-mb-4" /><a-form-model layout="vertical"
               ><div class="hr-form-grid">
                 <a-form-model-item label="开户人"><a-input v-model="employee.accountName" /></a-form-model-item><a-form-model-item label="开户银行"><a-input v-model="employee.bankName" /></a-form-model-item
                 ><a-form-model-item label="银行卡号"><a-input v-model="employee.bankAccount" /></a-form-model-item></div></a-form-model
-            ><a-space style="margin-bottom: 16px"
+            ><a-space class="tw-mb-4"
               ><a-button v-if="showModuleAction('employees', 'salary_manage')" @click="save">保存发薪账户</a-button
               ><a-button
                 v-if="showModuleAction('employees', 'salary_manage')"
                 type="primary"
                 @click="
-                  salaryForm = { payType: 'monthly', allowance: 0 }
+                  salaryForm = { effectiveDate: null, payType: 'monthly', allowance: 0 }
                   salaryVisible = true
                 "
                 >新增定薪 / 调薪</a-button
@@ -106,11 +123,11 @@
     </a-drawer>
     <a-modal v-model="salaryVisible" title="新增薪资生效版本" :confirm-loading="saving" @ok="saveSalary"
       ><a-form-model layout="vertical"
-        ><a-form-model-item label="生效日期"><a-date-picker v-model="salaryForm.effectiveDate" value-format="YYYY-MM-DD" style="width: 100%" /></a-form-model-item
+        ><a-form-model-item label="生效日期"><a-date-picker v-model="salaryForm.effectiveDate" format="YYYY-MM-DD" value-format="YYYY-MM-DD" class="tw-w-full" /></a-form-model-item
         ><a-form-model-item label="计薪方式"
           ><a-select v-model="salaryForm.payType"><a-select-option value="monthly">月薪</a-select-option><a-select-option value="daily">日薪</a-select-option></a-select></a-form-model-item
-        ><a-form-model-item label="工资标准（元）"><a-input-number v-model="salaryForm.baseAmount" :min="0" :precision="2" style="width: 100%" /></a-form-model-item
-        ><a-form-model-item label="月固定补贴（元）"><a-input-number v-model="salaryForm.allowance" :min="0" :precision="2" style="width: 100%" /></a-form-model-item
+        ><a-form-model-item label="工资标准（元）"><a-input-number v-model="salaryForm.baseAmount" :min="0" :precision="2" class="tw-w-full" /></a-form-model-item
+        ><a-form-model-item label="月固定补贴（元）"><a-input-number v-model="salaryForm.allowance" :min="0" :precision="2" class="tw-w-full" /></a-form-model-item
         ><a-form-model-item label="定薪调薪原因"><a-textarea v-model="salaryForm.reason" :max-length="1000" /></a-form-model-item></a-form-model
     ></a-modal>
     <hr-excel-import v-if="importType" :visible="!!importType" :type="importType" :commit-api="commitImport" @close="importType = ''" @done="load" />
@@ -125,6 +142,7 @@ import { employeeRecords } from './reports.js'
 import HrExcelImport from '/src/components/HrExcelImport/index.vue'
 import { exportTemplate } from './templates.js'
 import { statusNames, eventNames, dateText, fileBody } from './hrShared.js'
+import { loadEmploymentTypes } from './employmentTypes.js'
 import { saveAs } from 'file-saver'
 export default {
   name: 'HrEmployees',
@@ -136,6 +154,9 @@ export default {
     loading: false,
     saving: false,
     employee: null,
+    employmentTypes: [],
+    loadingTypes: false,
+    employmentTypesError: '',
     tab: 'profile',
     salaryVisible: false,
     salaryForm: {},
@@ -154,12 +175,29 @@ export default {
       { key: 'contractEnd', label: '劳动合同结束', date: true }
     ]
   }),
+  computed: {
+    employmentTypeNeedsReview() {
+      return !!this.employee?.employmentType && !this.employmentTypes.some(option => option.value === this.employee.employmentType) && !this.loadingTypes && !this.employmentTypesError
+    }
+  },
   mounted() {
+    this.loadTypes()
     this.load()
     if (this.$route.query.userId) this.open({ userId: this.$route.query.userId })
   },
   methods: {
     dateText,
+    async loadTypes() {
+      this.loadingTypes = true
+      this.employmentTypesError = ''
+      try {
+        this.employmentTypes = await loadEmploymentTypes()
+      } catch (error) {
+        this.employmentTypesError = error.message || '用工类型加载失败'
+      } finally {
+        this.loadingTypes = false
+      }
+    },
     async load() {
       this.loading = true
       try {
@@ -168,17 +206,27 @@ export default {
         this.loading = false
       }
     },
+    setEmployee(employee) {
+      const form = { ...employee }
+      // Define optional fields before Vue observes the object so selecting an empty date updates immediately.
+      for (const field of this.profileFields) {
+        const value = employee[field.key]
+        form[field.key] = field.date ? (value ? String(value).slice(0, 10) : null) : value ?? ''
+      }
+      form.employmentType = employee.employmentType || undefined
+      this.employee = form
+    },
     async open(row) {
-      this.employee = (await hr('/employees/' + row.userId)).data
+      this.setEmployee((await hr('/employees/' + row.userId)).data)
       this.tab = 'profile'
-      for (const f of this.profileFields.filter(f => f.date)) this.employee[f.key] = this.employee[f.key] ? String(this.employee[f.key]).slice(0, 10) : undefined
     },
     async save() {
       const accountOnly = this.tab === 'salary'
       if (!(await this.checkModuleAction({ module: 'employees', action: accountOnly ? 'salary_manage' : 'edit', label: accountOnly ? '保存发薪账户' : '保存档案' }))) return
       this.saving = true
       try {
-        await hr('/employees/' + this.employee.userId + (accountOnly ? '/accounts' : ''), 'put', this.employee)
+        const payload = accountOnly ? this.employee : { ...this.employee, employmentType: this.employee.employmentType || null }
+        await hr('/employees/' + this.employee.userId + (accountOnly ? '/accounts' : ''), 'put', payload)
         this.$message.success('档案已保存')
         await this.open(this.employee)
         this.load()
@@ -187,7 +235,7 @@ export default {
       }
     },
     editSalary(row) {
-      this.salaryForm = { ...row, effectiveDate: dateText(row.effectiveDate) }
+      this.salaryForm = { ...row, effectiveDate: row.effectiveDate ? String(row.effectiveDate).slice(0, 10) : null }
       this.salaryVisible = true
     },
     async saveSalary() {
@@ -197,7 +245,7 @@ export default {
         await hr('/employees/' + this.employee.userId + '/salary', 'post', this.salaryForm)
         this.salaryVisible = false
         this.$message.success('已保存草稿，请提交生效审批')
-        this.employee = (await hr('/employees/' + this.employee.userId)).data
+        this.setEmployee((await hr('/employees/' + this.employee.userId)).data)
       } finally {
         this.saving = false
       }
@@ -205,18 +253,15 @@ export default {
     async submitSalary(row) {
       if (!(await this.checkModuleAction({ module: 'employees', action: 'salary_submit', label: '提交薪资生效' }))) return
       await executeWorkflowAction({ moduleId: this.moduleContexts.employees.moduleId, actionCode: 'salary_submit', payload: { salaryId: row.id, revision: row.revision, title: '员工定薪 / 调薪审批' } })
-      this.employee = (await hr('/employees/' + this.employee.userId)).data
+      this.setEmployee((await hr('/employees/' + this.employee.userId)).data)
       this.$message.success('已按审批配置提交或生效')
     },
     async openImport(type) {
-      if (!(await this.checkModuleAction({ module: 'employees', action: type === 'salary' ? 'salary_manage' : 'edit', label: '导入员工资料' }))) return
+      if (!(await this.checkModuleAction({ module: 'employees', action: type === 'salary' ? 'salary_manage' : 'edit', label: type === 'salary' ? '导入薪资标准' : '批量导入档案' }))) return
       this.importType = type
     },
     commitImport(payload) {
       return hr(this.importType === 'salary' ? '/salaries/import' : '/employees/import', 'post', payload)
-    },
-    downloadBlank() {
-      exportTemplate('employee')
     },
     downloadSalary() {
       exportTemplate('salary')
@@ -224,7 +269,7 @@ export default {
     async exportEmployees() {
       if (!(await this.checkModuleAction({ module: 'employees', action: 'export', label: '导出档案' }))) return
       const response = await hr('/reports/employees', 'get', this.query)
-      exportTemplate('employeeReport', employeeRecords(response.data || []))
+      await exportTemplate('employeeReport', employeeRecords(response.data || []))
     },
     async upload(file) {
       if (file.size > 10 * 1024 * 1024) {
@@ -232,7 +277,7 @@ export default {
         return false
       }
       await hr('/employees/' + this.employee.userId + '/attachments', 'post', await fileBody(file))
-      this.employee = (await hr('/employees/' + this.employee.userId)).data
+      this.setEmployee((await hr('/employees/' + this.employee.userId)).data)
       return false
     },
     async downloadFile(id) {
@@ -243,3 +288,11 @@ export default {
 }
 </script>
 <style scoped src="./hr.css"></style>
+<style scoped>
+.employment-type-warning {
+  margin-top: 4px;
+  color: #ad6800;
+  font-size: 12px;
+  line-height: 1.6;
+}
+</style>

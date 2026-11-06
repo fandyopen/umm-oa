@@ -10,7 +10,7 @@
       <template slot="footer">
         <a-button type="primary" @click="goIndex"> 返回首页 </a-button>
       </template>
-      <p style="font-size: 25px; margin: 0 auto; text-align: center">您没有相关权限,请联系管理员授权</p>
+      <p class="tw-text-[25px] tw-my-0 tw-mx-auto tw-text-center">您没有相关权限,请联系管理员授权</p>
     </a-modal>
     <div class="contacts-internal" :class="{ 'menu-is-collapsed': menuCollapsed }">
       <div class="layout-menu">
@@ -37,19 +37,7 @@
             </a-menu>
           </div>
           <div class="menu-type">公司</div>
-          <div class="department-tree">
-            <a-tree ref="treeRef" :selectedKeys="selectedTreeKeys" :tree-data="treeData" :replaceFields="replaceFields" @dragenter="onDragEnter" @drop="onDrop" @select="treeNodeSelect">
-              <template slot="title" slot-scope="item">
-                <span class="department-tree-title">
-                  <span class="department-tree-label" :title="item.label">{{ item.label }}</span>
-                  <span class="department-tree-actions" v-if="canManageDepartments">
-                    <a-icon type="edit" title="修改部门名称" @click.stop="openEditDepartment(item)" />
-                    <a-icon type="delete" title="删除部门" @click.stop="deleteDepartment(item)" />
-                  </span>
-                </span>
-              </template>
-            </a-tree>
-          </div>
+          <department-tree :tree-data="treeData" :selected-keys="selectedTreeKeys" :editable="canManageDepartments" @select="treeNodeSelect" @edit="openEditDepartment" @delete="deleteDepartment" />
           <a-modal title="修改部门名称" :visible="editDepartmentVisible" @ok="saveDepartmentName" @cancel="editDepartmentVisible = false">
             <a-input v-model="editDepartmentName" placeholder="输入部门名称" allowClear @pressEnter="saveDepartmentName" />
           </a-modal>
@@ -76,7 +64,7 @@
               <p>角色名称</p>
               <a-input placeholder="输入角色名称" allowClear v-model="roleName" />
               <p>目标分组</p>
-              <a-select placeholder="选择角色组" allowClear style="width: 100%" @change="handleChange">
+              <a-select placeholder="选择角色组" allowClear class="tw-w-full" @change="handleChange">
                 <a-select-option v-for="item in RoleGroupMenu" :value="item.id" :key="item.id"> {{ item.value }} </a-select-option>
               </a-select>
             </a-modal>
@@ -155,16 +143,17 @@
 import { withModuleContexts } from '/src/utils/moduleContext.js'
 import { hasModuleAction } from '/src/utils/modulePermission.js'
 import MemberElement from '../components/memberElement/index.vue'
+import DepartmentTree from '/src/components/DepartmentTree/index.vue'
 import RoleElement from '../components/roleElement/index.vue'
 import AdminElement from '../components/adminElement/index.vue'
-import { getTreeMenu, deptsort, editDeptName, insertRole, updateRole, updateRoleGroup, getRoleByAdmin } from '/src/api/enterprise/index.js'
+import { getTreeMenu, editDeptName, insertRole, updateRole, updateRoleGroup, getRoleByAdmin } from '/src/api/enterprise/index.js'
 import { delDept } from '/src/api/system/dept.js'
 import { delSaasRole, delRoleGroup } from '/src/api/system/role.js'
 
 export default {
   mixins: [withModuleContexts({ members: { component: 'enterprise/Contacts/contactsOp', label: '组织机构' } })],
   name: 'ContactsOp',
-  components: { MemberElement, RoleElement, AdminElement },
+  components: { MemberElement, DepartmentTree, RoleElement, AdminElement },
   data() {
     return {
       // 岗位
@@ -189,8 +178,6 @@ export default {
       editDepartmentVisible: false,
       editDepartmentId: null,
       editDepartmentName: '',
-      /* tree 字段 */
-      replaceFields: { children: 'children', title: 'label', key: 'id' },
       mTitle: '',
       /* 部门ID */
       deptId: null,
@@ -409,70 +396,6 @@ export default {
     /* 清除部门ID */
     clearDeptId() {
       this.deptId = null
-    },
-    onDragEnter(info) {
-      // expandedKeys 需要受控时设置
-      // this.expandedKeys = info.expandedKeys
-    },
-    onDrop(info) {
-      const dropKey = info.node.dataRef.id
-      const dragKey = info.dragNode.dataRef.id
-      const dropPos = info.node.pos.split('-')
-      const dropPosition = info.dropPosition - Number(dropPos[dropPos.length - 1])
-      const loop = (data, key, callback) => {
-        data.forEach((item, index, arr) => {
-          if (item.id === key) {
-            return callback(item, index, arr)
-          }
-          if (item.children) {
-            return loop(item.children, key, callback)
-          }
-        })
-      }
-      const data = [...this.treeData]
-      // 拖拽
-      if (info.dropPosition === -1) {
-        deptsort({ target: dragKey })
-      } else {
-        deptsort({ before: dropKey, target: dragKey })
-      }
-      // Find dragObject
-      let dragObj
-      loop(data, dragKey, (item, index, arr) => {
-        arr.splice(index, 1)
-        dragObj = item
-      })
-      if (!info.dropToGap) {
-        // Drop on the content
-        loop(data, dropKey, item => {
-          item.children = item.children || []
-          // where to insert 示例添加到尾部，可以是随意位置
-          item.children.push(dragObj)
-        })
-      } else if (
-        (info.node.children || []).length > 0 && // Has children
-        info.node.expanded && // Is expanded
-        dropPosition === 1 // On the bottom gap
-      ) {
-        loop(data, dropKey, item => {
-          item.children = item.children || []
-          // where to insert 示例添加到尾部，可以是随意位置
-          item.children.unshift(dragObj)
-        })
-      } else {
-        let ar
-        let i
-        loop(data, dropKey, (item, index, arr) => {
-          ar = arr
-          i = index
-        })
-        if (dropPosition === -1) {
-          ar.splice(i, 0, dragObj)
-        } else {
-          ar.splice(i + 1, 0, dragObj)
-        }
-      }
-      this.treeData = data
     },
     /* 请求部门菜单 */
     initTreeMenuList(refresh = false) {
@@ -748,60 +671,6 @@ export default {
     visibility: visible;
     pointer-events: auto;
   }
-}
-
-.department-tree-title {
-  position: relative;
-  display: block;
-  width: 100%;
-  height: 32px;
-  padding-right: 54px;
-  line-height: 32px;
-  min-width: 0;
-  box-sizing: border-box;
-
-  .department-tree-label {
-    display: block;
-    min-width: 0;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-  }
-
-  .department-tree-actions {
-    position: absolute;
-    top: 0;
-    right: 2px;
-    bottom: 0;
-    display: inline-flex;
-    align-items: center;
-    gap: 12px;
-    opacity: 0;
-    visibility: hidden;
-    pointer-events: none;
-    transition: opacity 0.15s ease;
-
-    i {
-      width: 18px;
-      line-height: 32px;
-      text-align: center;
-    }
-
-    i:hover {
-      color: #1890ff;
-    }
-  }
-
-  &:hover .department-tree-actions {
-    opacity: 1;
-    visibility: visible;
-    pointer-events: auto;
-  }
-}
-
-.department-tree ::v-deep .ant-tree-title {
-  display: block;
-  width: 100%;
 }
 
 .roleMenu {

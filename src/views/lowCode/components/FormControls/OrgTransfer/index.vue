@@ -14,9 +14,9 @@
         <!-- 左边穿梭框 -->
         <div class="transfer-pane">
           <div class="transfer-pane__tools">
-            <el-input v-model="searchString" class="search-input" size="mini" style="width: 180px" type="search" placeholder="搜索人员" :disabled="!searchable"></el-input>
+            <el-input v-model="searchString" class="search-input tw-w-[180px]" size="mini" type="search" placeholder="搜索人员" :disabled="!searchable"></el-input>
             <span>
-              <span style="margin-right: 1rem; font-size: 14px">{{ selectedNum }} / {{ maxNum }}</span>
+              <span class="tw-mr-[1rem] tw-text-sm">{{ selectedNum }} / {{ maxNum }}</span>
               <el-tooltip placement="top" content="清空">
                 <i class="el-icon-delete" @click="removeAll"></i>
               </el-tooltip>
@@ -50,7 +50,7 @@
         <div class="transfer-pane">
           <!-- 操作栏 -->
           <!-- 穿梭框 -->
-          <div class="transfer-pane__body" style="height: 370px">
+          <div class="transfer-pane__body tw-h-[370px]">
             <div class="enough-mask" v-show="isEnough">
               <span class="p-center">最多选择{{ maxNum }}项</span>
             </div>
@@ -67,8 +67,8 @@
               </div>
             </div>
 
-            <el-scrollbar style="height: 100%">
-              <el-tabs v-model="activeTabName" type="border-card" style="min-height: 370px">
+            <el-scrollbar class="tw-h-full">
+              <el-tabs v-model="activeTabName" type="border-card" class="tw-min-h-[370px]">
                 <el-tab-pane v-for="(tab_item, idx) in tabConfig" :name="tab_item.tabKey" :label="tab_item.tabName" :key="idx">
                   <div :class="{ orgTrans_selectTree: tab_item.tabKey === 'user' }">
                     <!-- 将tree设置为默认展开的原因是删除时不展开 selectData不能渲染-->

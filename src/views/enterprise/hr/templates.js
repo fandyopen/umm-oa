@@ -1,5 +1,6 @@
 import * as XLSX from 'xlsx'
 import { saveAs } from 'file-saver'
+import { loadEmploymentTypes } from './employmentTypes.js'
 
 const field = (key, label, type = 'text', required = true) => ({ key, label, type, required })
 const identity = [field('employeeNo', '员工编号'), field('employeeName', '员工姓名', 'text', false), field('dingtalkUserId', '钉钉人员ID', 'text', false)]
@@ -29,12 +30,13 @@ const dayNumbers = [
 ]
 export const templates = {
   employee: {
-    name: '员工档案补录模板',
-    note: '用于现有成员补录档案。工号唯一；默认EMP加成员ID，可先导出现有档案获取。不能将账号创建时间当入职日期。版本号来自档案导出。',
+    name: '员工档案批量导入模板',
+    title: '批量导入档案',
+    note: '仅更新已有员工，不新增成员。先“导出档案”获取员工编号和档案版本，再填写本模板；版本必填，档案变更后需重新导出。空白字段保留原值，单人修改或清空字段请在“查看档案”中操作。用工类型填写“填写说明”列出的名称或编码；入职日期须为真实日期。',
     fields: [
       ...identity,
-      field('revision', '档案版本', 'number', false),
-      field('entryDate', '入职日期', 'date'),
+      field('revision', '档案版本', 'number'),
+      field('entryDate', '入职日期', 'date', false),
       field('regularDate', '转正日期', 'date', false),
       field('employmentType', '用工类型', 'text', false),
       field('emergencyContact', '紧急联系人', 'text', false),
@@ -163,9 +165,10 @@ const amounts = reportFields([
 Object.assign(templates, {
   employeeReport: {
     name: '员工花名册',
-    note: '按当前筛选和数据范围导出。任职状态与账号启停分开管理。此报表不包含薪资和银行卡信息；补录请使用员工档案模板。',
+    note: '按当前筛选和数据范围导出。任职状态与账号启停分开管理。此报表不包含薪资和银行卡信息；批量更新请使用档案导入模板，并保留本表的员工编号和档案版本。',
     fields: reportFields([
       ['employeeNo', '员工编号'],
+      ['revision', '档案版本', 'number'],
       ['employeeName', '姓名'],
       ['deptName', '部门'],
       ['phonenumber', '手机'],
@@ -270,7 +273,7 @@ export function convertCell(value, f) {
   }
   return String(value).trim()
 }
-export function buildWorkbook(entries) {
+export function buildWorkbook(entries, employmentTypes = []) {
   const book = XLSX.utils.book_new()
   const instructions = [
     ['模板 / 报表', '说明', '字段', '要求'],
@@ -314,22 +317,29 @@ export function buildWorkbook(entries) {
     }
     XLSX.utils.book_append_sheet(book, sheet, (sheetName || (entries.length === 1 ? '数据' : schema.name)).slice(0, 31))
     instructions.push([schema.name, schema.note])
-    schema.fields.forEach(f => instructions.push(['', '', f.label, (f.required ? '必填' : '选填') + '；' + { number: '数字', money: '金额（元），两位小数', date: 'YYYY-MM-DD', text: '文本，编号请保持文本格式' }[f.type]]))
+    schema.fields.forEach(f => {
+      const requirement =
+        f.key === 'employmentType' && employmentTypes.length
+          ? '用工关系；' + employmentTypes.map(option => option.label + '（' + option.value + '）').join('、')
+          : { number: '数字', money: '金额（元），两位小数', date: 'YYYY-MM-DD', text: '文本，编号请保持文本格式' }[f.type]
+      instructions.push(['', '', f.label, (f.required ? '必填' : '选填') + '；' + requirement])
+    })
   })
   const guide = XLSX.utils.aoa_to_sheet(instructions)
   guide['!cols'] = [{ wch: 28 }, { wch: 100 }, { wch: 28 }, { wch: 45 }]
   XLSX.utils.book_append_sheet(book, guide, '填写说明')
   return book
 }
-export function exportWorkbook(entries, filename) {
-  const book = buildWorkbook(entries)
+export async function exportWorkbook(entries, filename) {
+  const employmentTypes = entries.some(entry => templates[entry.type].fields.some(f => f.key === 'employmentType')) ? await loadEmploymentTypes() : []
+  const book = buildWorkbook(entries, employmentTypes)
   saveAs(new Blob([XLSX.write(book, { bookType: 'xlsx', type: 'array', compression: true })], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), filename + '.xlsx')
 }
 export function exportTemplate(type, records = [], filename) {
-  exportWorkbook([{ type, records }], filename || templates[type].name)
+  return exportWorkbook([{ type, records }], filename || templates[type].name)
 }
 export function downloadTemplatePack() {
-  exportWorkbook(
+  return exportWorkbook(
     templateGroups.flatMap(group => group.types.map(type => ({ type }))),
     '人事考勤与薪资模板大全'
   )

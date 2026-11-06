@@ -1,12 +1,11 @@
 <template>
   <div>
-    <a-input-search style="margin-bottom: 8px" placeholder="Search" @change="filterNode" />
+    <a-input-search class="tw-mb-2" placeholder="Search" @change="filterNode" />
     <a-tree v-if="deptOptions && deptOptions.length" :expanded-keys="expandedKeys" :auto-expand-parent="autoExpandParent" :tree-data="deptOptions" :replaceFields="replaceFields" @select="handleNodeClick" @expand="onExpand">
     </a-tree>
   </div>
 </template>
 <script>
-
 const getParentKey = (id, tree) => {
   let parentKey
   for (let i = 0; i < tree.length; i++) {

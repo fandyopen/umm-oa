@@ -14,8 +14,8 @@
           </a-input>
         </a-tooltip>
       </div>
-      <a-button type="primary" ghost :style="{ float: 'right' }" icon="reload" @click="onSearch" />
-      <a-button v-if="formItems.length !== 0" type="primary" ghost :style="{ float: 'right', margin: '0 10px' }" @click="toggle_search = !toggle_search">高级查询</a-button>
+      <a-button type="primary" ghost class="tw-float-right" icon="reload" @click="onSearch" />
+      <a-button v-if="formItems.length !== 0" type="primary" ghost class="tw-float-right tw-my-0 tw-mx-2.5" @click="toggle_search = !toggle_search">高级查询</a-button>
 
       <slot />
     </div>

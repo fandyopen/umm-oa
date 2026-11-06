@@ -23,7 +23,7 @@
           </a-form-item>
         </a-form>
       </a-col>
-      <a-col :md="24" :lg="8" :style="{ minHeight: '180px' }">
+      <a-col :md="24" :lg="8" class="tw-min-h-[180px]">
         <div class="ant-upload-preview" @click="$refs.modal.edit(1)">
           <a-icon type="cloud-upload-o" class="upload-icon" />
           <div class="mask">
@@ -103,7 +103,7 @@ export default {
         this.$notification.open({
           message: '提示',
           description: '修改成功',
-          icon: <a-icon type="check" style="color: #1890FF" />,
+          icon: <a-icon type="check" class="tw-text-[#1890FF]" />,
           duration: 3
         })
       })

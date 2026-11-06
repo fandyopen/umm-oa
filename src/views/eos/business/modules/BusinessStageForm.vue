@@ -42,7 +42,7 @@
       </section>
       <a-form-model v-if="loaded && currentIndex >= 0 && !isFinished" v-show="!viewingHistory" ref="form" :model="formData" :rules="rules" :label-col="{ span: 4 }" :wrapper-col="{ span: 20 }">
         <a-form-model-item label="活动时间" prop="recordTime">
-          <a-date-picker v-model="formData.recordTime" :disabled="saving" style="width: 100%" />
+          <a-date-picker v-model="formData.recordTime" :disabled="saving" class="tw-w-full" />
         </a-form-model-item>
         <a-form-model-item label="阶段附件">
           <a-upload :action="uploadUrl" :headers="uploadHeaders" :file-list="fileList" :disabled="saving" @change="handleUploadChange" @preview="handlePreview">

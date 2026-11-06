@@ -10,27 +10,32 @@
     </div>
     <div class="header-right-content" :class="{ 'header-msg-bkc': layout !== 'sidemenu' }">
       <a-tooltip v-if="canOpenDocs" :title="docsTitle">
-        <a class="docs-entry" @click="openDocs"><a-icon type="book" /><span v-if="!isMobile">{{ docsTitle }}</span></a>
+        <a class="docs-entry" @click="openDocs"
+          ><a-icon type="book" /><span v-if="!isMobile">{{ docsTitle }}</span></a
+        >
       </a-tooltip>
       <a-badge :count="todoTotal" class="badge" @click="gotodo"><a-icon type="bell" class="icon" /></a-badge>
       <div class="selectBox">
         <a-dropdown placement="bottomCenter" :trigger="['click']" @visibleChange="handleCompanyDropdown">
           <a class="ant-dropdown-link" @click="e => e.preventDefault()">
-            <Ellipsis :length="12" tooltip>{{ defaultCompany || '当前企业' }}</Ellipsis><a-icon type="down" />
+            <Ellipsis :length="12" tooltip>{{ defaultCompany || '当前企业' }}</Ellipsis
+            ><a-icon type="down" />
           </a>
           <a-menu slot="overlay">
             <a-menu-item v-if="companyLoading" disabled>加载中...</a-menu-item>
             <a-menu-item v-for="item in items" :key="item.tenantId || item.id" @click="handleChange(item.tenantId || item.id)">
               <Ellipsis :length="12" tooltip>{{ item.name }}</Ellipsis>
             </a-menu-item>
-            <a-menu-item><div class="addItem" @click="addItem"><a-icon type="plus" class="addicon" />新建企业</div></a-menu-item>
+            <a-menu-item
+              ><div class="addItem" @click="addItem"><a-icon type="plus" class="addicon" />新建企业</div></a-menu-item
+            >
           </a-menu>
         </a-dropdown>
       </div>
       <avatar-dropdown :menu="showMenu" :current-user="currentUser" :class="prefixCls" />
     </div>
     <a-modal :visible="visible" @ok="handleOk" @cancel="handleCancel">
-      <div slot="title"><a-icon type="usergroup-add" style="margin-right: 20px" /><span>新建企业</span></div>
+      <div slot="title"><a-icon type="usergroup-add" class="tw-mr-5" /><span>新建企业</span></div>
       <a-textarea v-model="EnterpriseName" placeholder="请输入企业名称" :autoSize="{ minRows: 2, maxRows: 6 }" />
     </a-modal>
   </div>
@@ -82,17 +87,16 @@ export default {
       return ((root && root.children) || []).filter(item => item.hidden !== true)
     },
     canOpenDocs() {
-      return this.docsEnabled && (
-        this.roles.includes('admin') ||
-        this.permissions.includes('*:*:*') ||
-        this.permissions.includes('system:docs:list')
-      )
+      return this.docsEnabled && (this.roles.includes('admin') || this.permissions.includes('*:*:*') || this.permissions.includes('system:docs:list'))
     }
   },
   watch: {
     currentFirstLevelMenu: {
       immediate: true,
-      handler(menus) { const item = menus[0]; this.current = item ? [item.meta.moduleId || item.name] : [] }
+      handler(menus) {
+        const item = menus[0]
+        this.current = item ? [item.meta.moduleId || item.name] : []
+      }
     }
   },
   mounted() {
@@ -100,8 +104,12 @@ export default {
   },
   methods: {
     ...mapActions(['_enterprise', '_addEnterprise', '_toggleEnterprise', 'SetCurrentLevelOneMenu']),
-    gotodo() { this.$router.push('/todoItem/todo') },
-    openDocs() { this.$router.push('/system/docs').catch(() => {}) },
+    gotodo() {
+      this.$router.push('/todoItem/todo')
+    },
+    openDocs() {
+      this.$router.push('/system/docs').catch(() => {})
+    },
     handleCompanyDropdown(visible) {
       if (!visible || this.companyLoaded || this.companyLoading) return
       this.companyLoading = true
@@ -110,9 +118,13 @@ export default {
           this.items = res.data || []
           this.companyLoaded = true
         })
-        .finally(() => { this.companyLoading = false })
+        .finally(() => {
+          this.companyLoading = false
+        })
     },
-    addItem() { this.visible = true },
+    addItem() {
+      this.visible = true
+    },
     handleOk() {
       this._addEnterprise({ name: this.EnterpriseName }).then(res => {
         if (res.code === 200) this.$router.go(0)
@@ -145,7 +157,14 @@ export default {
 <style lang="less" scoped>
 @import './RightContent.less';
 .header-msg-bkc {
-  .selectBox { /deep/ span, i { color: rgba(0, 0, 0, 0.65); } }
-  /deep/ svg { color: rgba(0, 0, 0, 0.65); }
+  .selectBox {
+    /deep/ span,
+    i {
+      color: rgba(0, 0, 0, 0.65);
+    }
+  }
+  /deep/ svg {
+    color: rgba(0, 0, 0, 0.65);
+  }
 }
 </style>

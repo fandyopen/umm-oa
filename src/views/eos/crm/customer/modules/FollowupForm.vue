@@ -1,12 +1,7 @@
 <template>
   <a-form-model :label-col="{ span: 5 }" :wrapper-col="{ span: 19 }">
     <a-form-model-item label="跟进时间" required>
-      <a-date-picker
-        v-model="form.followupTime"
-        show-time
-        value-format="YYYY-MM-DD HH:mm:ss"
-        style="width: 100%"
-      />
+      <a-date-picker v-model="form.followupTime" show-time value-format="YYYY-MM-DD HH:mm:ss" class="tw-w-full" />
     </a-form-model-item>
     <a-form-model-item label="跟进方式">
       <a-select v-model="form.method">
@@ -20,7 +15,7 @@
       <a-textarea v-model="form.nextPlan" :auto-size="{ minRows: 3, maxRows: 6 }" placeholder="下一步要做什么、何时跟进" />
     </a-form-model-item>
     <a-form-model-item label="下次跟进">
-      <a-date-picker v-model="form.nextFollowupTime" show-time value-format="YYYY-MM-DD HH:mm:ss" style="width: 100%" />
+      <a-date-picker v-model="form.nextFollowupTime" show-time value-format="YYYY-MM-DD HH:mm:ss" class="tw-w-full" />
     </a-form-model-item>
     <div class="followup-actions">
       <a-button @click="$emit('close')">取消</a-button>

@@ -1,7 +1,7 @@
 import { statusNames, eventNames } from './hrShared.js'
 
 export function employeeRecords(rows) {
-  return rows.map(row => ({ ...row, employmentStatus: statusNames[row.employmentStatus] || row.employmentStatus }))
+  return rows.map(row => ({ ...row, employmentType: row.employmentTypeName || row.employmentType, employmentStatus: statusNames[row.employmentStatus] || row.employmentStatus }))
 }
 export function changeRecords(rows) {
   return rows.map(row => ({ ...row, eventType: eventNames[row.eventType] || row.eventType, status: statusNames[row.status] || row.status }))

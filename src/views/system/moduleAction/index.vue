@@ -4,24 +4,16 @@
       <div class="action-toolbar">
         <div class="action-toolbar__filter">
           <span class="action-toolbar__label">所属页面</span>
-          <a-select
-            v-model="moduleId"
-            show-search
-            option-filter-prop="children"
-            style="width: 360px"
-            @change="handleModuleChange"
-          >
+          <a-select v-model="moduleId" show-search option-filter-prop="children" class="tw-w-[360px]" @change="handleModuleChange">
             <a-select-option v-for="item in moduleOptions" :key="item.moduleId" :value="item.moduleId">
               {{ item.displayName }}
             </a-select-option>
           </a-select>
         </div>
         <a-button icon="reload" :loading="loading" @click="loadActions">刷新</a-button>
-        <a-input v-model="actionKeyword" allow-clear placeholder="搜索按钮名称 / 动作编码" style="width: 240px" />
+        <a-input v-model="actionKeyword" allow-clear placeholder="搜索按钮名称 / 动作编码" class="tw-w-60" />
         <a-button icon="setting" @click="openModuleManager">模块管理</a-button>
-        <a-button v-if="canManageStructure" type="primary" icon="plus" :disabled="!moduleId" @click="openCreate">
-          新增按钮
-        </a-button>
+        <a-button v-if="canManageStructure" type="primary" icon="plus" :disabled="!moduleId" @click="openCreate"> 新增按钮 </a-button>
       </div>
 
       <a-alert
@@ -32,13 +24,7 @@
         description="所有按钮统一维护，不再区分内置或自定义。在修改页开启流程设计后，可配置该按钮的审批；关闭会保留原设计与审批记录。"
       />
 
-      <a-table
-        row-key="actionCode"
-        :loading="loading"
-        :columns="columns"
-        :data-source="filteredActions"
-        :pagination="false"
-      >
+      <a-table row-key="actionCode" :loading="loading" :columns="columns" :data-source="filteredActions" :pagination="false">
         <span slot="workflow" slot-scope="text, record">
           <a-tag :color="record.flowDesignEnabled ? 'blue' : undefined">{{ record.workflowState || '未开启' }}</a-tag>
         </span>
@@ -56,13 +42,7 @@
           <a-divider v-if="canManageWorkflow && record.flowDesignEnabled && String(record.status) === '0'" type="vertical" />
           <a v-if="canManageStructure || canManageWorkflow" @click="openEdit(record)">修改</a>
           <a-divider v-if="canManageStructure" type="vertical" />
-          <a-popconfirm
-            v-if="canManageStructure"
-            title="确认删除该按钮？已有审批记录会保留。"
-            ok-text="删除"
-            cancel-text="取消"
-            @confirm="removeAction(record)"
-          >
+          <a-popconfirm v-if="canManageStructure" title="确认删除该按钮？已有审批记录会保留。" ok-text="删除" cancel-text="取消" @confirm="removeAction(record)">
             <a class="action-danger">删除</a>
           </a-popconfirm>
         </span>
@@ -103,7 +83,15 @@ export default {
   computed: {
     filteredActions() {
       const keyword = this.actionKeyword.trim().toLowerCase()
-      return this.actions.filter(item => !keyword || [item.actionName, item.actionCode, item.permissionCode].some(value => String(value || '').toLowerCase().includes(keyword)))
+      return this.actions.filter(
+        item =>
+          !keyword ||
+          [item.actionName, item.actionCode, item.permissionCode].some(value =>
+            String(value || '')
+              .toLowerCase()
+              .includes(keyword)
+          )
+      )
     },
     moduleOptions() {
       return this.modules.map(item => ({
@@ -117,12 +105,15 @@ export default {
   },
   methods: {
     configureWorkflow(action) {
-      this.$router.push({ path: '/processDesign', query: {
-        tenantAppId: this.$store.getters.tenantAppId || 1,
-        menuId: this.moduleId,
-        menuName: this.modules.find(item => item.moduleId === Number(this.moduleId))?.moduleName || '业务模块',
-        actionCode: action.actionCode
-      } })
+      this.$router.push({
+        path: '/processDesign',
+        query: {
+          tenantAppId: this.$store.getters.tenantAppId || 1,
+          menuId: this.moduleId,
+          menuName: this.modules.find(item => item.moduleId === Number(this.moduleId))?.moduleName || '业务模块',
+          actionCode: action.actionCode
+        }
+      })
     },
     openModuleManager() {
       this.$router.push({
@@ -199,19 +190,17 @@ export default {
       }
     },
     openCreate() {
-      this.$refs.actionForm.handleAdd({ moduleId: this.moduleId,
-        moduleName: this.modules.find(item => item.moduleId === Number(this.moduleId))?.moduleName || '当前页面' })
+      this.$refs.actionForm.handleAdd({ moduleId: this.moduleId, moduleName: this.modules.find(item => item.moduleId === Number(this.moduleId))?.moduleName || '当前页面' })
     },
     openEdit(row) {
-      this.$refs.actionForm.handleUpdate({ ...row, moduleId: this.moduleId,
-        moduleName: this.modules.find(item => item.moduleId === Number(this.moduleId))?.moduleName || '当前页面' })
+      this.$refs.actionForm.handleUpdate({ ...row, moduleId: this.moduleId, moduleName: this.modules.find(item => item.moduleId === Number(this.moduleId))?.moduleName || '当前页面' })
     },
     async removeAction(row) {
       await deleteModuleAction(this.moduleId, row.actionCode)
       this.$message.success('动作已删除')
       await this.$store.dispatch('BootstrapSession')
       this.loadActions()
-    },
+    }
   }
 }
 </script>
@@ -243,8 +232,6 @@ export default {
 .action-empty {
   color: #999;
 }
-
-
 
 .action-danger {
   color: #ff4d4f;

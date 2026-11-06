@@ -69,8 +69,7 @@ const layouts = {
       <el-col span={element.span}>
         <el-row
           gutter={element.gutter}
-          class={className}
-          style="margin-left:0;"
+          class={[className, 'tw-ml-0']}
           nativeOnClick={event => {
             event.stopPropagation()
             activeItem(element)

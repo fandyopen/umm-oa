@@ -1,6 +1,6 @@
 <!-- 流程表单设计 -->
 <template>
-  <div v-if="spinning" style="text-align: center">
+  <div v-if="spinning" class="tw-text-center">
     <a-spin :spinning="spinning"> </a-spin>
   </div>
   <div v-else class="page">
@@ -17,37 +17,19 @@
       </div>
     </header>
     <div class="workflow-actions">
-      <span class="workflow-actions__label">
-        {{ $route.query.menuName || '当前页面' }} · 按钮审批流程
-      </span>
-      <a-select
-        :value="actionCode"
-        show-search
-        option-filter-prop="children"
-        style="width: 360px"
-        @change="handleActionChange"
-      >
-        <a-select-option v-for="item in actionOptions" :key="item.code" :value="item.code">
-          {{ item.name }}（{{ item.code }}）
-        </a-select-option>
+      <span class="workflow-actions__label"> {{ $route.query.menuName || '当前页面' }} · 按钮审批流程 </span>
+      <a-select :value="actionCode" show-search option-filter-prop="children" class="tw-w-[360px]" @change="handleActionChange">
+        <a-select-option v-for="item in actionOptions" :key="item.code" :value="item.code"> {{ item.name }}（{{ item.code }}） </a-select-option>
       </a-select>
       <span class="workflow-actions__label">当前动作编码：{{ actionCode }}</span>
       <div v-if="selectedAction" class="workflow-actions__switch">
         <span>启用审批</span>
         <a-switch v-model="approvalEnabled" size="small" />
       </div>
-      <a-button size="small" icon="setting" @click="openActionManager">
-        修改按钮配置
-      </a-button>
+      <a-button size="small" icon="setting" @click="openActionManager"> 修改按钮配置 </a-button>
     </div>
     <a-alert v-if="loadError" class="workflow-action-warning" type="warning" show-icon :message="loadError" description="请返回模块管理，在对应按钮的修改页开启流程设计后进入。" />
-    <a-alert
-      v-if="selectedAction && !selectedAction.handlerKey"
-      class="workflow-action-warning"
-      type="warning"
-      show-icon
-      message="该按钮尚未接入业务执行器，可先设计并保存草稿；正式发布启用审批前须完成业务接入。"
-    />
+    <a-alert v-if="selectedAction && !selectedAction.handlerKey" class="workflow-action-warning" type="warning" show-icon message="该按钮尚未接入业务执行器，可先设计并保存草稿；正式发布启用审批前须完成业务接入。" />
     <a-alert v-if="mockData && mockData.draft" class="workflow-action-warning" type="info" show-icon message="当前为未发布草稿；保存草稿不会改变已发布流程，发布后新申请使用新配置，进行中的审批不受影响。" />
     <div v-if="mockData" class="page__content">
       <Process ref="processDesign" :conf="mockData.processData" tabName="processDesign" v-show="activeStep === 'processDesign'" />
@@ -89,9 +71,9 @@ export default {
   computed: {
     actionOptions() {
       return this.moduleActions.map(item => ({
-          code: item.actionCode,
-          name: item.actionName,
-          handlerKey: item.handlerKey
+        code: item.actionCode,
+        name: item.actionName,
+        handlerKey: item.handlerKey
       }))
     },
     selectedAction() {
@@ -102,8 +84,12 @@ export default {
     changeSteps(item) {
       this.activeStep = item.key
     },
-    publish() { return this.saveProcess(false) },
-    saveDraft() { return this.saveProcess(true) },
+    publish() {
+      return this.saveProcess(false)
+    },
+    saveDraft() {
+      return this.saveProcess(true)
+    },
     async saveProcess(draft) {
       if (this.saving || !this.selectedAction || this.loadError || !this.$refs.processDesign) return
       this.saving = true
@@ -124,7 +110,9 @@ export default {
           err.msg && this.$message.warning(err.msg)
           if (!err.msg) this.$message.error(err.message || '流程保存失败')
         })
-        .finally(() => { this.saving = false })
+        .finally(() => {
+          this.saving = false
+        })
     },
     sendToServer(param) {
       const { menuId, menuName, tenantAppId } = this.$route.query
@@ -138,8 +126,8 @@ export default {
           menuName,
           processData: param.processData,
           actionCode: param.actionCode,
-            approvalEnabled: param.approvalEnabled,
-            draft: param.draft
+          approvalEnabled: param.approvalEnabled,
+          draft: param.draft
         }
         return setProcess(data).then(res => {
           if (res.code === 200) {

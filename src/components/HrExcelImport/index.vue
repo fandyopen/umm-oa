@@ -1,7 +1,7 @@
 <template>
   <a-modal
     :visible="visible"
-    :title="schema.name"
+    :title="schema.title || schema.name"
     :width="1000"
     :confirm-loading="busy"
     :ok-text="previewed ? '确认导入' : '校验并预览'"
@@ -10,29 +10,31 @@
     @cancel="$emit('close')"
     destroy-on-close
   >
-    <a-alert :message="schema.note" type="info" show-icon style="margin-bottom: 16px" />
+    <a-alert :message="schema.note" type="info" show-icon class="tw-mb-4" />
     <div class="excel-tools">
-      <a-button icon="download" @click="download">下载模板</a-button><a-upload :before-upload="read" :show-upload-list="false" accept=".xlsx,.xls,.csv"><a-button icon="upload">选择钉钉导出表或模板</a-button></a-upload
+      <a-button icon="download" @click="download">下载模板</a-button
+      ><a-upload :before-upload="read" :show-upload-list="false" accept=".xlsx,.xls,.csv"
+        ><a-button icon="upload">{{ ['monthly', 'daily', 'leave'].includes(type) ? '选择钉钉导出表或模板' : '选择导入文件' }}</a-button></a-upload
       ><span>{{ fileName }}</span>
     </div>
     <template v-if="matrix.length">
       <div class="excel-tools">
         <span>工作表</span
-        ><a-select v-model="sheetName" style="width: 180px" @change="selectSheet"
+        ><a-select v-model="sheetName" class="tw-w-[180px]" @change="selectSheet"
           ><a-select-option v-for="name in sheetNames" :key="name">{{ name }}</a-select-option></a-select
         ><span>表头所在行</span><a-input-number v-model="headerRow" :min="1" :max="Math.min(matrix.length, 100)" @change="remap" />
       </div>
       <div class="excel-mapping">
         <div v-for="f in schema.fields" :key="f.key">
           <label>{{ f.label }}{{ f.required ? ' *' : '' }}</label
-          ><a-select v-model="mapping[f.key]" allow-clear show-search style="width: 100%" @change="resetPreview"
+          ><a-select v-model="mapping[f.key]" allow-clear show-search class="tw-w-full" @change="resetPreview"
             ><a-select-option v-for="(column, index) in headers" :key="index" :value="String(index)">{{ column || '未命名列' }}（{{ index + 1 }}）</a-select-option
             ><a-select-option v-if="f.type === 'number' && !['batchId', 'revision'].includes(f.key)" value="__ZERO__">该项目未启用，明确按0导入</a-select-option></a-select
           >
         </div>
       </div>
-      <a-alert v-if="errors.length" type="error" :message="errors.slice(0, 8).join('；')" style="margin: 12px 0" />
-      <a-alert v-if="previewed" type="success" :message="'校验通过，共 ' + rows.length + ' 行。请核对预览后确认导入。'" style="margin: 12px 0" />
+      <a-alert v-if="errors.length" type="error" :message="errors.slice(0, 8).join('；')" class="tw-my-3 tw-mx-0" />
+      <a-alert v-if="previewed" type="success" :message="'校验通过，共 ' + rows.length + ' 行。请核对预览后确认导入。'" class="tw-my-3 tw-mx-0" />
       <a-table v-if="previewed" :columns="previewColumns" :data-source="rows" :row-key="(_, index) => index" :pagination="{ pageSize: 8 }" size="small" :scroll="{ x: 1200 }" />
       <div v-if="previewed && rows.some(row => row.changes && Object.keys(row.changes).length)" class="diff">
         <div v-for="(row, index) in rows" :key="index">
@@ -48,6 +50,7 @@
 <script>
 import * as XLSX from 'xlsx'
 import { templates, suggestColumn, convertCell, exportTemplate } from '/src/views/enterprise/hr/templates.js'
+import { loadEmploymentTypes, normalizeEmploymentType } from '/src/views/enterprise/hr/employmentTypes.js'
 export default {
   name: 'HrExcelImport',
   props: {
@@ -58,7 +61,7 @@ export default {
     commitApi: { type: Function, required: true },
     templateRows: { type: Array, default: () => [] }
   },
-  data: () => ({ busy: false, matrix: [], sheetNames: [], sheetName: '', headerRow: 1, mapping: {}, raw: [], rows: [], errors: [], previewed: false, fileName: '', fileContent: '', book: null }),
+  data: () => ({ busy: false, matrix: [], sheetNames: [], sheetName: '', headerRow: 1, mapping: {}, raw: [], rows: [], errors: [], previewed: false, fileName: '', fileContent: '', book: null, employmentTypes: [] }),
   computed: {
     schema() {
       return templates[this.type]
@@ -67,15 +70,20 @@ export default {
       return (this.matrix[this.headerRow - 1] || []).map(v => String(v || '').trim())
     },
     previewColumns() {
-      return this.schema.fields.map(f => ({ title: f.label, dataIndex: f.key, width: 150, customRender: value => (value === undefined ? '—' : String(value)) }))
+      return this.schema.fields.map(f => ({
+        title: f.label,
+        dataIndex: f.key,
+        width: 150,
+        customRender: value => (value === undefined ? '—' : f.key === 'employmentType' ? this.employmentTypes.find(option => option.value === value)?.label || String(value) : String(value))
+      }))
     }
   },
   methods: {
     fieldLabel(key) {
       return this.schema.fields.find(f => f.key === key)?.label || key
     },
-    download() {
-      exportTemplate(this.type, this.templateRows)
+    async download() {
+      await exportTemplate(this.type, this.templateRows)
     },
     async read(file) {
       if (file.size > 10 * 1024 * 1024) {
@@ -121,7 +129,7 @@ export default {
       this.errors = []
       this.rows = []
     },
-    payload() {
+    payload(employmentTypes = []) {
       const rows = []
       const errors = []
       for (let i = 0; i < this.raw.length; i++) {
@@ -130,13 +138,14 @@ export default {
           const column = this.mapping[f.key]
           const value = column === '__ZERO__' ? 0 : column === '' || column === undefined ? '' : this.raw[i][Number(column)]
           try {
-            const converted = convertCell(value, f)
-            if (converted === '' && f.required && !(f.key === 'employeeNo' && this.mapping.dingtalkUserId !== '')) errors.push('第' + (this.headerRow + i + 1) + '行缺少' + f.label)
+            const converted = f.key === 'employmentType' ? normalizeEmploymentType(value, employmentTypes) : convertCell(value, f)
+            if (converted === '' && f.required && f.key !== 'employeeNo') errors.push('第' + (this.headerRow + i + 1) + '行缺少' + f.label)
             if (converted !== '') row[f.key] = converted
           } catch (error) {
             errors.push('第' + (this.headerRow + i + 1) + '行：' + error.message)
           }
         }
+        if (this.schema.fields.some(f => f.key === 'employeeNo' && f.required) && !row.employeeNo && !row.dingtalkUserId) errors.push('第' + (this.headerRow + i + 1) + '行缺少员工编号或钉钉人员ID')
         rows.push(row)
       }
       if (!rows.length || rows.length > 5000) errors.push('每次导入1至5000行')
@@ -146,7 +155,8 @@ export default {
     async submit() {
       this.busy = true
       try {
-        const payload = this.payload()
+        this.employmentTypes = this.type === 'employee' ? await loadEmploymentTypes() : []
+        const payload = this.payload(this.employmentTypes)
         if (this.errors.length) return
         if (!this.previewed) {
           const response = this.previewApi ? await this.previewApi(payload) : { data: { rows: payload.rows, errors: [] } }

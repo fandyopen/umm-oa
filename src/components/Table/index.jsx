@@ -14,10 +14,10 @@ export default {
       localLoading: false,
       localDataSource: [],
       localPagination: Object.assign(
-          {
-            pageSizeOptions: ['10', '20', '50', '100']
-          },
-          this.pagination
+        {
+          pageSizeOptions: ['10', '20', '50', '100']
+        },
+        this.pagination
       )
     }
   },
@@ -90,13 +90,13 @@ export default {
   watch: {
     'localPagination.current'(val) {
       this.pageURI &&
-      this.$router.push({
-        ...this.$route,
-        name: this.$route.name,
-        params: Object.assign({}, this.$route.params, {
-          pageNum: val
+        this.$router.push({
+          ...this.$route,
+          name: this.$route.name,
+          params: Object.assign({}, this.$route.params, {
+            pageNum: val
+          })
         })
-      })
       // change pagination, reset total data
       this.needTotalList = this.initTotalList(this.columns)
       this.selectedRowKeys = []
@@ -122,13 +122,13 @@ export default {
     const { pageNum } = this.$route.params
     const localPageNum = (this.pageURI && pageNum && parseInt(pageNum)) || this.pageNum
     this.localPagination =
-        (['auto', true].includes(this.showPagination) &&
-            Object.assign({}, this.localPagination, {
-              current: localPageNum,
-              pageSize: this.pageSize,
-              showSizeChanger: this.showSizeChanger
-            })) ||
-        false
+      (['auto', true].includes(this.showPagination) &&
+        Object.assign({}, this.localPagination, {
+          current: localPageNum,
+          pageSize: this.pageSize,
+          showSizeChanger: this.showSizeChanger
+        })) ||
+      false
     this.needTotalList = this.initTotalList(this.columns)
     this.loadData()
   },
@@ -140,13 +140,13 @@ export default {
      */
     refresh(bool = false) {
       bool &&
-      (this.localPagination = Object.assign(
+        (this.localPagination = Object.assign(
           {},
           {
             current: 1,
             pageSize: this.pageSize
           }
-      ))
+        ))
       this.loadData()
     },
     /**
@@ -157,37 +157,33 @@ export default {
      */
     loadData(pagination, filters, sorter) {
       pagination && storage.set('userPageSize', pagination.pageSize)
-      console.log('storage.get(\'userPageSize\')', storage.get('userPageSize'))
+      console.log("storage.get('userPageSize')", storage.get('userPageSize'))
       this.localLoading = true
       const parameter = Object.assign(
-          {
-            pageNum: (pagination && pagination.current) || (this.showPagination && this.localPagination.current) || this.pageNum,
-            pageSize: storage.get('userPageSize') || (pagination && pagination.pageSize) || (this.showPagination && this.localPagination.pageSize) || this.pageSize
-          },
-          (sorter && sorter.field && { sortField: sorter.field }) || {},
-          (sorter && sorter.order && { sortOrder: sorter.order }) || {},
-          { ...filters }
+        {
+          pageNum: (pagination && pagination.current) || (this.showPagination && this.localPagination.current) || this.pageNum,
+          pageSize: storage.get('userPageSize') || (pagination && pagination.pageSize) || (this.showPagination && this.localPagination.pageSize) || this.pageSize
+        },
+        (sorter && sorter.field && { sortField: sorter.field }) || {},
+        (sorter && sorter.order && { sortOrder: sorter.order }) || {},
+        { ...filters }
       )
       const result = this.data(parameter)
       // 对接自己的通用数据接口需要修改下方代码中的 r.pageNum, r.totalCount, r.data
       // eslint-disable-next-line
       if ((typeof result === 'object' || typeof result === 'function') && typeof result.then === 'function') {
         result.then(r => {
-          const rows = Array.isArray(r?.data)
-            ? r.data
-            : Array.isArray(r?.rows)
-              ? r.rows
-              : []
+          const rows = Array.isArray(r?.data) ? r.data : Array.isArray(r?.rows) ? r.rows : []
           const totalCount = r?.totalCount ?? r?.total ?? rows.length
           this.localPagination =
-              (this.showPagination &&
-                  Object.assign({}, this.localPagination, {
-                    current: r.pageNum || this.localPagination.current, // 返回结果中的当前分页数
-                    total: totalCount, // 返回结果中的总记录数
-                    showSizeChanger: this.showSizeChanger,
-                    pageSize: storage.get('userPageSize') || (pagination && pagination.pageSize) || this.localPagination.pageSize
-                  })) ||
-              false
+            (this.showPagination &&
+              Object.assign({}, this.localPagination, {
+                current: r.pageNum || this.localPagination.current, // 返回结果中的当前分页数
+                total: totalCount, // 返回结果中的总记录数
+                showSizeChanger: this.showSizeChanger,
+                pageSize: storage.get('userPageSize') || (pagination && pagination.pageSize) || this.localPagination.pageSize
+              })) ||
+            false
           // 为防止删除数据后导致页面当前页面数据长度为 0 ,自动翻页到上一页
           if (rows.length === 0 && this.showPagination && this.localPagination.current > 1) {
             this.localPagination.current--
@@ -206,22 +202,21 @@ export default {
           }
           this.localDataSource = rows // 返回结果中的数组数据
           this.localLoading = false
-
         })
       }
     },
     initTotalList(columns) {
       const totalList = []
       columns &&
-      columns instanceof Array &&
-      columns.forEach(column => {
-        if (column.needTotal) {
-          totalList.push({
-            ...column,
-            total: 0
-          })
-        }
-      })
+        columns instanceof Array &&
+        columns.forEach(column => {
+          if (column.needTotal) {
+            totalList.push({
+              ...column,
+              total: 0
+            })
+          }
+        })
       return totalList
     },
     /**
@@ -260,23 +255,23 @@ export default {
     renderClear(callback) {
       if (this.selectedRowKeys.length <= 0) return null
       return (
-          <a
-              style="margin-left: 24px"
-              onClick={() => {
-                callback()
-                this.clearSelected()
-              }}
-          >
-            清空
-          </a>
+        <a
+          class="tw-ml-6"
+          onClick={() => {
+            callback()
+            this.clearSelected()
+          }}
+        >
+          清空
+        </a>
       )
     },
     renderAlert() {
       // 绘制统计列数据
       const needTotalItems = this.needTotalList.map(item => {
         return (
-            <span style="margin-right: 12px">
-            {item.title}总计 <a style="font-weight: 600">{!item.customRender ? item.total : item.customRender(item.total)}</a>
+          <span class="tw-mr-3">
+            {item.title}总计 <a class="tw-font-semibold">{!item.customRender ? item.total : item.customRender(item.total)}</a>
           </span>
         )
       })
@@ -286,15 +281,15 @@ export default {
 
       // 绘制 alert 组件
       return (
-          <a-alert showIcon={true} style="margin-bottom: 16px">
-            <template slot="message">
-            <span style="margin-right: 12px">
-              已选择: <a style="font-weight: 600">{this.selectedRows.length}</a>
+        <a-alert showIcon={true} class="tw-mb-4">
+          <template slot="message">
+            <span class="tw-mr-3">
+              已选择: <a class="tw-font-semibold">{this.selectedRows.length}</a>
             </span>
-              {needTotalItems}
-              {clearItem}
-            </template>
-          </a-alert>
+            {needTotalItems}
+            {clearItem}
+          </template>
+        </a-alert>
       )
     }
   },
@@ -333,25 +328,25 @@ export default {
       return props[k]
     })
     const table = (
-        <a-table
-            class="s-table"
-            {...{ props, scopedSlots: { ...this.$scopedSlots } }}
-            onChange={this.loadData}
-            onExpand={(expanded, record) => {
-              this.$emit('expand', expanded, record)
-            }}
-        >
-          {Object.keys(this.$slots).map(name => (
-              <template slot={name}>{this.$slots[name]}</template>
-          ))}
-        </a-table>
+      <a-table
+        class="s-table"
+        {...{ props, scopedSlots: { ...this.$scopedSlots } }}
+        onChange={this.loadData}
+        onExpand={(expanded, record) => {
+          this.$emit('expand', expanded, record)
+        }}
+      >
+        {Object.keys(this.$slots).map(name => (
+          <template slot={name}>{this.$slots[name]}</template>
+        ))}
+      </a-table>
     )
 
     return (
-        <div class="table-wrapper">
-          {showAlert ? this.renderAlert() : null}
-          {table}
-        </div>
+      <div class="table-wrapper">
+        {showAlert ? this.renderAlert() : null}
+        {table}
+      </div>
     )
   }
 }

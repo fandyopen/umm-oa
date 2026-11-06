@@ -136,7 +136,7 @@ export default {
     },
     // 输入
     renderInputNumber(item) {
-      return <InputNumber class="text" vModel={this.formData[item['prop']]} placeholder="请输入" style={{ width: '100%' }} {...item.compProps} />
+      return <InputNumber class="text tw-w-full" vModel={this.formData[item['prop']]} placeholder="请输入" {...item.compProps} />
     },
     // 多行输入
     renderInputTextArea(item) {
@@ -390,12 +390,12 @@ export default {
               <Icon type="search" />
               查询
             </Button>
-            <Button style="margin-left: 8px" onClick={() => this.$emit('reset')}>
+            <Button class="tw-ml-2" onClick={() => this.$emit('reset')}>
               <Icon type="redo" />
               重置
             </Button>
             {this.formItems.length > 2 ? (
-              <a onClick={() => (this.advanced = !this.advanced)} style="margin-left: 8px">
+              <a onClick={() => (this.advanced = !this.advanced)} class="tw-ml-2">
                 {this.advanced ? '收起' : '展开'}
                 <Icon type={this.advanced ? 'up' : 'down'} />
               </a>

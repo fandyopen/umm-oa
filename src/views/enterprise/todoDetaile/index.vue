@@ -13,7 +13,7 @@
               <div class="projectState">
                 <div class="projectTitle">{{ item.basicSetting.flowName }}</div>
                 <div class="state" v-if="menuFind[currentId] !== '抄送我的'">
-                  <a-tag @click.stop="viewProcess(item)" style="cursor: pointer" :color="item.data.status === 0 ? 'green' : item.data.status === 1 ? 'blue' : 'orange'" v-if="item">
+                  <a-tag @click.stop="viewProcess(item)" class="tw-cursor-pointer" :color="item.data.status === 0 ? 'green' : item.data.status === 1 ? 'blue' : 'orange'" v-if="item">
                     {{ item.data.status === 0 ? '通过' : item.data.status === 1 ? '流程中' : '手动结束' }}
                   </a-tag>
                 </div>

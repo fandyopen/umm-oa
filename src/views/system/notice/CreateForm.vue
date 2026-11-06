@@ -8,7 +8,7 @@
     </template>
     <template v-slot:content> </template>
     <template v-slot:extraContent> </template>
-    <a-card :bordered="false" style="margin-bottom: 20px">
+    <a-card :bordered="false" class="tw-mb-5">
       <a-form-model ref="form" :model="form" :rules="rules" :label-col="labelCol" :wrapper-col="wrapperCol">
         <a-form-model-item label="公告标题" prop="noticeTitle">
           <a-input v-model="form.noticeTitle" placeholder="请输入" />

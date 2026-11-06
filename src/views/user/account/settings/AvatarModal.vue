@@ -1,11 +1,11 @@
 <template>
   <a-modal title="修改头像" :visible="visible" :maskClosable="false" :confirmLoading="confirmLoading" :width="800" :footer="null" @cancel="cancelHandel">
     <a-row>
-      <a-col :xs="24" :md="12" :style="{ height: '350px' }">
+      <a-col :xs="24" :md="12" class="tw-h-[350px]">
         <vue-cropper ref="cropper" :img="options.img" :info="true" :autoCrop="options.autoCrop" :autoCropWidth="options.autoCropWidth" :autoCropHeight="options.autoCropHeight" :fixedBox="options.fixedBox" @realTime="realTime">
         </vue-cropper>
       </a-col>
-      <a-col :xs="24" :md="12" :style="{ height: '350px' }">
+      <a-col :xs="24" :md="12" class="tw-h-[350px]">
         <div class="avatar-upload-preview">
           <img :src="previews.url" :style="previews.img" />
         </div>

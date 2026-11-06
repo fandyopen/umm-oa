@@ -1,15 +1,5 @@
 <template>
-  <a-select
-    :value="value"
-    :allow-clear="allowClear"
-    :disabled="disabled"
-    :placeholder="placeholder"
-    :size="size"
-    show-search
-    option-filter-prop="children"
-    style="width: 100%"
-    @change="handleChange"
-  >
+  <a-select :value="value" :allow-clear="allowClear" :disabled="disabled" :placeholder="placeholder" :size="size" show-search option-filter-prop="children" class="app-control-full" @change="handleChange">
     <a-select-option v-for="industry in industries" :key="industry" :value="industry">
       {{ industry }}
     </a-select-option>

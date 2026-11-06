@@ -1,7 +1,7 @@
 <template>
   <a-spin :spinning="loading">
     <a-form-model ref="form" :model="form" :rules="rules" layout="vertical">
-      <a-alert v-if="form.effectiveVersion" type="info" show-icon :message="`正在编辑新版本，V${form.effectiveVersion} 继续生效，新版本审批并签署后替换。`" style="margin-bottom: 16px" />
+      <a-alert v-if="form.effectiveVersion" type="info" show-icon :message="`正在编辑新版本，V${form.effectiveVersion} 继续生效，新版本审批并签署后替换。`" class="tw-mb-4" />
       <a-row :gutter="20">
         <a-col :xs="24" :md="12">
           <a-form-model-item label="关联客户" prop="customerId">
@@ -24,13 +24,13 @@
           ></a-col
         >
         <a-col :xs="24" :md="8"
-          ><a-form-model-item label="合同金额（元）" prop="amount"><a-input-number v-model="form.amount" :min="0.01" :precision="2" style="width: 100%" /></a-form-model-item
+          ><a-form-model-item label="合同金额（元）" prop="amount"><a-input-number v-model="form.amount" :min="0.01" :precision="2" class="tw-w-full" /></a-form-model-item
         ></a-col>
         <a-col :xs="24" :md="8"
-          ><a-form-model-item label="服务开始日期" prop="startDate"><a-date-picker v-model="form.startDate" value-format="YYYY-MM-DD" style="width: 100%" /></a-form-model-item
+          ><a-form-model-item label="服务开始日期" prop="startDate"><a-date-picker v-model="form.startDate" value-format="YYYY-MM-DD" class="tw-w-full" /></a-form-model-item
         ></a-col>
         <a-col :xs="24" :md="8"
-          ><a-form-model-item label="服务结束日期" prop="endDate"><a-date-picker v-model="form.endDate" value-format="YYYY-MM-DD" style="width: 100%" /></a-form-model-item
+          ><a-form-model-item label="服务结束日期" prop="endDate"><a-date-picker v-model="form.endDate" value-format="YYYY-MM-DD" class="tw-w-full" /></a-form-model-item
         ></a-col>
       </a-row>
       <div class="section-head">
@@ -57,32 +57,27 @@
           >
           <template v-if="term.chargeMode === 'rate'">
             <a-col :xs="24" :md="8"
-              ><a-form-model-item label="计费基数（元）"><a-input-number v-model="term.baseAmount" :min="0" :precision="2" style="width: 100%" @change="calculate(term)" /></a-form-model-item
+              ><a-form-model-item label="计费基数（元）"><a-input-number v-model="term.baseAmount" :min="0" :precision="2" class="tw-w-full" @change="calculate(term)" /></a-form-model-item
             ></a-col>
             <a-col :xs="24" :md="8"
-              ><a-form-model-item label="收费比例（%）"><a-input-number v-model="term.rate" :min="0.01" :max="100" :precision="2" style="width: 100%" @change="calculate(term)" /></a-form-model-item
+              ><a-form-model-item label="收费比例（%）"><a-input-number v-model="term.rate" :min="0.01" :max="100" :precision="2" class="tw-w-full" @change="calculate(term)" /></a-form-model-item
             ></a-col>
           </template>
           <a-col :xs="24" :md="8"
-            ><a-form-model-item label="收费金额（元）"><a-input-number v-model="term.amount" :disabled="term.chargeMode === 'rate'" :min="0.01" :precision="2" style="width: 100%" /></a-form-model-item
+            ><a-form-model-item label="收费金额（元）"><a-input-number v-model="term.amount" :disabled="term.chargeMode === 'rate'" :min="0.01" :precision="2" class="tw-w-full" /></a-form-model-item
           ></a-col>
           <a-col :xs="24" :md="8"
-            ><a-form-model-item label="收费到期日"><a-date-picker v-model="term.dueDate" value-format="YYYY-MM-DD" style="width: 100%" /></a-form-model-item
+            ><a-form-model-item label="收费到期日"><a-date-picker v-model="term.dueDate" value-format="YYYY-MM-DD" class="tw-w-full" /></a-form-model-item
           ></a-col>
           <a-col :xs="24" :md="8"
-            ><a-form-model-item label="保证期（天）"><a-input-number v-model="term.guaranteeDays" :min="0" :max="3650" :precision="0" style="width: 100%" /></a-form-model-item
+            ><a-form-model-item label="保证期（天）"><a-input-number v-model="term.guaranteeDays" :min="0" :max="3650" :precision="0" class="tw-w-full" /></a-form-model-item
           ></a-col>
           <a-col :span="24"
             ><a-form-model-item label="保证与收费说明"><a-input v-model="term.remark" :max-length="1000" placeholder="例如：保证期内离职免费补荐一次" /></a-form-model-item
           ></a-col>
         </a-row>
       </div>
-      <a-alert
-        :type="balanced ? 'success' : 'warning'"
-        show-icon
-        :message="`收费合计 ${money(feeTotal)} / 合同金额 ${money(form.amount)}${balanced ? '，金额一致' : '，保存后仍可完善，提交前需一致'}`"
-        style="margin-bottom: 20px"
-      />
+      <a-alert :type="balanced ? 'success' : 'warning'" show-icon :message="`收费合计 ${money(feeTotal)} / 合同金额 ${money(form.amount)}${balanced ? '，金额一致' : '，保存后仍可完善，提交前需一致'}`" class="tw-mb-5" />
       <a-form-model-item label="合同附件">
         <a-upload :action="uploadUrl" :headers="uploadHeaders" :file-list="fileList" @change="onUpload" @remove="removeFile"><a-button icon="upload">上传合同文件</a-button></a-upload>
       </a-form-model-item>

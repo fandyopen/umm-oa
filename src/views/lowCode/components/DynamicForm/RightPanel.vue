@@ -30,7 +30,7 @@
             <el-switch v-model="activeData['show-summary']" />
           </el-form-item>
           <el-form-item v-if="activeData.justify !== undefined && activeData.type === 'flex'" label="水平排列">
-            <el-select v-model="activeData.justify" placeholder="请选择水平排列" :style="{ width: '100%' }">
+            <el-select v-model="activeData.justify" placeholder="请选择水平排列" class="tw-w-full">
               <el-option v-for="(item, index) in justifyOptions" :key="index" :label="item.label" :value="item.value" />
             </el-select>
           </el-form-item>
@@ -95,12 +95,12 @@
             </el-select>
           </el-form-item>
           <el-form-item v-if="activeData.type !== undefined && ['el-date-picker', 'fc-date-duration'].includes(activeData.tag)" label="时间类型">
-            <el-select v-model="activeData.type" placeholder="请选择时间类型" :style="{ width: '100%' }" @change="dateTypeChange">
+            <el-select v-model="activeData.type" placeholder="请选择时间类型" class="tw-w-full" @change="dateTypeChange">
               <el-option v-for="(item, index) in dateOptions" :key="index" :label="item.label" :value="item.value" />
             </el-select>
           </el-form-item>
           <el-form-item v-if="activeData.accept !== undefined" label="文件类型">
-            <el-select v-model="activeData.accept" placeholder="请选择文件类型" :style="{ width: '100%' }" clearable>
+            <el-select v-model="activeData.accept" placeholder="请选择文件类型" class="tw-w-full" clearable>
               <el-option label="图片" value="image/*" />
               <el-option label="视频" value="video/*" />
               <el-option label="音频" value="audio/*" />
@@ -112,7 +112,7 @@
           </el-form-item>
           <el-form-item v-if="activeData.fileSize !== undefined" label="文件大小">
             <el-input v-model.number="activeData.fileSize" placeholder="请输入文件大小">
-              <el-select slot="append" v-model="activeData.sizeUnit" :style="{ width: '66px' }">
+              <el-select slot="append" v-model="activeData.sizeUnit" class="tw-w-[66px]">
                 <el-option label="KB" value="KB" />
                 <el-option label="MB" value="MB" />
                 <el-option label="GB" value="GB" />
@@ -154,8 +154,8 @@
                 </div>
               </div>
             </draggable>
-            <div style="margin-left: 20px">
-              <el-button style="padding-bottom: 0" icon="el-icon-circle-plus-outline" type="text" @click="addSelectItem">添加选项</el-button>
+            <div class="tw-ml-5">
+              <el-button class="tw-pb-0" icon="el-icon-circle-plus-outline" type="text" @click="addSelectItem">添加选项</el-button>
             </div>
             <el-divider />
           </template>
@@ -182,8 +182,8 @@
             </template>
 
             <el-tree v-if="activeData.dataType === 'static'" draggable :data="activeData.options" node-key="id" :expand-on-click-node="false" :render-content="renderContent" />
-            <div v-if="activeData.dataType === 'static'" style="margin-left: 20px">
-              <el-button style="padding-bottom: 0" icon="el-icon-circle-plus-outline" type="text" @click="addTreeItem">添加父级</el-button>
+            <div v-if="activeData.dataType === 'static'" class="tw-ml-5">
+              <el-button class="tw-pb-0" icon="el-icon-circle-plus-outline" type="text" @click="addTreeItem">添加父级</el-button>
             </div>
             <el-divider />
           </template>
@@ -217,7 +217,7 @@
             <el-switch v-model="activeData.range" @change="rangeChange" />
           </el-form-item>
           <el-form-item v-if="activeData.tag === 'el-color-picker'" label="颜色格式">
-            <el-select v-model="activeData['color-format']" placeholder="请选择颜色格式" :style="{ width: '100%' }" @change="colorFormatChange">
+            <el-select v-model="activeData['color-format']" placeholder="请选择颜色格式" class="tw-w-full" @change="colorFormatChange">
               <el-option v-for="(item, index) in colorFormatOptions" :key="index" :label="item.label" :value="item.value" />
             </el-select>
           </el-form-item>
@@ -400,14 +400,14 @@
             {{ item.label }}
           </span>
         </div>
-        <div style="margin: 10px 0">
+        <div class="tw-my-2.5 tw-mx-0">
           <span>计算符号：</span>
           <span v-for="item in ['+', '-', '×', '÷', '(', ')']" class="calc-btn" :key="item" @click="expressionTemp.push(item)">{{ item }}</span>
         </div>
 
-        <div style="margin: 10px 0">
-          <span style="float: left">数字键盘：</span>
-          <div style="width: 110px; line-height: 2.5; overflow: hidden">
+        <div class="tw-my-2.5 tw-mx-0">
+          <span class="tw-float-left">数字键盘：</span>
+          <div class="tw-w-[110px] tw-leading-[2.5] tw-overflow-hidden">
             <span :key="item" class="calc-btn" v-for="item in ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '.']" @click="expressionTemp.push(item)">{{ item }}</span>
           </div>
         </div>

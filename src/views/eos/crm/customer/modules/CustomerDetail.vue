@@ -46,20 +46,46 @@
 
     <a-tabs :active-key="activeTab" @change="handleTabChange">
       <a-tab-pane v-if="showModuleAction('contract')" key="contracts" :tab="`关联合同（${contractsTotal}）`">
-        <div class="tab-toolbar"><span>合同、收费与回款统一关联当前客户</span><div><a-button type="link" @click="viewContracts">查看全部合同</a-button><a-button v-if="canContractAdd && customer.publicPool !== '1'" type="primary" icon="plus" @click="createContract" :loading="!!moduleActionBusy.createContract">新建合同</a-button></div></div>
-        <a-alert v-if="customer.contractManaged" type="info" message="客户合同金额、回款和到期日期由已签署生效的合同自动汇总。" style="margin-bottom: 16px" />
-        <a-table :loading="relatedLoading.contracts" :columns="contractColumns" :data-source="contracts" :pagination="false" row-key="id" size="small"><span slot="contractName" slot-scope="text, record"><a @click="openContract(record.id)">{{ text }}</a></span><span slot="contractStatus" slot-scope="text"><a-tag :color="contractColors[text]">{{ contractStatuses[text] }}</a-tag></span><span slot="money" slot-scope="text">{{ formatMoney(text) }}</span></a-table>
+        <div class="tab-toolbar">
+          <span>合同、收费与回款统一关联当前客户</span>
+          <div>
+            <a-button type="link" @click="viewContracts">查看全部合同</a-button
+            ><a-button v-if="canContractAdd && customer.publicPool !== '1'" type="primary" icon="plus" @click="createContract" :loading="!!moduleActionBusy.createContract">新建合同</a-button>
+          </div>
+        </div>
+        <a-alert v-if="customer.contractManaged" type="info" message="客户合同金额、回款和到期日期由已签署生效的合同自动汇总。" class="tw-mb-4" />
+        <a-table :loading="relatedLoading.contracts" :columns="contractColumns" :data-source="contracts" :pagination="false" row-key="id" size="small"
+          ><span slot="contractName" slot-scope="text, record"
+            ><a @click="openContract(record.id)">{{ text }}</a></span
+          ><span slot="contractStatus" slot-scope="text"
+            ><a-tag :color="contractColors[text]">{{ contractStatuses[text] }}</a-tag></span
+          ><span slot="money" slot-scope="text">{{ formatMoney(text) }}</span></a-table
+        >
       </a-tab-pane>
       <a-tab-pane v-if="showModuleAction('risk')" key="risks" :tab="`客户风险（${risks.length}）`">
-        <a-table :loading="relatedLoading.risks" :columns="riskColumns" :data-source="risks" :pagination="false" row-key="taskId" size="small"><span slot="riskLevel" slot-scope="value"><a-tag :color="value === 'high' ? 'red' : 'orange'">{{ value === 'high' ? '高风险' : '中风险' }}</a-tag></span><span slot="riskAction" slot-scope="_, record"><a-button type="link" @click="record.contractId ? openContract(record.contractId) : activeTab = 'followups'">{{ record.contractId ? '处理关联合同' : '跟进客户' }}</a-button></span></a-table>
+        <a-table :loading="relatedLoading.risks" :columns="riskColumns" :data-source="risks" :pagination="false" row-key="taskId" size="small"
+          ><span slot="riskLevel" slot-scope="value"
+            ><a-tag :color="value === 'high' ? 'red' : 'orange'">{{ value === 'high' ? '高风险' : '中风险' }}</a-tag></span
+          ><span slot="riskAction" slot-scope="_, record"
+            ><a-button type="link" @click="record.contractId ? openContract(record.contractId) : (activeTab = 'followups')">{{ record.contractId ? '处理关联合同' : '跟进客户' }}</a-button></span
+          ></a-table
+        >
       </a-tab-pane>
       <a-tab-pane v-if="showModuleAction('jobs')" key="recruitJobs" tab="合作职位">
         <div class="tab-toolbar"><span>职位名额与实际入职自动汇总至客户档案</span><a-button type="primary" @click="viewRecruitJobs">进入职位管理</a-button></div>
-        <a-table :loading="relatedLoading.recruitJobs" :columns="recruitJobColumns" :data-source="recruitJobs" :pagination="false" row-key="id" size="small"><span slot="recruitJob" slot-scope="text, row"><a @click="viewRecruitJobs(row.id)">{{ text }}</a></span></a-table>
+        <a-table :loading="relatedLoading.recruitJobs" :columns="recruitJobColumns" :data-source="recruitJobs" :pagination="false" row-key="id" size="small"
+          ><span slot="recruitJob" slot-scope="text, row"
+            ><a @click="viewRecruitJobs(row.id)">{{ text }}</a></span
+          ></a-table
+        >
       </a-tab-pane>
       <a-tab-pane v-if="showModuleAction('applications')" key="recruitApplications" tab="招聘进展">
         <div class="tab-toolbar"><span>推荐、面试、Offer、入职和保证期由招聘流程统一维护</span><a-button @click="viewRecruitApplications">进入招聘流程</a-button></div>
-        <a-table :loading="relatedLoading.recruitApplications" :columns="recruitApplicationColumns" :data-source="recruitApplications" :pagination="false" row-key="id" size="small"><span slot="recruitApplication" slot-scope="text, row"><a @click="viewRecruitApplications(row.id)">{{ text }}</a></span><span slot="recruitStage" slot-scope="text">{{ recruitStages[text] || text }}</span></a-table>
+        <a-table :loading="relatedLoading.recruitApplications" :columns="recruitApplicationColumns" :data-source="recruitApplications" :pagination="false" row-key="id" size="small"
+          ><span slot="recruitApplication" slot-scope="text, row"
+            ><a @click="viewRecruitApplications(row.id)">{{ text }}</a></span
+          ><span slot="recruitStage" slot-scope="text">{{ recruitStages[text] || text }}</span></a-table
+        >
       </a-tab-pane>
       <a-tab-pane key="overview" tab="客户档案">
         <a-descriptions bordered :column="2" size="small">
@@ -151,7 +177,12 @@ export default {
         openFollowup: { module: 'customer', action: 'track', label: '新增跟进' },
         removeFollowup: { module: 'customer', action: 'track', label: '删除跟进' },
         handleTabChange: function (key) {
-          return { contracts: { module: 'contract', label: '查看关联合同' }, risks: { module: 'risk', label: '查看客户风险' }, recruitJobs: { module: 'jobs', label: '查看客户职位' }, recruitApplications: { module: 'applications', label: '查看客户招聘进展' } }[key]
+          return {
+            contracts: { module: 'contract', label: '查看关联合同' },
+            risks: { module: 'risk', label: '查看客户风险' },
+            recruitJobs: { module: 'jobs', label: '查看客户职位' },
+            recruitApplications: { module: 'applications', label: '查看客户招聘进展' }
+          }[key]
         }
       }
     )
@@ -168,8 +199,21 @@ export default {
       recruitJobs: [],
       recruitApplications: [],
       recruitStages,
-      recruitJobColumns: [{ title: '职位', dataIndex: 'title', scopedSlots: { customRender: 'recruitJob' } }, { title: '负责人', dataIndex: 'ownerName' }, { title: '需求人数', dataIndex: 'headcount' }, { title: '已入职', dataIndex: 'hired' }, { title: '剩余名额', dataIndex: 'vacancies' }],
-      recruitApplicationColumns: [{ title: '候选人', dataIndex: 'talentName', scopedSlots: { customRender: 'recruitApplication' } }, { title: '职位', dataIndex: 'jobTitle' }, { title: '顾问', dataIndex: 'consultantName' }, { title: '阶段', dataIndex: 'stage', scopedSlots: { customRender: 'recruitStage' } }, { title: '实际入职', dataIndex: 'actualEntryDate' }, { title: '保证期结束', dataIndex: 'guaranteeEnd' }],
+      recruitJobColumns: [
+        { title: '职位', dataIndex: 'title', scopedSlots: { customRender: 'recruitJob' } },
+        { title: '负责人', dataIndex: 'ownerName' },
+        { title: '需求人数', dataIndex: 'headcount' },
+        { title: '已入职', dataIndex: 'hired' },
+        { title: '剩余名额', dataIndex: 'vacancies' }
+      ],
+      recruitApplicationColumns: [
+        { title: '候选人', dataIndex: 'talentName', scopedSlots: { customRender: 'recruitApplication' } },
+        { title: '职位', dataIndex: 'jobTitle' },
+        { title: '顾问', dataIndex: 'consultantName' },
+        { title: '阶段', dataIndex: 'stage', scopedSlots: { customRender: 'recruitStage' } },
+        { title: '实际入职', dataIndex: 'actualEntryDate' },
+        { title: '保证期结束', dataIndex: 'guaranteeEnd' }
+      ],
       activeTab: this.initialTab,
       contracts: [],
       contractsTotal: 0,
@@ -228,15 +272,13 @@ export default {
       return this.showModuleAction('contract', 'add')
     },
     statusColor() {
-      return (
-        {
-          合作中: 'green',
-          重点客户: 'purple',
-          潜在客户: 'blue',
-          已流失: 'red',
-          暂停合作: 'orange'
-        }[this.customer.cooperationStatus]
-      )
+      return {
+        合作中: 'green',
+        重点客户: 'purple',
+        潜在客户: 'blue',
+        已流失: 'red',
+        暂停合作: 'orange'
+      }[this.customer.cooperationStatus]
     }
   },
   mounted() {

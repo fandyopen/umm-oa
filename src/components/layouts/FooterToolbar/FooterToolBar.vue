@@ -1,9 +1,9 @@
 <template>
   <div :class="prefixCls" :style="{ width: barWidth, transition: '0.3s all' }">
-    <div style="float: left">
+    <div class="tw-float-left">
       <slot name="extra">{{ extra }}</slot>
     </div>
-    <div style="float: right">
+    <div class="tw-float-right">
       <slot></slot>
     </div>
   </div>
@@ -35,13 +35,11 @@ export default {
     }
   },
   computed: {
-    barWidth () {
+    barWidth() {
       return this.isMobile ? undefined : `calc(100% - ${this.collapsed ? 80 : this.siderWidth || 256}px)`
     }
   }
 }
 </script>
 
-<style lang="less" scoped>
-
-</style>
+<style lang="less" scoped></style>

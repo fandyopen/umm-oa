@@ -1,8 +1,8 @@
 <template>
   <div>
     <div class="toolbar">
-      <a-input-search v-model="query.keyword" allow-clear placeholder="搜索客户或催收内容" style="width: 260px" @search="load" />
-      <a-select v-model="query.status" allow-clear placeholder="全部任务" style="width: 130px" @change="load"
+      <a-input-search v-model="query.keyword" allow-clear placeholder="搜索客户或催收内容" class="tw-w-[260px]" @search="load" />
+      <a-select v-model="query.status" allow-clear placeholder="全部任务" class="tw-w-[130px]" @change="load"
         ><a-select-option value="open">待跟进</a-select-option><a-select-option value="closed">已关闭</a-select-option></a-select
       >
       <a-button icon="reload" @click="load">刷新</a-button>
@@ -21,15 +21,16 @@
       <a-table-column title="操作"
         ><template slot-scope="r"
           ><a-button v-if="r.status === 'open' && showModuleAction('finance', 'collect')" type="link" @click="updatePlan(r)">更新计划</a-button
-          ><a-button v-if="r.status === 'open' && showModuleAction('finance', 'collect')" type="link" @click="closePlan(r)">关闭任务</a-button
-          ><a-button type="link" @click="historyPlan = r">历史</a-button
-          ></template
+          ><a-button v-if="r.status === 'open' && showModuleAction('finance', 'collect')" type="link" @click="closePlan(r)">关闭任务</a-button><a-button type="link" @click="historyPlan = r">历史</a-button></template
         ></a-table-column
       >
     </a-table>
     <a-modal :visible="!!historyPlan" title="催收记录历史" :footer="null" width="800px" :body-style="{ maxHeight: '72vh', overflowY: 'auto' }" @cancel="historyPlan = null">
       <template v-if="historyPlan">
-        <a-descriptions size="small" bordered :column="{ xs: 1, sm: 2 }"><a-descriptions-item label="客户">{{ historyPlan.customerName || '—' }}</a-descriptions-item><a-descriptions-item label="负责人">{{ historyPlan.ownerName || '—' }}</a-descriptions-item></a-descriptions>
+        <a-descriptions size="small" bordered :column="{ xs: 1, sm: 2 }"
+          ><a-descriptions-item label="客户">{{ historyPlan.customerName || '—' }}</a-descriptions-item
+          ><a-descriptions-item label="负责人">{{ historyPlan.ownerName || '—' }}</a-descriptions-item></a-descriptions
+        >
         <finance-history-timeline :history="historyPlan.history || []" />
       </template>
     </a-modal>

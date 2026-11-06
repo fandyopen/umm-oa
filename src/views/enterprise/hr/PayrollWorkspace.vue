@@ -12,7 +12,7 @@
       >
     </div>
     <div class="hr-toolbar">
-      <a-month-picker v-model="period" value-format="YYYY-MM" placeholder="工资月份" @change="load" /><a-button icon="reload" @click="load">刷新</a-button
+      <a-month-picker v-model="period" format="YYYY-MM" value-format="YYYY-MM" placeholder="工资月份（留空查全部）" @change="load" /><a-button icon="reload" @click="load">刷新</a-button
       ><a-button v-if="allowed('export')" icon="export" @click="exportSummary">导出月度工资汇总</a-button>
     </div>
     <a-table :loading="loading" :data-source="batches" row-key="id" :pagination="{ pageSize: 10 }"
@@ -50,7 +50,7 @@
         type="warning"
         show-icon
         message="引用的薪资标准、任职资料或考勤已有更新版本。草稿需重新核算，已批准或已发工资通过更正、差额批次处理，历史金额不会自动变化。"
-        style="margin-bottom: 16px"
+        class="tw-mb-4"
       />
       <div class="hr-metrics">
         <div>
@@ -94,29 +94,26 @@
       >
     </template>
     <a-modal v-model="generateVisible" :title="generateMode === 'supplement' ? '创建补发或扣回批次' : '按考勤核算工资'" :confirm-loading="busy" width="700px" @ok="generate"
-      ><a-alert type="info" show-icon message="计薪参数由公司确认填写，不预设法定除数或请假比例。月薪按本月应出勤折算，固定补贴同比例折算；月中调薪、入离职需要每日考勤。" style="margin-bottom: 16px" /><a-form-model
-        layout="vertical"
-        ><a-form-model-item label="工资月份"><a-month-picker v-model="generateForm.period" value-format="YYYY-MM" @change="loadAttendance" style="width: 100%" /></a-form-model-item
+      ><a-alert type="info" show-icon message="计薪参数由公司确认填写，不预设法定除数或请假比例。月薪按本月应出勤折算，固定补贴同比例折算；月中调薪、入离职需要每日考勤。" class="tw-mb-4" /><a-form-model layout="vertical"
+        ><a-form-model-item label="工资月份"><a-month-picker v-model="generateForm.period" :allow-clear="false" format="YYYY-MM" value-format="YYYY-MM" @change="loadAttendance" class="tw-w-full" /></a-form-model-item
         ><a-form-model-item v-if="generateMode !== 'supplement'" label="已确认月度考勤"
           ><a-select v-model="generateForm.attendanceId"
             ><a-select-option v-for="a in attendanceBatches" :key="a.id" :value="a.id">{{ a.period }} · 批次 #{{ a.id }}</a-select-option></a-select
           ></a-form-model-item
         >
         <div v-if="generateMode !== 'supplement'" class="hr-form-grid">
-          <a-form-model-item v-for="f in ruleFields" :key="f.key" :label="f.label"
-            ><a-input-number v-model="generateForm.rules[f.key]" :min="0" :max="f.rate ? 1 : undefined" :precision="4" style="width: 100%"
-          /></a-form-model-item>
+          <a-form-model-item v-for="f in ruleFields" :key="f.key" :label="f.label"><a-input-number v-model="generateForm.rules[f.key]" :min="0" :max="f.rate ? 1 : undefined" :precision="4" class="tw-w-full" /></a-form-model-item>
         </div>
         <a-form-model-item v-if="generateMode !== 'generate'" label="补发、扣回或重算原因"><a-textarea v-model="generateForm.reason" :max-length="1000" /></a-form-model-item
         ><a-alert v-if="generateMode === 'recalculate'" type="warning" message="重算将生成新的核算快照，当前人工调整会清除并留存历史。请先导出保存需要保留的调整。" /></a-form-model
     ></a-modal>
     <a-modal v-model="reasonVisible" title="核对或更正说明" :confirm-loading="busy" @ok="saveReason"><a-textarea v-model="reason" :rows="4" :max-length="1000" placeholder="请填写核对依据或更正原因" /></a-modal>
     <a-modal v-model="payVisible" title="登记实际工资付款 / 扣回" :confirm-loading="busy" @ok="savePay"
-      ><a-alert type="info" show-icon message="此操作登记线下真实结果，不发起银行转账。成功需上传凭证，失败需填写原因；重试不会重复累计成功金额。" style="margin-bottom: 16px" /><a-form-model layout="vertical"
+      ><a-alert type="info" show-icon message="此操作登记线下真实结果，不发起银行转账。成功需上传凭证，失败需填写原因；重试不会重复累计成功金额。" class="tw-mb-4" /><a-form-model layout="vertical"
         ><a-form-model-item label="员工与收款账户"
           ><span>{{ payItem.employeeName }} · {{ payItem.bankName }} · {{ payItem.bankAccount }}</span></a-form-model-item
-        ><a-form-model-item label="本次金额（扣回填负数）"><a-input-number v-model="payForm.amount" :precision="2" style="width: 100%" /></a-form-model-item
-        ><a-form-model-item label="实际日期"><a-date-picker v-model="payForm.paymentDate" value-format="YYYY-MM-DD" style="width: 100%" /></a-form-model-item
+        ><a-form-model-item label="本次金额（扣回填负数）"><a-input-number v-model="payForm.amount" :precision="2" class="tw-w-full" /></a-form-model-item
+        ><a-form-model-item label="实际日期"><a-date-picker v-model="payForm.paymentDate" format="YYYY-MM-DD" value-format="YYYY-MM-DD" class="tw-w-full" /></a-form-model-item
         ><a-form-model-item label="结果"
           ><a-select v-model="payForm.status"><a-select-option value="paid">成功</a-select-option><a-select-option value="failed">失败</a-select-option></a-select></a-form-model-item
         ><a-form-model-item label="银行流水号 / 失败单号"><a-input v-model="payForm.referenceNo" :max-length="128" /></a-form-model-item
@@ -270,11 +267,19 @@ export default {
     async openGenerate(mode) {
       if (!(await this.guard('generate', '核算工资'))) return
       this.generateMode = mode
-      this.generateForm = { period: mode === 'recalculate' ? this.detail.period : this.period, rules: { ...(mode === 'recalculate' ? this.detail.rules : {}) }, attendanceId: undefined, reason: '' }
+      this.generateForm = {
+        period: mode === 'recalculate' ? this.detail.period : this.period || new Date().toLocaleDateString('sv-SE').slice(0, 7),
+        rules: { ...(mode === 'recalculate' ? this.detail.rules : {}) },
+        attendanceId: undefined,
+        reason: ''
+      }
       this.generateVisible = true
       await this.loadAttendance()
     },
     async loadAttendance() {
+      this.attendanceBatches = []
+      this.generateForm.attendanceId = undefined
+      if (!this.generateForm.period) return
       this.attendanceBatches = (await hr('/payroll/attendance-options', 'get', { period: this.generateForm.period })).data.filter(a => a.status === 'confirmed')
       this.generateForm.attendanceId = this.attendanceBatches[0]?.id
     },

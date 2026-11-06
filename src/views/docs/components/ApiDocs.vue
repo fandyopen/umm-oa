@@ -10,7 +10,7 @@
 
     <div class="api-toolbar">
       <a-input-search v-model="keyword" placeholder="搜索接口、说明、控制器" allow-clear />
-      <a-select v-model="activeGroup" style="width: 210px">
+      <a-select v-model="activeGroup" class="tw-w-[210px]">
         <a-select-option v-for="group in groups" :key="group" :value="group">{{ group }}</a-select-option>
       </a-select>
     </div>
@@ -34,11 +34,19 @@
             </thead>
             <tbody>
               <tr v-for="item in group.items" :key="`${item.method}-${item.path}`">
-                <td><a-tag :color="methodColor(item.method)">{{ item.method }}</a-tag></td>
-                <td><code>{{ item.path }}</code></td>
+                <td>
+                  <a-tag :color="methodColor(item.method)">{{ item.method }}</a-tag>
+                </td>
+                <td>
+                  <code>{{ item.path }}</code>
+                </td>
                 <td>{{ item.desc }}</td>
-                <td><span class="permission-text">{{ item.auth }}</span></td>
-                <td><span class="backend-text">{{ item.source }}</span></td>
+                <td>
+                  <span class="permission-text">{{ item.auth }}</span>
+                </td>
+                <td>
+                  <span class="backend-text">{{ item.source }}</span>
+                </td>
               </tr>
             </tbody>
           </table>
@@ -75,10 +83,7 @@ export default {
             if (!keyword) {
               return true
             }
-            return [group.name, item.method, item.path, item.desc, item.auth, item.source]
-              .join(' ')
-              .toLowerCase()
-              .includes(keyword)
+            return [group.name, item.method, item.path, item.desc, item.auth, item.source].join(' ').toLowerCase().includes(keyword)
           })
         }))
         .filter(group => group.items.length)

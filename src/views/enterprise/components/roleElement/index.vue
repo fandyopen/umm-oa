@@ -34,7 +34,7 @@
         <a-button v-userPerms="{ bindingPerms: 'roleManage' }" @click="batchDelete">批量删除</a-button>
       </div>
       <div class="search-input">
-        <a-input-search size="small" placeholder="搜索成员" style="width: 200px" allow-clear @search="onSearch" />
+        <a-input-search size="small" placeholder="搜索成员" class="tw-w-[200px]" allow-clear @search="onSearch" />
       </div>
     </div>
     <div class="role-table">

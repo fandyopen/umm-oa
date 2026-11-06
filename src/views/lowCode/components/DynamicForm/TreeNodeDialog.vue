@@ -11,7 +11,7 @@
           <el-col :span="24">
             <el-form-item label="选项值" prop="value">
               <el-input v-model="formData.value" placeholder="请输入选项值" clearable>
-                <el-select slot="append" v-model="dataType" :style="{ width: '100px' }">
+                <el-select slot="append" v-model="dataType" class="tw-w-[100px]">
                   <el-option v-for="(item, index) in dataTypeOptions" :key="index" :label="item.label" :value="item.value" :disabled="item.disabled" />
                 </el-select>
               </el-input>

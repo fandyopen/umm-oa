@@ -1,8 +1,8 @@
 <template>
   <div>
     <div class="toolbar">
-      <a-input-search v-model="query.keyword" allow-clear placeholder="搜索客户、合同、票号或摘要" style="width: 250px" @search="search" />
-      <a-select v-model="query.status" allow-clear placeholder="全部状态" style="width: 135px" @change="search"
+      <a-input-search v-model="query.keyword" allow-clear placeholder="搜索客户、合同、票号或摘要" class="tw-w-[250px]" @search="search" />
+      <a-select v-model="query.status" allow-clear placeholder="全部状态" class="tw-w-[135px]" @change="search"
         ><a-select-option v-for="s in visibleStatuses" :key="s.value" :value="s.value">{{ s.label }}</a-select-option></a-select
       >
       <a-button icon="reload" @click="load">刷新</a-button>
@@ -124,9 +124,9 @@
         >
         <a-form-model-item v-if="type === 'cost'" label="收款对象"><a-input v-model="form.payee" maxlength="200" /></a-form-model-item>
         <a-form-model-item label="金额" prop="amount"
-          ><a-input-number v-model="form.amount" :min="0.01" :precision="2" :max="selectedSource && ['receipt', 'invoice', 'writeoff'].includes(type) ? available : undefined" style="width: 100%"
+          ><a-input-number v-model="form.amount" :min="0.01" :precision="2" :max="selectedSource && ['receipt', 'invoice', 'writeoff'].includes(type) ? available : undefined" class="tw-w-full"
         /></a-form-model-item>
-        <a-form-model-item label="日期" prop="businessDate"><a-date-picker v-model="form.businessDate" value-format="YYYY-MM-DD" style="width: 100%" /></a-form-model-item>
+        <a-form-model-item label="日期" prop="businessDate"><a-date-picker v-model="form.businessDate" value-format="YYYY-MM-DD" class="tw-w-full" /></a-form-model-item>
         <a-form-model-item v-if="type === 'receipt'" label="付款渠道"><a-input v-model="form.channel" maxlength="100" /></a-form-model-item>
         <a-form-model-item v-if="type === 'invoice' || type === 'receipt'" label="业务流水号"><a-input v-model="form.referenceNo" maxlength="100" /></a-form-model-item>
         <a-form-model-item label="凭证"
@@ -150,7 +150,7 @@
       <finance-record-history v-if="detail" :record="detail" />
     </a-modal>
     <a-modal :visible="!!previewFile" title="凭证" :footer="null" @cancel="previewFile = null"
-      ><div v-for="(file, index) in previewFile || []" :key="file.fileName || index" style="margin-bottom: 10px">
+      ><div v-for="(file, index) in previewFile || []" :key="file.fileName || index" class="tw-mb-2.5">
         <a :href="file.fileName" target="_blank" rel="noopener noreferrer">{{ file.name || '打开凭证 ' + (index + 1) }}</a>
       </div></a-modal
     >

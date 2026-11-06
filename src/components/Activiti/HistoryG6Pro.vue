@@ -3,7 +3,7 @@
     <div class="stepList">
       <div status="finish" v-for="(item, index) in historyList" :key="index" class="stepItem">
         <div class="left" v-if="index !== 0 && index !== historyList.length - 1">
-          <icon-font slot="icon" type="iconfont-tuandui3" style="font-size: 20px" />
+          <icon-font slot="icon" type="iconfont-tuandui3" class="tw-text-xl" />
         </div>
         <a-badge :count="item.subTasks ? item.subTasks.length : 0">
           <div class="centerList">
@@ -13,13 +13,13 @@
                 <div class="stepList">
                   <div status="finish" v-for="(subTk, subIndex) in item.subTasks" :key="subIndex" class="stepItem">
                     <div class="left">
-                      <icon-font slot="icon" type="iconfont-tuandui3" style="font-size: 20px" />
+                      <icon-font slot="icon" type="iconfont-tuandui3" class="tw-text-xl" />
                     </div>
                     <div class="centerList">
                       <a-tag class="s-mg-4" color="#519a73">{{ subTk.name }}</a-tag>
                       <template v-if="subTk.assigneeName">
-                        <div class="s-mg-4" style="font-size: 14px; color: #f9906f">{{ `${subTk.assigneeName} ${timeFrom(new Date(subTk.endTime).getTime())}` }}</div>
-                        <div class="s-mg-4 columnStyle" style="font-size: 16px; color: #9890e3">
+                        <div class="s-mg-4 tw-text-sm tw-text-[#f9906f]">{{ `${subTk.assigneeName} ${timeFrom(new Date(subTk.endTime).getTime())}` }}</div>
+                        <div class="s-mg-4 columnStyle tw-text-base tw-text-[#9890e3]">
                           <Ellipsis :length="20" tooltip>{{ subTk.comment }}</Ellipsis>
                         </div>
                       </template>
@@ -37,8 +37,8 @@
               {{ index === 0 ? '开始' : index === historyList.length - 1 ? '结束' : '' }}
             </span>
             <template v-if="item.assigneeName && index !== 0 && index !== historyList.length - 1">
-              <div class="s-mg-4" style="font-size: 14px; color: #f9906f">{{ `${item.assigneeName} ${timeFrom(new Date(item.endTime).getTime())}` }}</div>
-              <div class="s-mg-4 columnStyle" style="font-size: 16px; color: #9890e3">
+              <div class="s-mg-4 tw-text-sm tw-text-[#f9906f]">{{ `${item.assigneeName} ${timeFrom(new Date(item.endTime).getTime())}` }}</div>
+              <div class="s-mg-4 columnStyle tw-text-base tw-text-[#9890e3]">
                 <Ellipsis :length="20" tooltip>{{ item.comment }}</Ellipsis>
               </div>
             </template>

@@ -12,10 +12,10 @@
       <a-textarea class="s-mb-16" placeholder="填写审批意见" v-model="comment" :auto-size="{ minRows: 8 }" />
       <!-- class="bottom-control" -->
       <a-space>
-        <a-button style="background-color: #52c41a; color: white; border-color: #52c41a" @click="complete(true)">同 意</a-button>
+        <a-button class="tw-bg-[#52c41a] tw-text-white tw-border-[#52c41a]" @click="complete(true)">同 意</a-button>
         <a-button v-if="allowDelegate" type="primary" @click="handleDelegateTaskClick">转 办</a-button>
-        <a-button style="background-color: #fa541c; color: white; border-color: #fa541c" @click="handleRejectTask()">驳 回</a-button>
-        <a-button v-if="!pass" style="background-color: #fa541c; color: white; border-color: #fa541c" @click="handleFinishTask()">结束流程</a-button>
+        <a-button class="tw-bg-[#fa541c] tw-text-white tw-border-[#fa541c]" @click="handleRejectTask()">驳 回</a-button>
+        <a-button v-if="!pass" class="tw-bg-[#fa541c] tw-text-white tw-border-[#fa541c]" @click="handleFinishTask()">结束流程</a-button>
         <a-button @click="close">取 消</a-button>
       </a-space>
     </template>

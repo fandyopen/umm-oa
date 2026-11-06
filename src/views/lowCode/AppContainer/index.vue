@@ -34,7 +34,7 @@
                 <div><a-icon type="setting" /></div>
                 <template slot="content">
                   <div><a-button type="link" @click="editFrom(item)"> 编辑表单 </a-button></div>
-                  <div><a-button type="link" style="color: red" @click="deleteGroupItem(item.id)"> 删除 </a-button></div>
+                  <div><a-button type="link" class="tw-text-[red]" @click="deleteGroupItem(item.id)"> 删除 </a-button></div>
                 </template>
               </a-popover>
             </div>

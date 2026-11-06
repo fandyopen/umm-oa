@@ -29,10 +29,14 @@
       </div>
 
       <div class="risk-filter">
-        <a-input-search v-model="keyword" placeholder="搜索客户、合同、负责人或风险原因" allow-clear style="width: 300px" />
-        <a-select v-model="customerId" placeholder="全部客户" allow-clear show-search option-filter-prop="children" style="width: 200px" @change="contractId = undefined"><a-select-option v-for="item in customerOptions" :key="item.id" :value="item.id">{{ item.name }}</a-select-option></a-select>
-        <a-select v-model="contractId" placeholder="全部合同" allow-clear show-search option-filter-prop="children" style="width: 220px"><a-select-option v-for="item in contractOptions" :key="item.id" :value="item.id">{{ item.name }}</a-select-option></a-select>
-        <a-select v-model="riskType" placeholder="全部风险类型" allow-clear style="width: 180px">
+        <a-input-search v-model="keyword" placeholder="搜索客户、合同、负责人或风险原因" allow-clear class="tw-w-[300px]" />
+        <a-select v-model="customerId" placeholder="全部客户" allow-clear show-search option-filter-prop="children" class="tw-w-[200px]" @change="contractId = undefined"
+          ><a-select-option v-for="item in customerOptions" :key="item.id" :value="item.id">{{ item.name }}</a-select-option></a-select
+        >
+        <a-select v-model="contractId" placeholder="全部合同" allow-clear show-search option-filter-prop="children" class="tw-w-[220px]"
+          ><a-select-option v-for="item in contractOptions" :key="item.id" :value="item.id">{{ item.name }}</a-select-option></a-select
+        >
+        <a-select v-model="riskType" placeholder="全部风险类型" allow-clear class="tw-w-[180px]">
           <a-select-option value="no_followup">长期未跟进</a-select-option>
           <a-select-option value="contract_expiry">合同即将到期</a-select-option>
           <a-select-option value="no_payment">长期未回款</a-select-option>
@@ -49,7 +53,8 @@
           </a-tag>
         </span>
         <span slot="customer" slot-scope="text, record">
-          <a v-if="showModuleAction('customer')" class="customer-link" @click="openCustomer(record.customerId)">{{ text }}</a><span v-else>{{ text }}</span>
+          <a v-if="showModuleAction('customer')" class="customer-link" @click="openCustomer(record.customerId)">{{ text }}</a
+          ><span v-else>{{ text }}</span>
         </span>
         <span slot="owner" slot-scope="text">{{ text || '未分配' }}</span>
         <span slot="action" slot-scope="text, record">
@@ -62,7 +67,7 @@
     </a-spin>
     <a-modal :visible="!!handleTarget" title="记录合同风险处理" :confirm-loading="saving || !!moduleActionBusy.saveHandle" @cancel="handleTarget = null" @ok="saveHandle">
       <p>{{ handleTarget ? `${handleTarget.customerName} · ${handleTarget.contractName} · ${handleTarget.title}` : '' }}</p>
-      <a-alert type="info" message="记录沟通结果不会关闭风险；实际回款、续约或结案后依据业务条件解除提醒。" style="margin-bottom: 16px" />
+      <a-alert type="info" message="记录沟通结果不会关闭风险；实际回款、续约或结案后依据业务条件解除提醒。" class="tw-mb-4" />
       <a-textarea v-model="handleContent" :rows="4" :max-length="2000" placeholder="填写催收进度、付款计划或续约沟通结果" />
     </a-modal>
   </page-header-wrapper>

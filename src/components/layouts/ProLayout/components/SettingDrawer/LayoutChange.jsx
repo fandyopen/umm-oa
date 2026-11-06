@@ -53,7 +53,7 @@ export default {
           {
             title: i18n('app.setting.content-width'),
             action: (
-              <Select value={contentWidth} size="small" onSelect={value => handleChange('contentWidth', value)} style={{ width: '80px' }}>
+              <Select value={contentWidth} size="small" onSelect={value => handleChange('contentWidth', value)} class="tw-w-20">
                 {layout === 'sidemenu' ? null : <Select.Option value="Fixed">{i18n('app.setting.content-width.fixed')}</Select.Option>}
                 <Select.Option value="Fluid">{i18n('app.setting.content-width.fluid')}</Select.Option>
               </Select>

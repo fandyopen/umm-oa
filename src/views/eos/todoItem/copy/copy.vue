@@ -102,7 +102,7 @@ export default {
             const { busFieldProp, busFieldProp2 } = busFlowMap[record.businessType]
             templateProp = this._.get(record.form, busFieldProp, '') ? busFieldProp : busFieldProp2
             return (
-              <div class={this.isReadTask(record)} style="cursor: pointer">
+              <div class={[this.isReadTask(record), 'tw-cursor-pointer']}>
                 <Ellipsis length={30} tooltip>
                   {this._.get(record.form, templateProp, '')}
                 </Ellipsis>

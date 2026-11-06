@@ -11,7 +11,7 @@
           <span>允许成员修改姓名</span>
         </div>
       </div>
-      <div class="depart-operate" v-if="deptId && title !== '全部成员' && title !== '离职成员'">
+      <div class="depart-operate" v-if="!readOnlyDepartments && deptId && title !== '全部成员' && title !== '离职成员'">
         <a-popover v-if="!hideDepartmentNameActions" trigger="click" v-model="visible">
           <template slot="content">
             <div class="editNameInput">
@@ -61,17 +61,19 @@
               <a-button type="primary" @click="adjusting(1)"> 确认 </a-button>
             </div>
           </template>
-          <a-button ghost type="primary" @click="initAdjusDepTreeData" v-hasModuleAction="{ ...moduleMeta, actionCode: 'transfer', allowUnresolved: !!moduleActionGuard }" :loading="!!moduleActionBusy.initAdjusDepTreeData">调整部门</a-button>
+          <a-button ghost type="primary" @click="initAdjusDepTreeData" v-hasModuleAction="{ ...moduleMeta, actionCode: 'transfer', allowUnresolved: !!moduleActionGuard }" :loading="!!moduleActionBusy.initAdjusDepTreeData"
+            >调整部门</a-button
+          >
         </a-popover>
         <a-button ghost type="primary" @click="mitosis" v-hasModuleAction="{ ...moduleMeta, actionCode: 'dismiss', allowUnresolved: !!moduleActionGuard }" :loading="!!moduleActionBusy.mitosis"> 转为离职 </a-button>
       </div>
       <a-button v-if="canDeleteMembers" type="danger" icon="delete" :disabled="!selectedRowKeys.length" @click="deleteMembers()">删除员工</a-button>
       <div class="member-filter-pane" v-if="showQueryFilters">
-        <a-tree-select v-model="filterDeptId" :tree-data="treeData" :replace-fields="deptFilterFields" placeholder="全部部门" allow-clear show-search tree-default-expand-all style="width: 190px" @change="handleDeptFilterChange" />
-        <a-range-picker v-model="addedDateRange" format="YYYY-MM-DD" :placeholder="['新增开始日期', '新增结束日期']" style="width: 260px" @change="handleAddedDateChange" />
+        <a-tree-select v-model="filterDeptId" :tree-data="treeData" :replace-fields="deptFilterFields" placeholder="全部部门" allow-clear show-search tree-default-expand-all class="tw-w-[190px]" @change="handleDeptFilterChange" />
+        <a-range-picker v-model="addedDateRange" format="YYYY-MM-DD" :placeholder="['新增开始日期', '新增结束日期']" class="tw-w-[260px]" @change="handleAddedDateChange" />
       </div>
       <div class="earch-input">
-        <a-input-search placeholder="搜索成员" size="small" style="width: 200px" allow-clear @search="onSearch" />
+        <a-input-search placeholder="搜索成员" size="small" class="tw-w-[200px]" allow-clear @search="onSearch" />
       </div>
     </div>
     <div class="member-table-content">
@@ -228,6 +230,10 @@ export default {
     hideDepartmentNameActions: {
       type: Boolean,
       default: false
+    },
+    readOnlyDepartments: {
+      type: Boolean,
+      default: false
     }
   },
   data() {
@@ -237,7 +243,8 @@ export default {
       /* 查询参数 */
       UserListParams: {
         orderByColumn: 'create_time',
-        isAsc: 'desc'
+        isAsc: 'desc',
+        ...(this.deptId ? { deptId: this.deptId } : {})
       },
       filterDeptId: null,
       addedDateRange: [],
@@ -827,6 +834,7 @@ export default {
       return this.canDeleteMembers || hasModuleAction(permissions, meta, 'transfer') || hasModuleAction(permissions, meta, 'dismiss')
     },
     canManageDepartment() {
+      if (this.readOnlyDepartments) return false
       if (this.moduleActionVisible) return this.moduleActionVisible('members', 'manage')
       const permissions = this.$store.getters.permissions || []
       return hasModuleAction(permissions, this.moduleMeta, 'manage')

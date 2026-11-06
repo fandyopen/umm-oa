@@ -1,9 +1,17 @@
 <template>
   <div>
-    <contract-detail :module-meta="moduleContexts.contract" v-if="row.contractId" :contract-id="Number(row.contractId)" :initial-tab="todoItem.businessType === 'crmContractApproval' ? 'approvals' : 'reminders'" @loaded="contract = $event" @changed="$emit('changed')" @close="$emit('close')" />
+    <contract-detail
+      :module-meta="moduleContexts.contract"
+      v-if="row.contractId"
+      :contract-id="Number(row.contractId)"
+      :initial-tab="todoItem.businessType === 'crmContractApproval' ? 'approvals' : 'reminders'"
+      @loaded="contract = $event"
+      @changed="$emit('changed')"
+      @close="$emit('close')"
+    />
     <customer-detail :module-meta="moduleContexts.customer" v-else-if="row.customerId" :form-id="Number(row.customerId)" initial-tab="followups" />
     <a-empty v-else description="未找到关联的客户或合同" />
-    <a-card v-if="canReviewLegacy" title="历史在途合同审批" style="margin-top: 20px">
+    <a-card v-if="canReviewLegacy" title="历史在途合同审批" class="tw-mt-5">
       <p>此任务创建于统一流程接入前，仅在待办中保留办结入口。新提交的合同使用统一流程审批。</p>
       <a-textarea v-model="comment" :rows="3" :max-length="2000" placeholder="填写审批意见，退回时必填" :disabled="saving || !!moduleActionBusy.reviewLegacy" />
       <div class="legacy-review-actions">
@@ -66,5 +74,10 @@ export default {
 </script>
 
 <style scoped>
-.legacy-review-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 16px; }
+.legacy-review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 16px;
+}
 </style>

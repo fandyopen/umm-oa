@@ -14,8 +14,8 @@
             <a-col :md="8" :sm="24">
               <span class="table-page-search-submitButtons">
                 <a-button type="primary" @click="handleQuery"><a-icon type="search" />查询</a-button>
-                <a-button style="margin-left: 8px" @click="resetQuery"><a-icon type="redo" />重置</a-button>
-                <a-button type="dashed" shape="circle" :loading="loading" style="margin-left: 16px" icon="reload" @click="getList" />
+                <a-button class="tw-ml-2" @click="resetQuery"><a-icon type="redo" />重置</a-button>
+                <a-button type="dashed" shape="circle" :loading="loading" class="tw-ml-4" icon="reload" @click="getList" />
               </span>
             </a-col>
           </a-row>

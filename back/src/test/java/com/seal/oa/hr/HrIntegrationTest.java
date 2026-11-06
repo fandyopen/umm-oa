@@ -32,6 +32,7 @@ class HrIntegrationTest {
     @Autowired com.seal.oa.workflow.WorkflowActionRequestService requests;
     @Autowired HrReportService reports;
     @Autowired HrWorkflowHandler hrWorkflow;
+    @Autowired HrController controller;
     long user, dept;
 
     @BeforeEach
@@ -751,6 +752,105 @@ class HrIntegrationTest {
         assertEquals(false, b.get("sourcesChanged"));
         var snapshot = (Map<String, Object>) row.get("snapshot");
         assertEquals(31, ((List<?>) snapshot.get("segments")).size());
+    }
+
+    @Test
+    void employmentTypesUseOneDictionaryAndStoreCodesWithoutChangingSalary() {
+        var options = (Map<String, Object>) controller.options().get("data");
+        assertEquals(HrEmploymentType.options(), options.get("employmentTypes"));
+        for (var option : HrEmploymentType.options()) {
+            var profile = employees.detail(user);
+            profile.put("employmentType", option.get("label"));
+            var saved = employees.save(user, profile);
+            assertEquals(option.get("value"), saved.get("employmentType"));
+            assertEquals(option.get("label"), saved.get("employmentTypeName"));
+            assertEquals(false, saved.get("employmentTypeLegacy"));
+            assertEquals(option.get("value"), jdbc.queryForObject(
+                    "SELECT employment_type FROM oa_hr_employee WHERE user_id=?",
+                    String.class, user));
+            assertTrue(((List<?>) saved.get("salaries")).isEmpty());
+        }
+        var invalid = employees.detail(user);
+        invalid.put("employmentType", "随意新增类型");
+        assertEquals(400, assertThrows(ApiException.class, () -> employees.save(user, invalid)).code());
+        assertEquals("labor", employees.detail(user).get("employmentType"));
+        invalid.put("employmentType", null);
+        assertEquals("", employees.save(user, invalid).get("employmentType"));
+    }
+
+    @Test
+    void legacyEmploymentTypeIsPreservedUntilExplicitlyClassified() {
+        jdbc.update("UPDATE oa_hr_employee SET employment_type=? WHERE user_id=?", "历史全职员工", user);
+        var profile = employees.detail(user);
+        assertEquals("历史全职员工", profile.get("employmentType"));
+        assertEquals(true, profile.get("employmentTypeLegacy"));
+        profile.put("emergencyContact", "更新联系人");
+        assertEquals("历史全职员工", employees.save(user, profile).get("employmentType"));
+        var report = reports.employees(Map.of()).stream()
+                .filter(row -> id(row.get("userId")) == user).findFirst().orElseThrow();
+        assertEquals("历史全职员工", report.get("employmentTypeName"));
+        profile = employees.detail(user);
+        profile.put("employmentType", "direct");
+        assertEquals(false, employees.save(user, profile).get("employmentTypeLegacy"));
+    }
+
+    @Test
+    void profileImportAcceptsLabelsAndCodesAndRejectsUnknownTypes() {
+        employees.importProfiles(Map.of("rows", List.of(
+                profileImportRow(Map.of("employmentType", "劳务派遣")))));
+        assertEquals("dispatch", employees.detail(user).get("employmentType"));
+        employees.importProfiles(Map.of("rows", List.of(
+                profileImportRow(Map.of("employmentType", "internship")))));
+        assertEquals("internship", employees.detail(user).get("employmentType"));
+        employees.importProfiles(Map.of("rows", List.of(
+                profileImportRow(Map.of("emergencyContact", "只更新联系人")))));
+        assertEquals("internship", employees.detail(user).get("employmentType"));
+        var report = reports.employees(Map.of()).stream()
+                .filter(row -> id(row.get("userId")) == user).findFirst().orElseThrow();
+        assertEquals("实习", report.get("employmentTypeName"));
+        assertThrows(ApiException.class, () -> employees.importProfiles(Map.of("rows", List.of(
+                profileImportRow(Map.of("employmentType", "试用"))))));
+        assertEquals("internship", employees.detail(user).get("employmentType"));
+        AuthContext.set(new AuthContext.CurrentUser(user, "test"));
+        assertThrows(ApiException.class, () -> controller.options());
+    }
+
+    Map<String, Object> profileImportRow(Map<String, Object> changes) {
+        var row = new LinkedHashMap<String, Object>();
+        row.put("employeeNo", "EMP" + user);
+        row.put("revision", employees.detail(user).get("revision"));
+        row.putAll(changes);
+        return row;
+    }
+
+    @Test
+    void profileImportPreservesBlankFieldsAndRejectsStaleOrMissingVersions() {
+        var original = employees.detail(user);
+        var oldRow = profileImportRow(Map.of("emergencyContact", "旧表联系人"));
+        var row = profileImportRow(Map.of("emergencyContact", "新联系人", "employmentType", "  ", "employeeName", ""));
+        row.put("entryDate", null);
+        employees.importProfiles(Map.of("rows", List.of(row)));
+        var saved = employees.detail(user);
+        assertEquals("新联系人", saved.get("emergencyContact"));
+        assertEquals(original.get("entryDate"), saved.get("entryDate"));
+        assertEquals(original.get("employmentType"), saved.get("employmentType"));
+        assertEquals(id(original.get("revision")) + 1, id(saved.get("revision")));
+        assertEquals(409, assertThrows(ApiException.class,
+                () -> employees.importProfiles(Map.of("rows", List.of(oldRow)))).code());
+        var missingVersion = profileImportRow(Map.of("emergencyContact", "无版本联系人"));
+        missingVersion.remove("revision");
+        assertEquals(409, assertThrows(ApiException.class,
+                () -> employees.importProfiles(Map.of("rows", List.of(missingVersion)))).code());
+        assertEquals("新联系人", employees.detail(user).get("emergencyContact"));
+    }
+
+    @Test
+    void profileImportDoesNotCreateUnknownEmployees() {
+        long count = jdbc.queryForObject("SELECT COUNT(*) FROM oa_hr_employee", Long.class);
+        var row = Map.<String, Object>of("employeeNo", "UNKNOWN-" + user, "revision", 0);
+        assertEquals(400, assertThrows(ApiException.class,
+                () -> employees.importProfiles(Map.of("rows", List.of(row)))).code());
+        assertEquals(count, jdbc.queryForObject("SELECT COUNT(*) FROM oa_hr_employee", Long.class));
     }
 
     @Test

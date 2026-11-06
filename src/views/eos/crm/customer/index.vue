@@ -8,12 +8,7 @@
         </div>
         <div class="crm-header-actions">
           <a-button v-if="canAction('edit')" ghost type="primary" icon="swap" @click="openHandover" :loading="!!moduleActionBusy.openHandover">批量移交</a-button>
-          <a-upload
-            v-if="canAction('add')"
-            accept=".xlsx,.xls"
-            :show-upload-list="false"
-            :before-upload="handleImportFile"
-          >
+          <a-upload v-if="canAction('add')" accept=".xlsx,.xls" :show-upload-list="false" :before-upload="handleImportFile">
             <a-button icon="upload" :loading="importing">导入</a-button>
           </a-upload>
           <a-button icon="file-excel" @click="downloadImportTemplate">导入模板</a-button>
@@ -29,31 +24,31 @@
 
       <a-form layout="inline" class="crm-filter" :form="filterForm">
         <a-form-item label="公司名称">
-          <a-input v-model="queryParam.name" allow-clear placeholder="名称" style="width: 170px" />
+          <a-input v-model="queryParam.name" allow-clear placeholder="名称" class="tw-w-[170px]" />
         </a-form-item>
         <a-form-item label="行业">
-          <industry-select v-model="queryParam.industry" placeholder="全部" style="width: 150px" />
+          <industry-select v-model="queryParam.industry" placeholder="全部" class="tw-w-[150px]" />
         </a-form-item>
         <a-form-item label="规模">
-          <a-select v-model="queryParam.companyScale" allow-clear placeholder="全部" style="width: 130px">
+          <a-select v-model="queryParam.companyScale" allow-clear placeholder="全部" class="tw-w-[130px]">
             <a-select-option v-for="item in options.scales" :key="item" :value="item">{{ item }}</a-select-option>
           </a-select>
         </a-form-item>
         <a-form-item label="地区">
-          <region-select v-model="queryParam.region" placeholder="全部" style="width: 120px" />
+          <region-select v-model="queryParam.region" placeholder="全部" class="tw-w-[120px]" />
         </a-form-item>
         <a-form-item label="企业性质">
-          <a-select v-model="queryParam.enterpriseNature" allow-clear placeholder="全部" style="width: 140px">
+          <a-select v-model="queryParam.enterpriseNature" allow-clear placeholder="全部" class="tw-w-[140px]">
             <a-select-option v-for="item in options.natures" :key="item" :value="item">{{ item }}</a-select-option>
           </a-select>
         </a-form-item>
         <a-form-item label="客户来源">
-          <a-select v-model="queryParam.customerSource" allow-clear placeholder="全部" style="width: 140px">
+          <a-select v-model="queryParam.customerSource" allow-clear placeholder="全部" class="tw-w-[140px]">
             <a-select-option v-for="item in options.sources" :key="item" :value="item">{{ item }}</a-select-option>
           </a-select>
         </a-form-item>
         <a-form-item label="合作状态">
-          <a-select v-model="queryParam.cooperationStatus" allow-clear placeholder="全部" style="width: 130px">
+          <a-select v-model="queryParam.cooperationStatus" allow-clear placeholder="全部" class="tw-w-[130px]">
             <a-select-option v-for="item in options.statuses" :key="item" :value="item">{{ item }}</a-select-option>
           </a-select>
         </a-form-item>
@@ -65,28 +60,20 @@
         </a-form-item>
       </a-form>
 
-      <a-alert v-if="queryParam.customerId" type="info" show-icon style="margin-bottom: 16px">
+      <a-alert v-if="queryParam.customerId" type="info" show-icon class="tw-mb-4">
         <template slot="message">
           已定位消息关联客户，新增跟进后待办自动完成。
           <a @click="resetSearch">查看全部客户</a>
         </template>
       </a-alert>
       <no-data v-show="noData" />
-      <s-table
-        v-show="!noData"
-        ref="table"
-        :customRow="rowClick"
-        size="default"
-        rowKey="id"
-        :columns="columns"
-        :data="loadData"
-      >
+      <s-table v-show="!noData" ref="table" :customRow="rowClick" size="default" rowKey="id" :columns="columns" :data="loadData">
         <span slot="status" slot-scope="text">
           <a-tag :color="statusColor(text)">{{ text || '未设置' }}</a-tag>
         </span>
         <span slot="owner" slot-scope="text">
           <div class="owner-cell">
-            <a-avatar size="small" :style="{ backgroundColor: '#eaf3fb', color: '#1769aa' }">
+            <a-avatar size="small" class="tw-bg-[#eaf3fb] tw-text-[#1769aa]">
               {{ (text || '?').slice(0, 1) }}
             </a-avatar>
             <span>{{ text || '未分配' }}</span>
@@ -508,15 +495,13 @@ export default {
       this.$refs.table.refresh(true)
     },
     statusColor(status) {
-      return (
-        {
-          合作中: 'green',
-          重点客户: 'purple',
-          潜在客户: 'blue',
-          暂停合作: 'orange',
-          已流失: 'red'
-        }[status]
-      )
+      return {
+        合作中: 'green',
+        重点客户: 'purple',
+        潜在客户: 'blue',
+        暂停合作: 'orange',
+        已流失: 'red'
+      }[status]
     },
     isStale(time) {
       if (!time) return true

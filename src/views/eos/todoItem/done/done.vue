@@ -105,7 +105,7 @@ export default {
         {
           title: '办理日期',
           dataIndex: 'endTime',
-          align: 'center',
+          align: 'center'
           // width: 140
         },
         {
@@ -117,7 +117,7 @@ export default {
             const { busFieldProp, busFieldProp2 } = busFlowMap[record.businessType]
             templateProp = this._.get(record.form, busFieldProp, '') ? busFieldProp : busFieldProp2
             return (
-              <div class={this.isReadTask(record)} style="cursor: pointer">
+              <div class={[this.isReadTask(record), 'tw-cursor-pointer']}>
                 <Ellipsis length={30} tooltip>
                   {this._.get(record.form, templateProp, '')}
                 </Ellipsis>
@@ -130,7 +130,7 @@ export default {
   },
   methods: {
     async handleDetail(row, detailCompName) {
-      if(this.isHrReminder(row)) return this.openHrReminder(row)
+      if (this.isHrReminder(row)) return this.openHrReminder(row)
       if (row.businessType === CUSTOMER_FOLLOWUP_TODO) return this.openCustomerReminder(row)
       if (this.isEmpty(detailCompName)) {
         return this.$message.error('请传递详情组件')

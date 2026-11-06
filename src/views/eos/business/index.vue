@@ -10,13 +10,13 @@
       </div>
 
       <div class="opportunity-filter">
-        <a-input-search v-model="queryParam.queryAll" placeholder="搜索商机名称、编号或客户" allow-clear style="width: 300px" @search="refresh" />
-        <a-select v-model="queryParam.customerId" placeholder="全部客户" allow-clear show-search :filter-option="false" style="width: 220px" @search="searchCustomers" @change="refresh">
+        <a-input-search v-model="queryParam.queryAll" placeholder="搜索商机名称、编号或客户" allow-clear class="tw-w-[300px]" @search="refresh" />
+        <a-select v-model="queryParam.customerId" placeholder="全部客户" allow-clear show-search :filter-option="false" class="tw-w-[220px]" @search="searchCustomers" @change="refresh">
           <a-select-option v-for="customer in customers" :key="customer.id" :value="customer.id">
             {{ customer.name }}
           </a-select-option>
         </a-select>
-        <a-select v-model="queryParam.stage" placeholder="全部阶段" allow-clear style="width: 150px" @change="refresh">
+        <a-select v-model="queryParam.stage" placeholder="全部阶段" allow-clear class="tw-w-[150px]" @change="refresh">
           <a-select-option v-for="stage in stages" :key="stage" :value="stage">{{ stage }}</a-select-option>
         </a-select>
         <a-button icon="reload" @click="resetFilters">重置</a-button>
@@ -270,16 +270,14 @@ export default {
       this.$refs.table.refresh(true)
     },
     stageColor(stage) {
-      return (
-        {
-          赢单: 'green',
-          输单: 'red',
-          商务谈判: 'orange',
-          方案报价: 'purple',
-          需求确认: 'blue',
-          初步接洽: undefined
-        }[stage]
-      )
+      return {
+        赢单: 'green',
+        输单: 'red',
+        商务谈判: 'orange',
+        方案报价: 'purple',
+        需求确认: 'blue',
+        初步接洽: undefined
+      }[stage]
     },
     formatMoney(value) {
       return `￥${Number(value || 0).toLocaleString('zh-CN', {

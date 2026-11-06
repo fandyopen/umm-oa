@@ -29,21 +29,21 @@
       <div v-userPerms="userPermsObj" class="comp-item" @click="goContacts" v-if="this.$route.fullPath !== '/saas/contacts'">
         <a-tooltip>
           <template slot="title"> 通讯录 </template>
-          <a-icon type="layout" theme="filled" style="font-size: 20px" />
+          <a-icon type="layout" theme="filled" class="tw-text-xl" />
         </a-tooltip>
       </div>
       <div class="comp-item">
         <a-tooltip>
           <template slot="title"> 消息 </template>
           <a-badge :dot="true" :offset="[-5, 3]">
-            <a-icon type="bell" theme="filled" style="font-size: 20px" />
+            <a-icon type="bell" theme="filled" class="tw-text-xl" />
           </a-badge>
         </a-tooltip>
       </div>
       <div class="comp-item">
         <a-tooltip>
           <template slot="title"> 帮助 </template>
-          <a-icon type="question-circle" theme="filled" style="font-size: 20px" />
+          <a-icon type="question-circle" theme="filled" class="tw-text-xl" />
         </a-tooltip>
       </div>
       <div class="comp-item">
@@ -51,10 +51,7 @@
           <span>
             <a-space>
               <a-avatar :src="avatar" v-if="avatar !== null" />
-              <a-avatar
-                :src="imgAvatar"
-                v-else
-              />
+              <a-avatar :src="imgAvatar" v-else />
             </a-space>
           </span>
           <template v-slot:overlay>
@@ -79,7 +76,7 @@
     </div>
     <a-modal :visible="visible" @ok="handleOk" @cancel="handleCancel">
       <div slot="title">
-        <a-icon type="usergroup-add" style="margin-right: 20px" />
+        <a-icon type="usergroup-add" class="tw-mr-5" />
         <span>新建企业</span>
       </div>
       <a-textarea placeholder="请输入企业名称" v-model="EnterpriseName" :autoSize="{ minRows: 2, maxRows: 6 }" />

@@ -2,7 +2,7 @@
   <!-- 数据表格 -->
   <s-table ref="table" size="default" rowKey="_id" :columns="columns" :data="loadData">
     <span slot="action" slot-scope="text, record">
-      <a-button type="link" style="color: red" @click="deleteItem(text, record)">删除</a-button>
+      <a-button type="link" class="tw-text-[red]" @click="deleteItem(text, record)">删除</a-button>
     </span>
   </s-table>
 </template>

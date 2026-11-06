@@ -2,11 +2,11 @@
   <div class="setting-container">
     <el-form ref="elForm" :model="formData" :rules="rules" size="medium" label-width="100px" label-position="top">
       <el-form-item label="名称" prop="flowName">
-        <el-input v-model="formData.flowName" placeholder="请输入审批名称" clearable :style="{ width: '100%' }"> </el-input>
+        <el-input v-model="formData.flowName" placeholder="请输入审批名称" clearable class="tw-w-full"> </el-input>
       </el-form-item>
       <el-form-item label="模板图标" prop="icon">
-        <img :src="activeIconSrc" style="width: 28px; height: 28px; vertical-align: middle" />
-        <el-button plain size="mini" @click="dialogVisible = true" style="margin-left: 10px">选择图标</el-button>
+        <img :src="activeIconSrc" class="tw-w-7 tw-h-7 tw-align-middle" />
+        <el-button plain size="mini" @click="dialogVisible = true" class="tw-ml-2.5">选择图标</el-button>
       </el-form-item>
     </el-form>
     <el-dialog title="选择图标" :visible.sync="dialogVisible" width="612px">

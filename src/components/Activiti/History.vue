@@ -3,7 +3,7 @@
     <!--审批历史表格-->
     <div>
       <div class="table-operations">
-        <a-button type="dashed" shape="circle" :loading="loading" :style="{ float: 'right' }" icon="reload" @click="getHistoryList" />
+        <a-button type="dashed" shape="circle" :loading="loading" class="tw-float-right" icon="reload" @click="getHistoryList" />
       </div>
       <a-table rowKey="id" :loading="loading" :data-source="historyList" :columns="columnsHistory"> </a-table>
     </div>

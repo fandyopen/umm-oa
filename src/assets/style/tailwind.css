@@ -1,0 +1,10 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  /* Component defaults stay overridable by widths passed from their parent. */
+  .app-control-full {
+    @apply tw-w-full;
+  }
+}

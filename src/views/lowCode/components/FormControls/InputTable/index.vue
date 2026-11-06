@@ -26,7 +26,7 @@
       <!-- 组件列 -->
       <el-table-column v-for="(head, cindex) in tableData" :key="head.formId" :min-width="head['min-width']" :prop="head.vModel">
         <template slot="header">
-          <span style="color: #f56c6c" v-if="head.required">*</span>
+          <span class="tw-text-[#f56c6c]" v-if="head.required">*</span>
           {{ head['label'] }}
         </template>
         <template slot-scope="scope">
@@ -73,7 +73,7 @@
         </el-tooltip>
         <div v-for="(conf, cindex) in config.children" :key="cindex" class="row-item" :class="{ error: !tableFormData[rindex][cindex].valid }">
           <div :style="{ width: labelWidth }">
-            <span style="color: #f56c6c" v-if="conf.required">*</span>
+            <span class="tw-text-[#f56c6c]" v-if="conf.required">*</span>
             {{ conf.label }}
           </div>
           <div :style="{ 'margin-left': labelWidth }">
@@ -83,7 +83,7 @@
               :size="formSize"
               :value="tableFormData[rindex][cindex]"
               :key="conf.renderKey"
-              style="max-width: 350px"
+              class="tw-max-w-[350px]"
               @input="
                 payload => {
                   $set(tableFormData[rindex][cindex], 'value', payload)
@@ -97,8 +97,8 @@
       </div>
     </template>
     <div class="list-summary" v-if="config.type === 'list' && config['show-summary']">
-      <div style="padding: 6px 12px; float: left">合计</div>
-      <div style="overflow: hidden; padding-top: 6px">
+      <div class="tw-py-1.5 tw-px-3 tw-float-left">合计</div>
+      <div class="tw-overflow-hidden tw-pt-1.5">
         <div v-for="(val, name) in listSummation" :key="name">{{ val.label }}：{{ val.sum }}</div>
       </div>
     </div>

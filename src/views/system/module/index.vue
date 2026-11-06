@@ -2,17 +2,10 @@
   <page-header-wrapper :breadcrumb="$store.getters.breadcrumb">
     <a-card :bordered="false">
       <div class="module-toolbar">
-        <a-input
-          v-model="keyword"
-          allow-clear
-          placeholder="搜索模块、路径、权限标识或动作编码"
-          style="width: 320px"
-        />
+        <a-input v-model="keyword" allow-clear placeholder="搜索模块、路径、权限标识或动作编码" class="tw-w-80" />
         <a-button @click="toggleExpandAll">{{ allExpanded ? '全部收起' : '全部展开' }}</a-button>
         <a-button icon="reload" :loading="loading" @click="loadTree">刷新</a-button>
-        <a-button v-if="canManageStructure" type="primary" icon="plus" @click="$refs.moduleForm.handleAdd()">
-          新增模块
-        </a-button>
+        <a-button v-if="canManageStructure" type="primary" icon="plus" @click="$refs.moduleForm.handleAdd()"> 新增模块 </a-button>
       </div>
 
       <a-alert
@@ -23,15 +16,7 @@
         description="目录和页面维护导航，按钮统一维护操作权限与流程配置；在按钮修改页开启流程设计后，可为该按钮设计审批流程。"
       />
 
-      <a-table
-        row-key="key"
-        :loading="loading"
-        :columns="columns"
-        :data-source="filteredTree"
-        :expanded-row-keys="expandedRowKeys"
-        :pagination="false"
-        @expand="handleExpand"
-      >
+      <a-table row-key="key" :loading="loading" :columns="columns" :data-source="filteredTree" :expanded-row-keys="expandedRowKeys" :pagination="false" @expand="handleExpand">
         <span slot="name" slot-scope="text, record">
           <icon-font v-if="record.nodeType === 'module' && record.icon" :type="record.icon" class="module-icon" />
           <a-tag v-if="record.nodeType === 'action'" color="green">按钮</a-tag>
@@ -70,13 +55,7 @@
               <a @click="openActionForm(record, true)">新增按钮</a>
             </template>
             <a-divider type="vertical" v-if="record.moduleId !== 340309" />
-            <a-popconfirm
-              v-if="record.moduleId !== 340309"
-              title="删除模块会同时删除其下级和按钮，确认继续？"
-              ok-text="删除"
-              cancel-text="取消"
-              @confirm="removeModule(record)"
-            >
+            <a-popconfirm v-if="record.moduleId !== 340309" title="删除模块会同时删除其下级和按钮，确认继续？" ok-text="删除" cancel-text="取消" @confirm="removeModule(record)">
               <a class="module-danger">删除</a>
             </a-popconfirm>
           </template>
@@ -88,13 +67,7 @@
                 <a @click="openFlowDesign(record)">流程设计</a>
               </template>
               <a-divider v-if="canManageStructure" type="vertical" />
-              <a-popconfirm
-                v-if="canManageStructure"
-                title="确认删除该按钮？"
-                ok-text="删除"
-                cancel-text="取消"
-                @confirm="removeAction(record)"
-              >
+              <a-popconfirm v-if="canManageStructure" title="确认删除该按钮？" ok-text="删除" cancel-text="取消" @confirm="removeAction(record)">
                 <a class="module-danger">删除</a>
               </a-popconfirm>
             </template>
@@ -163,9 +136,7 @@ export default {
         this.canManageStructure = response.canManageStructure === true
         this.canManageWorkflow = response.canManageWorkflow === true
         const keys = this.collectKeys(this.treeData)
-        this.expandedRowKeys = preserveExpansion
-          ? Array.from(new Set([...this.expandedRowKeys, 'module:' + expandModuleId])).filter(key => keys.includes(key))
-          : keys
+        this.expandedRowKeys = preserveExpansion ? Array.from(new Set([...this.expandedRowKeys, 'module:' + expandModuleId])).filter(key => keys.includes(key)) : keys
       } finally {
         this.loading = false
       }
@@ -186,14 +157,12 @@ export default {
     filterNodes(nodes, keyword) {
       return (nodes || []).reduce((result, node) => {
         const children = this.filterNodes(node.children, keyword)
-        const values = [
-          node.moduleName,
-          node.path,
-          node.permissionCode,
-          node.actionName,
-          node.actionCode
-        ]
-        const matched = values.some(value => String(value || '').toLowerCase().includes(keyword))
+        const values = [node.moduleName, node.path, node.permissionCode, node.actionName, node.actionCode]
+        const matched = values.some(value =>
+          String(value || '')
+            .toLowerCase()
+            .includes(keyword)
+        )
         if (matched || children.length) {
           result.push({ ...node, children })
         }

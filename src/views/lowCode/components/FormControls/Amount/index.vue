@@ -1,6 +1,6 @@
 <template>
   <div class="fc-amount">
-    <el-input-number style="width: 100%" v-model="innerValue" v-bind="$props" v-on="$listeners" @input="handleInput"></el-input-number>
+    <el-input-number class="tw-w-full" v-model="innerValue" v-bind="$props" v-on="$listeners" @input="handleInput"></el-input-number>
     <div class="explain-text" v-if="showChinese">大写：{{ chinese }}</div>
   </div>
 </template>

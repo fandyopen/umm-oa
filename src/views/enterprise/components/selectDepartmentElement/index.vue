@@ -1,7 +1,7 @@
 <template>
   <div class="member-select">
     <a-tree-select
-      style="width: 100%"
+      class="tw-w-full"
       :value="value"
       :dropdown-style="{ maxHeight: '400px', overflow: 'auto' }"
       allow-clear

@@ -171,6 +171,8 @@ public class HrController {
                 && !d.allowed(FINANCE, "access")) d.require(EMPLOYEES, "access");
         return ApiResult.ok(
                 Map.of(
+                        "employmentTypes",
+                        HrEmploymentType.options(),
                         "departments",
                         d.rows(
                                 "SELECT dept_id,dept_name FROM sys_dept WHERE status='0' AND"

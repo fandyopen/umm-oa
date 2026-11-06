@@ -3,9 +3,7 @@
   <div>
     <template v-if="!simple">
       <s-search placeholder="搜索此列表..." clickTips="搜索姓名、流程名称、审批" @onSearch="onSearch" />
-      <a-select v-model="businessCategory" style="width: 200px; margin-bottom: 16px" @change="changeCategory"
-        ><a-select-option value="">全部待办</a-select-option><a-select-option value="contract">合同审批</a-select-option></a-select
-      >
+      <a-select v-model="businessCategory" class="tw-w-[200px] tw-mb-4" @change="changeCategory"><a-select-option value="">全部待办</a-select-option><a-select-option value="contract">合同审批</a-select-option></a-select>
     </template>
     <!-- 数据表格 -->
     <no-data index v-show="noData" />
@@ -17,7 +15,7 @@
         <activiti-apply
           :preAudit="{ comment: item.lastHistoricActivity.comment, assigneeName: item.lastHistoricActivity.assigneeName }"
           :simple="simple"
-          style="margin-right: 10px; margin-left: auto"
+          class="tw-mr-2.5 tw-ml-auto"
           slot="actions"
           v-else-if="item && item.taskId"
           :todoItem="item"
@@ -43,7 +41,7 @@ import customerReminder, { CUSTOMER_FOLLOWUP_TODO } from '../customerReminder.js
 import hrReminder from '../hrReminder.js'
 
 export default {
-  mixins: [customerReminder,hrReminder],
+  mixins: [customerReminder, hrReminder],
   name: 'Todo',
   props: {
     // 是否展示简单列
@@ -133,7 +131,7 @@ export default {
             const { busFieldProp, busFieldProp2 } = busFlowMap[record.businessType]
             templateProp = this._.get(record.form, busFieldProp, '') ? busFieldProp : busFieldProp2
             return (
-              <div class={this.isReadTask(record)} style="cursor: pointer">
+              <div class={[this.isReadTask(record), 'tw-cursor-pointer']}>
                 <Ellipsis length={30} tooltip>
                   {this._.get(record.form, templateProp, '')}
                 </Ellipsis>
@@ -168,7 +166,7 @@ export default {
       else this.refresh(true)
     },
     async handleDetail(row, detailCompName) {
-      if(this.isHrReminder(row)) return this.openHrReminder(row)
+      if (this.isHrReminder(row)) return this.openHrReminder(row)
       if (row.businessType === CUSTOMER_FOLLOWUP_TODO) return this.openCustomerReminder(row)
       if (this.isEmpty(detailCompName)) {
         return this.$message.error('请传递详情组件')
@@ -212,7 +210,7 @@ export default {
     handleProcessHistory,
     // 已读事件
     handleReadClick(item) {
-      if(this.isHrReminder(item))return
+      if (this.isHrReminder(item)) return
       if (item.businessType === CUSTOMER_FOLLOWUP_TODO) {
         this.$set(item, 'isRead', true)
         return

@@ -1,8 +1,8 @@
 <template>
   <div>
     <div class="filters">
-      <a-input-search v-model="query.keyword" allow-clear placeholder="搜索客户、合同或收费节点" style="width: 270px" @search="search" />
-      <a-select v-model="query.paymentStatus" allow-clear placeholder="全部收款状态" style="width: 145px" @change="search"
+      <a-input-search v-model="query.keyword" allow-clear placeholder="搜索客户、合同或收费节点" class="tw-w-[270px]" @search="search" />
+      <a-select v-model="query.paymentStatus" allow-clear placeholder="全部收款状态" class="tw-w-[145px]" @change="search"
         ><a-select-option value="unpaid">待收</a-select-option><a-select-option value="overdue">逾期</a-select-option><a-select-option value="paid">已结清</a-select-option
         ><a-select-option value="draft">草稿应收</a-select-option></a-select
       >
@@ -56,8 +56,8 @@
         >
         <a-form-model-item label="应收名称" prop="title"><a-input v-model="form.title" maxlength="200" /></a-form-model-item
         ><a-form-model-item label="来源事件"><a-input v-model="form.sourceEvent" maxlength="200" placeholder="业务事件或费用依据" /></a-form-model-item>
-        <a-form-model-item label="金额" prop="amount"><a-input-number v-model="form.amount" :min="0.01" :precision="2" style="width: 100%" /></a-form-model-item
-        ><a-form-model-item label="到期日" prop="dueDate"><a-date-picker v-model="form.dueDate" value-format="YYYY-MM-DD" style="width: 100%" /></a-form-model-item>
+        <a-form-model-item label="金额" prop="amount"><a-input-number v-model="form.amount" :min="0.01" :precision="2" class="tw-w-full" /></a-form-model-item
+        ><a-form-model-item label="到期日" prop="dueDate"><a-date-picker v-model="form.dueDate" value-format="YYYY-MM-DD" class="tw-w-full" /></a-form-model-item>
         <a-form-model-item label="凭证"
           ><a-upload :action="uploadUrl" :headers="uploadHeaders" :file-list="files" @change="upload"><a-button icon="upload">上传凭证</a-button></a-upload></a-form-model-item
         ><a-form-model-item label="备注"><a-textarea v-model="form.remark" :max-length="1000" /></a-form-model-item>

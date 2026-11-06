@@ -1,7 +1,7 @@
 <!-- 操作列组件 -->
 <template>
   <div :aria-busy="actionPending">
-    <a-icon v-if="actionPending" type="loading" style="margin-right: 6px" />
+    <a-icon v-if="actionPending" type="loading" class="tw-mr-1.5" />
     <template v-if="actionFirst">
       <a-popconfirm
         v-if="actionFirst.popconfirm"
@@ -11,7 +11,7 @@
         @confirm="handleCustomAction(actionFirst.action)"
         @cancel="handleCustomAction(actionFirst.cancelAction)"
       >
-        <a-icon v-if="actionFirst.confirmIcon" slot="icon" :type="actionFirst.confirmIcon" style="color: red" />
+        <a-icon v-if="actionFirst.confirmIcon" slot="icon" :type="actionFirst.confirmIcon" class="tw-text-[red]" />
         <a @click.stop>
           <template v-if="!isEmpty(actionFirst.icon)">
             <icon-font v-if="actionFirst.icon.indexOf('iconfont-') !== -1" class="s-mr-3" :type="actionFirst.icon" />

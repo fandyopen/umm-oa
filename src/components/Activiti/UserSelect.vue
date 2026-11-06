@@ -31,7 +31,7 @@
         </div>
         <!-- 刷新 -->
         <div class="table-operations">
-          <a-button type="dashed" shape="circle" :loading="userLoading" :style="{ float: 'right' }" icon="reload" @click="getUserList" />
+          <a-button type="dashed" shape="circle" :loading="userLoading" class="tw-float-right" icon="reload" @click="getUserList" />
         </div>
         <!-- 表格 -->
         <a-table rowKey="userId" :loading="userLoading" :data-source="userList" :columns="columnsUser" :row-selection="rowSelection" :pagination="false"> </a-table>

@@ -3,7 +3,7 @@
     <el-dialog v-bind="$attrs" width="980px" :modal-append-to-body="false" v-on="$listeners" @open="onOpen" @close="onClose">
       <div slot="title">
         选择图标
-        <el-input v-model="key" size="mini" :style="{ width: '260px' }" placeholder="请输入图标名称" prefix-icon="el-icon-search" clearable />
+        <el-input v-model="key" size="mini" class="tw-w-[260px]" placeholder="请输入图标名称" prefix-icon="el-icon-search" clearable />
       </div>
       <ul class="icon-ul">
         <li v-for="icon in iconList" :key="icon" :class="active === icon ? 'active-item' : ''" @click="onSelect(icon)">

@@ -40,17 +40,17 @@ export default {
                 renderItem={item => {
                   return (
                     <ListItem>
-                      <span style="cursor: pointer;" onClick={() => previewDoc(item.name, item.url)}>
+                      <span class="tw-cursor-pointer" onClick={() => previewDoc(item.name, item.url)}>
                         {/* <span style="margin-right:5px" class={getClassWithColor(item.name)} /> */}
                         {item.name}
                       </span>
-                      <icon-font onClick={() => downloadDoc(item.name, item.url)} style="font-size:18px" slot="actions" type="iconfont-xiazai" />
+                      <icon-font onClick={() => downloadDoc(item.name, item.url)} class="tw-text-lg" slot="actions" type="iconfont-xiazai" />
                     </ListItem>
                   )
                 }}
               ></List>
             </template>
-            <div style="cursor: pointer" onClick={() => previewDoc(arr[0].name, arr[0].url)}>
+            <div class="tw-cursor-pointer" onClick={() => previewDoc(arr[0].name, arr[0].url)}>
               {/* <span style="margin-right:5px" class={getClassWithColor(arr[0].name)} /> */}
               <Ellipsis length={10}>{arr[0].name}</Ellipsis>
             </div>

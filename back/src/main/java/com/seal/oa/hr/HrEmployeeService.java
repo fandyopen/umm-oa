@@ -150,6 +150,7 @@ public class HrEmployeeService {
     public Map<String, Object> detail(long user) {
         d.require(EMPLOYEES, "access");
         var row = new LinkedHashMap<>(d.employee(user));
+        HrEmploymentType.describe(row);
         boolean sensitive =
                 d.allowed(EMPLOYEES, "salary_view") || d.allowed(EMPLOYEES, "salary_manage");
         if (!sensitive) {
@@ -189,6 +190,12 @@ public class HrEmployeeService {
         d.revision(old, b);
         String no = required(b.get("employeeNo"), "员工编号", 64),
                 ding = limited(b.get("dingtalkUserId"), 128);
+        String employmentType =
+                HrEmploymentType.normalize(
+                        b.containsKey("employmentType")
+                                ? b.get("employmentType")
+                                : old.get("employmentType"),
+                        old.get("employmentType"));
         if (d.jdbc.queryForObject(
                         "SELECT COUNT(*) FROM oa_hr_employee WHERE user_id<>? AND (employee_no=? OR"
                                 + " (?<>'' AND dingtalk_user_id=?))",
@@ -245,7 +252,7 @@ public class HrEmployeeService {
                 ding.isEmpty() ? null : ding,
                 entry,
                 regular,
-                limited(b.get("employmentType"), 64),
+                employmentType,
                 limited(b.get("emergencyContact"), 100),
                 limited(b.get("emergencyPhone"), 32),
                 start,
@@ -282,7 +289,12 @@ public class HrEmployeeService {
             long user = match(row);
             if (!seen.add(user)) throw new ApiException(400, "导入包含重复员工");
             var current = detail(user);
-            current.putAll(row);
+            if (text(row.get("revision")).isEmpty()
+                    || id(row.get("revision")) != id(current.get("revision")))
+                throw new ApiException(409, "员工" + current.get("employeeNo") + "档案版本缺失或已变化，请重新导出档案后导入");
+            row.forEach((key, value) -> {
+                if (!text(value).isEmpty()) current.put(key, value);
+            });
             save(user, current);
         }
     }

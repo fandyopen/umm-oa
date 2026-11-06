@@ -3,12 +3,12 @@
     <a-alert v-if="error" type="error" show-icon :message="error" />
     <a-spin :spinning="loading"
       ><template v-if="detail">
-        <a-alert type="info" show-icon message="审批期间草稿已锁定。审批通过不等于实际发薪；未来日期的人事异动到期生效。" style="margin-bottom: 16px" />
+        <a-alert type="info" show-icon message="审批期间草稿已锁定。审批通过不等于实际发薪；未来日期的人事异动到期生效。" class="tw-mb-4" />
         <a-descriptions bordered :column="2"
           ><a-descriptions-item v-for="field in fields" :key="field.key" :label="field.label">{{ display(field.key) }}</a-descriptions-item></a-descriptions
         >
-        <a-table v-if="kind === 'payroll'" style="margin-top: 16px" :data-source="rows" row-key="id" :columns="columns" :scroll="{ x: 1600 }" size="small" />
-        <a-descriptions v-if="kind === 'change'" bordered :column="1" style="margin-top: 16px"
+        <a-table v-if="kind === 'payroll'" class="tw-mt-4" :data-source="rows" row-key="id" :columns="columns" :scroll="{ x: 1600 }" size="small" />
+        <a-descriptions v-if="kind === 'change'" bordered :column="1" class="tw-mt-4"
           ><a-descriptions-item label="原部门">{{ before.deptName || before.deptId || '—' }}</a-descriptions-item
           ><a-descriptions-item v-if="after.deptId" label="目标部门编号">{{ after.deptId }}</a-descriptions-item></a-descriptions
         >

@@ -198,7 +198,7 @@ const PageHeaderWrapper = {
             <GridContent>{defaultPageHeaderRender(h, props, pageMeta, i18n)}</GridContent>
           </div>
         ) : (
-          <div style="margin-top:40px"></div>
+          <div class="tw-mt-10"></div>
         )}
         {children ? (
           <GridContent contentWidth={contentWidth}>

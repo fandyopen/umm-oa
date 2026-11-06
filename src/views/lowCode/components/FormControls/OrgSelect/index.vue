@@ -1,7 +1,7 @@
 <template>
   <div class="fc-org-select">
     <div class="tags">
-      <el-button v-if="buttonType === 'button'" size="small" type="primary" icon="el-icon-plus" @click="show = true" style="margin-bottom: 6px"> 添加{{ title }} </el-button>
+      <el-button v-if="buttonType === 'button'" size="small" type="primary" icon="el-icon-plus" @click="show = true" class="tw-mb-1.5"> 添加{{ title }} </el-button>
       <div class="input-box" :class="{ 'as-input': buttonType === 'input' }" @click="show = true">
         <el-tag v-bind="tagConfig" class="org-tag" v-for="item in selectedData" :key="item.key" @close="onClose(item)">
           {{ item.label }}

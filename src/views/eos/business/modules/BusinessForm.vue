@@ -41,12 +41,12 @@
         </a-col>
         <a-col :xs="24" :md="12">
           <a-form-model-item label="预计成交金额">
-            <a-input-number v-model="form.expectedAmount" :min="0" :precision="2" style="width: 100%" />
+            <a-input-number v-model="form.expectedAmount" :min="0" :precision="2" class="tw-w-full" />
           </a-form-model-item>
         </a-col>
         <a-col :xs="24" :md="12">
           <a-form-model-item label="预计成交时间">
-            <a-date-picker v-model="form.expectedCloseDate" value-format="YYYY-MM-DD" style="width: 100%" />
+            <a-date-picker v-model="form.expectedCloseDate" value-format="YYYY-MM-DD" class="tw-w-full" />
           </a-form-model-item>
         </a-col>
         <a-col :xs="24" :md="12">

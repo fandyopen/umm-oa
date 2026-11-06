@@ -6,7 +6,7 @@
           <li class="tab-item">成员</li>
         </ul>
         <div class="input">
-          <a-input-search size="small" placeholder="搜索" style="width: 100px" @search="onSearch" />
+          <a-input-search size="small" placeholder="搜索" class="tw-w-[100px]" @search="onSearch" />
         </div>
       </div>
       <div class="member-tab-content">

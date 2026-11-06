@@ -12,7 +12,7 @@
             </a-col>
             <a-col :md="8" :sm="24">
               <a-form-item label="登录状态">
-                <a-select placeholder="请选择状态" v-model="queryParam.status" style="width: 100%" allow-clear>
+                <a-select placeholder="请选择状态" v-model="queryParam.status" class="tw-w-full" allow-clear>
                   <a-select-option v-for="(d, index) in statusOptions" :key="index" :value="d.dictValue">{{ d.dictLabel }}</a-select-option>
                 </a-select>
               </a-form-item>
@@ -20,20 +20,20 @@
             <template v-if="advanced">
               <a-col :md="8" :sm="24">
                 <a-form-item label="登录名称">
-                  <a-input v-model="queryParam.userName" style="width: 100%" allow-clear @keyup.enter.native="handleQuery" />
+                  <a-input v-model="queryParam.userName" class="tw-w-full" allow-clear @keyup.enter.native="handleQuery" />
                 </a-form-item>
               </a-col>
               <a-col :md="8" :sm="24">
                 <a-form-item label="登录时间">
-                  <a-range-picker style="width: 100%" v-model="dateRange" valueFormat="YYYY-MM-DD" format="YYYY-MM-DD" allow-clear />
+                  <a-range-picker class="tw-w-full" v-model="dateRange" valueFormat="YYYY-MM-DD" format="YYYY-MM-DD" allow-clear />
                 </a-form-item>
               </a-col>
             </template>
             <a-col :md="(!advanced && 8) || 24" :sm="24">
               <span class="table-page-search-submitButtons" :style="(advanced && { float: 'right', overflow: 'hidden' }) || {}">
                 <a-button type="primary" @click="handleQuery"><a-icon type="search" />查询</a-button>
-                <a-button style="margin-left: 8px" @click="resetQuery"><a-icon type="redo" />重置</a-button>
-                <a @click="toggleAdvanced" style="margin-left: 8px">
+                <a-button class="tw-ml-2" @click="resetQuery"><a-icon type="redo" />重置</a-button>
+                <a @click="toggleAdvanced" class="tw-ml-2">
                   {{ advanced ? '收起' : '展开' }}
                   <a-icon :type="advanced ? 'up' : 'down'" />
                 </a>
@@ -47,7 +47,7 @@
         <a-button type="danger" :disabled="multiple" @click="handleDelete" v-hasPermi="['monitor:logininfor:remove']"> <a-icon type="delete" />删除 </a-button>
         <a-button type="danger" @click="handleClean" v-hasPermi="['monitor:logininfor:remove']"> <a-icon type="delete" />清空 </a-button>
         <a-button type="primary" @click="handleExport" v-hasPermi="['monitor:logininfor:export']"> <a-icon type="download" />导出 </a-button>
-        <a-button type="dashed" shape="circle" :loading="loading" :style="{ float: 'right' }" icon="reload" @click="getList" />
+        <a-button type="dashed" shape="circle" :loading="loading" class="tw-float-right" icon="reload" @click="getList" />
       </div>
       <!-- 数据展示 -->
       <a-table :loading="loading" :size="tableSize" rowKey="infoId" :columns="columns" :data-source="list" :row-selection="{ selectedRowKeys: selectedRowKeys, onChange: onSelectChange }" :pagination="false">
@@ -163,12 +163,14 @@ export default {
     /** 查询登录日志列表 */
     getList() {
       this.loading = true
-      return list(this.addDateRange(this.queryParam, this.dateRange)).then(response => {
-        this.list = response.rows || []
-        this.total = response.total || 0
-      }).finally(() => {
-        this.loading = false
-      })
+      return list(this.addDateRange(this.queryParam, this.dateRange))
+        .then(response => {
+          this.list = response.rows || []
+          this.total = response.total || 0
+        })
+        .finally(() => {
+          this.loading = false
+        })
     },
     // 执行状态字典翻译
     statusFormat(row) {

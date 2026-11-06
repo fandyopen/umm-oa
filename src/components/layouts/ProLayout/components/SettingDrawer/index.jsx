@@ -112,16 +112,7 @@ const SettingDrawer = {
     }
 
     return (
-      <Drawer
-        visible={this.show}
-        width={300}
-        onClose={() => setShow(false)}
-        placement="right"
-        getContainer={getContainer}
-        style={{
-          zIndex: 999
-        }}
-      >
+      <Drawer visible={this.show} width={300} onClose={() => setShow(false)} placement="right" getContainer={getContainer} class="tw-z-[999]">
         <div class={`${baseClassName}-content`}>
           <Body title={i18n('app.setting.pagestyle')}>
             <BlockCheckbox
@@ -163,7 +154,7 @@ const SettingDrawer = {
           />
           {hideHintAlert ? null : <Divider />}
 
-          {hideHintAlert ? null : <Alert type="warning" message={i18n('app.setting.production.hint')} icon={<Icon type={'notification'} />} showIcon style={{ marginBottom: '16px' }} />}
+          {hideHintAlert ? null : <Alert type="warning" message={i18n('app.setting.production.hint')} icon={<Icon type={'notification'} />} showIcon class="tw-mb-4" />}
 
           <div class={`${baseClassName}-content-footer`}>{this.$slots.default}</div>
         </div>

@@ -8,7 +8,7 @@
         @change="load"
       /><a-button icon="reload" @click="load">刷新</a-button>
     </div>
-    <a-alert type="info" show-icon :message="basis" style="margin-bottom: 14px" />
+    <a-alert type="info" show-icon :message="basis" class="tw-mb-3.5" />
     <a-table :data-source="aging" row-key="bucket" :pagination="false" size="small" class="aging"
       ><a-table-column title="应收账龄" data-index="bucket" /><a-table-column title="未结金额" data-index="amount"
         ><template slot-scope="v">{{ money(v) }}</template></a-table-column

@@ -14,7 +14,7 @@
         <a-input v-model="form.dictValue" placeholder="请输入数据键值" />
       </a-form-model-item>
       <a-form-model-item label="显示排序" prop="dictSort">
-        <a-input-number v-model="form.dictSort" :min="0" style="width: 100%" />
+        <a-input-number v-model="form.dictSort" :min="0" class="tw-w-full" />
       </a-form-model-item>
       <a-form-model-item label="状态" prop="status">
         <a-select placeholder="请选择" v-model="form.status">

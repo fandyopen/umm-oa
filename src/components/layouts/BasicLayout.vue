@@ -13,7 +13,7 @@
   >
     <!-- layout content -->
     <!-- 2021.01.15 默认固定页头，去掉样式paddingTop: fixedHeader ? '64' : '0'  -->
-    <a-layout-content :style="{ height: '100%', margin: '0 0 0px 0' }">
+    <a-layout-content class="tw-h-full tw-my-0 tw-mx-0">
       <multi-tab v-if="settings.multiTab"></multi-tab>
       <transition name="page-transition"> </transition>
     </a-layout-content>
@@ -23,7 +23,7 @@
     <template v-slot:menuHeaderRender>
       <div class="logo-container">
         <img v-if="collapsed" :src="smallLogo" class="logo" alt="logo" />
-        <img v-else :src="bigLogo" class="logo-name" alt="logo-name" style="width: 141px; height: 56px" />
+        <img v-else :src="bigLogo" class="logo-name tw-w-[141px] tw-h-14" alt="logo-name" />
         <div class="index-menu">
           <a-button type="primary" v-show="!collapsed" @click="goHome">
             <img class="btn-icon" :src="imgHome" alt="" />

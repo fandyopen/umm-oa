@@ -141,8 +141,8 @@
         <a-input placeholder="给应用命名，例如 “客户管理系统”" v-model="newAppName" />
         <div class="name">应用图标</div>
         <div>
-          <img :src="activeIconSrc" style="width: 28px; height: 28px; vertical-align: middle" />
-          <el-button plain size="mini" @click="dialogVisible = true" style="margin-left: 10px">选择图标</el-button>
+          <img :src="activeIconSrc" class="tw-w-7 tw-h-7 tw-align-middle" />
+          <el-button plain size="mini" @click="dialogVisible = true" class="tw-ml-2.5">选择图标</el-button>
         </div>
         <a-modal title="选择图标" :visible.sync="dialogVisible" width="612px">
           <img v-for="(icon, index) in iconList" :key="index" :src="icon.src" class="icon-item" :class="{ active: selectedIcon === icon.id }" @click="selectedIcon = icon.id" />

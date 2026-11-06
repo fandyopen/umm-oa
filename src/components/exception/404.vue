@@ -1,7 +1,7 @@
 <template>
   <a-result class="exception-container">
     <template #subTitle>
-      <div style="color: #348ee4; font-size: 16px">您访问的页面丢失了</div>
+      <div class="tw-text-[#348ee4] tw-text-base">您访问的页面丢失了</div>
     </template>
     <template #extra>
       <a-button type="primary" ghost @click="toHome"> 返回首页 </a-button>
