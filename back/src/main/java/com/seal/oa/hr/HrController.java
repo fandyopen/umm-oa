@@ -40,6 +40,11 @@ public class HrController {
         return ApiResult.ok(reports.employees(q));
     }
 
+    @GetMapping("/reports/salaries")
+    public Map<String, Object> salaryReport(@RequestParam Map<String, String> q) {
+        return ApiResult.ok(reports.salaries(q));
+    }
+
     @GetMapping("/reports/changes")
     public Map<String, Object> changeReport() {
         return ApiResult.ok(reports.changes());

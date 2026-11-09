@@ -197,6 +197,45 @@ class HrIntegrationTest {
     }
 
     @Test
+    void salaryReportUsesEmployeeFilters() {
+        salary("2026-01-01", "2200");
+        var rows = reports.salaries(Map.of("keyword", "EMP" + user, "status", "active"));
+        assertFalse(rows.isEmpty());
+        assertTrue(rows.stream().allMatch(row -> ("EMP" + user).equals(row.get("employeeNo"))));
+    }
+
+    @Test
+    void salaryImportSkipsUnchangedRowsAndAddsNewVersions() {
+        salary("2026-01-01", "2200");
+        var unchanged =
+                Map.<String, Object>of(
+                        "employeeNo", "EMP" + user,
+                        "employeeName", "人事闭环测试",
+                        "effectiveDate", "2026-01-01",
+                        "payType", "monthly",
+                        "baseAmount", 2200,
+                        "allowance", 220,
+                        "reason", "测试定薪");
+        var newVersion = new LinkedHashMap<>(unchanged);
+        newVersion.put("effectiveDate", "2026-02-01");
+        newVersion.put("baseAmount", 3300);
+        newVersion.put("reason", "测试调薪");
+
+        employees.importSalaries(Map.of("rows", List.of(unchanged, newVersion)));
+
+        assertEquals(
+                2,
+                jdbc.queryForObject(
+                        "SELECT COUNT(*) FROM oa_hr_salary WHERE user_id=?", Integer.class, user));
+        assertEquals(
+                new BigDecimal("3300.00"),
+                jdbc.queryForObject(
+                        "SELECT base_amount FROM oa_hr_salary WHERE user_id=? AND effective_date='2026-02-01'",
+                        BigDecimal.class,
+                        user));
+    }
+
+    @Test
     void duplicateSourceIsIdempotentAndMissingValuesAreRejected() {
         var input = source(monthly());
         var one = attendance.save(input);

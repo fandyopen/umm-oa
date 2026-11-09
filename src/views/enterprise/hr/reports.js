@@ -3,6 +3,12 @@ import { statusNames, eventNames } from './hrShared.js'
 export function employeeRecords(rows) {
   return rows.map(row => ({ ...row, employmentType: row.employmentTypeName || row.employmentType, employmentStatus: statusNames[row.employmentStatus] || row.employmentStatus }))
 }
+export function salaryStandardRecords(rows) {
+  return rows.map(row => ({
+    ...row,
+    status: statusNames[row.status] || row.status
+  }))
+}
 export function changeRecords(rows) {
   return rows.map(row => ({ ...row, eventType: eventNames[row.eventType] || row.eventType, status: statusNames[row.status] || row.status }))
 }

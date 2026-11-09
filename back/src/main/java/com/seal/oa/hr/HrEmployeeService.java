@@ -391,10 +391,28 @@ public class HrEmployeeService {
         Set<String> seen = new HashSet<>();
         for (var row : d.records(b.get("rows"))) {
             long user = match(row);
-            if (!seen.add(user + "/" + text(row.get("effectiveDate"))))
+            LocalDate effectiveDate = date(row.get("effectiveDate"));
+            if (!seen.add(user + "/" + effectiveDate))
                 throw new ApiException(400, "薪资标准重复");
+            var existing =
+                    d.rows(
+                            "SELECT pay_type,base_amount,allowance,reason FROM oa_hr_salary WHERE user_id=? AND effective_date=?",
+                            user,
+                            effectiveDate);
+            if (!existing.isEmpty() && sameSalary(existing.get(0), row)) continue;
             salary(user, row);
         }
+    }
+
+    private boolean sameSalary(Map<String, Object> existing, Map<String, Object> imported) {
+        return text(existing.get("payType")).equals(text(imported.get("payType")))
+                && currency(existing.get("baseAmount"), "工资标准")
+                                .compareTo(currency(imported.get("baseAmount"), "工资标准"))
+                        == 0
+                && currency(existing.get("allowance"), "固定补贴")
+                                .compareTo(currency(imported.get("allowance"), "固定补贴"))
+                        == 0
+                && text(existing.get("reason")).equals(text(imported.get("reason")));
     }
 
     public List<Map<String, Object>> events(long user, boolean salary) {

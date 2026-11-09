@@ -45,6 +45,26 @@ public class HrReportService {
                 .toList();
     }
 
+    public List<Map<String, Object>> salaries(Map<String, String> filters) {
+        d.require(EMPLOYEES, "export");
+        if (!d.allowed(EMPLOYEES, "salary_view") && !d.allowed(EMPLOYEES, "salary_manage"))
+            d.require(EMPLOYEES, "salary_view");
+        var result = new ArrayList<Map<String, Object>>();
+        for (var employee : employees.list(filters)) {
+            for (var salary :
+                    d.rows(
+                            "SELECT * FROM oa_hr_salary WHERE user_id=? ORDER BY effective_date DESC,id DESC",
+                            id(employee.get("userId")))) {
+                var row = new LinkedHashMap<>(salary);
+                row.put("employeeNo", employee.get("employeeNo"));
+                row.put("employeeName", employee.get("nickName"));
+                row.put("deptName", employee.get("deptName"));
+                result.add(row);
+            }
+        }
+        return result;
+    }
+
     public List<Map<String, Object>> changes() {
         d.require(CHANGES, "export");
         return employees.changes();

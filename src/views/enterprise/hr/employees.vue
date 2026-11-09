@@ -9,13 +9,15 @@
         <a-space
           ><hr-template-downloads /><a-button v-if="showModuleAction('employees', 'edit')" icon="import" @click="openImport('employee')">批量导入档案</a-button
           ><a-button v-if="showModuleAction('employees', 'salary_manage')" @click="openImport('salary')">导入薪资标准</a-button
-          ><a-button v-if="showModuleAction('employees', 'export')" icon="export" @click="exportEmployees">导出档案</a-button></a-space
+          ></a-space
         >
       </div>
       <div class="hr-toolbar">
         <a-input-search v-model="query.keyword" placeholder="工号 / 姓名 / 手机" class="tw-w-[260px]" @search="load" /><a-select v-model="query.status" allow-clear placeholder="任职状态" class="tw-w-[140px]" @change="load"
           ><a-select-option value="active">在职</a-select-option><a-select-option value="leaving">待离职</a-select-option><a-select-option value="departed">已离职</a-select-option></a-select
         ><a-button icon="reload" @click="load">刷新</a-button>
+        <a-button v-if="showModuleAction('employees', 'export') && (showModuleAction('employees', 'salary_view') || showModuleAction('employees', 'salary_manage'))" icon="export" @click="exportSalaries">导出薪资标准</a-button>
+        <a-button v-if="showModuleAction('employees', 'export')" icon="export" @click="exportEmployees">导出档案</a-button>
       </div>
       <a-table :loading="loading" :data-source="rows" row-key="userId" :pagination="{ pageSize: 15 }" :scroll="{ x: 1100 }"
         ><a-table-column title="员工编号" data-index="employeeNo" /><a-table-column title="姓名" data-index="nickName" /><a-table-column title="部门" data-index="deptName" /><a-table-column
@@ -68,13 +70,8 @@
                 /></a-form-model-item></div></a-form-model
             ><a-button v-if="showModuleAction('employees', 'edit')" type="primary" :loading="saving" @click="save">保存档案</a-button></a-tab-pane
           >
-          <a-tab-pane v-if="employee.salaryVisible" key="salary" tab="薪资标准与发薪账户"
-            ><a-alert type="info" show-icon message="定薪、调薪新增生效版本，工资按所属期间自动取值。已生效标准不可覆盖。" class="tw-mb-4" /><a-form-model layout="vertical"
-              ><div class="hr-form-grid">
-                <a-form-model-item label="开户人"><a-input v-model="employee.accountName" /></a-form-model-item><a-form-model-item label="开户银行"><a-input v-model="employee.bankName" /></a-form-model-item
-                ><a-form-model-item label="银行卡号"><a-input v-model="employee.bankAccount" /></a-form-model-item></div></a-form-model
-            ><a-space class="tw-mb-4"
-              ><a-button v-if="showModuleAction('employees', 'salary_manage')" @click="save">保存发薪账户</a-button
+          <a-tab-pane v-if="employee.salaryVisible" key="salary" tab="薪资标准"
+            ><a-alert type="info" show-icon message="定薪、调薪新增生效版本，工资按所属期间自动取值。已生效标准不可覆盖。" class="tw-mb-4" /><a-space class="tw-mb-4"
               ><a-button
                 v-if="showModuleAction('employees', 'salary_manage')"
                 type="primary"
@@ -100,6 +97,13 @@
                 ></a-table-column
               ></a-table
             ></a-tab-pane
+          >
+          <a-tab-pane v-if="employee.salaryVisible" key="payAccount" tab="发薪账户"
+            ><a-form-model layout="vertical"
+              ><div class="hr-form-grid">
+                <a-form-model-item label="开户人"><a-input v-model="employee.accountName" /></a-form-model-item><a-form-model-item label="开户银行"><a-input v-model="employee.bankName" /></a-form-model-item
+                ><a-form-model-item label="银行卡号"><a-input v-model="employee.bankAccount" /></a-form-model-item></div></a-form-model
+            ><a-button v-if="showModuleAction('employees', 'salary_manage')" type="primary" :loading="saving" @click="save">保存发薪账户</a-button></a-tab-pane
           >
           <a-tab-pane key="history" tab="任职历史"
             ><a-timeline
@@ -138,7 +142,7 @@ import { withModuleContexts } from '/src/utils/moduleContext.js'
 import { executeWorkflowAction } from '/src/api/workflow/action.js'
 import { hr } from '/src/api/enterprise/hr.js'
 import HrTemplateDownloads from '/src/components/HrTemplateDownloads/index.vue'
-import { employeeRecords } from './reports.js'
+import { employeeRecords, salaryStandardRecords } from './reports.js'
 import HrExcelImport from '/src/components/HrExcelImport/index.vue'
 import { exportTemplate } from './templates.js'
 import { statusNames, eventNames, dateText, fileBody } from './hrShared.js'
@@ -221,13 +225,13 @@ export default {
       this.tab = 'profile'
     },
     async save() {
-      const accountOnly = this.tab === 'salary'
+      const accountOnly = this.tab === 'payAccount'
       if (!(await this.checkModuleAction({ module: 'employees', action: accountOnly ? 'salary_manage' : 'edit', label: accountOnly ? '保存发薪账户' : '保存档案' }))) return
       this.saving = true
       try {
         const payload = accountOnly ? this.employee : { ...this.employee, employmentType: this.employee.employmentType || null }
         await hr('/employees/' + this.employee.userId + (accountOnly ? '/accounts' : ''), 'put', payload)
-        this.$message.success('档案已保存')
+        this.$message.success(accountOnly ? '发薪账户已保存' : '档案已保存')
         await this.open(this.employee)
         this.load()
       } finally {
@@ -270,6 +274,11 @@ export default {
       if (!(await this.checkModuleAction({ module: 'employees', action: 'export', label: '导出档案' }))) return
       const response = await hr('/reports/employees', 'get', this.query)
       await exportTemplate('employeeReport', employeeRecords(response.data || []))
+    },
+    async exportSalaries() {
+      if (!(await this.checkModuleAction({ module: 'employees', action: 'export', label: '导出薪资标准' }))) return
+      const response = await hr('/reports/salaries', 'get', this.query)
+      await exportTemplate('salaryReport', salaryStandardRecords(response.data || []))
     },
     async upload(file) {
       if (file.size > 10 * 1024 * 1024) {

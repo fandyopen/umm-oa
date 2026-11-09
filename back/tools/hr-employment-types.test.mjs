@@ -23,7 +23,7 @@ const options = [
   { value: 'dispatch', label: '劳务派遣' }
 ]
 const types = load('src/views/enterprise/hr/employmentTypes.js', { hr: async () => ({ data: { employmentTypes: options } }) }, ['loadEmploymentTypes', 'normalizeEmploymentType'])
-const templates = load('src/views/enterprise/hr/templates.js', { XLSX, saveAs() {}, loadEmploymentTypes: types.loadEmploymentTypes }, ['templates', 'buildWorkbook', 'convertCell'])
+const templates = load('src/views/enterprise/hr/templates.js', { XLSX, saveAs() {}, loadEmploymentTypes: types.loadEmploymentTypes }, ['templates', 'buildWorkbook', 'convertCell', 'suggestColumn'])
 
 test('employment options come from the API and import accepts only its labels and codes', async () => {
   assert.deepEqual(await types.loadEmploymentTypes(), options)
@@ -95,4 +95,14 @@ test('employee reports display labels while preserving unclassified historical t
   assert.equal(rows[0].employmentType, '直接聘用')
   assert.equal(rows[0].employmentStatus, '在职')
   assert.equal(rows[1].employmentType, '历史原值')
+})
+
+test('salary report can be mapped back to the salary import schema', () => {
+  const reports = load('src/views/enterprise/hr/reports.js', { statusNames: { effective: '已生效' } }, ['salaryStandardRecords'])
+  const records = reports.salaryStandardRecords([{ employeeNo: 'EMP2', employeeName: '测试员工', effectiveDate: '2026-11-01', payType: 'monthly', baseAmount: 10000, allowance: 500, reason: '年度定薪', status: 'effective' }])
+  const book = templates.buildWorkbook([{ type: 'salaryReport', records }], options)
+  const rows = XLSX.utils.sheet_to_json(book.Sheets['数据'], { header: 1 })
+  const headers = rows[0]
+  for (const field of templates.templates.salary.fields) assert.equal(templates.suggestColumn(headers, field), field.label)
+  assert.equal(rows[1][headers.indexOf('计薪方式（monthly或daily）')], 'monthly')
 })

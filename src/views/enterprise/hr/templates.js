@@ -182,6 +182,11 @@ Object.assign(templates, {
       ['contractEnd', '劳动合同结束', 'date']
     ])
   },
+  salaryReport: {
+    name: '员工薪资标准报表',
+    note: '按当前员工筛选、组织数据范围和薪资查看权限导出。导出的必填列与薪资导入模板一致，可修改生效日期后直接导入为新版本；已生效标准不可覆盖。',
+    fields: [...templates.salary.fields, field('deptName', '部门', 'text', false), field('status', '状态', 'text', false)]
+  },
   changeReport: {
     name: '员工状态与异动历史',
     note: '每次异动单独留存，包括草稿、审批中、待生效、生效、退回和取消记录。审批通过不代表未来日期已生效。',
@@ -247,7 +252,7 @@ Object.assign(templates, {
   }
 })
 export const templateGroups = [
-  { label: '人员资料', types: ['employee', 'salary', 'employeeReport', 'changeReport'] },
+  { label: '人员资料', types: ['employee', 'salary', 'employeeReport', 'salaryReport', 'changeReport'] },
   { label: '钉钉考勤', types: ['monthly', 'daily', 'leave'] },
   { label: '工资与发放', types: ['payroll', 'supplement', 'payment', 'payrollSummary', 'payslip', 'departmentPayroll', 'paymentDetail'] }
 ]
