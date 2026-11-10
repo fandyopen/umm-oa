@@ -9,7 +9,7 @@ const source = read('src/views/eos/todoItem/customerReminder.js')
   .replace(/^import .*$/gm, '')
   .replace('export const ', 'const ')
   .replace('export default', 'return')
-const reminder = new Function('withModuleContexts', 'crmModules', source)(() => ({}), { customer: {} })
+const reminder = new Function('withModuleContexts', 'crmModules', 'hrModules', source)(() => ({}), { customer: {} }, {})
 const type = 'crmCustomerFollowup'
 
 function method(file, block, name) {
@@ -59,7 +59,7 @@ test('invalid customer references do not invoke navigation', async () => {
 for (const file of ['todo/todo.vue', 'done/done.vue']) {
   test(file + ' row clicks use customer navigation without opening approval drawers', async () => {
     let opened = 0
-    const vm = { openCustomerReminder: async row => { assert.equal(row.businessId, 782); opened++ } }
+    const vm = { isHrReminder: () => false, openCustomerReminder: async row => { assert.equal(row.businessId, 782); opened++ } }
     await method('src/views/eos/todoItem/' + file, 'methods', 'handleDetail').call(vm, { businessType: type, businessId: 782 })
     assert.equal(opened, 1)
   })

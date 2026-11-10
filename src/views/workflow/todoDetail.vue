@@ -1,5 +1,10 @@
 <template>
   <div>
+    <a-descriptions v-if="Array.isArray(row._workflowDisplay) && row._workflowDisplay.length" title="审批申请内容" bordered :column="1" class="tw-mb-4">
+      <a-descriptions-item v-for="(field, index) in row._workflowDisplay" :key="index" :label="field.label">
+        <span style="white-space: pre-wrap">{{ typeof field.value === 'object' ? JSON.stringify(field.value) : field.value }}</span>
+      </a-descriptions-item>
+    </a-descriptions>
     <hr-approval-detail v-if="row.payrollId || row.salaryId || row.eventId" :row="row" />
     <s-descriptions :title="row.financeRecord ? '财务审批申请' : row.entityType ? '招聘业务审批申请' : row.contractId ? '合同审批申请' : '业务变更申请'" :formItems="formItems" :formData="normalizedRow" />
     <template v-if="row.financeRecord">
@@ -151,12 +156,14 @@ export default {
       const result = {}
       Object.keys(this.row || {}).forEach(key => {
         const value = this.row[key]
-        result[key] = Array.isArray(value) ? value.join('、') : value
+        result[key] = this.row._workflowApi && value && typeof value === 'object' ? JSON.stringify(value) : Array.isArray(value) ? value.join('、') : value
       })
       if (this.row.financeRecord) result.recordType = financeTypes[this.row.recordType] || this.row.recordType
       return result
     },
     formItems() {
+      if (Array.isArray(this.row._workflowDisplay) && this.row._workflowDisplay.length) return [{ label: '申请事项', prop: 'title' }, { label: '审批动作', prop: 'actionName' }]
+      if (this.row._workflowApi) return Object.keys(this.row).filter(key => !key.startsWith('_')).map(key => ({ label: labels[key] || key, prop: key }))
       const fields = this.row.financeRecord ? financeLabels : labels
       return Object.keys(this.row || {})
         .filter(key => fields[key])

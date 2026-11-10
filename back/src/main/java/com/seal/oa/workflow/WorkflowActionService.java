@@ -24,6 +24,7 @@ public class WorkflowActionService {
     private final LowCodeWorkflowService workflowService;
     private final WorkflowActionRequestService requestService;
     private final ObjectMapper objectMapper;
+    private final org.springframework.jdbc.core.JdbcTemplate jdbc;
 
     public WorkflowActionService(
             SystemService systemService,
@@ -31,7 +32,8 @@ public class WorkflowActionService {
             ModuleFlowBindingService flowBindingService,
             LowCodeWorkflowService workflowService,
             WorkflowActionRequestService requestService,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            org.springframework.jdbc.core.JdbcTemplate jdbc
     ) {
         this.systemService = systemService;
         this.moduleActionService = moduleActionService;
@@ -39,10 +41,37 @@ public class WorkflowActionService {
         this.workflowService = workflowService;
         this.requestService = requestService;
         this.objectMapper = objectMapper;
+        this.jdbc = jdbc;
     }
 
     @Transactional
     public Map<String, Object> execute(Map<String, Object> body) {
+        String key = value(body.get("submissionKey"), "");
+        if (key.isBlank()) return executeAction(body); // Existing callers retain their contract.
+        if (!key.matches("[A-Za-z0-9_-]{8,100}")) throw new ApiException(400, "提交标识格式错误");
+        Long userId = AuthContext.userId();
+        if (jdbc.queryForList("SELECT user_id FROM sys_user WHERE user_id=? AND status='0' AND del_flag='0' FOR UPDATE", Long.class, userId).isEmpty())
+            throw new ApiException(401, "申请人不存在或已停用");
+        String fingerprint;
+        try {
+            byte[] canonical = objectMapper.writer().with(com.fasterxml.jackson.databind.SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS)
+                    .writeValueAsBytes(Map.of("moduleId", number(body.get("moduleId"), 0), "actionCode", value(body.get("actionCode"), "").trim(), "payload", object(body.get("payload"))));
+            fingerprint = java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(canonical));
+        } catch (Exception exception) { throw new ApiException(400, "提交数据无法序列化"); }
+        List<Map<String, Object>> previous = jdbc.queryForList("SELECT fingerprint,response_json FROM oa_workflow_action_submission WHERE user_id=? AND submission_key=?", userId, key);
+        if (!previous.isEmpty()) {
+            if (!fingerprint.equals(previous.get(0).get("fingerprint"))) throw new ApiException(409, "该提交标识已用于其他内容，请重新提交");
+            return object(previous.get(0).get("response_json"));
+        }
+        Map<String, Object> result = executeAction(body);
+        try {
+            jdbc.update("INSERT INTO oa_workflow_action_submission(user_id,submission_key,fingerprint,response_json) VALUES (?,?,?,?)",
+                    userId, key, fingerprint, objectMapper.writeValueAsString(result));
+        } catch (com.fasterxml.jackson.core.JsonProcessingException exception) { throw new ApiException(500, "提交结果无法保存"); }
+        return result;
+    }
+
+    private Map<String, Object> executeAction(Map<String, Object> body) {
         long moduleId = number(body.get("moduleId"), 0L);
         String actionCode = value(body.get("actionCode"), "").trim();
         if (moduleId <= 0L || actionCode.isBlank()) {
@@ -61,7 +90,29 @@ public class WorkflowActionService {
         String handlerKey = value(action.get("handlerKey"), "");
         Map<String, Object> config = object(action.get("configJson"));
         Map<String, Object> payload = object(body.get("payload"));
+        payload.keySet().removeIf(key -> key.startsWith("_workflow"));
         String title = title(actionName, payload);
+        if (WorkflowApiRegistry.HANDLER.equals(handlerKey)) {
+            payload.put("_workflowApi", true);
+            String template = value(config.get("titleTemplate"), "");
+            if (!template.isBlank()) {
+                java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("\\{([A-Za-z][A-Za-z0-9_.]*)}").matcher(template);
+                StringBuffer rendered = new StringBuffer();
+                while (matcher.find()) matcher.appendReplacement(rendered, java.util.regex.Matcher.quoteReplacement(value(WorkflowApiRegistry.read(payload, matcher.group(1)), "")));
+                matcher.appendTail(rendered);
+                title = rendered.toString();
+            }
+            if (config.get("displayFields") instanceof List<?> fields) {
+                List<Map<String, Object>> display = new java.util.ArrayList<>();
+                for (Object raw : fields) {
+                    Map<String, Object> field = WorkflowApiRegistry.map(raw);
+                    display.add(Map.of("label", value(field.get("label"), ""), "value", java.util.Objects.requireNonNullElse(WorkflowApiRegistry.read(payload, value(field.get("field"), "")), "")));
+                }
+                payload.put("_workflowDisplay", display);
+            }
+            payload.put("title", title);
+        }
+        if (title.length() > 200) title = title.substring(0, 200);
         payload.putIfAbsent("title", title);
         payload.putIfAbsent("actionName", actionName);
 

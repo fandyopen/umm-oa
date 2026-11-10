@@ -1,7 +1,7 @@
 // eslint-disable-next-line
 import { getRouters } from '/src/api/user/module.js'
 import { UserLayout, BasicLayout, BlankLayout, PageView, RouteView } from '/src/components/layouts/index.js'
-import { indexRouterMap } from '/src/config/router.config.js'
+import { indexRouterMap, personalTaskRouterMap } from '/src/config/router.config.js'
 import { validURL } from '/src/utils/common/validate.js'
 
 const modules = import.meta.glob('../views/**/*.vue')
@@ -53,6 +53,20 @@ const rootRouter = {
   children: []
 }
 
+function menuRoutes(routes) {
+  const paths = new Set()
+  const collect = (items, parentPath = '') => {
+    items.forEach(item => {
+      const path = item.path && item.path.startsWith('/') ? item.path : parentPath + '/' + (item.path || '')
+      paths.add(path)
+      if (item.children) collect(item.children, path)
+    })
+  }
+  collect(routes)
+  // Keep database menu metadata authoritative and avoid duplicate route paths.
+  return indexRouterMap.concat(routes, personalTaskRouterMap.filter(route => !paths.has(route.path)))
+}
+
 /**
  * 动态生成菜单
  * @param token
@@ -62,7 +76,7 @@ export const generatorDynamicRouter = bootstrapRouters => {
   return new Promise((resolve, reject) => {
     if (Array.isArray(bootstrapRouters)) {
       const menuNav = []
-      rootRouter.children = indexRouterMap.concat(bootstrapRouters)
+      rootRouter.children = menuRoutes(bootstrapRouters)
       menuNav.push(rootRouter)
       const routers = generator(menuNav)
       routers.push(notFoundRouter)
@@ -73,7 +87,7 @@ export const generatorDynamicRouter = bootstrapRouters => {
     getRouters()
       .then(res => {
         const menuNav = []
-        rootRouter.children = indexRouterMap.concat(res.data)
+        rootRouter.children = menuRoutes(res.data)
         menuNav.push(rootRouter)
         const routers = generator(menuNav)
         routers.push(notFoundRouter)

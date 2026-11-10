@@ -165,6 +165,23 @@ public class ModuleActionService {
         migrateWorkflowAdministration();
         migrateContractNavigation();
         migrateContractSigning();
+        migrateGenericFollowup();
+    }
+
+    private void migrateGenericFollowup() {
+        if (migrationApplied("generic_customer_followup_v1")) return;
+        // Attach the existing business entry without restoring deleted buttons or enabling approval.
+        Map<String, Object> config = Map.of(
+                "endpoint", "POST /project/merchant/{id:\\d+}/followups",
+                "pathMapping", Map.of("id", "customerId"), "bodyMapping", Map.of(),
+                "titleTemplate", "客户跟进：{customerName}",
+                "displayFields", List.of(Map.of("field", "customerName", "label", "客户名称"),
+                        Map.of("field", "followupTime", "label", "跟进时间"), Map.of("field", "method", "label", "跟进方式"),
+                        Map.of("field", "content", "label", "沟通内容"), Map.of("field", "nextPlan", "label", "下一步计划"),
+                        Map.of("field", "nextFollowupTime", "label", "下次跟进时间")));
+        jdbc.update("UPDATE sys_module_action SET handler_key=?,config_json=?,update_time=CURRENT_TIMESTAMP WHERE module_id=340352 AND action_code='track' AND status<>'2' AND (handler_key IS NULL OR TRIM(handler_key)='')",
+                com.seal.oa.workflow.WorkflowApiRegistry.HANDLER, normalizedConfig(config));
+        jdbc.update("INSERT INTO sys_permission_migration(migration_key) VALUES ('generic_customer_followup_v1')");
     }
 
     public synchronized void ensureTables() {
@@ -316,7 +333,11 @@ public class ModuleActionService {
                 ? nextActionCode(moduleId)
                 : normalizeActionCode(actionCode);
         String actionName = requiredText(body.get("actionName"), "动作名称不能为空");
-        if (actionCodeExists(moduleId, actionCode)) {
+        List<String> existingStatuses = jdbc.queryForList(
+                "SELECT status FROM sys_module_action WHERE module_id = ? AND action_code = ? FOR UPDATE",
+                String.class, moduleId, actionCode);
+        boolean restoring = !existingStatuses.isEmpty() && "2".equals(existingStatuses.get(0));
+        if (!existingStatuses.isEmpty() && !restoring) {
             throw new ApiException(400, "该模块动作编码已存在");
         }
         String permissionCode = text(body.get("permissionCode"));
@@ -324,6 +345,26 @@ public class ModuleActionService {
             permissionCode = defaultPermissionCode(moduleId, text(module.get("perms")), actionCode);
         }
         validateConfiguration(moduleId, actionCode, body);
+        if (restoring) {
+            // Reuse the original identity and history; deleted grants stay revoked.
+            jdbc.update("""
+                    UPDATE sys_module_action
+                    SET action_name=?, permission_code=?, handler_key=?, config_json=?,
+                        builtin=0, status=?, flow_design_enabled=0, action_sort=?, action_description=?,
+                        update_time=CURRENT_TIMESTAMP
+                    WHERE module_id=? AND action_code=?
+                    """, actionName, permissionCode, optionalText(body.get("handlerKey"), 128),
+                    normalizedConfig(body.get("configJson")), normalizeStatus(body.get("status")),
+                    longValue(body.get("actionSort")), optionalText(body.get("actionDescription"), 500),
+                    moduleId, actionCode);
+            jdbc.update("""
+                    UPDATE oa_module_action_flow SET approval_enabled=0, update_time=CURRENT_TIMESTAMP
+                    WHERE module_id=? AND action_code=?
+                    """, moduleId, actionCode);
+            Map<String, Object> restored = new LinkedHashMap<>(action(moduleId, actionCode));
+            restored.put("restored", true);
+            return restored;
+        }
         jdbc.update("""
                 INSERT INTO sys_module_action (
                     module_id, action_code, action_name, permission_code,
@@ -768,6 +809,18 @@ public class ModuleActionService {
         WorkflowActionHandler handler = handlers.orderedStream().filter(item -> item.supports(handlerKey))
                 .findFirst().orElseThrow(() -> new ApiException(400, "业务执行器未注册：" + handlerKey));
         if (!handler.supportsAction(moduleId, actionCode)) throw new ApiException(400, "所选执行器不适用于该按钮");
+        try {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> config = objectMapper.readValue(normalizedConfig(values.get("configJson")), Map.class);
+            handler.validateConfiguration(moduleId, actionCode, config);
+        } catch (com.fasterxml.jackson.core.JsonProcessingException exception) {
+            throw new ApiException(400, "执行器配置不是有效JSON");
+        }
+    }
+
+    public static boolean isManagedBusinessAction(long moduleId, String actionCode) {
+        return MODULE_ACTIONS.getOrDefault(moduleId, List.of()).stream()
+                .anyMatch(item -> item.code().equals(actionCode) && item.handlerKey() != null && !item.handlerKey().isBlank());
     }
 
     public static boolean enabled(Object value) {

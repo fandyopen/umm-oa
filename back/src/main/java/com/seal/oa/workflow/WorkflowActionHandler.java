@@ -14,6 +14,9 @@ public interface WorkflowActionHandler {
         return true;
     }
 
+    default void validateConfiguration(long moduleId, String actionCode, java.util.Map<String, Object> config) {
+    }
+
     default void validate(WorkflowActionContext context) {
     }
 

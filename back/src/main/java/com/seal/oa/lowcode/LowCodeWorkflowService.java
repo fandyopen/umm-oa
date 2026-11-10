@@ -285,7 +285,7 @@ public class LowCodeWorkflowService {
         }
 
         Map<String, Object> task = row("""
-                SELECT * FROM oa_process_task WHERE id = ? AND instance_id = ?
+                SELECT * FROM oa_process_task WHERE id = ? AND instance_id = ? FOR UPDATE
                 """, taskId, instanceId);
         if (task.isEmpty()) {
             throw new ApiException(404, "审批任务不存在");

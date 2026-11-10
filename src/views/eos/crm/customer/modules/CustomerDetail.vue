@@ -368,15 +368,13 @@ export default {
         modalProps: {
           title: `新增跟进 · ${this.customer.name}`,
           width: 620,
-          maskClosable: true
+          maskClosable: true,
+          footer: null
         },
-        footer: false,
+        onOk: () => this.loadCustomer(),
         content: {
           template: FollowupForm,
-          props: { customerId: this.formId },
-          on: {
-            ok: () => this.loadCustomer()
-          }
+          props: { customerId: this.formId, customerName: this.customer.name, moduleMeta: this.moduleContexts.customer }
         }
       })
     },

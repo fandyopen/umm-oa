@@ -369,8 +369,9 @@ public class MerchantController {
     @PostMapping("/project/merchant/{id:\\d+}/followups")
     @Transactional
     @RequiresModuleAction(moduleId = CUSTOMER_MODULE_ID, action = "track")
+    @com.seal.oa.workflow.WorkflowEndpoint(name = "保存客户跟进", validator = "validateFollowup")
     public Map<String, Object> addFollowup(@PathVariable Long id, @RequestBody Map<String, Object> body) {
-        requireAccessibleMerchant(id);
+        validateFollowup(id, body);
         String content = value(body.get("content"), "").trim();
         if (content.isBlank()) throw new ApiException(400, "请填写跟进内容");
         Timestamp followupTime = dateTime(body.get("followupTime"));
@@ -396,6 +397,13 @@ public class MerchantController {
         refreshLastFollowup(id);
         followupReminders.synchronizeCustomer(id);
         return ApiResult.ok();
+    }
+
+    public void validateFollowup(Long id, Map<String, Object> body) {
+        requireAccessibleMerchant(id);
+        if (value(body.get("content"), "").trim().isBlank()) throw new ApiException(400, "请填写跟进内容");
+        dateTime(body.get("followupTime"));
+        dateTime(body.get("nextFollowupTime"));
     }
 
     @DeleteMapping("/project/merchant/followup/{id}")

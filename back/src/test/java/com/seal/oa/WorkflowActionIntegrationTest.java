@@ -60,6 +60,25 @@ class WorkflowActionIntegrationTest {
     }
 
     @Test
+    void workflowRoleOptionsExcludeInactiveDeletedAndOtherTenantRoles() throws Exception {
+        jdbc.update("INSERT INTO sys_role (role_id,tenant_id,role_name,role_key,status,del_flag) VALUES (9961,1,'选项角色','select_role','0','0'),(9962,1,'停用角色','disabled_role','1','0'),(9963,1,'删除角色','deleted_role','0','2'),(9964,2,'其他企业','other_tenant_role','0','0')");
+        String adminToken = login("13610316814");
+        MvcResult result = mockMvc.perform(get("/workflow/roles").header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.code").value(200)).andReturn();
+        JsonNode roles = objectMapper.readTree(result.getResponse().getContentAsString(StandardCharsets.UTF_8)).path("data");
+        java.util.Set<String> keys = new java.util.HashSet<>();
+        roles.forEach(role -> {
+            keys.add(role.path("roleKey").asText());
+            assertEquals(3, role.size());
+        });
+        assertTrue(keys.contains("select_role"));
+        assertTrue(!keys.contains("disabled_role") && !keys.contains("deleted_role") && !keys.contains("other_tenant_role"));
+        mockMvc.perform(get("/workflow/roles")).andExpect(jsonPath("$.code").value(401));
+        mockMvc.perform(get("/workflow/roles").header("Authorization", "Bearer " + login("17600000001")))
+                .andExpect(jsonPath("$.code").value(403));
+    }
+
+    @Test
     void actionApprovalCreatesTodoAndExecutesAfterApproval() throws Exception {
         String adminToken = login("13610316814");
         mockMvc.perform(get("/system/module/341001/actions")
@@ -317,6 +336,48 @@ class WorkflowActionIntegrationTest {
     }
 
     @Test
+    void deletedCustomerTrackCanBeRestoredByItsOriginalCode() throws Exception {
+        String token = login("13610316814");
+        mockMvc.perform(delete("/system/module/340352/actions/track").header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.code").value(200));
+        moduleActionService.bootstrap();
+        assertTrue(moduleActionService.action(340352L, "track").isEmpty());
+        mockMvc.perform(post("/system/module/340352/actions").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("actionCode", "track", "actionName", "新增跟进"))))
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.restored").value(true))
+                .andExpect(jsonPath("$.data.actionCode").value("track"))
+                .andExpect(jsonPath("$.data.permissionCode").value("project:merchant:track"))
+                .andExpect(jsonPath("$.data.status").value("0"));
+        assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM sys_module_action WHERE module_id=340352 AND action_code='track'", Integer.class));
+        mockMvc.perform(post("/system/module/340352/actions").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("actionCode", "track", "actionName", "不能覆盖"))))
+                .andExpect(jsonPath("$.code").value(400));
+        assertEquals("新增跟进", moduleActionService.action(340352L, "track").get("actionName"));
+    }
+
+    @Test
+    void restoredButtonKeepsArchivedDesignWithoutReactivatingApprovalOrRoleGrants() throws Exception {
+        String token = login("13610316814");
+        publishFlow(token, "invite", true);
+        String processId = jdbc.queryForObject("SELECT process_design_id FROM oa_module_action_flow WHERE module_id=341001 AND action_code='invite'", String.class);
+        jdbc.update("INSERT INTO sys_role_module_action(role_id,module_id,action_code) SELECT 1,341001,'invite' WHERE NOT EXISTS (SELECT 1 FROM sys_role_module_action WHERE role_id=1 AND module_id=341001 AND action_code='invite')");
+        mockMvc.perform(delete("/system/module/341001/actions/invite").header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.code").value(200));
+        mockMvc.perform(post("/system/module/341001/actions").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("actionCode", "invite", "actionName", "恢复邀请",
+                                "handlerKey", "hr.member.invite", "flowDesignEnabled", true))))
+                .andExpect(jsonPath("$.code").value(200)).andExpect(jsonPath("$.data.restored").value(true))
+                .andExpect(jsonPath("$.data.flowDesignEnabled").value(0));
+        assertEquals(processId, jdbc.queryForObject("SELECT process_design_id FROM oa_module_action_flow WHERE module_id=341001 AND action_code='invite'", String.class));
+        assertEquals(0, jdbc.queryForObject("SELECT approval_enabled FROM oa_module_action_flow WHERE module_id=341001 AND action_code='invite'", Integer.class));
+        assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM sys_role_module_action WHERE module_id=341001 AND action_code='invite'", Integer.class));
+    }
+
+    @Test
     void invalidHandlerAndIdentityChangesAreRejected() throws Exception {
         String token = login("13610316814");
         updateButton(token, "invite", Map.of("actionCode", "other"), 400);
@@ -337,6 +398,10 @@ class WorkflowActionIntegrationTest {
         jdbc.update("INSERT INTO sys_role_module (role_id, module_id) VALUES (9951, 340772)");
         jdbc.update("INSERT INTO sys_role_module_action (role_id, module_id, action_code) VALUES (9951, 340772, 'workflow')");
         String token = login("17600000991");
+        mockMvc.perform(get("/workflow/roles").header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.code").value(200)).andExpect(jsonPath("$.data").isArray());
+        mockMvc.perform(get("/system/role/list/all").header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.code").value(403));
         mockMvc.perform(get("/system/module/management-tree").header("Authorization", "Bearer " + token))
                 .andExpect(jsonPath("$.canManageStructure").value(false)).andExpect(jsonPath("$.canManageWorkflow").value(true));
         updateButton(token, "invite", Map.of("flowDesignEnabled", false), 200);

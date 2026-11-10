@@ -56,6 +56,20 @@ public class LowCodeController {
         this.systemService = systemService;
     }
 
+    @GetMapping("/workflow/roles")
+    @RequiresAnyModuleAction({
+            @ModuleActionRequirement(moduleId = 340772L, action = "manage"),
+            @ModuleActionRequirement(moduleId = 340772L, action = "workflow"),
+            @ModuleActionRequirement(moduleId = 340771L, action = "manage")
+    })
+    public Map<String, Object> workflowRoles() {
+        return ApiResult.ok(JdbcMaps.camelCase(jdbc.queryForList("""
+                SELECT role_id, role_name, role_key FROM sys_role
+                WHERE tenant_id = ? AND status = '0' AND del_flag = '0'
+                ORDER BY role_sort, role_id
+                """, systemService.requireCurrentUser().tenantId())));
+    }
+
     @GetMapping("/form/list")
     public Map<String, Object> formList(@RequestParam Map<String, String> query) {
         long tenantAppId = number(query.get("tenantAppId"), 0L);
@@ -401,6 +415,39 @@ public class LowCodeController {
     @PostMapping("/activiti/process/complete")
     public Map<String, Object> completeProcess(@RequestBody Map<String, Object> body) {
         return ApiResult.ok(workflowService.complete(body, AuthContext.userId()));
+    }
+
+    @PostMapping("/activiti/process/listHistory")
+    public Map<String, Object> processHistory(@RequestBody Map<String, Object> body) {
+        String instanceId = requireReadableInstance(value(body.get("processInstanceId"), ""));
+        List<Map<String, Object>> rows = workflowService.history(instanceId);
+        return ApiResult.page(rows, rows.size());
+    }
+
+    @GetMapping("/activiti/process/listFlowElementsValid")
+    public Map<String, Object> processElements(@RequestParam String pProcessInstanceId) {
+        return ApiResult.ok(workflowService.elements(requireReadableInstance(pProcessInstanceId)));
+    }
+
+    private String requireReadableInstance(String instanceId) {
+        String id = instanceId.trim();
+        if (id.isBlank()) throw new ApiException(400, "流程实例不能为空");
+        SystemService.UserAccount user = systemService.requireCurrentUser();
+        List<Map<String, Object>> rows = jdbc.queryForList("""
+                SELECT tenant_id, starter_id FROM oa_process_instance WHERE id = ?
+                  AND (process_key LIKE 'form:%' OR process_key LIKE 'business:%')
+                """, id);
+        if (rows.isEmpty() || number(rows.get(0).get("tenant_id"), 0L) != user.tenantId()) {
+            throw new ApiException(404, "流程实例不存在");
+        }
+        boolean participant = number(rows.get(0).get("starter_id"), 0L) == user.userId()
+                || jdbc.queryForObject("""
+                    SELECT COUNT(*) FROM oa_process_task WHERE instance_id = ? AND assignee_id = ?
+                    """, Long.class, id, user.userId()) > 0;
+        if (!participant && !systemService.isUnrestricted(user.userId())) {
+            throw new ApiException(403, "无权查看该流程");
+        }
+        return id;
     }
 
     private Map<String, Object> formResult(Map<String, Object> row) {

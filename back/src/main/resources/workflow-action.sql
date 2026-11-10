@@ -44,3 +44,12 @@ ALTER TABLE oa_workflow_request ADD COLUMN IF NOT EXISTS config_json TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_oa_workflow_request_instance
     ON oa_workflow_request (process_instance_id);
+
+CREATE TABLE IF NOT EXISTS oa_workflow_action_submission (
+    user_id BIGINT NOT NULL,
+    submission_key VARCHAR(100) NOT NULL,
+    fingerprint VARCHAR(64) NOT NULL,
+    response_json TEXT NOT NULL,
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, submission_key)
+);

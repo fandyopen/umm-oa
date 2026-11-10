@@ -71,6 +71,38 @@ export const indexRouterMap = [
     hidden: true
   }
 ]
+// Personal tasks are available after login even when the role has no task menu.
+// Reuse the same pages and URLs; the server limits their data to the current user.
+export const personalTaskRouterMap = [
+  {
+    path: '/todoItem/todo',
+    name: 'PersonalTodo',
+    component: 'eos/todoItem/todo/index',
+    hidden: true,
+    meta: { title: '我的待办' }
+  },
+  {
+    path: '/todoItem/done',
+    name: 'PersonalDone',
+    component: 'eos/todoItem/done/index',
+    hidden: true,
+    meta: { title: '我的已办' }
+  },
+  {
+    path: '/todoItem/my-process-start',
+    name: 'PersonalProcessStarted',
+    component: 'eos/todoItem/todo/processStartedPage',
+    hidden: true,
+    meta: { title: '我的发起' }
+  },
+  {
+    path: '/todoItem/copy',
+    name: 'PersonalCopy',
+    component: 'eos/todoItem/copy/index',
+    hidden: true,
+    meta: { title: '抄送我的' }
+  }
+]
 /**
  * 基础路由
  * @type { *[] }

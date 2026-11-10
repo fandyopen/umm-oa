@@ -227,6 +227,7 @@ public class WorkflowActionRequestService {
 
     private void executeApproved(Map<String, Object> request, String instanceId, String taskId) {
         long requestId = number(request.get("id"), 0L);
+        request = jdbc.queryForMap("SELECT * FROM oa_workflow_request WHERE id=? FOR UPDATE", requestId);
         if (List.of("approved", "completed").contains(value(request.get("status"), ""))) {
             return;
         }

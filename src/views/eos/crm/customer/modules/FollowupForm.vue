@@ -18,24 +18,31 @@
       <a-date-picker v-model="form.nextFollowupTime" show-time value-format="YYYY-MM-DD HH:mm:ss" class="tw-w-full" />
     </a-form-model-item>
     <div class="followup-actions">
-      <a-button @click="$emit('close')">取消</a-button>
-      <a-button type="primary" :loading="saving" @click="submit">保存跟进</a-button>
+      <a-button :disabled="saving" @click="$emit('close')">取消</a-button>
+      <a-button type="primary" :loading="saving" :disabled="submitted" @click="submit">保存跟进</a-button>
     </div>
   </a-form-model>
 </template>
 
 <script>
 import moment from 'moment'
-import { addFollowup } from '/src/api/eos/crm/index.js'
+import { executeWorkflowAction } from '/src/api/workflow/action.js'
+import { createWorkflowActionSubmitter } from '/src/utils/workflowActionSubmit.js'
+import { withModuleContexts } from '/src/utils/moduleContext.js'
+import { crmModules } from '/src/views/eos/crm/moduleContexts.js'
 
 export default {
   name: 'FollowupForm',
+  mixins: [withModuleContexts({ customer: crmModules.customer })],
   props: {
-    customerId: { type: Number, required: true }
+    customerId: { type: Number, required: true },
+    customerName: { type: String, default: '' }
   },
   data() {
     return {
       saving: false,
+      submitted: false,
+      submitter: createWorkflowActionSubmitter(executeWorkflowAction),
       methods: ['电话', '微信', '邮件', '拜访', '会议', '其他'],
       form: {
         followupTime: moment().format('YYYY-MM-DD HH:mm:ss'),
@@ -47,22 +54,28 @@ export default {
     }
   },
   methods: {
-    submit() {
+    async submit() {
+      if (this.saving || this.submitted) return
       if (!this.form.content.trim()) {
         this.$message.warning('请填写沟通内容')
         return
       }
       this.saving = true
-      addFollowup(this.customerId, this.form)
-        .then(() => {
-          this.$message.success('跟进记录已保存')
-          this.$emit('ok')
-          this.$emit('close')
+      try {
+        if (!(await this.checkModuleAction({ module: 'customer', action: 'track', label: '保存跟进' }))) return
+        const response = await this.submitter.submit({
+          moduleId: this.moduleContexts.customer.moduleId,
+          actionCode: 'track',
+          payload: { ...this.form, customerId: this.customerId, customerName: this.customerName }
         })
-        .catch(error => this.$message.error(error.message || String(error)))
-        .finally(() => {
-          this.saving = false
-        })
+        this.$message.success(response.data.status === 'pendingApproval' ? '跟进已提交审批，通过后正式保存' : '跟进记录已保存')
+        this.submitted = true
+        this.$emit('ok', response.data)
+      } catch (error) {
+        this.$message.error(error.message || String(error))
+      } finally {
+        this.saving = false
+      }
     }
   }
 }

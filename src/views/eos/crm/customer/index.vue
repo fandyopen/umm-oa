@@ -413,15 +413,13 @@ export default {
         modalProps: {
           title: `新增跟进 · ${record.name}`,
           width: 620,
-          maskClosable: true
+          maskClosable: true,
+          footer: null
         },
-        footer: false,
+        onOk: () => this.refresh(),
         content: {
           template: FollowupForm,
-          props: { customerId: record.id },
-          on: {
-            ok: () => this.refresh()
-          }
+          props: { customerId: record.id, customerName: record.name, moduleMeta: this.moduleContexts.customer }
         }
       })
     },
@@ -430,15 +428,13 @@ export default {
         modalProps: {
           title: `客户分配 · ${record.name}`,
           width: 560,
-          maskClosable: true
+          maskClosable: true,
+          footer: null
         },
-        footer: false,
+        onOk: () => this.refresh(),
         content: {
           template: AssignForm,
-          props: { customer: record },
-          on: {
-            ok: () => this.refresh()
-          }
+          props: { customer: record }
         }
       })
     },
@@ -447,14 +443,12 @@ export default {
         modalProps: {
           title: '客户批量移交',
           width: 560,
-          maskClosable: true
+          maskClosable: true,
+          footer: null
         },
-        footer: false,
+        onOk: () => this.refresh(),
         content: {
-          template: HandoverForm,
-          on: {
-            ok: () => this.refresh()
-          }
+          template: HandoverForm
         }
       })
     },

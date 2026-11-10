@@ -43,8 +43,22 @@
           <input :value="nodeTypeName(selectedNode.type)" disabled />
 
           <template v-if="selectedNode.type === 'approval'">
-            <label>审批人/角色</label>
-            <input v-model.trim="selectedNode.approver" placeholder="例如：部门负责人" />
+            <label>审批角色</label>
+            <a-select
+              :key="selectedNode.id"
+              :value="approverValue"
+              show-search
+              allow-clear
+              :loading="rolesLoading"
+              :filter-option="filterRole"
+              placeholder="输入角色名称或编码搜索，也可下拉选择"
+              style="width: 100%"
+              @change="selectRole"
+            >
+              <a-select-option v-if="legacyApprover" :value="legacyApprover" disabled>{{ legacyApprover }}（原配置）</a-select-option>
+              <a-select-option v-for="role in roleOptions" :key="role.value" :value="role.value">{{ role.label }}</a-select-option>
+            </a-select>
+            <div v-if="rolesError" class="roles-error">角色加载失败，<a @click="loadRoles">点击重试</a></div>
             <label>审批方式</label>
             <select v-model="selectedNode.approvalMode">
               <option value="any">或签</option>
@@ -64,6 +78,8 @@
 </template>
 
 <script>
+import { getWorkflowRoles } from '/src/api/workflow/action.js'
+
 let sequence = 1
 
 export default {
@@ -81,25 +97,66 @@ export default {
   data() {
     return {
       selectedId: 'start',
-      nodes: this.normalize(this.conf)
+      nodes: this.normalize(this.conf),
+      roles: [],
+      rolesLoading: false,
+      rolesError: false
     }
   },
   computed: {
     selectedNode() {
       return this.nodes.find(node => node.id === this.selectedId) || null
     },
+    roleOptions() {
+      return this.roles
+        .filter(role => String(role.status ?? '0') === '0' && String(role.delFlag ?? '0') === '0' && role.roleName && role.roleKey)
+        .map(role => ({ label: role.roleName, value: role.roleKey }))
+    },
+    approverValue() {
+      const value = this.selectedNode?.approver
+      const role = this.roleOptions.find(item => item.value === value || item.label === value)
+      return role ? role.value : value || undefined
+    },
+    legacyApprover() {
+      const value = this.selectedNode?.approver
+      return value && !this.roleOptions.some(item => item.value === value || item.label === value) ? value : ''
+    },
     canDelete() {
       return this.selectedNode && !['start', 'end'].includes(this.selectedNode.type)
     }
   },
+  mounted() {
+    this.loadRoles()
+  },
   methods: {
+    async loadRoles() {
+      if (this.rolesLoading) return
+      this.rolesLoading = true
+      this.rolesError = false
+      try {
+        const response = await getWorkflowRoles()
+        this.roles = response.data || []
+      } catch (error) {
+        this.rolesError = true
+      } finally {
+        this.rolesLoading = false
+      }
+    },
+    filterRole(input, option) {
+      const value = option.componentOptions.propsData.value
+      const role = this.roleOptions.find(item => item.value === value)
+      return !!role && (role.label + ' ' + role.value).toLowerCase().includes(input.trim().toLowerCase())
+    },
+    selectRole(value) {
+      if (this.selectedNode?.type === 'approval') this.$set(this.selectedNode, 'approver', value || '')
+    },
     normalize(conf) {
       if (Array.isArray(conf?.nodes) && conf.nodes.length >= 2) {
         return conf.nodes.map(node => ({ ...node }))
       }
       return [
         { id: 'start', type: 'start', name: '发起人' },
-        { id: 'approval_1', type: 'approval', name: '部门负责人', approver: '部门负责人', approvalMode: 'any' },
+        { id: 'approval_1', type: 'approval', name: '审批节点', approver: '', approvalMode: 'any' },
         { id: 'end', type: 'end', name: '流程结束' }
       ]
     },
@@ -319,6 +376,12 @@ export default {
   border-bottom: 1px solid #edf0f3;
   font-size: 16px;
   font-weight: 600;
+}
+
+.roles-error {
+  margin-top: 8px;
+  color: #d4380d;
+  font-size: 12px;
 }
 
 .empty-property {

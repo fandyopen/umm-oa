@@ -6,13 +6,14 @@
     </a-divider>
     <a-form-model ref="form" :model="form">
       <a-form-model-item label="模块权限">
+        <a-alert class="tw-mb-3" type="info" show-icon message="页面权限与按钮权限分别授权，以各项勾选为准。父子联动仅在点击时批量选择，不会自动授权新增按钮。" />
         <a-checkbox @change="handleCheckedTreeExpand($event)"> 展开/折叠 </a-checkbox>
         <a-checkbox @change="handleCheckedTreeNodeAll($event)"> 全选/全不选 </a-checkbox>
         <a-checkbox @change="handleCheckedTreeConnect($event)" :checked="form.menuCheckStrictly"> 父子联动 </a-checkbox>
         <a-tree
-          v-model="menuCheckedKeys"
+          :checked-keys="treeCheckedKeys"
           checkable
-          :checkStrictly="!form.menuCheckStrictly"
+          checkStrictly
           :expanded-keys="menuExpandedKeys"
           :auto-expand-parent="autoExpandParent"
           :tree-data="menuOptions"
@@ -34,6 +35,7 @@
 <script>
 import { addMenuPerm } from '/src/api/enterprise/index.js'
 import { roleMenuTree } from '/src/api/system/menu.js'
+import { allPermissionKeys, changePermissionSelection, permissionTreeState } from '/src/utils/modulePermissionTree.js'
 
 export default {
   name: 'MenuTree',
@@ -43,7 +45,6 @@ export default {
       menuExpandedKeys: [],
       autoExpandParent: false,
       menuCheckedKeys: [],
-      halfCheckedKeys: [],
       menuOptions: [],
       formTitle: '',
       // 表单参数
@@ -62,6 +63,11 @@ export default {
       }
     }
   },
+  computed: {
+    treeCheckedKeys() {
+      return permissionTreeState(this.menuOptions, this.menuCheckedKeys)
+    }
+  },
   methods: {
     onExpandMenu(expandedKeys) {
       this.menuExpandedKeys = expandedKeys
@@ -69,49 +75,14 @@ export default {
     },
     // 所有菜单节点数据
     getMenuAllCheckedKeys() {
-      // 全选与半选
-      return this.menuCheckedKeys.concat(this.halfCheckedKeys)
-    },
-    getAllMenuNode(nodes) {
-      if (!nodes || nodes.length === 0) {
-        return []
-      }
-      nodes.forEach(node => {
-        this.menuCheckedKeys.push(node.id)
-        return this.getAllMenuNode(node.children)
-      })
-    },
-    // 回显过滤
-    selectNodefilter(nodes, parentIds) {
-      if (!nodes || nodes.length === 0) {
-        return []
-      }
-      nodes.forEach(node => {
-        // 父子关联模式且当前元素有父级
-        const currentIndex = this.menuCheckedKeys.indexOf(node.id)
-        // 当前节点存在,且父节点不存在，则说明父节点应是半选中状态
-        if (currentIndex !== -1) {
-          parentIds.forEach(parentId => {
-            if (this.halfCheckedKeys.indexOf(parentId) === -1) {
-              this.halfCheckedKeys.push(parentId)
-            }
-          })
-          parentIds = []
-        }
-        // // 防重
-        const isExist = this.halfCheckedKeys.indexOf(node.id)
-        const isExistParentIds = parentIds.indexOf(node.id)
-        if (isExist === -1 && isExistParentIds === -1 && currentIndex === -1) {
-          parentIds.push(node.id)
-        }
-      })
+      // Half-checked ancestors are display state, not additional grants.
+      return permissionTreeState(this.menuOptions, this.menuCheckedKeys).checked
     },
     handleCheckedTreeNodeAll(value) {
       if (value.target.checked) {
-        this.getAllMenuNode(this.menuOptions)
+        this.menuCheckedKeys = allPermissionKeys(this.menuOptions)
       } else {
         this.menuCheckedKeys = []
-        this.halfCheckedKeys = []
       }
     },
     handleCheckedTreeExpand(value) {
@@ -126,7 +97,7 @@ export default {
     },
     // 树权限（父子联动）
     handleCheckedTreeConnect(value) {
-      this.form.menuCheckStrictly = !this.form.menuCheckStrictly
+      this.form.menuCheckStrictly = value.target.checked
     },
     /** 根据角色ID查询菜单树结构 */
     getRoleMenuTreeselect(roleId) {
@@ -136,20 +107,10 @@ export default {
       })
     },
     onCheck(checkedKeys, info) {
-      if (!this.form.menuCheckStrictly) {
-        let currentCheckedKeys = []
-        if (this.menuCheckedKeys.checked) {
-          currentCheckedKeys = currentCheckedKeys.concat(this.menuCheckedKeys.checked)
-        }
-        if (this.menuCheckedKeys.halfChecked) {
-          currentCheckedKeys = currentCheckedKeys.concat(this.menuCheckedKeys.halfChecked)
-        }
-        this.menuCheckedKeys = currentCheckedKeys
-      } else {
-        // 半选节点
-        this.halfCheckedKeys = info.halfCheckedKeys
-        this.menuCheckedKeys = checkedKeys
-      }
+      this.menuCheckedKeys = changePermissionSelection(
+        this.menuOptions, this.menuCheckedKeys, info.node.eventKey,
+        info.checked, this.form.menuCheckStrictly
+      )
     },
     onClose() {
       this.open = false
@@ -163,14 +124,12 @@ export default {
     reset() {
       if (this.$refs.menu !== undefined) {
         this.menuCheckedKeys = []
-        this.halfCheckedKeys = []
       }
       this.menuExpand = false
       this.menuNodeAll = false
       this.menuExpandedKeys = []
       this.autoExpandParent = false
       this.menuCheckedKeys = []
-      this.halfCheckedKeys = []
       this.form = {
         roleId: undefined,
         tenantModuleIds: [],
@@ -182,9 +141,8 @@ export default {
       this.reset()
       this.form.roleId = row.roleId
       this.formTitle = '角色模块'
-      this.getRoleMenuTreeselect(row.roleId).then(res => {
-        this.menuCheckedKeys = res.checkedKeys
-        if (this.form.menuCheckStrictly) this.selectNodefilter(this.menuOptions, [])
+      return this.getRoleMenuTreeselect(row.roleId).then(res => {
+        this.menuCheckedKeys = permissionTreeState(this.menuOptions, res.checkedKeys).checked
         this.open = true
       })
     },

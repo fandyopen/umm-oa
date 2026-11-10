@@ -4,10 +4,10 @@
       ><b>{{ editing ? '修改按钮' : '新增按钮' }}</b></a-divider
     >
     <p class="action-flow-hint">所属页面：{{ moduleName }}</p>
-    <a-alert type="info" show-icon message="动作编码由系统生成，保存后即可用于角色授权和流程设计。" description="所有按钮均可维护。动作编码用于关联权限、业务调用及审批历史，保存后保持稳定。" class="tw-mb-4" />
+    <a-alert type="info" show-icon message="新建时可自定义动作编码，也可使用系统建议编码；保存后不可修改。" description="动作编码用于匹配页面按钮、权限及审批历史。填写已删除按钮的原编码可恢复该按钮，恢复后需重新授权并检查审批配置。" class="tw-mb-4" />
     <a-form-model ref="actionForm" :model="form" :rules="rules" :label-col="{ span: 6 }" :wrapper-col="{ span: 16 }">
       <a-form-model-item label="动作编码" prop="actionCode">
-        <a-input v-model="form.actionCode" read-only :placeholder="generatingCode ? '正在生成...' : '保存后自动生成'" />
+        <a-input v-model="form.actionCode" :read-only="editing || !canManageStructure" :max-length="32" :placeholder="generatingCode ? '正在生成建议编码...' : '留空自动生成，或输入如 track'" @change="codeManuallyEdited = true" />
       </a-form-model-item>
       <a-form-model-item label="动作名称" prop="actionName">
         <a-input v-model="form.actionName" :disabled="!canManageStructure" placeholder="例如 提交审批" />
@@ -19,10 +19,18 @@
         <span>{{ businessActionName }}</span>
         <p class="action-flow-hint">由系统关联业务执行器，可直接配置审批流程。</p>
       </a-form-model-item>
-      <a-form-model-item v-else label="业务执行器" prop="handlerKey">
+      <a-form-model-item v-else label="业务执行方式">
+        <a-select :value="executionMode" :disabled="!canManageStructure" @change="changeExecutionMode">
+          <a-select-option value="none">仅权限控制（待接入）</a-select-option>
+          <a-select-option value="api">通用业务接口</a-select-option>
+          <a-select-option value="handler">专用业务执行器</a-select-option>
+        </a-select>
+      </a-form-model-item>
+      <workflow-api-config v-if="!handlerManaged && executionMode === 'api'" ref="apiConfig" v-model="form.configJson" :module-id="moduleId" :disabled="!canManageStructure" />
+      <a-form-model-item v-if="!handlerManaged && executionMode === 'handler'" label="业务执行器" prop="handlerKey">
         <a-auto-complete v-model="form.handlerKey" :disabled="!canManageStructure" :data-source="handlerKeys" placeholder="选择或输入已注册的执行器" class="tw-w-full" />
       </a-form-model-item>
-      <a-form-model-item v-if="!handlerManaged" label="执行器配置" prop="configJson">
+      <a-form-model-item v-if="!handlerManaged && executionMode === 'handler'" label="执行器配置" prop="configJson">
         <a-textarea v-model="form.configJson" :disabled="!canManageStructure" :rows="6" placeholder='例如 {"operation":"invite"}' />
       </a-form-model-item>
       <a-form-model-item label="排序" prop="actionSort">
@@ -55,9 +63,11 @@
 <script>
 import { createModuleAction, updateModuleAction, getNextModuleActionCode } from '/src/api/system/menu.js'
 import { getWorkflowActionHandlers } from '/src/api/workflow/action.js'
+import WorkflowApiConfig from './WorkflowApiConfig.vue'
 
 export default {
   name: 'ModuleActionForm',
+  components: { WorkflowApiConfig },
   props: {
     canManageStructure: { type: Boolean, default: false },
     canManageWorkflow: { type: Boolean, default: false }
@@ -67,27 +77,40 @@ export default {
       open: false,
       saving: false,
       generatingCode: false,
+      codeManuallyEdited: false,
       editing: false,
       moduleId: undefined,
       moduleName: '',
       handlerKeys: [],
       handlerManaged: false,
+      selectedExecutionMode: '',
       businessActionName: '',
       editorSequence: 0,
       form: this.emptyForm(),
       rules: {
+        actionCode: [{ validator: this.validateActionCode, trigger: 'blur' }],
         actionName: [{ required: true, message: '请输入动作名称', trigger: 'blur' }],
         configJson: [{ validator: this.validateConfigJson, trigger: 'blur' }]
       }
     }
   },
+  computed: {
+    executionMode() { return this.selectedExecutionMode || (this.form.handlerKey === 'workflow.business-api' ? 'api' : this.form.handlerKey ? 'handler' : 'none') }
+  },
   methods: {
+    changeExecutionMode(mode) {
+      this.selectedExecutionMode = mode
+      this.form.handlerKey = mode === 'api' ? 'workflow.business-api' : ''
+      this.form.configJson = '{}'
+    },
     emptyForm() {
       return { actionCode: '', actionName: '', permissionCode: '', handlerKey: '', configJson: '{}', flowDesignEnabled: false, actionSort: 0, actionDescription: '', status: '0' }
     },
     handleAdd(page) {
       if (!this.canManageStructure) return
       this.editing = false
+      this.selectedExecutionMode = ''
+      this.codeManuallyEdited = false
       this.handlerManaged = false
       this.businessActionName = ''
       this.moduleId = page.moduleId
@@ -99,6 +122,7 @@ export default {
     handleUpdate(row) {
       if (!this.canManageStructure && !this.canManageWorkflow) return
       this.editing = true
+      this.selectedExecutionMode = ''
       this.handlerManaged = row.handlerManaged === true
       this.businessActionName = row.businessActionName || row.actionName
       this.moduleId = row.moduleId
@@ -136,9 +160,9 @@ export default {
       this.generatingCode = true
       try {
         const response = await getNextModuleActionCode(this.moduleId)
-        if (sequence === this.editorSequence && !this.editing) this.form.actionCode = response.data?.actionCode || ''
+        if (sequence === this.editorSequence && !this.editing && !this.codeManuallyEdited) this.form.actionCode = response.data?.actionCode || ''
       } catch (error) {
-        if (sequence === this.editorSequence) this.form.actionCode = ''
+        // An unavailable suggestion must not erase a code entered by the user.
       } finally {
         if (sequence === this.editorSequence) this.generatingCode = false
       }
@@ -147,6 +171,10 @@ export default {
       if (this.saving || this.generatingCode) return
       this.$refs.actionForm.validate(async valid => {
         if (!valid) return
+        if (this.executionMode === 'api') {
+          try { this.$refs.apiConfig.validate() }
+          catch (error) { this.$message.warning(error.message); return }
+        }
         this.saving = true
         try {
           let actionCode = this.form.actionCode
@@ -157,7 +185,7 @@ export default {
           } else {
             const response = await createModuleAction(this.moduleId, { ...this.form })
             actionCode = response.data?.actionCode
-            this.$message.success('按钮新增成功，动作编码：' + actionCode)
+            this.$message.success((response.data?.restored ? '按钮已恢复，请重新授权并检查审批配置。动作编码：' : '按钮新增成功，动作编码：') + actionCode)
           }
           this.open = false
           this.editorSequence++
@@ -174,6 +202,13 @@ export default {
       if (this.saving) return
       this.editorSequence++
       this.open = false
+    },
+    validateActionCode(rule, value, callback) {
+      const code = String(value || '').trim()
+      if (!code) return callback()
+      if (code === 'page') return callback(new Error('page 为保留编码，请使用其他编码'))
+      if (!/^[a-z][a-z0-9_]{0,31}$/.test(code)) return callback(new Error('以小写字母开头，仅支持小写字母、数字、下划线，最多32位'))
+      callback()
     },
     validateConfigJson(rule, value, callback) {
       try {
