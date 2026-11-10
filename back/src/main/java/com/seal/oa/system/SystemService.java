@@ -151,6 +151,8 @@ public class SystemService {
     }
 
     public boolean hasModuleAction(Long userId, long moduleId, String actionCode) {
+        // 页面访问由勾选模块授权，不能按按钮权限或 manage 的兜底规则判断。
+        if ("access".equals(actionCode)) return hasModuleAccess(userId, moduleId);
         if (moduleActionService.isActionDisabled(moduleId, actionCode)) return false;
         return isUnrestricted(userId)
                 || moduleActionService.hasAction(userId, moduleId, actionCode)

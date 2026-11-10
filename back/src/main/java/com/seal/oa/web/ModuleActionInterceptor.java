@@ -87,9 +87,6 @@ public class ModuleActionInterceptor implements HandlerInterceptor {
     }
 
     private boolean isAllowed(Long userId, long moduleId, String action) {
-        if ("access".equals(action)) {
-            return systemService.hasModuleAccess(userId, moduleId);
-        }
         if ("write".equals(action)) {
             return systemService.hasModuleAction(userId, moduleId, "add")
                     || systemService.hasModuleAction(userId, moduleId, "edit")
