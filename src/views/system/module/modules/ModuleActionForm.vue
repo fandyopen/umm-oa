@@ -44,6 +44,15 @@
         <p class="action-flow-hint">开启仅开放流程设计入口，未配置或仅保存草稿不改变按钮行为。发布并启用审批后，新操作才进入审批；关闭保留流程与历史，已发起的审批继续处理。</p>
         <a-alert v-if="Number(moduleId) === 341201 && form.actionCode === 'submit'" type="warning" show-icon message="合同提交必须审批：关闭流程设计将阻止新提交，不会直接通过。" />
       </a-form-model-item>
+      <a-form-model-item v-if="editing && canManageWorkflow" label="关联已有流程">
+        <a-select v-model="selectedWorkflowId" allow-clear :loading="catalogLoading" placeholder="保留当前流程；可选择已发布的独立流程" @change="selectWorkflow">
+          <a-select-option v-for="item in catalogWorkflows" :key="item.id" :value="item.id" :disabled="item.processStatus !== 'published' || (!!item.boundActionCode && item.boundActionCode !== form.actionCode)">
+            {{ item.flowName }}{{ item.processStatus !== 'published' ? '（未发布）' : item.boundActionCode ? '（已关联）' : '' }}
+          </a-select-option>
+        </a-select>
+        <p class="action-flow-hint">可关联审批流程管理中已发布的同模块流程，也可继续使用原流程设计入口。</p>
+        <a-alert v-if="selectedWorkflowId && currentProcessId && selectedWorkflowId !== currentProcessId" type="warning" show-icon message="保存后替换该按钮的当前流程，进行中的审批不受影响。" />
+      </a-form-model-item>
       <a-form-model-item label="状态" prop="status">
         <a-radio-group v-model="form.status" :disabled="!canManageStructure">
           <a-radio-button value="0">启用</a-radio-button>
@@ -63,6 +72,7 @@
 <script>
 import { createModuleAction, updateModuleAction, getNextModuleActionCode } from '/src/api/system/menu.js'
 import { getWorkflowActionHandlers } from '/src/api/workflow/action.js'
+import { getWorkflowCatalogOptions } from '/src/api/system/workflow.js'
 import WorkflowApiConfig from './WorkflowApiConfig.vue'
 
 export default {
@@ -82,6 +92,7 @@ export default {
       moduleId: undefined,
       moduleName: '',
       handlerKeys: [],
+      catalogWorkflows: [], catalogLoading: false, selectedWorkflowId: undefined, currentProcessId: '',
       handlerManaged: false,
       selectedExecutionMode: '',
       businessActionName: '',
@@ -146,6 +157,20 @@ export default {
       this.open = true
       this.$nextTick(() => this.$refs.actionForm && this.$refs.actionForm.clearValidate())
       this.loadHandlers()
+      this.loadCatalog(this.editorSequence)
+    },
+    selectWorkflow(id) { if (id) this.form.flowDesignEnabled = true },
+    async loadCatalog(sequence) {
+      this.catalogWorkflows = []; this.selectedWorkflowId = undefined; this.currentProcessId = ''
+      if (!this.editing || !this.canManageWorkflow) return
+      this.catalogLoading = true
+      try {
+        const response = await getWorkflowCatalogOptions({ moduleId: this.moduleId })
+        if (sequence !== this.editorSequence) return
+        this.catalogWorkflows = response.data.workflows || []
+        this.currentProcessId = response.data.buttons.find(item => item.actionCode === this.form.actionCode)?.currentProcessId || ''
+      } catch (error) { if (sequence === this.editorSequence) this.$message.warning('已有流程加载失败，可重新打开重试') }
+      finally { if (sequence === this.editorSequence) this.catalogLoading = false }
     },
     async loadHandlers() {
       if (this.handlerKeys.length) return
@@ -180,6 +205,14 @@ export default {
           let actionCode = this.form.actionCode
           if (this.editing) {
             const body = this.canManageStructure ? { ...this.form } : { flowDesignEnabled: this.form.flowDesignEnabled }
+            if (this.selectedWorkflowId) {
+              const workflow = this.catalogWorkflows.find(item => item.id === this.selectedWorkflowId)
+              if (!workflow || this.catalogLoading) throw new Error('请等待已有流程加载完成')
+              body.workflowId = workflow.id
+              body.workflowRevision = workflow.revision
+              body.expectedProcessId = this.currentProcessId
+              body.flowDesignEnabled = true
+            }
             await updateModuleAction(this.moduleId, actionCode, body)
             this.$message.success('按钮修改成功')
           } else {

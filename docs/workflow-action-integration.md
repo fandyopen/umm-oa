@@ -12,22 +12,27 @@
 
 ## 前端接入
 
-继续使用 src/api/workflow/action.js 的 executeWorkflowAction，接口仍是 /workflow/action/execute，旧调用无需改名。
-新表单推荐在组件创建时创建一次通用提交器，在点击提交且表单校验通过后调用。不要在已经保存成功的 onOk 中再次提交审批。
+业务表单绑定所属模块后，在保存按钮中调用 `submitConfiguredAction`：
 
-    import { executeWorkflowAction } from '/src/api/workflow/action.js'
-    import { createWorkflowActionSubmitter } from '/src/utils/workflowActionSubmit.js'
+```js
+import { withModuleContexts } from '/src/utils/moduleContext.js'
+import { crmModules } from '/src/views/eos/crm/moduleContexts.js'
 
-    // 放在组件 data() 内，每个表单实例独立创建。
-    const submitter = createWorkflowActionSubmitter(executeWorkflowAction)
+export default {
+  mixins: [withModuleContexts({ opportunity: crmModules.opportunity })],
+  methods: {
+    async save() {
+      const response = await this.submitConfiguredAction('add', { ...this.form }, '新增商机')
+      if (!response) return // 权限校验未通过，保留表单。
+      this.$message.success(response.data.status === 'pendingApproval' ? '已提交审批' : '已保存')
+    }
+  }
+}
+```
 
-    const response = await submitter.submit({
-      moduleId: moduleMeta.moduleId,
-      actionCode: 'your_action',
-      payload: { recordId, ...form }
-    })
-    // completed 表示业务已执行；pendingApproval 表示申请已提交，正式数据尚未写入。
-    // 成功后再通知父页面刷新和关闭；失败保留表单。
+首个模块为表单所属模块，调用只需动作编码、业务数据、操作名称。前端必须在业务写入之前调用；后端按按钮配置决定直接执行或审批后执行。新增配置按钮不会自动生成前端操作。
+
+底层仍复用 `/workflow/action/execute` 和 `createWorkflowActionSubmitter`，原调用继续兼容。
 
 提交器合并正在进行的重复点击。相同数据在网络失败后重试使用同一 submissionKey，服务端返回同一提交结果；修改数据后生成新标识。
 
@@ -50,3 +55,15 @@ GET、文件流、上传、RequestParam、多选权限要求、系统管理和�
 - 现有合同、人事、招聘、财务专用执行器、流程历史与调用参数保持兼容。
 
 客户档案 track 作为内置使用示例：首次升级只给现存且未设置执行器的按钮绑定“保存客户跟进”，不恢复删除记录、不启用审批，也不替换用户已有执行器配置。
+
+## 两种配置入口并行
+
+- 原方式：模块管理 → 目标页面 → 按钮修改 → 开启流程设计 → 设计并发布。
+- 新方式：系统 → 审批流程 → 新增审批流程 → 填写名称、选择所属页面模块 → 设计并发布 → 关联按钮。也可以在模块按钮修改页选择该模块已发布的独立流程。
+- 新建、草稿、仅发布未关联均不改变业务按钮行为。关联时开启按钮流程设计，按流程已发布的审批开关执行。一个按钮同时只使用一份绑定，一个独立流程关联一个按钮。
+- 关联替换已有流程时界面会提示；原独立流程保留，恢复为待关联。两个入口修改的是同一份流程、草稿与审批开关；发布影响之后的新申请，在途申请使用发起时冻结的配置。
+- 设计器/关联带版本校验，页面过期需要重新打开；旧页面不能覆盖已经更换的按钮绑定。
+- 查看仅需勾选审批流程模块。新增、设计、关联需单独的流程设计权限；原模块工作流管理权限继续兼容，不授予模块结构管理权限。
+- 按钮选项会区分已接入、前端待接入、业务执行待配置、停用。新增前端接入后需在 `WorkflowIntegrationRegistry` 登记对应模块与动作；只有登记且业务执行校验通过的按钮可从新入口关联审批。
+
+商机新增/修改已接入 `submitConfiguredAction('add'/'edit', ...)`，首次升级只补齐现存空执行器的 POST/PUT 商机接口，保留自定义执行配置、流程开关及历史。审批通过后才保存正式商机并发送负责人首次跟进待办，驳回不创建商机或待办。

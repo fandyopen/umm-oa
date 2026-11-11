@@ -11,12 +11,14 @@ const read = file => fs.readFileSync(new URL('../../' + file, import.meta.url), 
 const page = compiler.parseComponent(read('src/views/system/workflow/index.vue'))
 assert.deepEqual(compiler.compile(page.template.content).errors, [])
 
-function workspace(list = async () => ({ data: { rows: [], modules: [], statistics: {}, canDesign: false } }), get = async () => ({ data: {} })) {
-  const options = new Function('moment', 'listWorkflowConfigurations', 'getWorkflowConfiguration', 'WorkflowPreview',
-    page.script.content.replace(/^import .*$/gm, '').replace('export default', 'return'))(moment, list, get, {})
+function workspace(list = async () => ({ data: { rows: [], modules: [], statistics: {}, canDesign: false } }), get = async () => ({ data: {} }), overrides = {}) {
+  const dependencies = { moment, listWorkflowConfigurations: list, getWorkflowConfiguration: get, WorkflowPreview: {}, ...overrides }
+  const options = new Function(...Object.keys(dependencies),
+    page.script.content.replace(/^import .*$/gm, '').replace('export default', 'return'))(...Object.values(dependencies))
   const vm = new Vue({ ...options, created: [], activated: [] })
   const routes = []
   vm.$router = { push: value => routes.push(value) }
+  vm.$message = { success() {}, warning() {}, error() {} }
   return { vm, routes }
 }
 
@@ -123,5 +125,42 @@ test('preview renders a readonly graph and approval rules without loading the ed
   assert.match(rendered, /角色：人事经理/)
   assert.match(rendered, /会签/)
   assert.doesNotMatch(preview.script.content, /getWorkflowRoles|setProcess|updateForm/)
+  vm.$destroy()
+})
+
+
+test('catalog creation selects the module and opens its independent designer', async () => {
+  const calls = []
+  const { vm, routes } = workspace(undefined, undefined, {
+    createWorkflowCatalog: async body => { calls.push(body); return { data: { id: 'catalog-1', moduleId: 340590 } } }
+  })
+  vm.newFlow = { flowName: '新增商机审批', moduleId: 340590 }
+  await vm.create()
+  assert.deepEqual(calls, [{ flowName: '新增商机审批', moduleId: 340590 }])
+  assert.equal(routes[0].query.workflowId, 'catalog-1')
+  vm.canDesign = true
+  vm.design({ workflowId: 'catalog-1', moduleEnabled: true, flowDesignEnabled: false })
+  assert.equal(routes[1].query.workflowId, 'catalog-1')
+  vm.$destroy()
+})
+
+test('association uses the latest revision and expected binding and refuses unintegrated buttons', async () => {
+  const calls = []
+  const { vm } = workspace(undefined, undefined, {
+    getWorkflowCatalogOptions: async () => ({ data: {
+      buttons: [{ actionCode: 'add', ready: true, currentProcessId: 'old' }, { actionCode: 'remove', ready: false }],
+      workflows: [{ id: 'catalog-1', revision: 7 }]
+    } }),
+    associateWorkflowCatalog: async (...args) => calls.push(args)
+  })
+  await vm.openAssociate({ workflowId: 'catalog-1', moduleId: 340590, flowName: '新增审批', workflowRevision: 1 })
+  vm.selectedButton = 'remove'
+  await vm.associate()
+  assert.equal(calls.length, 0)
+  vm.selectedButton = 'add'
+  assert.equal(vm.replacement, true)
+  await vm.associate()
+  assert.deepEqual(calls[0], ['catalog-1', { moduleId: 340590, actionCode: 'add', workflowRevision: 7, expectedProcessId: 'old' }])
+  assert.equal(vm.associateVisible, false)
   vm.$destroy()
 })

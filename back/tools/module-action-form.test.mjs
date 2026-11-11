@@ -14,6 +14,7 @@ function editor(overrides = {}) {
   const calls = [], messages = []
   const dependencies = {
     WorkflowApiConfig: {},
+    getWorkflowCatalogOptions: async () => ({ data: { workflows: [], buttons: [] } }),
     getNextModuleActionCode: async () => ({ data: { actionCode: 'action_002' } }),
     getWorkflowActionHandlers: async () => ({ data: [] }),
     createModuleAction: async (...args) => { calls.push(args); return { data: { actionCode: args[1].actionCode, restored: true } } },

@@ -124,6 +124,7 @@ public class BusinessQueryController {
     @PostMapping
     @Transactional(isolation = Isolation.READ_COMMITTED)
     @RequiresModuleAction(moduleId = 340590L, action = "add")
+    @com.seal.oa.workflow.WorkflowEndpoint(name = "新增商机", validator = "validateCreate")
     public Map<String, Object> create(@RequestBody Map<String, Object> body) {
         // 商机使用兼容业务编号；串行分配，防止并发新建共用编号并串发负责人待办。
         jdbc.queryForList("SELECT module_id FROM sys_module WHERE module_id = ? FOR UPDATE", 340590L);
@@ -158,6 +159,7 @@ public class BusinessQueryController {
     @PutMapping
     @RequiresModuleAction(moduleId = 340590L, action = "edit")
     @Transactional(isolation = Isolation.READ_COMMITTED)
+    @com.seal.oa.workflow.WorkflowEndpoint(name = "修改商机", validator = "validateUpdate")
     public Map<String, Object> update(@RequestBody Map<String, Object> body) {
         long id = number(body.get("id"), 0L);
         Map<String, Object> existing = lockOpportunity(id);
@@ -178,6 +180,22 @@ public class BusinessQueryController {
         replaceRecord(id, existing);
         followupReminders.synchronize(existing);
         return ApiResult.ok(id);
+    }
+
+    public void validateCreate(Map<String, Object> body) {
+        if (value(body.get("name"), "").isBlank()) throw new ApiException(400, "请输入商机名称");
+        assignSalesOwner(new LinkedHashMap<>(body));
+    }
+
+    public void validateUpdate(Map<String, Object> body) {
+        Map<String, Object> existing = requireAccessibleOpportunity(String.valueOf(body.getOrDefault("id", "")));
+        String stage = currentStage(existing);
+        for (String key : List.of("stage", "businessState")) {
+            if (body.containsKey(key) && !stage.equals(body.get(key))) throw new ApiException(400, "商机阶段已变化，请刷新后重新提交");
+        }
+        Map<String, Object> merged = new LinkedHashMap<>(existing);
+        merged.putAll(body);
+        validateCreate(merged);
     }
 
     @DeleteMapping("/{id}")

@@ -221,7 +221,7 @@ export default {
         },
         content: {
           template: BusinessForm,
-          props,
+          props: { ...props, moduleMeta: this.moduleContexts.opportunity },
           on: {
             ok: () => this.refresh(),
             close: () => {}

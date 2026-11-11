@@ -168,6 +168,21 @@ public class ModuleActionService {
         migrateContractNavigation();
         migrateContractSigning();
         migrateGenericFollowup();
+        migrateOpportunitySubmission();
+    }
+
+    private void migrateOpportunitySubmission() {
+        String key = "generic_opportunity_submission_v1";
+        if (migrationApplied(key)) return;
+        for (String action : List.of("add", "edit")) {
+            Map<String, Object> config = Map.of("endpoint", ("add".equals(action) ? "POST" : "PUT") + " /project/business",
+                    "titleTemplate", "商机：{name}", "displayFields", List.of(
+                            Map.of("field", "name", "label", "商机名称"), Map.of("field", "customerName", "label", "客户名称"),
+                            Map.of("field", "ownerUserName", "label", "商机负责人"), Map.of("field", "expectedAmount", "label", "预计金额")));
+            jdbc.update("UPDATE sys_module_action SET handler_key=?,config_json=?,update_time=CURRENT_TIMESTAMP WHERE module_id=340590 AND action_code=? AND status<>'2' AND (handler_key IS NULL OR TRIM(handler_key)='')",
+                    com.seal.oa.workflow.WorkflowApiRegistry.HANDLER, normalizedConfig(config), action);
+        }
+        jdbc.update("INSERT INTO sys_permission_migration(migration_key) VALUES (?)", key);
     }
 
     private void migrateGenericFollowup() {

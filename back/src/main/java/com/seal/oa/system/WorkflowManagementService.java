@@ -122,6 +122,35 @@ public class WorkflowManagementService {
         }
         List<Map<String, Object>> result = new ArrayList<>(buttons.values());
         for (Map<String, Object> row : result) finish(row);
+        for (Map<String, Object> catalog : rows("""
+                SELECT c.id AS workflow_id,c.module_id,c.flow_name,c.revision AS workflow_revision,
+                       c.approval_enabled,c.draft_data,c.draft_approval_enabled,c.create_time,
+                       c.update_time AS draft_update_time,d.process_data AS published_process,
+                       d.status AS process_status,d.update_time AS design_update_time
+                FROM oa_workflow_catalog c LEFT JOIN oa_process_design d ON d.id=c.id AND d.tenant_id=c.tenant_id
+                WHERE c.tenant_id=? ORDER BY c.create_time,c.id
+                """, tenant)) {
+            String id = text(catalog.get("workflowId"));
+            Map<String, Object> bound = result.stream().filter(row -> id.equals(text(row.get("processDesignId")))).findFirst().orElse(null);
+            boolean attached = bound != null;
+            Map<String, Object> seed = new LinkedHashMap<>();
+            seed.put("moduleId", catalog.get("moduleId"));
+            seed.put("moduleName", modules.getOrDefault(number(catalog.get("moduleId")), Map.of()).getOrDefault("moduleName", "所属模块已删除"));
+            seed.put("actionCode", "—"); seed.put("actionName", "未关联按钮");
+            seed.put("actionStatus", "0"); seed.put("flowDesignEnabled", true);
+            seed.put("handlerKey", "catalog");
+            Map<String, Object> row = attached ? new LinkedHashMap<>(bound) : button(seed, 1, modules);
+            if (attached) result.remove(bound);
+            row.putAll(catalog);
+            row.put("key", "catalog:" + id);
+            row.put("source", "catalog"); row.put("bound", attached);
+            row.put("processDesignId", id);
+            row.put("hasDraft", catalog.get("draftData") != null);
+            row.put("draftProcess", catalog.get("draftData"));
+            row.remove("draftData");
+            finish(row);
+            result.add(row);
+        }
         Map<String, String> formNames = new LinkedHashMap<>();
         List<Map<String, Object>> forms = rows("""
                 SELECT form_key,parent_key,form_type,flow_name,status,tenant_app_id,process_data,
@@ -189,12 +218,14 @@ public class WorkflowManagementService {
         boolean published = "published".equals(row.get("processStatus"));
         row.put("published", published);
         row.put("approvalEnabled", enabled(row.get("approvalEnabled")));
-        String state = !Boolean.TRUE.equals(row.get("moduleEnabled")) || !"0".equals(row.get("actionStatus")) || !enabled(row.get("flowDesignEnabled")) ? "closed"
+        String state = "catalog".equals(row.get("source")) && !Boolean.TRUE.equals(row.get("bound")) ? published ? "unbound" : "unpublished"
+                : !Boolean.TRUE.equals(row.get("moduleEnabled")) || !"0".equals(row.get("actionStatus")) || !enabled(row.get("flowDesignEnabled")) ? "closed"
                 : text(row.get("handlerKey")).isBlank() ? "integration"
                 : !published ? Boolean.TRUE.equals(row.get("hasDraft")) || !text(row.get("processDesignId")).isBlank() ? "unpublished" : "unconfigured"
                 : !enabled(row.get("approvalEnabled")) ? "disabled" : "active";
         row.put("state", state);
         row.put("stateLabel", switch (state) {
+            case "unbound" -> "待关联";
             case "closed" -> "已关闭";
             case "integration" -> "待接入";
             case "unpublished" -> "未发布";

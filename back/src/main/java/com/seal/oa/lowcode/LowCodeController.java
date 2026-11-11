@@ -8,6 +8,7 @@ import com.seal.oa.common.ApiResult;
 import com.seal.oa.common.JdbcMaps;
 import com.seal.oa.system.ModuleActionService;
 import com.seal.oa.system.SystemService;
+import com.seal.oa.system.WorkflowCatalogService;
 import com.seal.oa.web.ModuleActionRequirement;
 import com.seal.oa.web.RequiresAnyModuleAction;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,6 +40,7 @@ public class LowCodeController {
     private final ModuleFlowBindingService flowBindingService;
     private final ModuleActionService moduleActionService;
     private final SystemService systemService;
+    private final WorkflowCatalogService catalog;
 
     public LowCodeController(
             JdbcTemplate jdbc,
@@ -46,7 +48,8 @@ public class LowCodeController {
             LowCodeWorkflowService workflowService,
             ModuleFlowBindingService flowBindingService,
             ModuleActionService moduleActionService,
-            SystemService systemService
+            SystemService systemService,
+            WorkflowCatalogService catalog
     ) {
         this.jdbc = jdbc;
         this.objectMapper = objectMapper;
@@ -54,6 +57,7 @@ public class LowCodeController {
         this.flowBindingService = flowBindingService;
         this.moduleActionService = moduleActionService;
         this.systemService = systemService;
+        this.catalog = catalog;
     }
 
     @GetMapping("/workflow/roles")
@@ -256,6 +260,19 @@ public class LowCodeController {
         boolean approvalEnabled = bool(body.get("approvalEnabled"), true);
         if ("page".equals(actionCode)) throw new ApiException(400, "流程设计已调整到按钮级别，请选择具体按钮");
         requireDesignModule(menuId);
+        // Keep lock order consistent with catalog association before inspecting the binding.
+        jdbc.queryForList("SELECT module_id FROM sys_module WHERE module_id=? FOR UPDATE", menuId);
+        Map<String, Object> linked = flowBindingService.binding(tenantAppId, menuId, actionCode);
+        String linkedId = value(linked.get("processDesignId"), "");
+        String requested = value(body.get("_id"), "");
+        if (!requested.isBlank() && !requested.equals(linkedId)) throw new ApiException(409, "按钮流程关联已变化，请重新打开流程设计");
+        if (catalog.contains(linkedId)) {
+            moduleActionService.requireFlowDesign(menuId, actionCode);
+            catalog.save(linkedId, body);
+            Map<String, Object> result = ApiResult.ok(linkedId);
+            result.put("workflowRevision", catalog.designer(linkedId).get("workflowRevision"));
+            return result;
+        }
         jdbc.queryForList("SELECT action_code FROM sys_module_action WHERE module_id = ? AND action_code = ? FOR UPDATE",
                 menuId, actionCode);
         moduleActionService.requireFlowDesign(menuId, actionCode);
@@ -335,6 +352,14 @@ public class LowCodeController {
         }
         requireDesignModule(menuId);
         if (!"page".equals(actionCode)) moduleActionService.requireFlowDesign(menuId, actionCode);
+        Map<String, Object> linked = flowBindingService.binding(tenantAppId, menuId, actionCode);
+        String linkedId = value(linked.get("processDesignId"), "");
+        if (catalog.contains(linkedId)) {
+            Map<String, Object> result = ApiResult.ok();
+            result.putAll(catalog.designer(linkedId));
+            result.put("actionCode", actionCode);
+            return result;
+        }
         List<Map<String, Object>> rows = JdbcMaps.camelCase(jdbc.queryForList("""
                 SELECT d.id, d.process_data, d.menu_id, d.menu_name, d.update_time,
                        b.id AS binding_id, b.action_code, b.approval_enabled

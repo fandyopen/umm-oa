@@ -84,8 +84,11 @@
 </template>
 
 <script>
-import { addBusiness, getBusiness, listBusinessOwners, updateBusiness } from '/src/api/eos/business/business.js'
+import { getBusiness, listBusinessOwners } from '/src/api/eos/business/business.js'
 import { listCustomerOptions } from '/src/api/eos/crm/index.js'
+
+import { withModuleContexts } from '/src/utils/moduleContext.js'
+import { crmModules } from '/src/views/eos/crm/moduleContexts.js'
 
 const intents = ['高', '中', '低', '待评估']
 const statuses = ['推进中', '已赢单', '已输单']
@@ -111,6 +114,7 @@ function emptyForm() {
 
 export default {
   name: 'BusinessForm',
+  mixins: [withModuleContexts({ opportunity: crmModules.opportunity })],
   props: {
     isUpdate: { type: Boolean, default: false },
     updateRow: { type: Object, default: () => ({}) }
@@ -202,15 +206,15 @@ export default {
       this.$refs.form.validate(valid => {
         if (!valid) return
         this.saving = true
-        const action = this.isUpdate ? updateBusiness : addBusiness
-        action({
+        this.submitConfiguredAction(this.isUpdate ? 'edit' : 'add', {
           ...this.form,
           expectedCloseDate: this.form.expectedCloseDate || '',
           businessState: this.form.stage,
           remark: this.form.remark || this.form.requirement
-        })
-          .then(() => {
-            this.$message.success(this.isUpdate ? '商机已更新' : '商机已创建')
+        }, this.isUpdate ? '修改商机' : '新增商机')
+          .then(response => {
+            if (!response) return
+            this.$message.success(response.data?.status === 'pendingApproval' ? '商机已提交审批，通过后生效并通知负责人' : this.isUpdate ? '商机已更新' : '商机已创建')
             this.$emit('ok')
             this.$emit('close')
           })

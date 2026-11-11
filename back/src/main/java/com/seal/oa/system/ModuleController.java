@@ -31,15 +31,20 @@ public class ModuleController {
     private final ModuleService moduleService;
     private final SystemService systemService;
     private final ModuleActionService moduleActionService;
+    private final WorkflowCatalogService catalog;
+    private final org.springframework.jdbc.core.JdbcTemplate jdbc;
 
     public ModuleController(
             ModuleService moduleService,
             SystemService systemService,
-            ModuleActionService moduleActionService
+            ModuleActionService moduleActionService,
+            WorkflowCatalogService catalog,
+            org.springframework.jdbc.core.JdbcTemplate jdbc
     ) {
         this.moduleService = moduleService;
         this.systemService = systemService;
         this.moduleActionService = moduleActionService;
+        this.catalog = catalog; this.jdbc = jdbc;
     }
 
     @GetMapping("/list")
@@ -118,12 +123,13 @@ public class ModuleController {
     }
 
     @PutMapping("/{moduleId}/actions/{actionCode}")
+    @org.springframework.transaction.annotation.Transactional
     public Map<String, Object> updateAction(
             @PathVariable Long moduleId,
             @PathVariable String actionCode,
             @RequestBody Map<String, Object> body
     ) {
-        if (body.size() == 1 && body.containsKey("flowDesignEnabled")) {
+        if (!body.isEmpty() && Set.of("flowDesignEnabled", "workflowId", "workflowRevision", "expectedProcessId").containsAll(body.keySet())) {
             if (!canManageWorkflow(systemService.requireCurrentUser().userId())) {
                 throw new ApiException(403, "没有按钮流程配置权限");
             }
@@ -131,6 +137,10 @@ public class ModuleController {
             requireStructureManagement();
         }
         requireModule(moduleId);
+        jdbc.queryForList("SELECT module_id FROM sys_module WHERE module_id=? FOR UPDATE", moduleId);
+        // Associate before updating the action: both are atomic and lock module/catalog/action in that order.
+        if (body.containsKey("workflowId")) catalog.associate(String.valueOf(body.get("workflowId")), moduleId, actionCode,
+                body.get("expectedProcessId"), body.get("workflowRevision"));
         moduleActionService.updateAction(moduleId, actionCode, body);
         return ApiResult.ok();
     }

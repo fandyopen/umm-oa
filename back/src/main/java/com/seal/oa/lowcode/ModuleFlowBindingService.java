@@ -82,8 +82,9 @@ public class ModuleFlowBindingService {
                     INSERT INTO oa_module_action_flow (
                         tenant_id, tenant_app_id, module_id, action_code, process_design_id,
                         approval_enabled, create_by, create_time, update_time
-                    ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
+                    jdbc.queryForObject("SELECT tenant_id FROM sys_module WHERE module_id=?", Long.class, moduleId),
                     tenantAppId,
                     moduleId,
                     actionCode,

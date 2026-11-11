@@ -12,23 +12,23 @@
         </div>
       </div>
       <div class="publish-btn">
-        <el-button size="small" :loading="saving" :disabled="!selectedAction || !!loadError" @click="saveDraft">保存草稿</el-button>
-        <el-button type="primary" size="small" :loading="saving" :disabled="!selectedAction || !!loadError" @click="publish">发布</el-button>
+        <el-button size="small" :loading="saving" :disabled="(!catalogMode && !selectedAction) || !!loadError" @click="saveDraft">保存草稿</el-button>
+        <el-button type="primary" size="small" :loading="saving" :disabled="(!catalogMode && !selectedAction) || !!loadError" @click="publish">发布</el-button>
       </div>
     </header>
     <div class="workflow-actions">
-      <span class="workflow-actions__label"> {{ $route.query.menuName || '当前页面' }} · 按钮审批流程 </span>
-      <a-select :value="actionCode" show-search option-filter-prop="children" class="tw-w-[360px]" @change="handleActionChange">
+      <span class="workflow-actions__label"> {{ catalogMode ? mockData && mockData.flowName : ($route.query.menuName || '当前页面') + ' · 按钮审批流程' }} </span>
+      <a-select v-if="!catalogMode" :value="actionCode" show-search option-filter-prop="children" class="tw-w-[360px]" @change="handleActionChange">
         <a-select-option v-for="item in actionOptions" :key="item.code" :value="item.code"> {{ item.name }}（{{ item.code }}） </a-select-option>
       </a-select>
-      <span class="workflow-actions__label">当前动作编码：{{ actionCode }}</span>
-      <div v-if="selectedAction" class="workflow-actions__switch">
+      <span v-if="!catalogMode" class="workflow-actions__label">当前动作编码：{{ actionCode }}</span>
+      <div v-if="catalogMode || selectedAction" class="workflow-actions__switch">
         <span>启用审批</span>
         <a-switch v-model="approvalEnabled" size="small" />
       </div>
-      <a-button size="small" icon="setting" @click="openActionManager"> 修改按钮配置 </a-button>
+      <a-button v-if="!catalogMode" size="small" icon="setting" @click="openActionManager"> 修改按钮配置 </a-button>
     </div>
-    <a-alert v-if="loadError" class="workflow-action-warning" type="warning" show-icon :message="loadError" description="请返回模块管理，在对应按钮的修改页开启流程设计后进入。" />
+    <a-alert v-if="loadError" class="workflow-action-warning" type="warning" show-icon :message="loadError" :description="catalogMode ? '请返回审批流程页面重新打开。' : '请返回模块管理，在对应按钮的修改页开启流程设计后进入。'" />
     <a-alert v-if="selectedAction && !selectedAction.handlerKey" class="workflow-action-warning" type="warning" show-icon message="该按钮尚未接入业务执行器，可先设计并保存草稿；正式发布启用审批前须完成业务接入。" />
     <a-alert v-if="mockData && mockData.draft" class="workflow-action-warning" type="info" show-icon message="当前为未发布草稿；保存草稿不会改变已发布流程，发布后新申请使用新配置，进行中的审批不受影响。" />
     <div v-if="mockData" class="page__content">
@@ -41,6 +41,7 @@
 import Process from '../components/Process/index.vue'
 import { GET_MOCK_CONF } from '/src/api/processDesign/index.js'
 import { setProcess, detailProcess } from '/src/api/processDesign/index.js'
+import { getWorkflowCatalog, saveWorkflowCatalog } from '/src/api/system/workflow.js'
 import { getModuleActions } from '/src/api/system/menu.js'
 
 const beforeUnload = function (e) {
@@ -69,6 +70,7 @@ export default {
     }
   },
   computed: {
+    catalogMode() { return !!this.$route.query.workflowId },
     actionOptions() {
       return this.moduleActions.map(item => ({
         code: item.actionCode,
@@ -91,7 +93,7 @@ export default {
       return this.saveProcess(true)
     },
     async saveProcess(draft) {
-      if (this.saving || !this.selectedAction || this.loadError || !this.$refs.processDesign) return
+      if (this.saving || (!this.catalogMode && !this.selectedAction) || this.loadError || !this.$refs.processDesign) return
       this.saving = true
       const getCmpData = name => this.$refs[name].getData()
       const p3 = getCmpData('processDesign')
@@ -114,48 +116,19 @@ export default {
           this.saving = false
         })
     },
-    sendToServer(param) {
-      const { menuId, menuName, tenantAppId } = this.$route.query
-      const menuIdInt = parseInt(menuId)
-      const tenantAppIdInt = parseInt(tenantAppId)
-      // 为空新增
-      if (this._.isNil(this.mockData._id)) {
-        const data = {
-          tenantAppId: tenantAppIdInt,
-          menuId: menuIdInt,
-          menuName,
-          processData: param.processData,
-          actionCode: param.actionCode,
-          approvalEnabled: param.approvalEnabled,
-          draft: param.draft
-        }
-        return setProcess(data).then(res => {
-          if (res.code === 200) {
-            this.$message.success(param.draft ? '草稿已保存，已发布流程不受影响' : '发布成功')
-            if (param.draft) this.mockData.draft = true
-            else this.$router.go(-1)
-          }
-        })
-        // 否则修改
-      } else {
-        const data = {
-          tenantAppId: tenantAppIdInt,
-          menuId: menuIdInt,
-          menuName,
-          processData: param.processData,
-          actionCode: param.actionCode,
-          approvalEnabled: param.approvalEnabled,
-          draft: param.draft,
-          _id: this.mockData._id
-        }
-        return setProcess(data).then(res => {
-          if (res.code === 200) {
-            this.$message.success(param.draft ? '草稿已保存，已发布流程不受影响' : '发布成功')
-            if (param.draft) this.mockData.draft = true
-            else this.$router.go(-1)
-          }
-        })
+    async sendToServer(param) {
+      const { menuId, menuName, tenantAppId, workflowId } = this.$route.query
+      const data = {
+        ...param, tenantAppId: Number(tenantAppId) || 1, menuId: Number(menuId), menuName,
+        _id: this.mockData._id, workflowRevision: this.mockData.workflowRevision
       }
+      const response = this.catalogMode ? await saveWorkflowCatalog(workflowId, data) : await setProcess(data)
+      if (response.code !== 200) return
+      const revision = this.catalogMode ? response.data.workflowRevision : response.workflowRevision
+      if (revision !== undefined) this.$set(this.mockData, 'workflowRevision', revision)
+      this.$message.success(param.draft ? '草稿已保存，已发布流程不受影响' : '发布成功')
+      if (param.draft) this.$set(this.mockData, 'draft', true)
+      else this.$router.go(-1)
     },
     handleFormItem() {
       const { formItems: formItemsQuery, conditions } = this.$route.query
@@ -224,6 +197,15 @@ export default {
       this.moduleActions = []
       this.actionCode = actionCode || ''
       try {
+        if (this.catalogMode) {
+          const response = await getWorkflowCatalog(this.$route.query.workflowId)
+          const data = response.data
+          const template = data.processData ? {} : await GET_MOCK_CONF()
+          if (sequence !== this.loadSequence) return
+          this.mockData = { ...template, ...data }
+          this.approvalEnabled = data.approvalEnabled !== false
+          return
+        }
         const moduleId = Number(menuId)
         if (!Number.isSafeInteger(moduleId) || moduleId <= 0 || !actionCode || actionCode === 'page') {
           throw new Error('流程设计需要指定按钮，不再使用页面默认审批')
