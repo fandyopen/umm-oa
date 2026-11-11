@@ -14,6 +14,7 @@ const Vue = require('vue')
 const importSource = source => import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'))
 const { createModuleContextResolver, normalizeModuleContext } = await importSource(read('src/utils/moduleContextResolver.js'))
 const { withModuleActionGuards } = await importSource(read('src/utils/moduleActionGuard.js'))
+const { submitModuleWorkflowAction } = await importSource(read('src/utils/workflowActionSubmit.js'))
 const permissionSource = read('src/utils/modulePermission.js').replace(/^import .*$/gm, '')
 const { hasModuleAction } = await importSource('const getModuleActionConfiguration = () => null;\n' + permissionSource)
 const customer = 'eos/crm/customer/index'
@@ -21,16 +22,18 @@ const contract = 'eos/crm/contract/index'
 const fee = 'eos/crm/contract/fees'
 const context = (component, moduleId, perms = 'business:item:list') => ({ component, moduleId, perms, status: '0' })
 
-function environment(fetchModules, permissions = ['*:*:*'], routeMeta = {}, moduleMeta = null, bindings = { contract, customer, fee }, actions = {}, methods = {}) {
+function environment(fetchModules, permissions = ['*:*:*'], routeMeta = {}, moduleMeta = null, bindings = { contract, customer, fee }, actions = {}, methods = {}, execute = () => assert.fail('unexpected workflow submission')) {
   const source = read('src/utils/moduleContext.js')
     .replace(/^import .*$/gm, '')
     .replace(/export /g, '')
-  const api = new Function('Vue', 'resolveModuleContexts', 'hasModuleAction', 'createModuleContextResolver', 'withModuleActionGuards', source + '\nreturn { withModuleContexts, resetModuleContexts }')(
+  const api = new Function('Vue', 'resolveModuleContexts', 'hasModuleAction', 'createModuleContextResolver', 'withModuleActionGuards', 'executeWorkflowAction', 'submitModuleWorkflowAction', source + '\nreturn { withModuleContexts, resetModuleContexts }')(
     Vue,
     async selectors => ({ data: await fetchModules(selectors) }),
     hasModuleAction,
     createModuleContextResolver,
-    withModuleActionGuards
+    withModuleActionGuards,
+    execute,
+    submitModuleWorkflowAction
   )
   const messages = []
   const vm = new Vue({
@@ -54,6 +57,34 @@ function componentMethod(file, section, name, names, values) {
   const method = block.properties.find(node => node.key.name === name)
   return new Function(...names, 'return ({' + script.slice(method.start, method.end) + '}).' + name)(...values)
 }
+
+test('configured actions default to the owning form module even on a different module route', async () => {
+  const sent = []
+  const { vm } = environment(
+    async selectors => Object.fromEntries(selectors.map(component => [component, context(component, component === customer ? 12 : 13)])),
+    ['*:*:*'], context(contract, 13), null, { customer, contract }, {}, {},
+    async input => { sent.push(input); return { data: { status: 'pendingApproval' } } }
+  )
+  const response = await vm.submitConfiguredAction('track', { customerId: 7, content: '跟进内容' }, '保存跟进')
+  assert.equal(response.data.status, 'pendingApproval')
+  assert.equal(sent[0].moduleId, 12)
+  assert.equal(sent[0].actionCode, 'track')
+  assert.deepEqual(sent[0].payload, { customerId: 7, content: '跟进内容' })
+  assert.ok(sent[0].submissionKey)
+  await vm.submitConfiguredAction('submit', { contractId: 8 }, undefined, 'contract')
+  assert.equal(sent[1].moduleId, 13)
+  assert.equal(sent[1].actionCode, 'submit')
+  vm.$destroy()
+})
+
+test('owning module inference preserves button permission checks without dispatching denied actions', async () => {
+  const { vm, messages } = environment(
+    async () => ({ [customer]: context(customer, 12) }), [], {}, null, { customer }
+  )
+  assert.equal(await vm.submitConfiguredAction('track', { content: '保留内容' }, '保存跟进'), null)
+  assert.ok(messages.some(message => message.includes('没有该操作的权限')))
+  vm.$destroy()
+})
 
 test('normalization rejects missing, unrelated, disabled and invalid identifiers', () => {
   for (const value of [null, {}, context(customer, 4), ...[0, 'bad', 1.5, true, [], '', '0x10', '1e3'].map(id => context(contract, id)), { ...context(contract, 3), status: '1' }]) {
@@ -199,40 +230,32 @@ test('prefetch failure never displays a page-wide notification', async () => {
 })
 
 test('HR workflow dispatch uses the passed module context even on another route', async () => {
-  let body
-  const executeAction = componentMethod(
-    'src/views/enterprise/components/memberElement/index.vue',
-    'methods',
-    'executeAction',
-    ['executeWorkflowAction', 'hasModuleAction'],
-    [
-      async input => {
-        body = input
-      },
-      hasModuleAction
-    ]
-  )
-  const vm = {
-    moduleMeta: context('enterprise/hr/index', 934567),
-    $route: { meta: context(customer, 999999) },
-    $store: { getters: { permissions: ['module:934567:transfer'] } },
-    $message: { error: () => assert.fail('unexpected error') }
+  const dispatch = componentMethod('src/views/enterprise/components/memberElement/index.vue', 'methods', 'submitConfiguredAction', [], [])
+  for (const owner of ['enterprise/hr/index', 'enterprise/Contacts/contactsOp']) {
+    const sent = []
+    const { vm } = environment(async () => ({}), ['module:934567:transfer'], context(customer, 999999), { moduleId: 934567, perms: 'members:list' }, { members: { component: owner, label: '成员' } }, {}, {}, async input => {
+      sent.push(input)
+      return { data: { status: 'completed' } }
+    })
+    const response = await dispatch.call({ configuredActionSubmitter: vm.submitConfiguredAction }, 'transfer', { userIds: [7], deptId: 8 }, '调整部门')
+    assert.equal(response.data.status, 'completed')
+    assert.equal(sent[0].moduleId, 934567)
+    assert.equal(sent[0].actionCode, 'transfer')
+    assert.deepEqual(sent[0].payload, { userIds: [7], deptId: 8 })
+    assert.ok(read('src/views/' + owner + '.vue').includes(':configured-action-submitter="submitConfiguredAction"'))
+    vm.$destroy()
   }
-  await executeAction.call(vm, 'transfer', { userIds: [7], deptId: 8 })
-  assert.deepEqual(body, { moduleId: 934567, actionCode: 'transfer', payload: { userIds: [7], deptId: 8 } })
 })
 
 test('HR cannot send an action without resolved metadata or granted permission', async () => {
-  const executeAction = componentMethod(
-    'src/views/enterprise/components/memberElement/index.vue',
-    'methods',
-    'executeAction',
-    ['executeWorkflowAction', 'hasModuleAction'],
-    [() => assert.fail('unexpected dispatch'), hasModuleAction]
-  )
+  const dispatch = componentMethod('src/views/enterprise/components/memberElement/index.vue', 'methods', 'submitConfiguredAction', [], [])
+  const warnings = []
+  assert.equal(await dispatch.call({ $message: { warning: text => warnings.push(text) } }, 'invite', {}), null)
+  assert.equal(warnings.length, 1)
   for (const moduleMeta of [null, context('enterprise/hr/index', 934567)]) {
-    const vm = { moduleMeta, $store: { getters: { permissions: [] } }, $message: { error() {} } }
-    await assert.rejects(executeAction.call(vm, 'invite', {}), /业务模块不可用/)
+    const { vm } = environment(async () => ({}), [], {}, moduleMeta, { members: { component: 'enterprise/hr/index', label: '人事成员' } })
+    assert.equal(await dispatch.call({ configuredActionSubmitter: vm.submitConfiguredAction }, 'invite', {}, '邀请成员'), null)
+    vm.$destroy()
   }
 })
 
@@ -551,8 +574,6 @@ test('all declared business action checks map to existing methods and module dep
       const args =
         name === 'startAction'
           ? ['submit']
-          : name === 'executeAction'
-          ? ['invite']
           : name === 'confirmAction'
           ? ['revision', '创建新版本']
           : name === 'handleTabChange'

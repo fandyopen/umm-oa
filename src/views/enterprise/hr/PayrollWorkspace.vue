@@ -159,7 +159,6 @@
 </template>
 <script>
 import { withModuleContexts } from '/src/utils/moduleContext.js'
-import { executeWorkflowAction } from '/src/api/workflow/action.js'
 import { hr } from '/src/api/enterprise/hr.js'
 import HrTemplateDownloads from '/src/components/HrTemplateDownloads/index.vue'
 import { payrollReportEntries, payrollSummary } from './reports.js'
@@ -370,8 +369,8 @@ export default {
       await this.action('accounts')
     },
     async submit() {
-      if (!(await this.guard('submit', '提交工资审批'))) return
-      await executeWorkflowAction({ moduleId: this.moduleContexts.payroll.moduleId, actionCode: 'submit', payload: { payrollId: this.detail.id, revision: this.detail.revision, title: this.detail.period + '工资审批' } })
+      const response = await this.submitConfiguredAction('submit', { payrollId: this.detail.id, revision: this.detail.revision, title: this.detail.period + '工资审批' }, '提交工资审批')
+      if (!response) return
       this.$message.success('已按配置提交审批或批准')
       await this.open(this.detail.id)
       this.load()

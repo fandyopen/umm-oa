@@ -29,6 +29,7 @@ class GenericWorkflowIntegrationTest {
     @Autowired JdbcTemplate jdbc;
     @Autowired ModuleActionService actions;
     @Autowired WorkflowApiRegistry registry;
+    @Autowired com.seal.oa.oa.CustomerFollowupReminderService customerReminders;
     String token;
     long applicantId;
     static final long CUSTOMER = 99881;
@@ -86,12 +87,48 @@ class GenericWorkflowIntegrationTest {
         assertFollowups(1);
     }
 
+    @Test void approvalListsKeepFrozenTitlesAndDisplayFieldsAfterConfigurationChanges() throws Exception {
+        publish("track", true);
+        JsonNode submitted = submit("track", followupPayload("提交时的沟通内容"), "frozen_display_001", 200);
+        long requestId = submitted.path("requestId").asLong();
+        var changed = new java.util.LinkedHashMap<>(followupConfig());
+        changed.put("titleTemplate", "之后修改的标题");
+        changed.put("displayFields", List.of(Map.of("field", "nextPlan", "label", "之后修改的展示字段")));
+        configure("track", changed);
+        String reviewer = login("17600000001");
+        for (String endpoint : List.of("taskWaitList", "taskDoneList")) {
+            JsonNode response = read(mvc.perform(get("/project/activity/" + endpoint).param("pageSize", "100")
+                            .header("Authorization", "Bearer " + reviewer))
+                    .andExpect(jsonPath("$.code").value(200)).andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8));
+            JsonNode task = java.util.stream.StreamSupport.stream(response.path("rows").spliterator(), false)
+                    .filter(row -> row.path("formId").asLong() == requestId && "workflowAction".equals(row.path("businessType").asText()))
+                    .findFirst().orElseThrow();
+            assertEquals(submitted.path("title").asText(), task.path("form").path("title").asText());
+            assertEquals(submitted.path("title").asText(), task.path("data").path("title").asText());
+            assertEquals("沟通内容", task.path("form").path("_workflowDisplay").get(0).path("label").asText());
+            assertEquals("提交时的沟通内容", task.path("form").path("_workflowDisplay").get(0).path("value").asText());
+            if ("taskWaitList".equals(endpoint)) complete(submitted, true, 200);
+        }
+    }
+
     @Test void rejectedSubmissionDoesNotWriteBusinessData() throws Exception {
         publish("track", true);
         JsonNode submitted = submit("track", followupPayload("退回内容"), "reject_save_0001", 200);
         complete(submitted, false, 200);
         assertFollowups(0);
         assertEquals("rejected", jdbc.queryForObject("SELECT status FROM oa_workflow_request WHERE id=?", String.class, submitted.path("requestId").asLong()));
+    }
+
+    @Test void customerReminderCompletesOnlyWhenApprovedFollowupIsActuallySaved() throws Exception {
+        customerReminders.synchronizeCustomer(CUSTOMER);
+        assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM oa_todo WHERE business_type='crmCustomerFollowup' AND business_id=? AND status='todo'", Integer.class, CUSTOMER));
+        publish("track", true);
+        JsonNode submitted = submit("track", followupPayload("审批完成实际跟进"), "customer_reminder_01", 200);
+        assertEquals("pendingApproval", submitted.path("status").asText());
+        assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM oa_todo WHERE business_type='crmCustomerFollowup' AND business_id=? AND status='todo'", Integer.class, CUSTOMER));
+        complete(submitted, true, 200);
+        assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM oa_todo WHERE business_type='crmCustomerFollowup' AND business_id=? AND status='todo'", Integer.class, CUSTOMER));
+        assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM oa_todo WHERE business_type='crmCustomerFollowup' AND business_id=? AND status='done'", Integer.class, CUSTOMER));
     }
 
     @Test void approvalDrawerCanReadHistoryAndProgressBeforeAndAfterApproval() throws Exception {

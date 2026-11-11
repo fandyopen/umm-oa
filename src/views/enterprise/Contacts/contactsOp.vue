@@ -115,6 +115,7 @@
       <!-- 成员 -->
       <div class="layout-content" v-if="gvalue === '组织架构'">
         <MemberElement
+          :configured-action-submitter="submitConfiguredAction"
           :module-action-guard="checkModuleAction"
           :module-action-visible="showModuleAction"
           :module-meta="moduleContexts.members"

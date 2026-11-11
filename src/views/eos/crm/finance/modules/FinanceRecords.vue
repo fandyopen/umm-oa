@@ -160,7 +160,6 @@
 import storage from 'store'
 import { ACCESS_TOKEN } from '/src/store/mutation-types.js'
 import { withModuleContexts } from '/src/utils/moduleContext.js'
-import { executeWorkflowAction } from '/src/api/workflow/action.js'
 import { handleProcessHistory } from '/src/views/eos/config/busUtil.js'
 import { today } from '../../contract/shared.js'
 import FinanceRecordHistory from './FinanceRecordHistory.vue'
@@ -407,7 +406,8 @@ export default {
     },
     async submitWorkflow(r) {
       const action = this.submitAction(r)
-      const response = await executeWorkflowAction({ moduleId: this.moduleContexts.finance.moduleId, actionCode: action, payload: { recordId: r.id, revision: r.revision } })
+      const response = await this.submitConfiguredAction(action, { recordId: r.id, revision: r.revision }, '提交财务单据')
+      if (!response) return
       this.$message.success(response.data?.status === 'pendingApproval' ? '审批申请已提交' : this.needsApproval(r) ? '已确认，请登记实际办理结果' : '财务记录已确认')
       await this.changed()
     },

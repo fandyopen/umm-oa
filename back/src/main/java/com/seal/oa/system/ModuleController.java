@@ -22,6 +22,7 @@ import java.util.Set;
 @RestController
 @RequestMapping("/system/module")
 @RequiresAnyModuleAction({
+        @ModuleActionRequirement(moduleId = 340773L, action = "design"),
         @ModuleActionRequirement(moduleId = 340771L, action = "access"),
         @ModuleActionRequirement(moduleId = 340772L, action = "access")
 })
@@ -173,7 +174,8 @@ public class ModuleController {
     }
 
     private boolean canManageWorkflow(Long userId) {
-        return systemService.hasModuleAction(userId, 340772L, "manage")
+        return systemService.hasModuleAction(userId, 340773L, "design")
+                || systemService.hasModuleAction(userId, 340772L, "manage")
                 || systemService.hasModuleAction(userId, 340772L, "workflow")
                 || systemService.hasModuleAction(userId, 340771L, "manage");
     }

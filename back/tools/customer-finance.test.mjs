@@ -7,6 +7,7 @@ import { financeRecordTypes, financeStatuses, financeStatusColors, financeMoney,
 
 const Vue = createRequire(import.meta.url)('vue')
 const read = file => fs.readFileSync(new URL('../../' + file, import.meta.url), 'utf8')
+const { followupDisplayFields, formatApprovalValue } = await import('data:text/javascript;base64,' + Buffer.from(read('src/utils/workflowApproval.js')).toString('base64'))
 const base = 'src/views/eos/crm/finance/'
 
 function component(file, props = {}, overrides = {}) {
@@ -25,6 +26,7 @@ function component(file, props = {}, overrides = {}) {
     financeRecordAction: async (...args) => { requests.push(args) },
     createCollection: async data => { requests.push(data) },
     SDescriptions: {}, HrApprovalDetail: {}, ContractDetail: {}, normalizeContractId: value => Number(value) || null,
+    followupDisplayFields, formatApprovalValue,
     getFinanceReport: async () => ({ data: {} }), exportFinanceRows: async () => ({ data: [] }),
     XLSX: { utils: { book_new: () => ({}), json_to_sheet: rows => rows, book_append_sheet: () => {} }, write: () => [] },
     saveAs: () => {},

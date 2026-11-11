@@ -43,17 +43,20 @@ public class BusinessQueryController {
     private final DataScopeService dataScopeService;
     private final JdbcTemplate jdbc;
     private final ObjectMapper objectMapper;
+    private final BusinessFollowupReminderService followupReminders;
 
     public BusinessQueryController(
             ParityRecordService parityRecords,
             DataScopeService dataScopeService,
             JdbcTemplate jdbc,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            BusinessFollowupReminderService followupReminders
     ) {
         this.parityRecords = parityRecords;
         this.dataScopeService = dataScopeService;
         this.jdbc = jdbc;
         this.objectMapper = objectMapper;
+        this.followupReminders = followupReminders;
     }
 
     @GetMapping("/list")
@@ -119,12 +122,19 @@ public class BusinessQueryController {
     }
 
     @PostMapping
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     @RequiresModuleAction(moduleId = 340590L, action = "add")
     public Map<String, Object> create(@RequestBody Map<String, Object> body) {
-        long id = parityRecords.rows(MODULE).stream()
+        // 商机使用兼容业务编号；串行分配，防止并发新建共用编号并串发负责人待办。
+        jdbc.queryForList("SELECT module_id FROM sys_module WHERE module_id = ? FOR UPDATE", 340590L);
+        long lastRecordId = parityRecords.rows(MODULE).stream()
                 .map(row -> number(row.get("id"), 0L))
                 .max(Long::compareTo)
-                .orElse(0L) + 1L;
+                .orElse(0L);
+        Long lastReminderId = jdbc.queryForObject("SELECT MAX(business_id) FROM oa_todo WHERE business_type = ?",
+                Long.class, BusinessFollowupReminderService.BUSINESS_TYPE);
+        // 删除后的商机编号仍被待办历史引用，不能复用给另一条商机。
+        long id = Math.max(lastRecordId, lastReminderId == null ? 0L : lastReminderId) + 1L;
         Map<String, Object> payload = new LinkedHashMap<>(body);
         payload.put("id", id);
         payload.putIfAbsent("code", "SJ-" + LocalDateTime.now()
@@ -141,6 +151,7 @@ public class BusinessQueryController {
                 "attachment", ""
         )));
         insertRecord(payload);
+        followupReminders.synchronize(payload);
         return ApiResult.ok(id);
     }
 
@@ -165,17 +176,20 @@ public class BusinessQueryController {
         assignSalesOwner(existing);
         existing.put("id", id);
         replaceRecord(id, existing);
+        followupReminders.synchronize(existing);
         return ApiResult.ok(id);
     }
 
     @DeleteMapping("/{id}")
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     @RequiresModuleAction(moduleId = 340590L, action = "remove")
     public Map<String, Object> delete(@PathVariable String id) {
-        requireAccessibleOpportunity(id);
+        lockOpportunity(number(id, 0L));
         jdbc.update("""
                 DELETE FROM biz_record
                 WHERE module = ? AND (business_key = ? OR payload_json LIKE ?)
                 """, MODULE, MODULE + ":" + id, "%\"id\":" + id + ",%");
+        followupReminders.cancel(number(id, 0L));
         return ApiResult.ok();
     }
 
@@ -220,6 +234,7 @@ public class BusinessQueryController {
         opportunity.put("stage", target);
         opportunity.put("businessState", target);
         replaceRecord(number(opportunity.get("id"), 0L), opportunity);
+        followupReminders.synchronize(opportunity);
         return ApiResult.ok();
     }
 

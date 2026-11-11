@@ -53,6 +53,7 @@ public class ModuleActionService {
     );
 
     private static final Map<Long, List<ActionDefinition>> MODULE_ACTIONS = Map.ofEntries(
+            Map.entry(340773L, List.of(new ActionDefinition("design", "流程设计"))),
             Map.entry(341002L, List.of(EDIT, EXPORT, new ActionDefinition("salary_view", "查看薪资与发薪账户"), new ActionDefinition("salary_manage", "维护薪资与发薪账户"), new ActionDefinition("salary_submit", "提交定薪调薪", "hr.salary.submit"), new ActionDefinition("approve", "审批薪资标准"))),
             Map.entry(341003L, List.of(EDIT, EXPORT, new ActionDefinition("submit", "提交人事异动", "hr.change.submit"), new ActionDefinition("approve", "审批人事异动"), new ActionDefinition("handover", "办理离职交接"))),
             Map.entry(341004L, List.of(EXPORT, new ActionDefinition("import", "导入钉钉考勤"), new ActionDefinition("confirm", "确认考勤"))),
@@ -163,6 +164,7 @@ public class ModuleActionService {
         for(Long financeRole:jdbc.queryForList("SELECT DISTINCT role_id FROM sys_role_module_action WHERE module_id=341400 AND action_code='refund_pay'",Long.class))
             applyDefaultRoleActions("hr_finance_pay_"+financeRole+"_v1",financeRole,341409L,List.of("pay","export"));
         migrateWorkflowAdministration();
+        migrateWorkflowOverview();
         migrateContractNavigation();
         migrateContractSigning();
         migrateGenericFollowup();
@@ -692,6 +694,26 @@ public class ModuleActionService {
                       OR EXISTS (SELECT 1 FROM oa_module_action_flow b
                         WHERE b.module_id = a.module_id AND b.action_code = a.action_code))
                     THEN 1 ELSE 0 END
+                """);
+        jdbc.update("INSERT INTO sys_permission_migration (migration_key) VALUES (?)", key);
+    }
+
+    private void migrateWorkflowOverview() {
+        String key = "workflow_configuration_overview_v1";
+        if (migrationApplied(key)) return;
+        jdbc.update("""
+                INSERT INTO sys_role_module (role_id,module_id)
+                SELECT DISTINCT source.role_id,340773 FROM sys_role_module source
+                WHERE source.module_id IN (340771,340772) AND NOT EXISTS (
+                    SELECT 1 FROM sys_role_module target WHERE target.role_id=source.role_id AND target.module_id=340773)
+                """);
+        jdbc.update("""
+                INSERT INTO sys_role_module_action (role_id,module_id,action_code)
+                SELECT DISTINCT source.role_id,340773,'design' FROM sys_role_module_action source
+                WHERE ((source.module_id=340772 AND source.action_code IN ('manage','workflow'))
+                    OR (source.module_id=340771 AND source.action_code='manage')) AND NOT EXISTS (
+                    SELECT 1 FROM sys_role_module_action target
+                    WHERE target.role_id=source.role_id AND target.module_id=340773 AND target.action_code='design')
                 """);
         jdbc.update("INSERT INTO sys_permission_migration (migration_key) VALUES (?)", key);
     }

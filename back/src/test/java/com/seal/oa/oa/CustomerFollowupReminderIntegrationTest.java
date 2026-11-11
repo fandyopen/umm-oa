@@ -17,8 +17,6 @@ import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.nio.charset.StandardCharsets;
-import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -45,7 +43,6 @@ class CustomerFollowupReminderIntegrationTest {
     String leader;
     String member;
     String peer;
-    final LocalDate today = LocalDate.now(ZoneId.of("Asia/Shanghai"));
 
     @BeforeEach
     void setup() throws Exception {
@@ -87,29 +84,50 @@ class CustomerFollowupReminderIntegrationTest {
     }
 
     @Test
-    void savesSchedulerAndRestartsDoNotDuplicateSameDayButNextDayCreatesOne() throws Exception {
+    void savesRestartsAndLaterDaysKeepOnePendingReminderAndOriginalPushTime() throws Exception {
         long id = create(9702);
+        jdbc.update("UPDATE oa_todo SET create_time='2026-01-01 10:00:00' WHERE business_type=? AND business_id=?",
+                CustomerFollowupReminderService.BUSINESS_TYPE, id);
+        var pushed = jdbc.queryForObject("SELECT create_time FROM oa_todo WHERE business_type = ? AND business_id = ?", java.sql.Timestamp.class, CustomerFollowupReminderService.BUSINESS_TYPE, id);
         Map<String, Object> body = customerBody(9702);
         body.put("id", id);
         call(admin, put("/project/merchant"), body, 200);
-        reminders.synchronizeCustomer(id, today);
-        reminders.generateDailyReminders();
-        reminders.generateDailyReminders();
+        reminders.synchronizeCustomer(id);
+        reminders.reconcilePendingReminders();
+        reminders.reconcilePendingReminders();
         assertEquals(1, count(id, "todo"));
-        reminders.synchronizeCustomer(id, today.plusDays(1));
-        reminders.synchronizeCustomer(id, today.plusDays(1));
-        assertEquals(2, count(id, "todo"));
+        reminders.synchronizeCustomer(id);
+        reminders.synchronizeCustomer(id);
+        assertEquals(1, count(id, "todo"));
+        assertEquals(pushed, jdbc.queryForObject("SELECT create_time FROM oa_todo WHERE business_type = ? AND business_id = ?", java.sql.Timestamp.class, CustomerFollowupReminderService.BUSINESS_TYPE, id));
     }
 
     @Test
-    void followupCompletesAllDailyTasksAndStopsFurtherReminders() throws Exception {
+    void legacyDailyDuplicatesAreConsolidatedAndTransferBackCreatesAFreshTask() throws Exception {
         long id = create(9702);
-        reminders.synchronizeCustomer(id, today.plusDays(1));
+        String originalTask = tasks(member, id).get(0).path("taskId").asText();
+        jdbc.update("""
+                INSERT INTO oa_todo(user_id, title, business_type, business_id, task_id, status)
+                VALUES (9702, '旧版每日提醒', ?, ?, 'legacy-daily-task', 'todo')
+                """, CustomerFollowupReminderService.BUSINESS_TYPE, id);
+        reminders.reconcilePendingReminders();
+        assertEquals(1, count(id, "todo"));
+        assertEquals(originalTask, tasks(member, id).get(0).path("taskId").asText());
+        call(admin, post("/project/merchant/" + id + "/assign"), Map.of("ownerUserId", 9703), 200);
+        call(admin, post("/project/merchant/" + id + "/assign"), Map.of("ownerUserId", 9702), 200);
+        assertEquals(1, count(id, "todo"));
+        assertNotEquals(originalTask, tasks(member, id).get(0).path("taskId").asText());
+    }
+
+    @Test
+    void followupCompletesPendingTaskAndStopsFurtherReminders() throws Exception {
+        long id = create(9702);
+        reminders.synchronizeCustomer(id);
         followup(member, id, "2026-11-01 10:00:00");
         assertEquals(0, count(id, "todo"));
-        assertEquals(2, count(id, "done"));
-        reminders.synchronizeCustomer(id, today.plusDays(2));
-        assertEquals(2, count(id, null));
+        assertEquals(1, count(id, "done"));
+        reminders.synchronizeCustomer(id);
+        assertEquals(1, count(id, null));
         assertEquals(0, tasks(member, id).size());
         JsonNode done = call(member, get("/project/activity/taskDoneList"), null, 200).path("rows");
         assertTrue(StreamSupport.stream(done.spliterator(), false).anyMatch(row -> row.path("form").path("customerId").asLong() == id));
@@ -145,7 +163,7 @@ class CustomerFollowupReminderIntegrationTest {
         long id = create(9702);
         call(admin, post("/project/merchant/" + id + "/release"), null, 200);
         assertEquals(0, count(id, "todo"));
-        reminders.synchronizeCustomer(id, today.plusDays(1));
+        reminders.synchronizeCustomer(id);
         assertEquals(1, count(id, null));
         call(member, post("/project/merchant/" + id + "/claim"), null, 200);
         assertEquals(1, count(id, "todo"));
@@ -160,12 +178,12 @@ class CustomerFollowupReminderIntegrationTest {
     void inactiveOwnerAndDisabledCustomerDoNotReceiveNewReminders() throws Exception {
         long id = create(9702);
         jdbc.update("UPDATE sys_user SET status = '1' WHERE user_id = 9702");
-        reminders.synchronizeCustomer(id, today.plusDays(1));
+        reminders.synchronizeCustomer(id);
         assertEquals(0, count(id, "todo"));
         jdbc.update("UPDATE sys_user SET status = '0' WHERE user_id = 9702");
         jdbc.update("UPDATE oa_merchant SET cooperation_status = '合作中' WHERE id = ?", id);
         call(admin, delete("/project/merchant/" + id), null, 200);
-        reminders.synchronizeCustomer(id, today.plusDays(2));
+        reminders.synchronizeCustomer(id);
         assertEquals(1, count(id, null));
     }
 
@@ -184,7 +202,8 @@ class CustomerFollowupReminderIntegrationTest {
         assertTrue(call(member, get("/project/merchant/" + id), null, 200).path("data").path("lastFollowupTime").asText().startsWith("2026-11-01"));
         call(member, delete("/project/merchant/followup/" + records.get(1)), null, 200);
         assertEquals(1, count(id, "todo"));
-        assertEquals(1, count(id, null));
+        assertEquals(1, count(id, "done"));
+        assertEquals(2, count(id, null));
     }
 
     @Test
@@ -233,7 +252,7 @@ class CustomerFollowupReminderIntegrationTest {
     }
 
     @Test
-    void concurrentSchedulerInvocationsCreateOnlyOneReminder() throws Exception {
+    void concurrentSynchronizationsCreateOnlyOneReminder() throws Exception {
         TransactionTemplate independent = new TransactionTemplate(transactionManager);
         independent.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         String serial = "CONCURRENT-" + java.util.UUID.randomUUID();
@@ -248,7 +267,7 @@ class CustomerFollowupReminderIntegrationTest {
                     CompletableFuture.runAsync(() -> {
                         try {
                             start.await();
-                            reminders.synchronizeCustomer(id, today);
+                            reminders.synchronizeCustomer(id);
                         } catch (InterruptedException exception) {
                             Thread.currentThread().interrupt();
                             throw new IllegalStateException(exception);
@@ -271,7 +290,7 @@ class CustomerFollowupReminderIntegrationTest {
         Map<String, Object> body = customerBody(9702);
         body.put("lastFollowupTime", "2026-11-01 10:00:00");
         long id = call(admin, post("/project/merchant"), body, 200).path("data").asLong();
-        reminders.synchronizeCustomer(id, today.plusDays(1));
+        reminders.synchronizeCustomer(id);
         assertEquals(0, count(id, null));
     }
 

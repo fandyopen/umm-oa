@@ -1,14 +1,25 @@
 <template>
   <div>
-    <component :is="detailCompName" :row="row" :formId="formId" :formKey="formKey" :todo-item="todoItem" @changed="handleGetList" @close="handleClose" />
-    <template v-if="!['crmRisk', 'crmContractApproval', 'crmCustomerFollowup'].includes(todoItem.businessType)">
-      <a-divider>审批意见</a-divider>
-      <view-verify :isOnlyShowProcess="isOnlyShowProcess" :isShowReApply="false" :todoItem="todoItem" :allowDelegate="!(todoItem.businessType === 'workflowAction' && row && row.contractId)" @getList="handleGetList" @delegateTask="handleDelegateTask" @close="handleClose" />
+    <template v-if="isApplication">
+      <a-descriptions title="申请信息" bordered :column="{ xs: 1, sm: 2 }" size="small" class="approval-summary">
+        <a-descriptions-item label="申请事项" :span="2">{{ detailRow.title || todoItem.processName || '—' }}</a-descriptions-item>
+        <a-descriptions-item label="发起人">{{ todoItem.applyUserName || '—' }}</a-descriptions-item>
+        <a-descriptions-item label="推送时间">{{ pushTime }}</a-descriptions-item>
+        <a-descriptions-item label="当前节点" :span="2">{{ todoItem.taskName || '—' }}</a-descriptions-item>
+      </a-descriptions>
+      <a-alert v-if="todoItem.businessType === 'workflowAction'" type="info" show-icon message="以下为本次提交时保存的申请内容，后续修改按钮配置不会改变本次申请。" class="approval-snapshot-hint" />
+    </template>
+    <component :is="detailCompName" :row="detailRow" :formId="formId" :formKey="formKey" :todo-item="todoItem" @changed="handleGetList" @close="handleClose" />
+    <template v-if="!['crmRisk', 'crmContractApproval', 'crmCustomerFollowup', 'crmOpportunityFollowup'].includes(todoItem.businessType)">
+      <a-divider>流程记录与审批</a-divider>
+      <view-verify :isOnlyShowProcess="isOnlyShowProcess" :isShowReApply="false" :todoItem="todoItem" :allowDelegate="!(todoItem.businessType === 'workflowAction' && detailRow.contractId)" @getList="handleGetList" @delegateTask="handleDelegateTask" @close="handleClose" />
     </template>
   </div>
 </template>
 
 <script>
+import moment from 'moment'
+import { approvalPayload } from '/src/utils/workflowApproval.js'
 import ViewVerify from '/src/components/Activiti/ViewVerify/index.vue'
 import UserSelect from '/src/components/Activiti/UserSelect'
 import LowCodeTodoDetail from '/src/views/lowCode/todoDetail.vue'
@@ -50,6 +61,18 @@ export default {
     WorkflowActionTodoDetail,
     CrmTodoDetail
   },
+  computed: {
+    isApplication() {
+      return ['workflowAction', 'lowcode'].includes(this.todoItem.businessType)
+    },
+    detailRow() {
+      return this.isApplication ? approvalPayload(this.todoItem, this.row) : this.row
+    },
+    pushTime() {
+      const time = this.todoItem.createTime ? moment(this.todoItem.createTime) : null
+      return time && time.isValid() ? time.format('YYYY-MM-DD HH:mm:ss') : '—'
+    }
+  },
   methods: {
     handleGetList() {
       this.$emit('getList')
@@ -90,3 +113,8 @@ export default {
   }
 }
 </script>
+
+<style scoped>
+.approval-summary { margin-bottom: 16px; }
+.approval-snapshot-hint { margin-bottom: 16px; }
+</style>

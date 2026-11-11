@@ -800,6 +800,7 @@ export default {
       this.saving = true
       try {
         const r = await this.formSave(body)
+        if (r === null || r === false) return
         this.formVisible = false
         this.$message.success(r && r.data && r.data.status === 'pendingApproval' ? '已提交审批，请在我的发起跟踪' : '保存成功')
         await this.load()
@@ -874,12 +875,14 @@ export default {
     async runAction(action, d = this.detail) {
       if (!(await this.allowedAction(action.permission))) return
       const id = d.id
-      const base = recordPath(this.kind, id)
+      const module = this.kind
+      const base = recordPath(module, id)
       const initial = { ...d, reason: '', ownerUserId: d.ownerUserId || d.consultantId, followupRequired: false, collaborators: d.collaborators || [] }
+      const request = (name, payload) => this.submitConfiguredAction(name, { ...payload, entityId: id, title: '招聘申请：' + name + ' #' + id }, action.label, module)
       const post =
-        (name, extra = {}, request = false) =>
+        (name, extra = {}, approval = false) =>
         b =>
-          api(base + (request ? '/requests/' : '/actions/') + name, 'post', { revision: d.revision, ...extra, ...b })
+          approval ? request(name, { revision: d.revision, ...extra, ...b }) : api(base + '/actions/' + name, 'post', { revision: d.revision, ...extra, ...b })
       const simple = (fields, save, hint = '') => this.form(action.label, [...fields, reasonField], initial, save, hint)
       switch (action.key) {
         case 'edit':
@@ -895,7 +898,7 @@ export default {
             '申请职位变更',
             [...jobFields(this.options).filter(f => !['customerId', 'ownerUserId', 'collaborators', 'cycleDays', 'minRecommendations', 'feedbackDays'].includes(f.key)), reasonField],
             initial,
-            b => api(base + '/requests/change', 'post', { revision: d.revision, reason: b.reason, fields: b }),
+            b => request('change', { revision: d.revision, reason: b.reason, fields: b }),
             '审批期间原需求继续生效；最终通过后保存新的需求版本。'
           )
         case 'assign':
@@ -1116,7 +1119,7 @@ export default {
         '归属争议：申请转交',
         [field('collaborators', '转交后协作人', 'multiple', { options: optionRows(this.options.users) }), reasonField],
         { collaborators: d.collaborators || [] },
-        b => api(recordPath('talents', d.id) + '/requests/handover', 'post', { ...b, ownerUserId: dispute.proposedOwnerId, disputeId: dispute.id, revision: d.revision }),
+        b => this.submitConfiguredAction('handover', { ...b, ownerUserId: dispute.proposedOwnerId, disputeId: dispute.id, revision: d.revision, entityId: d.id, title: '招聘申请：handover #' + d.id }, '归属争议：申请转交', 'talents'),
         '拟归属人：' + dispute.proposedOwnerName + '。仅已发布并启用的流程进入审批，最终执行成功后自动结案争议。'
       )
     },

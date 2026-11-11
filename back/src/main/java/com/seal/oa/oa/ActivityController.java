@@ -93,6 +93,9 @@ public class ActivityController {
         if (protectedTypes.contains(CustomerFollowupReminderService.BUSINESS_TYPE)) {
             throw new ApiException(409, "请进入客户列表新增跟进，跟进保存成功后待办自动完成");
         }
+        if (protectedTypes.contains(BusinessFollowupReminderService.BUSINESS_TYPE)) {
+            throw new ApiException(409, "请进入商机推进阶段，保存成功后待办自动完成");
+        }
         if (protectedTypes.stream().anyMatch(type -> List.of("hrPayroll","hrPayslip","hrHandover").contains(type)))
             throw new ApiException(409, "请进入对应人事业务办理，发放、交接或查看工资条后待办自动完成");
         if (protectedTypes.stream().anyMatch(type -> "crmRisk".equals(type) || "crmContractApproval".equals(type))) {
@@ -242,8 +245,29 @@ public class ActivityController {
     }
 
     private void decorateCrmTasks(List<Map<String, Object>> rows) {
+        List<Map<String, Object>> opportunities = rows.stream().anyMatch(row -> BusinessFollowupReminderService.BUSINESS_TYPE.equals(row.get("businessType")))
+                ? parityRecords.rows("/project/business/list") : List.of();
         for (Map<String, Object> row : rows) {
             String type = value(row.get("businessType"), "");
+            if (BusinessFollowupReminderService.BUSINESS_TYPE.equals(type)) {
+                long id = number(row.get("businessId"), 0L);
+                Map<String, Object> source = opportunities.stream().filter(item -> number(item.get("id"), 0L) == id)
+                        .findFirst().orElse(Map.of());
+                Map<String, Object> form = new LinkedHashMap<>();
+                form.put("businessId", id);
+                form.put("title", row.get("title"));
+                for (String key : List.of("name", "code", "customerId", "customerName", "expectedAmount", "createBy", "ownerUserId")) {
+                    if (source.get(key) != null) form.put(key, source.get(key));
+                }
+                row.put("form", form);
+                row.put("formId", id);
+                row.put("type", row.get("status"));
+                row.put("processName", "商机首次跟进");
+                row.put("taskName", "请推进商机阶段");
+                row.put("applyUserName", creatorName(source.get("createBy")));
+                row.put("lastHistoricActivity", Map.of("comment", "", "assigneeName", ""));
+                continue;
+            }
             if (List.of("hrPayroll","hrPayslip","hrHandover").contains(type)) {
                 row.put("form",Map.of("title",value(row.get("title"),""),"businessId",row.get("businessId")));
                 row.put("formId",row.get("businessId"));
@@ -272,8 +296,24 @@ public class ActivityController {
             row.put("processName", customerFollowup ? "客户首次跟进" : "crmRisk".equals(type) ? "客户风险提醒" : "合同审批");
             row.put("taskName", customerFollowup ? "请新增客户跟进" : "crmRisk".equals(type) ? "跟进处理" : "合同及收费审核");
             row.put("applyUserName", "客户与合同管理");
+            if (customerFollowup) {
+                List<Map<String, Object>> customers = jdbc.queryForList("SELECT serial, name, create_by FROM oa_merchant WHERE id = ?", businessId);
+                if (!customers.isEmpty()) {
+                    Map<String, Object> customer = customers.get(0);
+                    form.put("name", customer.get("name"));
+                    form.put("code", customer.get("serial"));
+                    row.put("applyUserName", creatorName(customer.get("create_by")));
+                }
+            }
             row.put("lastHistoricActivity", Map.of("comment", "", "assigneeName", ""));
         }
+    }
+
+    private String creatorName(Object username) {
+        String name = value(username, "");
+        if (name.isBlank()) return "客户与合同管理";
+        List<String> names = jdbc.queryForList("SELECT nick_name FROM sys_user WHERE user_name = ?", String.class, name);
+        return names.isEmpty() || names.get(0) == null ? name : names.get(0);
     }
 
     private Timestamp createTime(Map<String, Object> row) {

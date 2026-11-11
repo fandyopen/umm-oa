@@ -1,12 +1,12 @@
 <template>
   <div>
-    <a-descriptions v-if="Array.isArray(row._workflowDisplay) && row._workflowDisplay.length" title="审批申请内容" bordered :column="1" class="tw-mb-4">
-      <a-descriptions-item v-for="(field, index) in row._workflowDisplay" :key="index" :label="field.label">
-        <span style="white-space: pre-wrap">{{ typeof field.value === 'object' ? JSON.stringify(field.value) : field.value }}</span>
+    <a-descriptions v-if="displayFields.length" title="审批申请内容" bordered :column="1" class="tw-mb-4">
+      <a-descriptions-item v-for="(field, index) in displayFields" :key="index" :label="field.label">
+        <span style="white-space: pre-wrap; overflow-wrap: anywhere">{{ formatApprovalValue(field.value) }}</span>
       </a-descriptions-item>
     </a-descriptions>
     <hr-approval-detail v-if="row.payrollId || row.salaryId || row.eventId" :row="row" />
-    <s-descriptions :title="row.financeRecord ? '财务审批申请' : row.entityType ? '招聘业务审批申请' : row.contractId ? '合同审批申请' : '业务变更申请'" :formItems="formItems" :formData="normalizedRow" />
+    <s-descriptions v-if="formItems.length" :title="row.financeRecord ? '财务审批申请' : row.entityType ? '招聘业务审批申请' : row.contractId ? '合同审批申请' : '业务变更申请'" :formItems="formItems" :formData="normalizedRow" />
     <template v-if="row.financeRecord">
       <a-alert type="info" show-icon message="此处展示提交时冻结的财务单据。审批通过后，开票和退款仍需登记实际办理结果；回款、核销、冲销和成本按单据确认入账。" class="tw-my-4 tw-mx-0" />
       <div v-for="(file, index) in financeFiles" :key="index">
@@ -28,11 +28,14 @@
 
 <script>
 import SDescriptions from '/src/components/Descriptions/index.jsx'
+import { followupDisplayFields, formatApprovalValue } from '/src/utils/workflowApproval.js'
 import HrApprovalDetail from '/src/components/HrApprovalDetail/index.vue'
 import ContractDetail from '/src/views/eos/crm/contract/modules/ContractDetail.vue'
 import { normalizeContractId } from '/src/api/eos/crm/contracts.js'
 
 const labels = {
+  ...Object.fromEntries(followupDisplayFields.map(field => [field.field, field.label])),
+  customerId: '客户编号',
   title: '申请事项',
   actionName: '审批动作',
   entityId: '招聘业务编号',
@@ -102,6 +105,7 @@ export default {
     }
   },
   methods: {
+    formatApprovalValue,
     openContract() {
       const contractId = normalizeContractId(this.row.contractId)
       if (!contractId) return this.$message.warning('合同编号无效，请刷新待办后重试')
@@ -112,6 +116,9 @@ export default {
     }
   },
   computed: {
+    displayFields() {
+      return Array.isArray(this.row._workflowDisplay) ? this.row._workflowDisplay.filter(field => field && typeof field.label === 'string' && field.label.trim()) : []
+    },
     financeFiles() {
       try {
         return JSON.parse(this.row.attachment || '[]').filter(file => typeof file.fileName === 'string' && file.fileName.startsWith('/profile/') && !file.fileName.includes('..'))
@@ -162,8 +169,8 @@ export default {
       return result
     },
     formItems() {
-      if (Array.isArray(this.row._workflowDisplay) && this.row._workflowDisplay.length) return [{ label: '申请事项', prop: 'title' }, { label: '审批动作', prop: 'actionName' }]
-      if (this.row._workflowApi) return Object.keys(this.row).filter(key => !key.startsWith('_')).map(key => ({ label: labels[key] || key, prop: key }))
+      if (this.displayFields.length) return []
+      if (this.row._workflowApi) return Object.keys(this.row).filter(key => !key.startsWith('_') && !['id', 'state', 'status', 'title', 'actionName', 'actionCode'].includes(key)).map(key => ({ label: labels[key] || key, prop: key, formatter: formatApprovalValue }))
       const fields = this.row.financeRecord ? financeLabels : labels
       return Object.keys(this.row || {})
         .filter(key => fields[key])

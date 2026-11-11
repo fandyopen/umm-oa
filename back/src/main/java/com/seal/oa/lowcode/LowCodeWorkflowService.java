@@ -571,7 +571,9 @@ public class LowCodeWorkflowService {
         data.put("id", dataId);
         Map<String, Object> form = new LinkedHashMap<>(data);
         form.put("state", formState(value(instance.get("status"), "running")));
-        form.put("title", value(basicSetting.get("flowName"), "自定义审批"));
+        String requestTitle = "workflowAction".equals(value(instance.get("business_type"), ""))
+                ? value(data.get("title"), "") : "";
+        form.put("title", requestTitle.isBlank() ? value(basicSetting.get("flowName"), "自定义审批") : requestTitle);
 
         Map<String, Object> row = new LinkedHashMap<>();
         row.put("instanceId", value(instance.get("id"), ""));

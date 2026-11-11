@@ -30,9 +30,10 @@
 </template>
 
 <script>
-import { handleProcessHistory } from '/src/views/eos/config/busUtil.js'
+import { busFlowMap, handleProcessHistory } from '/src/views/eos/config/busUtil.js'
 import { busFlowState } from './flow.js'
 import ViewVerify from './ViewVerify/index.vue'
+import BusDetail from '/src/views/eos/todoItem/todo/busDetail.vue'
 import UserSelect from './UserSelect.vue'
 import request from '/src/utils/axios/request.js'
 
@@ -76,19 +77,20 @@ export default {
   methods: {
     // 办理
     _handleView() {
+      const detailCompName = busFlowMap[this.todoItem.businessType]?.busDetailCompName
       this.$createAntdDrawer({
         stopPropagation: true,
         drawerProps: {
           title: '审批',
-          width: '50%',
+          width: detailCompName ? '80%' : '50%',
           maskClosable: true
         },
         content: {
-          template: ViewVerify,
+          template: detailCompName ? BusDetail : ViewVerify,
           props: {
             todoItem: this.todoItem,
             preAudit: this.preAudit,
-            isCloseDrawer: true
+            ...(detailCompName ? { detailCompName, row: this.todoItem.form || {}, formId: this.todoItem.formId, formKey: this.todoItem.formKey } : { isCloseDrawer: true })
           },
           on: {
             getList: () => {

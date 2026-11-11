@@ -407,9 +407,14 @@ export default {
       this.saving = true
       try {
         const operation = this.operation
-        const result = await contractAction(this.contractId, this.operation, this.actionForm)
+        const contractId = normalizeContractId(this.contractId)
+        if (!contractId) throw new Error('合同编号无效，请刷新合同列表后重试')
+        const result = ['submit', 'sign'].includes(operation)
+          ? await this.submitConfiguredAction(operation, { ...this.actionForm, contractId, title: (operation === 'sign' ? '签署审批：' : '合同审批：') + this.contract.name + ' - ' + this.contract.customerName }, this.operationTitle)
+          : await contractAction(this.contractId, operation, this.actionForm)
+        if (!result) return
         this.operation = ''
-        const successMessage = result.data?.signingPending ? '签署申请已提交，审批通过后生效' : operation === 'receipts' ? '回款申请草稿已创建，请到财务与回款管理-回款登记提交审批' : '操作成功'
+        const successMessage = result.data?.status === 'pendingApproval' ? (operation === 'sign' ? '签署申请已提交，审批通过后生效' : '合同已提交审批，请等待审批人处理') : operation === 'receipts' ? '回款申请草稿已创建，请到财务与回款管理-回款登记提交审批' : '操作成功'
         this.$message.success(successMessage)
         await this.load()
         this.$emit('changed')

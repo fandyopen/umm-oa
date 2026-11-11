@@ -20,6 +20,7 @@
       </aside>
       <section class="hr-member-content">
         <MemberElement
+          :configured-action-submitter="submitConfiguredAction"
           :module-action-guard="checkModuleAction"
           :module-action-visible="showModuleAction"
           :module-meta="moduleContexts.members"

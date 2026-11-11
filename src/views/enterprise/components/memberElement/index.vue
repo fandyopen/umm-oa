@@ -169,7 +169,6 @@ import { STable, SUpload } from '/src/components/index.js'
 import downloadUtil from '/src/utils/common/download.js'
 import { previewDoc } from '/src/components/Office/office.js'
 import { getUserList, getDismissList, editDeptName, getTreeMenu, addSystemDepchild, setDeptPrincipal, clearDeptPrincipal } from '/src/api/enterprise/index.js'
-import { executeWorkflowAction } from '/src/api/workflow/action.js'
 import { delDept } from '/src/api/system/dept.js'
 import { excelImport, delUser } from '/src/api/system/user.js'
 import SelectDepartmentElement from '../selectDepartmentElement/index.vue'
@@ -187,9 +186,6 @@ export default {
         return value === 1 ? { module: 'members', action: 'transfer', label: '保存部门调整' } : null
       },
       mitosis: { module: 'members', action: 'dismiss', label: '转为离职' },
-      executeAction: function (action) {
-        return { module: 'members', action, label: { invite: '邀请成员', transfer: '调整部门', dismiss: '转为离职' }[action] || '提交成员操作' }
-      },
       setDepartmentPrincipal: { module: 'members', action: 'manage', label: '设为部门主管' },
       clearDepartmentPrincipal: { module: 'members', action: 'manage', label: '取消部门主管' },
       editDepName: function (value) {
@@ -205,6 +201,7 @@ export default {
   ],
   components: { STable, SelectDepartmentElement, SUpload, countryCodeSelector },
   props: {
+    configuredActionSubmitter: { type: Function, default: null },
     moduleActionGuard: { type: Function, default: null },
     moduleActionVisible: { type: Function, default: null },
     // The owner (HR or organization) resolves this context; shared members never borrow an unrelated route.
@@ -598,8 +595,8 @@ export default {
       this.$refs.ruleForm.validate(valid => {
         if (valid) {
           const params = { ...this.form, countryCode: this.countryCode, deptId: this.rData }
-          this.executeAction('invite', params).then(res => {
-            if (res.code === 200) {
+          this.submitConfiguredAction('invite', params, '邀请成员').then(res => {
+            if (res && res.code === 200) {
               this.form = {}
               this.countryCode = 86
               this.isIMmodal = false
@@ -622,11 +619,11 @@ export default {
         if (this.selectedRowKeys.length === 0) {
           return this.$message.warning('选择需要调整的部门成员')
         }
-        this.executeAction('transfer', {
+        this.submitConfiguredAction('transfer', {
           deptId: this.adjus_rData,
           userIds: this.selectedRowKeys
-        }).then(res => {
-          if (res.code === 200) {
+        }, '调整部门').then(res => {
+          if (res && res.code === 200) {
             this.$message.success(this.actionSuccessMessage(res, '调整成功'))
             this.adjusDepVisible = false
             this.selectedRowKeys = []
@@ -669,24 +666,20 @@ export default {
       if (this.selectedRowKeys.length === 0) {
         return this.$message.warning('选择需要转为离职的成员')
       }
-      this.executeAction('dismiss', { userIds: this.selectedRowKeys }).then(res => {
-        if (res.code === 200) {
+      this.submitConfiguredAction('dismiss', { userIds: this.selectedRowKeys }, '转为离职').then(res => {
+        if (res && res.code === 200) {
           this.selectedRowKeys = []
           this.$refs.table.refresh()
           return this.$message.success(this.actionSuccessMessage(res, '设置成功'))
         }
       })
     },
-    executeAction(actionCode, payload) {
-      if (!hasModuleAction(this.$store.getters.permissions || [], this.moduleMeta, actionCode)) {
-        this.$message.error('模块信息未就绪或没有操作权限，请刷新后重试')
-        return Promise.reject(new Error('业务模块不可用'))
+    submitConfiguredAction(actionCode, payload, label) {
+      if (!this.configuredActionSubmitter) {
+        this.$message.warning('成员操作暂不可用：所属模块未就绪，请刷新后重试')
+        return Promise.resolve(null)
       }
-      return executeWorkflowAction({
-        moduleId: this.moduleMeta.moduleId,
-        actionCode,
-        payload
-      })
+      return this.configuredActionSubmitter(actionCode, payload, label)
     },
     actionSuccessMessage(response, completedMessage) {
       return response.data?.status === 'pendingApproval' ? '已提交审批，请等待审批人处理' : completedMessage

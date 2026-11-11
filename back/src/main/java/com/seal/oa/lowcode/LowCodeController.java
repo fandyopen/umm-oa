@@ -58,6 +58,7 @@ public class LowCodeController {
 
     @GetMapping("/workflow/roles")
     @RequiresAnyModuleAction({
+            @ModuleActionRequirement(moduleId = 340773L, action = "design"),
             @ModuleActionRequirement(moduleId = 340772L, action = "manage"),
             @ModuleActionRequirement(moduleId = 340772L, action = "workflow"),
             @ModuleActionRequirement(moduleId = 340771L, action = "manage")
@@ -240,6 +241,7 @@ public class LowCodeController {
     @PostMapping("/activiti/mongo/setProcess")
     @Transactional
     @RequiresAnyModuleAction({
+            @ModuleActionRequirement(moduleId = 340773L, action = "design"),
             @ModuleActionRequirement(moduleId = 340772L, action = "manage"),
             @ModuleActionRequirement(moduleId = 340772L, action = "workflow"),
             @ModuleActionRequirement(moduleId = 340771L, action = "manage")
@@ -319,6 +321,7 @@ public class LowCodeController {
 
     @PostMapping("/activiti/mongo/detailProcess")
     @RequiresAnyModuleAction({
+            @ModuleActionRequirement(moduleId = 340773L, action = "design"),
             @ModuleActionRequirement(moduleId = 340772L, action = "manage"),
             @ModuleActionRequirement(moduleId = 340772L, action = "workflow"),
             @ModuleActionRequirement(moduleId = 340771L, action = "manage")

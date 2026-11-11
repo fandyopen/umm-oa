@@ -58,7 +58,9 @@
         </a-col>
         <a-col :xs="24" :md="12">
           <a-form-model-item label="商机状态">
-            <a-input v-model="form.statusLabel" placeholder="例如：推进中、已赢单、已输单" />
+            <a-select v-model="form.statusLabel" placeholder="请选择商机状态">
+              <a-select-option v-for="item in statusOptions" :key="item" :value="item">{{ item }}</a-select-option>
+            </a-select>
           </a-form-model-item>
         </a-col>
         <a-col :span="24">
@@ -86,6 +88,7 @@ import { addBusiness, getBusiness, listBusinessOwners, updateBusiness } from '/s
 import { listCustomerOptions } from '/src/api/eos/crm/index.js'
 
 const intents = ['高', '中', '低', '待评估']
+const statuses = ['推进中', '已赢单', '已输单']
 
 function emptyForm() {
   return {
@@ -125,6 +128,12 @@ export default {
         customerId: [{ required: true, message: '请选择关联客户', trigger: 'change' }],
         stage: [{ required: true, message: '请选择商机阶段', trigger: 'change' }]
       }
+    }
+  },
+  computed: {
+    statusOptions() {
+      const current = this.form.statusLabel
+      return current && !statuses.includes(current) ? [...statuses, current] : statuses
     }
   },
   mounted() {

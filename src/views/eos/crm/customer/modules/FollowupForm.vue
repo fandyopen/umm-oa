@@ -26,8 +26,6 @@
 
 <script>
 import moment from 'moment'
-import { executeWorkflowAction } from '/src/api/workflow/action.js'
-import { createWorkflowActionSubmitter } from '/src/utils/workflowActionSubmit.js'
 import { withModuleContexts } from '/src/utils/moduleContext.js'
 import { crmModules } from '/src/views/eos/crm/moduleContexts.js'
 
@@ -42,7 +40,6 @@ export default {
     return {
       saving: false,
       submitted: false,
-      submitter: createWorkflowActionSubmitter(executeWorkflowAction),
       methods: ['电话', '微信', '邮件', '拜访', '会议', '其他'],
       form: {
         followupTime: moment().format('YYYY-MM-DD HH:mm:ss'),
@@ -62,12 +59,8 @@ export default {
       }
       this.saving = true
       try {
-        if (!(await this.checkModuleAction({ module: 'customer', action: 'track', label: '保存跟进' }))) return
-        const response = await this.submitter.submit({
-          moduleId: this.moduleContexts.customer.moduleId,
-          actionCode: 'track',
-          payload: { ...this.form, customerId: this.customerId, customerName: this.customerName }
-        })
+        const response = await this.submitConfiguredAction('track', { ...this.form, customerId: this.customerId, customerName: this.customerName }, '保存跟进')
+        if (!response) return
         this.$message.success(response.data.status === 'pendingApproval' ? '跟进已提交审批，通过后正式保存' : '跟进记录已保存')
         this.submitted = true
         this.$emit('ok', response.data)

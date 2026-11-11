@@ -7,7 +7,7 @@ import compiler from 'vue-template-compiler'
 const read = file => fs.readFileSync(new URL('../../' + file, import.meta.url), 'utf8')
 const source = read('src/views/eos/todoItem/customerReminder.js')
   .replace(/^import .*$/gm, '')
-  .replace('export const ', 'const ')
+  .replaceAll('export const ', 'const ')
   .replace('export default', 'return')
 const reminder = new Function('withModuleContexts', 'crmModules', 'hrModules', source)(() => ({}), { customer: {} }, {})
 const type = 'crmCustomerFollowup'
@@ -17,7 +17,7 @@ function method(file, block, name) {
   const definition = parse(script, { sourceType: 'module', plugins: ['jsx'] }).program.body.find(node => node.type === 'ExportDefaultDeclaration').declaration
   const container = definition.properties.find(node => node.key.name === block).value
   const node = container.properties.find(node => node.key.name === name || node.key.value === name)
-  return new Function('CUSTOMER_FOLLOWUP_TODO', 'return ({' + script.slice(node.start, node.end) + '})')(type)[name]
+  return new Function('CUSTOMER_FOLLOWUP_TODO', 'OPPORTUNITY_FOLLOWUP_TODO', 'return ({' + script.slice(node.start, node.end) + '})')(type, 'crmOpportunityFollowup')[name]
 }
 
 function navigation(allowed = true) {
@@ -56,6 +56,27 @@ test('invalid customer references do not invoke navigation', async () => {
   }
 })
 
+test('opportunity reminder checks access and opens its exact business detail route', async () => {
+  const { vm, destinations, events, checks } = navigation()
+  await reminder.methods.openOpportunityReminder.call(vm, { businessId: 783 })
+  assert.deepEqual(destinations, [{ path: '/crm/opportunities', query: { businessId: '783', source: 'followupReminder' } }])
+  assert.equal(checks[0].module, 'opportunity')
+  assert.deepEqual(events, ['read'])
+})
+
+test('opportunity reminders reject missing references and denied access without navigation', async () => {
+  for (const businessId of [null, -1, 'bad', '1.5', Number.MAX_SAFE_INTEGER + 1]) {
+    const { vm, destinations, warnings } = navigation()
+    await reminder.methods.openOpportunityReminder.call(vm, { form: { businessId } })
+    assert.deepEqual(destinations, [])
+    assert.equal(warnings.length, 1)
+  }
+  const { vm, destinations, events } = navigation(false)
+  await reminder.methods.openOpportunityReminder.call(vm, { businessId: 783 })
+  assert.deepEqual(destinations, [])
+  assert.deepEqual(events, [])
+})
+
 for (const file of ['todo/todo.vue', 'done/done.vue']) {
   test(file + ' row clicks use customer navigation without opening approval drawers', async () => {
     let opened = 0
@@ -63,7 +84,29 @@ for (const file of ['todo/todo.vue', 'done/done.vue']) {
     await method('src/views/eos/todoItem/' + file, 'methods', 'handleDetail').call(vm, { businessType: type, businessId: 782 })
     assert.equal(opened, 1)
   })
+  test(file + ' opportunity reminders open the business instead of an approval drawer', async () => {
+    let opened = 0
+    const vm = { isHrReminder: () => false, openOpportunityReminder: async row => { assert.equal(row.businessId, 783); opened++ } }
+    await method('src/views/eos/todoItem/' + file, 'methods', 'handleDetail').call(vm, { businessType: 'crmOpportunityFollowup', businessId: 783 })
+    assert.equal(opened, 1)
+  })
 }
+
+test('opportunity reminder route opens its detail and ignores invalid IDs', () => {
+  const watcher = method('src/views/eos/business/index.vue', 'watch', '$route.query.businessId')
+  const opened = []
+  const vm = { $nextTick: callback => callback(), handleDetail: row => opened.push(row) }
+  watcher.handler.call(vm, '783')
+  for (const id of [undefined, 'bad', '0', '-1', '1.5']) watcher.handler.call(vm, id)
+  assert.deepEqual(opened, [{ id: 783 }])
+})
+
+test('reading an opportunity reminder does not call workflow read or completion APIs', () => {
+  const readTask = method('src/views/eos/todoItem/todo/todo.vue', 'methods', 'handleReadClick')
+  const row = { businessType: 'crmOpportunityFollowup' }
+  readTask.call({ isHrReminder: () => false, $set: (target, key, value) => { target[key] = value } }, row)
+  assert.equal(row.isRead, true)
+})
 
 test('opening the customer reminder filters the list and avoids an automatic detail drawer', () => {
   const watcher = method('src/views/eos/crm/customer/index.vue', 'watch', '$route.query.customerId')
@@ -89,5 +132,5 @@ test('customer reminders are registered and do not render generic approval butto
   assert.ok(todo.includes('@click.stop="openCustomerReminder(item)"'))
   assert.match(read('src/views/eos/config/busUtil.js'), /crmCustomerFollowup:/)
   const detail = compiler.parseComponent(read('src/views/eos/todoItem/todo/busDetail.vue')).template.content
-  assert.ok(detail.includes("!['crmRisk', 'crmContractApproval', 'crmCustomerFollowup']"))
+  assert.ok(detail.includes("!['crmRisk', 'crmContractApproval', 'crmCustomerFollowup', 'crmOpportunityFollowup']"))
 })

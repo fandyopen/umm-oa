@@ -7,10 +7,11 @@
     </template>
     <!-- 数据表格 -->
     <no-data index v-show="noData" />
-    <s-table :customRow="rowClick" :class="{ 'dashboard-table': simple }" v-show="!noData" :data="loadData" ref="table" size="default" rowKey="taskId" :columns="columns">
-      <span slot="action" slot-scope="text, item">
+    <s-table :customRow="rowClick" class="todo-list" :class="{ 'dashboard-table': simple }" v-show="!noData" :data="loadData" ref="table" :size="simple ? 'small' : 'default'" tableLayout="fixed" :scroll="{ x: simple ? 720 : 1100 }" :showPagination="!simple" :rowKey="item => item.taskId || item.id" :columns="columns">
+      <span slot="action" slot-scope="text, item" class="todo-actions">
         <a v-if="isHrReminder(item)" @click.stop="openHrReminder(item)">进入办理</a>
         <a v-else-if="item.businessType === 'crmCustomerFollowup'" @click.stop="openCustomerReminder(item)">跟进客户</a>
+        <a v-else-if="item.businessType === 'crmOpportunityFollowup'" @click.stop="openOpportunityReminder(item)">跟进商机</a>
         <a v-else-if="['crmRisk', 'crmContractApproval'].includes(item.businessType)" @click.stop="handleDetail(item, 'CrmTodoDetail')">{{ item.businessType === 'crmContractApproval' ? '审批合同' : '处理风险' }}</a>
         <activiti-apply
           :preAudit="{ comment: item.lastHistoricActivity.comment, assigneeName: item.lastHistoricActivity.assigneeName }"
@@ -28,16 +29,16 @@
 </template>
 
 <script lang="jsx">
+import moment from 'moment'
 import { listTodo } from '/src/api/activiti/process.js'
 import { busFlowMap, handleProcessHistory } from '/src/views/eos/config/busUtil.js'
 import { updateReadUsers } from '/src/api/activiti/workflow.js'
 
-import Ellipsis from '/src/components/Ellipsis/Ellipsis.vue'
 import STable from '/src/components/Table/index.jsx'
 import SSearch from '/src/components/Form/Search.vue'
 import ActivitiApply from '/src/components/Activiti/index.vue'
 import BusDetail from './busDetail.vue'
-import customerReminder, { CUSTOMER_FOLLOWUP_TODO } from '../customerReminder.js'
+import customerReminder, { CUSTOMER_FOLLOWUP_TODO, OPPORTUNITY_FOLLOWUP_TODO } from '../customerReminder.js'
 import hrReminder from '../hrReminder.js'
 
 export default {
@@ -64,7 +65,7 @@ export default {
         on: {
           click: () => {
             this.handleReadClick(record)
-            const { busDetailCompName } = busFlowMap[record.businessType]
+            const { busDetailCompName } = busFlowMap[record.businessType] || {}
             this.handleDetail(record, busDetailCompName)
           }
         },
@@ -97,53 +98,64 @@ export default {
         {
           title: '姓名',
           dataIndex: 'applyUserName',
-          align: 'center',
-          width: 150,
+          align: 'left',
+          width: this.simple ? 96 : 150,
           customRender: (text, record) => {
-            return <span class={this.isReadTask(record)}>{text}</span>
+            return <span class={['todo-cell', this.isReadTask(record)]} title={text}>{text || '—'}</span>
           }
         },
         {
           title: '流程名称',
           dataIndex: 'processName',
-          align: 'center',
+          align: 'left',
           customRender: (text, record) => {
             const processName = record.processName || busFlowMap[record.businessType]?.processName || '审批流程'
-            return <span class={this.isReadTask(record)}>{processName}</span>
+            return <span class={['todo-cell', this.isReadTask(record)]} title={processName}>{processName}</span>
           },
-          width: 110
+          width: this.simple ? 104 : 140
         },
         {
           title: '审批',
           dataIndex: 'taskName',
-          align: 'center',
-          width: 170,
+          align: 'left',
+          width: this.simple ? 112 : 170,
           customRender: (text, record) => {
-            return <span class={this.isReadTask(record)}>{text}</span>
+            return <span class={['todo-cell', this.isReadTask(record)]} title={text}>{text || '—'}</span>
           }
         },
         {
           title: '项目名称',
           dataIndex: 'name',
-          align: 'center',
+          align: 'left',
           customRender: (text, record) => {
             let templateProp = null
-            const { busFieldProp, busFieldProp2 } = busFlowMap[record.businessType]
+            const { busFieldProp, busFieldProp2 } = busFlowMap[record.businessType] || {}
             templateProp = this._.get(record.form, busFieldProp, '') ? busFieldProp : busFieldProp2
+            const name = this._.get(record.form, templateProp, '') || record.title || text || '—'
             return (
-              <div class={[this.isReadTask(record), 'tw-cursor-pointer']}>
-                <Ellipsis length={30} tooltip>
-                  {this._.get(record.form, templateProp, '')}
-                </Ellipsis>
+              <div class={['todo-cell', 'todo-subject', this.isReadTask(record), 'tw-cursor-pointer']} title={name}>
+                {name}
               </div>
             )
           }
         },
         {
+          title: '推送时间',
+          dataIndex: 'createTime',
+          align: 'left',
+          width: this.simple ? 144 : 180,
+          customRender: text => {
+            const time = text ? moment(text) : null
+            const label = time && time.isValid() ? time.format('YYYY-MM-DD HH:mm:ss') : '—'
+            return <span class="todo-cell todo-push-time" title={label}>{label}</span>
+          }
+        },
+        {
           title: '操作',
           align: 'center',
+          fixed: 'right',
           scopedSlots: { customRender: 'action' },
-          width: 170
+          width: this.simple ? 88 : 170
         }
       ]
     }
@@ -168,6 +180,7 @@ export default {
     async handleDetail(row, detailCompName) {
       if (this.isHrReminder(row)) return this.openHrReminder(row)
       if (row.businessType === CUSTOMER_FOLLOWUP_TODO) return this.openCustomerReminder(row)
+      if (row.businessType === OPPORTUNITY_FOLLOWUP_TODO) return this.openOpportunityReminder(row)
       if (this.isEmpty(detailCompName)) {
         return this.$message.error('请传递详情组件')
       }
@@ -211,7 +224,7 @@ export default {
     // 已读事件
     handleReadClick(item) {
       if (this.isHrReminder(item)) return
-      if (item.businessType === CUSTOMER_FOLLOWUP_TODO) {
+      if ([CUSTOMER_FOLLOWUP_TODO, OPPORTUNITY_FOLLOWUP_TODO].includes(item.businessType)) {
         this.$set(item, 'isRead', true)
         return
       }
@@ -265,30 +278,27 @@ export default {
 }
 </script>
 <style lang="less">
-.dashboard-table {
-  .s-table {
-    .ant-table-tbody {
-      tr > td {
-        border: none;
-        font-size: 14px;
-        font-family: Microsoft YaHei;
-        font-weight: 400;
-        color: #333;
-      }
-    }
-    .ant-table-thead {
-      tr {
-        > th {
-          background-color: transparent !important;
-          color: black;
-          border: none;
-          font-size: 14px;
-          font-family: Microsoft YaHei;
-          font-weight: 400;
-          color: #333333;
-        }
-      }
-    }
+.todo-list {
+  min-width: 0;
+
+  .todo-cell {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .todo-push-time {
+    color: #86909c;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .todo-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
   }
 }
+
 </style>

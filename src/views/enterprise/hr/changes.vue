@@ -69,7 +69,6 @@
 </template>
 <script>
 import { withModuleContexts } from '/src/utils/moduleContext.js'
-import { executeWorkflowAction } from '/src/api/workflow/action.js'
 import { hr } from '/src/api/enterprise/hr.js'
 import { statusNames, eventNames, dateText } from './hrShared.js'
 import HrTemplateDownloads from '/src/components/HrTemplateDownloads/index.vue'
@@ -131,8 +130,8 @@ export default {
       }
     },
     async submit(r) {
-      if (!(await this.checkModuleAction({ module: 'changes', action: 'submit', label: '提交异动' }))) return
-      await executeWorkflowAction({ moduleId: this.moduleContexts.changes.moduleId, actionCode: 'submit', payload: { eventId: r.id, revision: r.revision, title: '人事异动：' + r.nickName } })
+      const response = await this.submitConfiguredAction('submit', { eventId: r.id, revision: r.revision, title: '人事异动：' + r.nickName }, '提交异动')
+      if (!response) return
       this.$message.success('已按审批配置办理')
       this.load()
     },

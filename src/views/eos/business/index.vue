@@ -183,6 +183,15 @@ export default {
   mounted() {
     this.loadCustomers()
   },
+  watch: {
+    '$route.query.businessId': {
+      immediate: true,
+      handler(value) {
+        const id = Number(value)
+        if (Number.isSafeInteger(id) && id > 0) this.$nextTick(() => this.handleDetail({ id }))
+      }
+    }
+  },
   methods: {
     loadCustomers(keyword = '') {
       listCustomerOptions({ name: keyword }).then(res => {
@@ -230,7 +239,8 @@ export default {
         },
         content: {
           template: BusinessDetail,
-          props: { formId: row.id }
+          props: { formId: row.id, moduleMeta: this.moduleContexts.opportunity },
+          on: { changed: () => this.refresh() }
         }
       })
     },

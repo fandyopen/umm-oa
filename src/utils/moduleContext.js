@@ -3,6 +3,8 @@ import { resolveModuleContexts } from '/src/api/user/module.js'
 import { hasModuleAction } from './modulePermission.js'
 import { createModuleContextResolver } from './moduleContextResolver.js'
 import { withModuleActionGuards } from './moduleActionGuard.js'
+import { executeWorkflowAction } from '/src/api/workflow/action.js'
+import { submitModuleWorkflowAction } from './workflowActionSubmit.js'
 
 const state = Vue.observable({ modules: {} })
 const resolver = createModuleContextResolver(async components => {
@@ -74,6 +76,9 @@ export function withModuleContexts(definitions, actions = {}) {
         const allowed = action === 'view' ? this.canViewModule(key) : this.canModule(key, action)
         if (!allowed) return unavailable('你没有该操作的权限。')
         return true
+      },
+      submitConfiguredAction(actionCode, payload, label, module = primary) {
+        return submitModuleWorkflowAction(this, executeWorkflowAction, { primaryModule: primary, module, actionCode, payload, label })
       }
     }
   }

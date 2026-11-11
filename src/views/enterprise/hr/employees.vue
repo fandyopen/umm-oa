@@ -139,7 +139,6 @@
 </template>
 <script>
 import { withModuleContexts } from '/src/utils/moduleContext.js'
-import { executeWorkflowAction } from '/src/api/workflow/action.js'
 import { hr } from '/src/api/enterprise/hr.js'
 import HrTemplateDownloads from '/src/components/HrTemplateDownloads/index.vue'
 import { employeeRecords, salaryStandardRecords } from './reports.js'
@@ -255,8 +254,8 @@ export default {
       }
     },
     async submitSalary(row) {
-      if (!(await this.checkModuleAction({ module: 'employees', action: 'salary_submit', label: '提交薪资生效' }))) return
-      await executeWorkflowAction({ moduleId: this.moduleContexts.employees.moduleId, actionCode: 'salary_submit', payload: { salaryId: row.id, revision: row.revision, title: '员工定薪 / 调薪审批' } })
+      const response = await this.submitConfiguredAction('salary_submit', { salaryId: row.id, revision: row.revision, title: '员工定薪 / 调薪审批' }, '提交薪资生效')
+      if (!response) return
       this.setEmployee((await hr('/employees/' + this.employee.userId)).data)
       this.$message.success('已按审批配置提交或生效')
     },

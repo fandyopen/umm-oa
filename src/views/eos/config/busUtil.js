@@ -74,6 +74,7 @@ export const busFlowMap = {
   hrPayslip:{processName:'工资条查阅',processColor:'green',busFieldProp:'title'},
   hrHandover:{processName:'离职交接',processColor:'orange',busFieldProp:'title'},
   crmCustomerFollowup: { processName: '客户首次跟进', processColor: 'orange', busFieldProp: 'title', busDetailCompName: 'CrmTodoDetail' },
+  crmOpportunityFollowup: { processName: '商机首次跟进', processColor: 'orange', busFieldProp: 'title' },
   crmRisk: { processName: '客户风险提醒', processColor: 'red', busFieldProp: 'title', busDetailCompName: 'CrmTodoDetail' },
   crmContractApproval: { processName: '合同审批', processColor: 'blue', busFieldProp: 'title', busDetailCompName: 'CrmTodoDetail' },
   lowcode: {

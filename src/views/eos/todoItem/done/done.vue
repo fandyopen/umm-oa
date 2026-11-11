@@ -17,7 +17,7 @@ import Ellipsis from '/src/components/Ellipsis/Ellipsis.vue'
 import STable from '/src/components/Table/index.jsx'
 import SSearch from '/src/components/Form/Search.vue'
 import BusDetail from '../todo/busDetail.vue'
-import customerReminder, { CUSTOMER_FOLLOWUP_TODO } from '../customerReminder.js'
+import customerReminder, { CUSTOMER_FOLLOWUP_TODO, OPPORTUNITY_FOLLOWUP_TODO } from '../customerReminder.js'
 import hrReminder from '../hrReminder.js'
 
 export default {
@@ -132,6 +132,7 @@ export default {
     async handleDetail(row, detailCompName) {
       if (this.isHrReminder(row)) return this.openHrReminder(row)
       if (row.businessType === CUSTOMER_FOLLOWUP_TODO) return this.openCustomerReminder(row)
+      if (row.businessType === OPPORTUNITY_FOLLOWUP_TODO) return this.openOpportunityReminder(row)
       if (this.isEmpty(detailCompName)) {
         return this.$message.error('请传递详情组件')
       }
