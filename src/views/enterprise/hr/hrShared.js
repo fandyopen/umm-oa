@@ -16,6 +16,7 @@ export const statusNames = {
   leave: '请假记录',
   regular: '常规工资',
   supplement: '差额批次',
+  commission: '提成批次',
   todo: '待交接',
   done: '已完成',
   paid: '成功',

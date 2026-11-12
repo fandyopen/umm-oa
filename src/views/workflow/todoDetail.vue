@@ -5,6 +5,15 @@
         <span style="white-space: pre-wrap; overflow-wrap: anywhere">{{ formatApprovalValue(field.value) }}</span>
       </a-descriptions-item>
     </a-descriptions>
+    <template v-if="row.commissionBatch">
+      <a-alert type="info" show-icon :message="'提成核算 #' + row.batchId + ' · ' + row.period + '：以下为提交时冻结的差额，审批通过后仍需纳入工资并实际发放。'" />
+      <a-table :data-source="row.lines || []" row-key="id" :pagination="false" size="small" :scroll="{ x: 1000 }">
+        <a-table-column title="人员" data-index="employeeName" />
+        <a-table-column title="贡献"><template slot-scope="_, r">{{ r.side === 'development' ? '客户拓展' : '招聘交付' }}</template></a-table-column>
+        <a-table-column title="客户" data-index="snapshot.customerName" /><a-table-column title="职位" data-index="snapshot.jobTitle" /><a-table-column title="候选人" data-index="snapshot.talentName" />
+        <a-table-column title="净回款" data-index="snapshot.netAllocated" /><a-table-column title="规则" data-index="snapshot.rule.name" /><a-table-column title="累计可核算" data-index="snapshot.eligible" /><a-table-column title="以前核算" data-index="snapshot.reserved" /><a-table-column title="本次差额" data-index="amount" />
+      </a-table>
+    </template>
     <hr-approval-detail v-if="row.payrollId || row.salaryId || row.eventId" :row="row" />
     <s-descriptions v-if="formItems.length" :title="row.financeRecord ? '财务审批申请' : row.entityType ? '招聘业务审批申请' : row.contractId ? '合同审批申请' : '业务变更申请'" :formItems="formItems" :formData="normalizedRow" />
     <template v-if="row.financeRecord">

@@ -77,15 +77,15 @@ class CustomerFinanceIntegrationTest {
         assertEquals("eos/crm/finance/index", menu.get("component"));
         @SuppressWarnings("unchecked")
         var children = (java.util.List<Map<String,Object>>) menu.get("children");
-        assertEquals(java.util.List.of("ledger", "invoice", "receipt", "refund", "adjustment", "cost", "collections", "reconcile", "payroll"),
+        assertEquals(java.util.List.of("ledger", "invoice", "receipt", "refund", "adjustment", "cost", "collections", "reconcile", "payroll", "commission"),
                 children.stream().map(child -> child.get("path")).toList());
-        assertEquals(9L, children.stream().map(child -> child.get("component")).distinct().count());
+        assertEquals(10L, children.stream().map(child -> child.get("component")).distinct().count());
         assertTrue(children.stream().allMatch(child -> Boolean.FALSE.equals(child.get("hidden"))));
         assertEquals(8, jdbc.queryForObject("SELECT COUNT(*) FROM sys_role_module WHERE role_id=7 AND module_id BETWEEN 341401 AND 341408", Integer.class));
         var allowed = new java.util.HashSet<>(jdbc.queryForList("SELECT module_id FROM sys_role_module WHERE role_id=7", Long.class));
         var roleMenu = modules.routers(1L, false, java.util.Set.of("finance:ledger:list"), allowed).stream()
                 .filter(row -> number(row.get("moduleId")) == 341400L).findFirst().orElseThrow();
-        assertEquals(children.stream().filter(child -> number(child.get("moduleId")) != 341409L).toList(), roleMenu.get("children"));
+        assertEquals(children.stream().filter(child -> number(child.get("moduleId")) != 341409L && number(child.get("moduleId")) != 341410L).toList(), roleMenu.get("children"));
         assertTrue(roots.stream().anyMatch(row -> number(row.get("moduleId")) == 341300L));
         assertEquals(buttons, jdbc.queryForList("SELECT * FROM sys_module_action WHERE module_id=341400 ORDER BY action_code"));
 

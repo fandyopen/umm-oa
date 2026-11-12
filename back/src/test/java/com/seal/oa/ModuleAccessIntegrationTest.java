@@ -79,6 +79,8 @@ class ModuleAccessIntegrationTest {
             "341006, /project/hr/self/attendance",
             "341006, /project/hr/self/payslips",
             "341409, /project/hr/finance/payroll",
+            "341410, /project/commission/options",
+            "341410, /project/commission/batches",
             "341409, /project/hr/options",
             "341301, /project/recruitment/jobs",
             "341302, /project/recruitment/talents",

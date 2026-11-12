@@ -14,6 +14,7 @@ function component(file, props = {}, overrides = {}) {
   const parsed = compiler.parseComponent(read(file))
   const requests = [], messages = []
   const dependencies = {
+    crmModules: { commission: { component: 'eos/crm/finance/commission', label: '提成核算' } },
     withModuleContexts: () => ({}), storage: { get: () => '' }, ACCESS_TOKEN: 'token',
     today: () => '2026-11-04', window: { crypto: { randomUUID: () => 'finance-test-token' } },
     handleProcessHistory: () => {},

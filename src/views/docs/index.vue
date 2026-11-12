@@ -19,6 +19,10 @@
             <a-icon type="appstore" />
             模块说明
           </a-menu-item>
+          <a-menu-item key="commission-rules">
+            <a-icon type="calculator" />
+            提成核算规则
+          </a-menu-item>
         </a-menu>
         <div class="docs-sidebar-note">
           <span>入口配置</span>
@@ -45,15 +49,17 @@ import { mapGetters } from 'vuex'
 import RouteMap from './components/RouteMap.vue'
 import ApiDocs from './components/ApiDocs.vue'
 import ModuleDocs from './components/ModuleDocs.vue'
+import CommissionRules from './components/CommissionRules.vue'
 
-const validSections = ['route-map', 'api-docs', 'module-docs']
+const validSections = ['route-map', 'api-docs', 'module-docs', 'commission-rules']
 
 export default {
   name: 'DocsCenter',
   components: {
     RouteMap,
     ApiDocs,
-    ModuleDocs
+    ModuleDocs,
+    CommissionRules
   },
   data() {
     return {

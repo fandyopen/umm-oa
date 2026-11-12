@@ -60,6 +60,12 @@ public class ModuleActionService {
             Map.entry(341005L, List.of(EDIT, EXPORT, new ActionDefinition("generate", "生成或重算工资"), new ActionDefinition("submit", "提交工资审批", "hr.payroll.submit"), new ActionDefinition("approve", "审批工资"), new ActionDefinition("publish", "发布工资条"), new ActionDefinition("pay", "登记工资发放"))),
             Map.entry(341006L, List.of()),
             Map.entry(341409L, List.of(EXPORT, new ActionDefinition("pay", "登记工资发放"))),
+            Map.entry(341410L, List.of(
+                    new ActionDefinition("rule", "维护提成规则"), new ActionDefinition("attribute", "确认业绩归属"),
+                    new ActionDefinition("allocate", "分摊实际回款"), new ActionDefinition("generate", "生成或重算提成"),
+                    new ActionDefinition("submit", "提交提成核算", "commission.batch.submit"),
+                    new ActionDefinition("approve", "审批提成"), new ActionDefinition("payroll", "纳入工资"),
+                    new ActionDefinition("void", "作废未批准核算"), EXPORT)),
             Map.entry(341301L, List.of(ADD, EDIT, REMOVE, EXPORT,
                     new ActionDefinition("import", "批量导入"), new ActionDefinition("copy", "复制职位"),
                     new ActionDefinition("demand", "提交需求确认", "recruit.job.demand"),

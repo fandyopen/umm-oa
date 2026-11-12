@@ -13,13 +13,24 @@
               ><template slot-scope="_, r"><a-button type="link" @click="read(r)">标记已查看</a-button></template></a-table-column
             ></a-table
           ></a-tab-pane
-        ></a-tabs
+        ><a-tab-pane key="commission" tab="我的提成">
+          <a-alert type="info" show-icon message="仅展示本人已批准的提成及扣回。纳入工资后还需核税和实际发放，工资批次未结清时会显示待结清。" class="tw-mb-4" />
+          <a-button icon="reload" @click="loadCommissions">刷新提成</a-button>
+          <a-table :data-source="commissions" row-key="id" class="tw-mt-4" :scroll="{ x: 1000 }">
+            <a-table-column title="月份" data-index="period" /><a-table-column title="核算批次" data-index="batchId" />
+            <a-table-column title="客户" data-index="snapshot.customerName" /><a-table-column title="职位" data-index="snapshot.jobTitle" /><a-table-column title="候选人" data-index="snapshot.talentName" />
+            <a-table-column title="贡献"><template slot-scope="_, r">{{ r.side === 'development' ? '客户拓展' : '招聘交付' }}</template></a-table-column>
+            <a-table-column title="本次提成 / 扣回"><template slot-scope="_, r">{{ money(r.amount) }}</template></a-table-column>
+            <a-table-column title="工资批次" data-index="payrollId" /><a-table-column title="结清状态" data-index="paymentStatus" />
+          </a-table>
+        </a-tab-pane></a-tabs
       ></a-card
     ></page-header-wrapper
   >
 </template>
 <script>
 import AttendanceWorkspace from './AttendanceWorkspace.vue'
+import { commission } from '/src/api/eos/crm/commission.js'
 import { hr } from '/src/api/enterprise/hr.js'
 import { exportTemplate } from './templates.js'
 import { money } from './hrShared.js'
@@ -29,6 +40,7 @@ export default {
   data: () => ({
     tab: 'attendance',
     rows: [],
+    commissions: [],
     fields: [
       { key: 'baseAmount', label: '基本工资' },
       { key: 'allowance', label: '补贴' },
@@ -45,11 +57,13 @@ export default {
     ]
   }),
   mounted() {
-    this.tab = this.$route.query.tab === 'salary' ? 'salary' : 'attendance'
+    this.tab = ['salary', 'commission'].includes(this.$route.query.tab) ? this.$route.query.tab : 'attendance'
     this.load()
+    this.loadCommissions()
   },
   methods: {
     money,
+    async loadCommissions() { this.commissions = (await commission('/self')).data || [] },
     async download() {
       const rows = (await hr('/self/payslips')).data || []
       exportTemplate(

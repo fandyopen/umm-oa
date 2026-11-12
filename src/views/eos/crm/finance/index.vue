@@ -1,7 +1,7 @@
 <template>
   <page-header-wrapper :breadcrumb="$store.getters.breadcrumb">
     <a-card :bordered="false">
-      <div v-if="!isPayroll" class="head">
+      <div v-if="!isPayroll && !isCommission" class="head">
         <div>
           <h2>{{ $route.meta.title || '财务与回款管理' }}</h2>
           <span>{{ isPayroll ? '工资审批、实际发放与工资条发布分别留痕。' : '合同应收按签署生效版本计算，到账、退款和核销分别留痕。' }}</span>
@@ -9,7 +9,7 @@
         <a-button v-if="isPayroll" icon="download" @click="exportCurrent">导出工资报表</a-button>
         <a-button v-else icon="download" :disabled="!showModuleAction('finance', 'export')" v-hasModuleAction="moduleActionBinding('finance', 'export')" @click="exportCurrent">导出当前工作区</a-button>
       </div>
-      <a-row v-if="!isPayroll" :gutter="16" class="metrics">
+      <a-row v-if="!isPayroll && !isCommission" :gutter="16" class="metrics">
         <a-col v-for="metric in metrics" :key="metric.key" :span="4"
           ><div>
             <span>{{ metric.name }}</span
@@ -43,6 +43,7 @@ export default {
     ]
   }),
   computed: {
+    isCommission() { return this.$route?.name === 'FinanceCommission' || this.$route?.path?.endsWith('/finance/commission') || false },
     isPayroll() {
       return this.$route?.name === 'FinancePayroll' || this.$route?.path?.endsWith('/finance/payroll') || false
     }
@@ -60,7 +61,7 @@ export default {
       return Number(value || 0).toLocaleString('zh-CN', { minimumFractionDigits: 2 })
     },
     async loadSummary() {
-      if (this.isPayroll) return
+      if (this.isPayroll || this.isCommission) return
       const res = await getFinanceReport({})
       this.summary = res.data?.summary || {}
     },

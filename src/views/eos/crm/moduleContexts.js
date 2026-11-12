@@ -1,5 +1,6 @@
 // Stable business selectors; authorization IDs and permission codes remain server-owned.
 export const crmModules = {
+  commission: { component: 'eos/crm/finance/commission', label: '提成核算' },
   customer: { component: 'eos/crm/customer/index', label: '客户档案' },
   opportunity: { component: 'eos/business/index', label: '商机管理' },
   contract: { component: 'eos/crm/contract/index', label: '合同列表' },

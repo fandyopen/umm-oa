@@ -133,6 +133,15 @@
           ><a-descriptions-item label="核对说明">{{ selectedItem.reason || '—' }}</a-descriptions-item></a-descriptions
         >
         <h3 class="hr-section-title">计薪分段快照</h3>
+        <template v-if="selectedItem.commissionSources && selectedItem.commissionSources.length">
+          <h3>提成业务来源</h3>
+          <a-alert type="info" show-icon message="提成及扣回金额由提成核算锁定。请在本批次核对个税；后续退款等变化从提成核算生成新差额批次。" />
+          <a-table :data-source="selectedItem.commissionSources" row-key="id" :pagination="false" size="small">
+            <a-table-column title="核算批次" data-index="batchId" /><a-table-column title="客户" data-index="customerName" /><a-table-column title="职位" data-index="jobTitle" /><a-table-column title="候选人" data-index="talentName" />
+            <a-table-column title="贡献"><template slot-scope="_, r">{{ r.side === 'development' ? '客户拓展' : '招聘交付' }}</template></a-table-column>
+            <a-table-column title="本次提成 / 扣回"><template slot-scope="_, r">{{ money(r.amount) }}</template></a-table-column>
+          </a-table>
+        </template>
         <a-table :columns="segmentColumns" :data-source="selectedItem.snapshot.segments || []" :row-key="(_, index) => index" :pagination="false" size="small" />
         <h3 class="hr-section-title">付款与失败记录</h3>
         <a-table :data-source="selectedItem.payments" row-key="id" :pagination="false" size="small"

@@ -88,6 +88,7 @@
           <a-dropdown :trigger="['click']">
             <a-button type="link" icon="ellipsis" title="更多操作" @click.stop />
             <a-menu slot="overlay" @click="({ key }) => handleAction(key, record)">
+              <a-menu-item v-if="showModuleAction('commission')" key="commission"><a-icon type="calculator" /> 业绩与提成</a-menu-item>
               <a-menu-item key="detail"><a-icon type="profile" /> 查看详情</a-menu-item>
               <a-menu-item v-if="canAction('track')" key="followup"><a-icon type="message" /> 新增跟进</a-menu-item>
               <a-menu-item v-if="canAction('edit')" key="edit"><a-icon type="edit" /> 修改档案</a-menu-item>
@@ -151,7 +152,7 @@ const excelColumns = [
 export default {
   mixins: [
     withModuleContexts(
-      { customer: crmModules.customer },
+      { customer: crmModules.customer, commission: crmModules.commission },
       {
         openCustomerForm: function (props) {
           return { module: 'customer', action: props.isUpdate ? 'edit' : 'add', label: props.isUpdate ? '修改客户档案' : props.copySourceId ? '复制新建客户' : '新建客户' }
@@ -355,6 +356,7 @@ export default {
     },
     handleAction(key, record) {
       const actions = {
+        commission: async () => { if (await this.checkModuleAction({ module: 'commission', label: '查看客户提成' })) this.$router.push({ path: '/finance/commission', query: { customerId: String(record.id) } }) },
         detail: () => this.handleDetail(record),
         followup: () => this.openFollowup(record),
         edit: () => this.handleUpdate(record),

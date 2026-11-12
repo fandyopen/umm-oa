@@ -81,6 +81,7 @@
             >作废</a-button
           >
           <a-button type="link" size="small" @click="showDetail(r)">历史</a-button>
+          <a-button v-if="recordType === 'receipt' && r.contractId && r.status === 'confirmed' && showModuleAction('commission')" type="link" size="small" @click="openCommission(r)">提成分摊</a-button>
         </template></a-table-column
       >
     </a-table>
@@ -159,6 +160,7 @@
 <script>
 import storage from 'store'
 import { ACCESS_TOKEN } from '/src/store/mutation-types.js'
+import { crmModules } from '/src/views/eos/crm/moduleContexts.js'
 import { withModuleContexts } from '/src/utils/moduleContext.js'
 import { handleProcessHistory } from '/src/views/eos/config/busUtil.js'
 import { today } from '../../contract/shared.js'
@@ -172,7 +174,7 @@ export default {
   components: { FinanceRecordHistory },
   mixins: [
     withModuleContexts(
-      { finance: ctx },
+      { finance: ctx, commission: crmModules.commission },
       {
         openForm: function (row) {
           return { module: 'finance', action: row?.id ? 'edit' : 'add', label: '编辑财务单据' }
@@ -260,6 +262,9 @@ export default {
     this.loadOptions()
   },
   methods: {
+    async openCommission(row) {
+      if (await this.checkModuleAction({ module: 'commission', label: '回款提成分摊' })) this.$router.push({ path: '/finance/commission', query: { customerId: String(row.customerId), receiptId: String(row.originalReceiptId || row.receiptId || row.id) } })
+    },
     processHistory: handleProcessHistory,
     money(v) {
       return Number(v || 0).toLocaleString('zh-CN', { minimumFractionDigits: 2 })

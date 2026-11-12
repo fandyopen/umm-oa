@@ -146,6 +146,7 @@
               >{{ detail.recommendationBlockReason }}。人才意向修改不会解除招聘占用；关联流程明细按权限展示。<a v-if="showModuleAction('applications')" @click="viewTalentPipeline(detail)">查看招聘流程</a></template
             ></a-alert
           >
+          <a-button v-if="kind === 'applications' && showModuleAction('commission')" icon="calculator" class="tw-mb-4" @click="openCommission(detail.id)">业绩归属与提成</a-button>
           <a-tabs v-model="detailTab">
             <a-tab-pane key="overview" tab="基本资料"
               ><a-descriptions bordered :column="2" size="small"
@@ -297,6 +298,7 @@
 </template>
 
 <script>
+import { crmModules } from '/src/views/eos/crm/moduleContexts.js'
 import { withModuleContexts } from '/src/utils/moduleContext.js'
 import { recruitmentRequest as api, recordPath, uploadRecruitmentFile, getRecruitmentFile } from '/src/api/eos/recruitment/index.js'
 import {
@@ -327,7 +329,7 @@ const col = (title, dataIndex, slot, width) => ({ title, dataIndex, ...(width ? 
 export default {
   name: 'RecruitmentWorkspace',
   components: { RecruitmentForm },
-  mixins: [withModuleContexts(recruitmentModules)],
+  mixins: [withModuleContexts({ ...recruitmentModules, commission: crmModules.commission })],
   props: { kind: { type: String, required: true } },
   data() {
     return {
@@ -573,6 +575,9 @@ export default {
     this.closePreview()
   },
   methods: {
+    async openCommission(id) {
+      if (await this.checkModuleAction({ module: 'commission', label: '查看提成核算' })) this.$router.push({ path: '/finance/commission', query: { applicationId: String(id) } })
+    },
     hasInterviewResultAction(row) {
       return this.kind === 'applications' && this.actionsForRecord(row).some(action => action.key === 'interviewResult')
     },

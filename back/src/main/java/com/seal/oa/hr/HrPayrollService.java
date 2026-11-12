@@ -48,6 +48,28 @@ public class HrPayrollService {
         this.employees = employees;
     }
 
+    @Transactional
+    public long createCommissionPayroll(String period, long commissionBatch, Map<Long, BigDecimal> amounts) {
+        d.require(PAYROLL, "generate");
+        long batch = d.insert("INSERT INTO oa_hr_payroll(period,batch_type,rules_json,reason,create_by) VALUES(?,'commission','{}',?,?)",
+                period(period), "提成核算 #" + commissionBatch, AuthContext.userId());
+        for (var entry : amounts.entrySet()) {
+            var employee = d.employee(entry.getKey());
+            var snapshot = new LinkedHashMap<String, Object>();
+            for (String field : List.of("employeeNo", "nickName", "deptName", "accountName", "bankName", "bankAccount"))
+                snapshot.put(field, employee.get(field));
+            snapshot.put("commissionBatchId", commissionBatch);
+            BigDecimal amount = entry.getValue();
+            d.insert("""
+                    INSERT INTO oa_hr_payroll_item(payroll_id,user_id,snapshot_json,base_amount,allowance,commission,adjustment,gross_amount,net_amount,reason)
+                    VALUES(?,?,?,0,0,?,?,?,?,?)
+                    """,batch,entry.getKey(),d.json(snapshot),amount.max(BigDecimal.ZERO),amount.min(BigDecimal.ZERO),
+                    amount,amount,"关联提成核算 #" + commissionBatch);
+        }
+        d.history("payroll",batch,null,"接收已批准提成",Map.of("commissionBatchId",commissionBatch));
+        return batch;
+    }
+
     Map<String, Object> batch(long id, boolean lock) {
         return d.one("SELECT * FROM oa_hr_payroll WHERE id=?" + (lock ? " FOR UPDATE" : ""), id);
     }
@@ -144,6 +166,7 @@ public class HrPayrollService {
                         r -> {
                             r.put("snapshot", d.object(r.remove("snapshotJson")));
                             r.put("paidAmount", paid(id(r.get("id"))));
+                            r.put("commissionSources", commissionSources(id(r.get("id"))));
                             r.put(
                                     "payments",
                                     d.rows(
@@ -465,6 +488,10 @@ public class HrPayrollService {
                             user);
             var row = new LinkedHashMap<>(old);
             for (String key : ADJUSTABLE) row.put(key, currency(input.get(key), key));
+            if ("commission".equals(b.get("batchType")))
+                for (String key : List.of("commission", "adjustment", "bonus"))
+                    if (number(row.get(key), key).compareTo(number(old.get(key), key)) != 0)
+                        throw new ApiException(409, "关联提成金额已锁定，请从提成核算生成新的差额批次；个税等项目仍需核对");
             for (String key : List.of("bonus", "commission", "deduction", "tax", "contribution"))
                 if (number(row.get(key), key).signum() < 0)
                     throw new ApiException(400, "奖金、提成及扣款项目须非负，扣回使用差额批次");
@@ -758,6 +785,7 @@ public class HrPayrollService {
                             r.put("employeeName", snapshot.get("nickName"));
                             r.put("deptName", snapshot.get("deptName"));
                             r.put("paidAmount", paid(id(r.get("id"))));
+                            r.put("commissionSources", commissionSources(id(r.get("id"))));
                             return r;
                         })
                 .toList();
@@ -773,5 +801,18 @@ public class HrPayrollService {
                         item,
                         AuthContext.userId());
         d.closeTodos("hr-payslip-" + item);
+    }
+
+    List<Map<String, Object>> commissionSources(long item) {
+        return d.rows("""
+                SELECT l.id,l.batch_id,l.amount,l.side,l.snapshot_json,b.period
+                FROM oa_commission_line l JOIN oa_commission_batch b ON b.id=l.batch_id
+                WHERE l.payroll_item_id=? ORDER BY l.id
+                """, item).stream().map(r -> {
+                    var snapshot=d.object(r.remove("snapshotJson"));
+                    for (String field : List.of("customerName","jobTitle","talentName","holdReason","applicationId"))
+                        r.put(field,snapshot.get(field));
+                    return r;
+                }).toList();
     }
 }

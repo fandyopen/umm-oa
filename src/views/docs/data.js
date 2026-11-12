@@ -1,5 +1,12 @@
 export const routeMapEntries = [
   {
+    group: '财务与回款管理', menu: '提成核算', route: '/finance/commission',
+    component: 'eos/crm/finance/commission', file: 'src/views/eos/crm/finance/commission.vue',
+    related: ['src/views/docs/components/CommissionRules.vue', 'src/views/enterprise/hr/PayrollWorkspace.vue'],
+    api: ['src/api/eos/crm/commission.js'], backend: ['CommissionController', 'CommissionService', 'CommissionWorkflowHandler', 'HrPayrollService'],
+    permission: 'finance:commission:list', note: '规则版本、两部门归属、回款分摊、保证期释放、差额审批及工资发放。详见使用文档-提成核算规则。'
+  },
+  {
     group: '财务与回款管理', menu: '财务与回款管理', route: '/finance',
     component: 'eos/crm/finance/index', file: 'src/views/eos/crm/finance/index.vue',
     related: ['src/views/eos/crm/finance/modules/FinanceLedger.vue', 'src/views/eos/crm/finance/modules/FinanceRecords.vue', 'src/views/eos/crm/finance/modules/FinanceCollections.vue', 'src/views/eos/crm/finance/modules/FinanceReconcile.vue'],
