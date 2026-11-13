@@ -10,6 +10,7 @@ public final class WorkflowIntegrationRegistry {
             Map.entry(340590L, Set.of("add", "edit")),
             Map.entry(341201L, Set.of("submit", "sign")),
             Map.entry(341400L, Set.of("invoice_submit", "receipt_confirm", "refund_submit", "adjust_confirm", "cost_confirm")),
+            Map.entry(341410L, Set.of("submit")),
             Map.entry(341001L, Set.of("invite", "transfer", "dismiss")),
             Map.entry(340782L, Set.of("invite", "transfer", "dismiss")),
             Map.entry(341002L, Set.of("salary_submit")),

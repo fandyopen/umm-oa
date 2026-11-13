@@ -1,0 +1,12 @@
+{
+  "name": "通讯录批量导入模板",
+  "note": "用于邀请新成员，与员工档案更新模板不同。姓名、手机号码、部门ID/部门必填。部门可填写当前企业已启用部门的ID或完整名称；名称错误、不存在、停用或重名时整批不导入，重名请改填部门ID。手机号保持文本格式且不可重复。每次最多200人，先校验预览再确认，并沿用邀请成员审批流程。性别填写0（男）、1（女）或2（未知）。本模板不接受密码、角色或管理员权限。",
+  "fields": [
+    { "key": "nickName", "label": "姓名", "type": "text", "required": true },
+    { "key": "phonenumber", "label": "手机号码", "type": "text", "required": true },
+    { "key": "email", "label": "邮箱", "type": "text", "required": false },
+    { "key": "department", "label": "部门ID/部门", "aliases": ["部门ID", "部门", "部门名称"], "type": "text", "required": true },
+    { "key": "sex", "label": "性别", "type": "text", "required": false },
+    { "key": "remark", "label": "备注", "type": "text", "required": false }
+  ]
+}

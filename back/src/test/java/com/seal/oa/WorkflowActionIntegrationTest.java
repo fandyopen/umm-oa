@@ -460,6 +460,32 @@ class WorkflowActionIntegrationTest {
         assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM biz_record WHERE module = 'lowcode:button-flow-draft' AND business_key = '1:341001:invite'", Integer.class));
     }
 
+    @Test
+    void batchMemberImportFreezesResolvedDepartmentsAndWaitsForInvitationApproval() throws Exception {
+        String token=login("13610316814");
+        publishFlow(token,"invite",true);
+        var rows=java.util.List.of(
+                Map.of("nickName","批量成员甲","phonenumber","13985500101","department","324"),
+                Map.of("nickName","批量成员乙","phonenumber","13985500102","department","综合部"));
+        var submitted=mockMvc.perform(post("/workflow/action/execute")
+                .header("Authorization","Bearer "+token).contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(Map.of("moduleId",341001,"actionCode","invite","payload",Map.of("rows",rows,"memberImport",true)))))
+                .andExpect(jsonPath("$.code").value(200)).andExpect(jsonPath("$.data.status").value("pendingApproval")).andReturn();
+        var data=objectMapper.readTree(submitted.getResponse().getContentAsByteArray()).path("data");
+        assertUserCount("13985500101",0); assertUserCount("13985500102",0);
+        var snapshot=objectMapper.readTree(jdbc.queryForObject("SELECT payload_json FROM oa_workflow_request WHERE id=?",String.class,data.path("requestId").asLong()));
+        assertEquals("324",snapshot.path("rows").get(1).path("department").asText());
+        assertEquals("综合部",snapshot.path("rows").get(1).path("deptName").asText());
+        String approver=login("17600000001");
+        mockMvc.perform(post("/activiti/process/complete").header("Authorization","Bearer "+approver)
+                .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(Map.of(
+                        "taskId",data.path("taskId").asText(),"instanceId",data.path("instanceId").asText(),
+                        "variables",Map.of("pass",true,"comment","同意批量邀请")))))
+                .andExpect(jsonPath("$.code").value(200));
+        assertUserCount("13985500101",1); assertUserCount("13985500102",1);
+        assertEquals(324L,jdbc.queryForObject("SELECT dept_id FROM sys_user WHERE user_name='13985500102'",Long.class));
+    }
+
     private void updateButton(String token, String actionCode, Map<String, Object> body, int code) throws Exception {
         mockMvc.perform(put("/system/module/341001/actions/" + actionCode).header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(body)))

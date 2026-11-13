@@ -155,8 +155,8 @@ test('finance routes render the requested workspace and preserve each record typ
 test('header navigation opens leaf menus even with an empty children array', () => {
   const parsed = compiler.parseComponent(read('src/components/layouts/GlobalHeader/RightContent.vue'))
   const source = parsed.script.content.replace(/^import .*$/gm, '').replace('export default', 'return')
-  const options = new Function('AvatarDropdown', 'Ellipsis', 'IconFont', 'mapState', 'mapGetters', 'mapActions', source)(
-    {}, {}, {}, () => ({}), () => ({}), () => ({})
+  const options = new Function('AvatarDropdown', 'Ellipsis', 'IconFont', 'ThemeSwitcher', 'mapState', 'mapGetters', 'mapActions', source)(
+    {}, {}, {}, {}, () => ({}), () => ({}), () => ({})
   )
   const visits = [], selections = []
   const context = { $router: { push: target => visits.push(target) }, SetCurrentLevelOneMenu: menus => selections.push(menus) }

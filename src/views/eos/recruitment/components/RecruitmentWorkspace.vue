@@ -298,6 +298,7 @@
 </template>
 
 <script>
+import { fetchFixedTemplate, getBusinessTemplateSchema } from '/src/api/system/templates.js'
 import { crmModules } from '/src/views/eos/crm/moduleContexts.js'
 import { withModuleContexts } from '/src/utils/moduleContext.js'
 import { recruitmentRequest as api, recordPath, uploadRecruitmentFile, getRecruitmentFile } from '/src/api/eos/recruitment/index.js'
@@ -1124,7 +1125,8 @@ export default {
         '归属争议：申请转交',
         [field('collaborators', '转交后协作人', 'multiple', { options: optionRows(this.options.users) }), reasonField],
         { collaborators: d.collaborators || [] },
-        b => this.submitConfiguredAction('handover', { ...b, ownerUserId: dispute.proposedOwnerId, disputeId: dispute.id, revision: d.revision, entityId: d.id, title: '招聘申请：handover #' + d.id }, '归属争议：申请转交', 'talents'),
+        b =>
+          this.submitConfiguredAction('handover', { ...b, ownerUserId: dispute.proposedOwnerId, disputeId: dispute.id, revision: d.revision, entityId: d.id, title: '招聘申请：handover #' + d.id }, '归属争议：申请转交', 'talents'),
         '拟归属人：' + dispute.proposedOwnerName + '。仅已发布并启用的流程进入审批，最终执行成功后自动结案争议。'
       )
     },
@@ -1289,7 +1291,7 @@ export default {
         const workbook = XLSX.read(await file.arrayBuffer(), { type: 'array' })
         const data = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { defval: '' })
         if (!data.length || data.length > 200) return this.$message.warning('每次导入1至200条，表头请使用下载的模板')
-        const keys = this.importFields()
+        const keys = (await getBusinessTemplateSchema(this.kind)).fields
         const rows = data.map(row => {
           const r = {}
           keys.forEach(f => {
@@ -1311,44 +1313,29 @@ export default {
         this.$message.error(e.message || '文件解析失败，请检查模板')
       }
     },
-    importFields() {
-      return this.kind === 'jobs'
-        ? [
-            field('title', '职位名称'),
-            field('customerId', '客户ID'),
-            field('ownerUserId', '负责人ID'),
-            field('contractId', '合同ID'),
-            field('city', '城市'),
-            field('industry', '行业'),
-            field('salaryMin', '月薪下限'),
-            field('salaryMax', '月薪上限'),
-            field('headcount', '招聘人数'),
-            field('requirements', '岗位要求'),
-            field('feeTerms', '收费条件')
-          ]
-        : [
-            field('name', '姓名'),
-            field('phone', '手机号'),
-            field('email', '邮箱'),
-            field('ownerUserId', '负责人ID'),
-            field('city', '城市'),
-            field('industry', '行业'),
-            field('skills', '技能'),
-            field('experienceYears', '经验年限'),
-            field('expectedSalary', '期望月薪'),
-            field('source', '来源'),
-            field('remark', '备注')
-          ]
-    },
     async downloadTemplate() {
-      const XLSX = await import('xlsx')
-      const keys = this.importFields()
-      const sheet = XLSX.utils.aoa_to_sheet([keys.map(k => k.label)])
-      const wb = XLSX.utils.book_new()
-      XLSX.utils.book_append_sheet(wb, sheet, '导入模板')
-      const lookup = [...(this.options.users || []).map(u => ({ 类型: '负责人', ID: u.id, 名称: u.name })), ...(this.kind === 'jobs' ? (this.options.customers || []).map(c => ({ 类型: '客户', ID: c.id, 名称: c.name })) : [])]
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(lookup), '可选编号')
-      XLSX.writeFile(wb, this.title + '导入模板.xlsx')
+      try {
+        const blob = await fetchFixedTemplate('business/' + this.kind)
+        const XLSX = await import('xlsx')
+        const wb = XLSX.read(await blob.arrayBuffer(), { type: 'array', cellStyles: true, sheetStubs: true })
+        // Styled empty rows can lie outside the file's populated dimension. Keep them when
+        // SheetJS rewrites the fixed template to append the user-specific lookup sheet.
+        const data = wb.Sheets[wb.SheetNames[0]]
+        const range = XLSX.utils.decode_range(data['!ref'])
+        range.e.r = Math.max(range.e.r, 500)
+        data['!ref'] = XLSX.utils.encode_range(range)
+        Object.values(data).forEach(cell => {
+          if (cell && cell.z === '@' && (cell.v === undefined || cell.v === null)) Object.assign(cell, { t: 's', v: '' })
+        })
+        const lookup = [
+          ...(this.options.users || []).map(u => ({ 类型: '负责人', ID: String(u.id), 名称: u.name })),
+          ...(this.kind === 'jobs' ? (this.options.customers || []).map(c => ({ 类型: '客户', ID: String(c.id), 名称: c.name })) : [])
+        ]
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(lookup), '可选编号')
+        XLSX.writeFile(wb, this.title + '导入模板.xlsx')
+      } catch (error) {
+        this.$message.error(error.message || '模板下载失败')
+      }
     },
     async exportData() {
       if (!(await this.allowedAction('export'))) return

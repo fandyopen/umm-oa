@@ -151,6 +151,28 @@ class CommissionIntegrationTest {
         var response=mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/login").contentType(org.springframework.http.MediaType.APPLICATION_JSON).content(json.writeValueAsString(Map.of("username",name,"password","admin123123")))).andReturn();
         var result=json.readTree(response.getResponse().getContentAsString(java.nio.charset.StandardCharsets.UTF_8));assertEquals(200,result.path("code").asInt(),result.toString());return result.path("token").asText();
     }
+    @Test void commissionMenuApiAndBothWorkflowConfigurationEntrancesAreAvailable() throws Exception {
+        String admin=login("13610316814");
+        var response=mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/getRouters").header("Authorization","Bearer "+admin)).andReturn();
+        var result=json.readTree(response.getResponse().getContentAsString(java.nio.charset.StandardCharsets.UTF_8));
+        assertEquals(200,result.path("code").asInt());
+        var finance=java.util.stream.StreamSupport.stream(result.path("data").spliterator(),false)
+                .filter(r->"/finance".equals(r.path("path").asText())).findFirst().orElseThrow();
+        var menu=java.util.stream.StreamSupport.stream(finance.path("children").spliterator(),false)
+                .filter(r->r.path("moduleId").asLong()==341410).findFirst().orElseThrow();
+        assertEquals("commission",menu.path("path").asText());
+        assertEquals("eos/crm/finance/commission",menu.path("component").asText());
+        assertFalse(menu.path("hidden").asBoolean());
+        response=mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/project/commission/options").header("Authorization","Bearer "+admin)).andReturn();
+        assertEquals(200,json.readTree(response.getResponse().getContentAsString(java.nio.charset.StandardCharsets.UTF_8)).path("code").asInt());
+        response=mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/system/workflows/catalog/options").param("moduleId","341410").header("Authorization","Bearer "+admin)).andReturn();
+        result=json.readTree(response.getResponse().getContentAsString(java.nio.charset.StandardCharsets.UTF_8));
+        assertEquals(200,result.path("code").asInt(),result.toString());
+        var submit=java.util.stream.StreamSupport.stream(result.path("data").path("buttons").spliterator(),false)
+                .filter(r->"submit".equals(r.path("actionCode").asText())).findFirst().orElseThrow();
+        assertTrue(submit.path("ready").asBoolean(),submit.toString());
+        assertEquals("commission.batch.submit",actions.action(341410,"submit").get("handlerKey"));
+    }
     @Test void roleAssignedApproverReceivesTodoAndCompletesFrozenCommission() throws Exception {
         ready();var b=generate();String name=jdbc.queryForObject("SELECT user_name FROM sys_user WHERE user_id=?",String.class,user);
         jdbc.update("INSERT INTO sys_role(role_id,role_name,role_key,data_scope) VALUES(99602,'提成审批测试','commission_review_test','1')");

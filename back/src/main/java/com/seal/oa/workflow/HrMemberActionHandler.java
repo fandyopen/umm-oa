@@ -2,6 +2,7 @@ package com.seal.oa.workflow;
 
 import com.seal.oa.common.ApiException;
 import com.seal.oa.system.HrMemberService;
+import com.seal.oa.system.MemberImportService;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -21,9 +22,11 @@ public class HrMemberActionHandler implements WorkflowActionHandler {
     );
 
     private final HrMemberService hrMemberService;
+    private final MemberImportService memberImport;
 
-    public HrMemberActionHandler(HrMemberService hrMemberService) {
+    public HrMemberActionHandler(HrMemberService hrMemberService, MemberImportService memberImport) {
         this.hrMemberService = hrMemberService;
+        this.memberImport = memberImport;
     }
 
     @Override
@@ -34,7 +37,13 @@ public class HrMemberActionHandler implements WorkflowActionHandler {
     @Override
     public void validate(WorkflowActionContext context) {
         switch (operation(context)) {
-            case "invite" -> hrMemberService.validateInvite(context.payload());
+            case "invite" -> {
+                if (context.payload().containsKey("rows")) {
+                    var rows = memberImport.prepare(context.moduleId(), context.payload(), context.operatorName(), context.requestId() > 0);
+                    context.payload().put("rows", rows);
+                    context.payload().put("memberImport", true);
+                } else hrMemberService.validateInvite(context.payload());
+            }
             case "transfer" -> hrMemberService.validateTransfer(
                     longValue(context.payload().get("deptId"), 0L),
                     userIds(context.payload())
@@ -52,9 +61,15 @@ public class HrMemberActionHandler implements WorkflowActionHandler {
         result.put("handlerKey", context.handlerKey());
         switch (operation(context)) {
             case "invite" -> {
-                long userId = hrMemberService.invite(context.payload(), context.operatorName());
-                result.put("userId", userId);
-                result.put("message", "成员已邀请");
+                if (context.payload().containsKey("rows")) {
+                    int count = memberImport.execute(context.moduleId(), context.payload(), context.operatorName(), context.requestId() > 0);
+                    result.put("count", count);
+                    result.put("message", "已导入" + count + "名成员");
+                } else {
+                    long userId = hrMemberService.invite(context.payload(), context.operatorName());
+                    result.put("userId", userId);
+                    result.put("message", "成员已邀请");
+                }
             }
             case "transfer" -> {
                 int count = hrMemberService.transfer(

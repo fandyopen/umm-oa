@@ -10,11 +10,12 @@
     @cancel="$emit('close')"
     destroy-on-close
   >
-    <a-alert :message="schema.note" type="info" show-icon class="tw-mb-4" />
+    <a-alert v-if="catalog.error" type="error" :message="catalog.error" class="tw-mb-4"><a-button slot="description" size="small" @click="loadCatalog">重试加载模板</a-button></a-alert>
+    <a-alert v-if="schema.note" :message="schema.note" type="info" show-icon class="tw-mb-4" />
     <div class="excel-tools">
-      <a-button icon="download" @click="download">下载模板</a-button
+      <a-button icon="download" :loading="catalog.loading" :disabled="!catalog.ready" @click="download">下载模板</a-button
       ><a-upload :before-upload="read" :show-upload-list="false" accept=".xlsx,.xls,.csv"
-        ><a-button icon="upload">{{ ['monthly', 'daily', 'leave'].includes(type) ? '选择钉钉导出表或模板' : '选择导入文件' }}</a-button></a-upload
+        ><a-button icon="upload" :disabled="!catalog.ready">{{ ['monthly', 'daily', 'leave'].includes(type) ? '选择钉钉导出表或模板' : '选择导入文件' }}</a-button></a-upload
       ><span>{{ fileName }}</span>
     </div>
     <template v-if="matrix.length">
@@ -49,7 +50,7 @@
 </template>
 <script>
 import * as XLSX from 'xlsx'
-import { templates, suggestColumn, convertCell, exportTemplate } from '/src/views/enterprise/hr/templates.js'
+import { templateState, getTemplateSchema, loadTemplateCatalog, suggestColumn, convertCell, exportTemplate } from '/src/views/enterprise/hr/templates.js'
 import { loadEmploymentTypes, normalizeEmploymentType } from '/src/views/enterprise/hr/employmentTypes.js'
 export default {
   name: 'HrExcelImport',
@@ -64,7 +65,10 @@ export default {
   data: () => ({ busy: false, matrix: [], sheetNames: [], sheetName: '', headerRow: 1, mapping: {}, raw: [], rows: [], errors: [], previewed: false, fileName: '', fileContent: '', book: null, employmentTypes: [] }),
   computed: {
     schema() {
-      return templates[this.type]
+      return getTemplateSchema(this.type)
+    },
+    catalog() {
+      return templateState
     },
     headers() {
       return (this.matrix[this.headerRow - 1] || []).map(v => String(v || '').trim())
@@ -78,14 +82,32 @@ export default {
       }))
     }
   },
+  created() {
+    this.loadCatalog()
+  },
   methods: {
+    async loadCatalog() {
+      try {
+        await loadTemplateCatalog()
+      } catch (_) {
+        /* Shown with retry in the dialog. */
+      }
+    },
     fieldLabel(key) {
       return this.schema.fields.find(f => f.key === key)?.label || key
     },
     async download() {
-      await exportTemplate(this.type, this.templateRows)
+      try {
+        await exportTemplate(this.type, this.templateRows)
+      } catch (error) {
+        this.$message.error(error.message || '模板下载失败')
+      }
     },
     async read(file) {
+      if (!templateState.ready) {
+        this.$message.warning('请先加载模板字段')
+        return false
+      }
       if (file.size > 10 * 1024 * 1024) {
         this.$message.warning('文件不能超过10MB')
         return false

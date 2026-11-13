@@ -2,65 +2,52 @@
   <div class="main">
     <template v-if="isNext">
       <form v-if="isLogin" class="loginForm" novalidate @submit.prevent="handleSubmit">
-        <div class="title">登录</div>
-        <div class="user-login-text">
-          通过帐号密码登录，或者切换为<span class="toggle" @click="registered">注册</span>
+        <p class="form-eyebrow">WELCOME TO UMM</p>
+        <h2 class="title">登录协同工作台</h2>
+        <p class="user-login-text">欢迎回来，继续推进每一份招聘托付。</p>
+        <div v-if="isLoginError" class="login-error" role="alert">{{ loginErrorInfo }}</div>
+
+        <div class="form-field">
+          <label class="formTitle" for="login-username">手机号 / 账户</label>
+          <div class="input-wrap"><svg class="input-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4" /><path d="M4 21v-2a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v2" /></svg><input id="login-username" v-model.trim="loginForm.username" class="login-input" autocomplete="username" placeholder="请输入手机号或账户" /></div>
         </div>
-        <div v-if="isLoginError" class="login-error">{{ loginErrorInfo }}</div>
-
-        <div class="formTitle">手机号/账户</div>
-        <input v-model.trim="loginForm.username" class="login-input" autocomplete="username" placeholder="手机号/账户" />
-
-        <div class="formTitle">密码</div>
-        <input v-model="loginForm.password" class="login-input" type="password" autocomplete="current-password" placeholder="密码" />
-
-        <div class="formTitle">验证码</div>
-        <div class="codeContent">
-          <input v-model.trim="loginForm.code" class="login-input codeInput" autocomplete="off" placeholder="验证码" />
-          <img :src="codeUrl" class="codeImg" alt="验证码" @click="getCode" />
+        <div class="form-field">
+          <label class="formTitle" for="login-password">登录密码</label>
+          <div class="input-wrap"><svg class="input-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2" /><path d="M8 10V6a4 4 0 0 1 8 0v4M12 14v3" /></svg><input id="login-password" v-model="loginForm.password" class="login-input password-input" :type="showPassword ? 'text' : 'password'" autocomplete="current-password" placeholder="请输入登录密码" /><button class="password-toggle" type="button" :aria-label="showPassword ? '隐藏密码' : '显示密码'" :aria-pressed="showPassword" @click="showPassword = !showPassword"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" /><circle cx="12" cy="12" r="3" /><path v-if="!showPassword" d="m3 3 18 18" /></svg></button></div>
         </div>
-
-        <button class="confirmBtn" type="submit" :disabled="logining">
-          {{ logining ? '登录中...' : '登 录' }}
-        </button>
+        <div class="form-field">
+          <label class="formTitle" for="login-code">验证码</label>
+          <div class="codeContent">
+            <div class="input-wrap"><svg class="input-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6l8-3Z" /><path d="m8.5 12 2.5 2.5 4.5-5" /></svg><input id="login-code" v-model.trim="loginForm.code" class="login-input codeInput" autocomplete="off" placeholder="请输入验证码" /></div>
+            <button class="captcha-button" type="button" aria-label="刷新验证码" title="点击换一张" @click="getCode"><img v-if="codeUrl" :src="codeUrl" class="codeImg" alt="图形验证码" /><span v-else>点击获取验证码</span></button>
+          </div>
+        </div>
+        <div class="form-options"><label class="remember-option"><input v-model="loginForm.rememberMe" type="checkbox" /><span>记住账号</span></label><span class="password-help">忘记密码请联系管理员</span></div>
+        <button class="confirmBtn" type="submit" :disabled="logining">{{ logining ? '正在登录…' : '进入工作台' }}<svg v-if="!logining" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5" /></svg></button>
+        <p class="form-bottom">还没有企业账号？<button class="toggle" type="button" @click="registered">注册企业</button></p>
       </form>
 
       <form v-else class="loginForm" novalidate @submit.prevent="nextTick">
-        <div class="title">登录</div>
-        <div class="user-login-text">
-          通过手机号注册，或者切换为<span class="toggle" @click="goLogin">账号密码登录</span>
-        </div>
-        <div v-if="isLoginError" class="login-error">{{ loginErrorInfo }}</div>
-
-        <div class="formTitle">手机号</div>
-        <div class="p-a-c">
-          <countryCodeSelector :countryCode.sync="areaCode" />
-          <input v-model.trim="RegForm.username" class="login-input regPhoneInput" autocomplete="tel" placeholder="手机号" />
-        </div>
-
-        <div class="formTitle">密码</div>
-        <input v-model="RegForm.password" class="login-input" type="password" autocomplete="new-password" placeholder="请输入密码" />
-
-        <div class="formTitle">确认密码</div>
-        <input v-model="RegForm.checkPass" class="login-input" type="password" autocomplete="new-password" placeholder="请再次输入密码" />
-
+        <p class="form-eyebrow">JOIN UMM WORKSPACE</p>
+        <h2 class="title">开启团队协作</h2>
+        <p class="user-login-text">创建企业账号，让招聘与交付有序衔接。</p>
+        <div v-if="isLoginError" class="login-error" role="alert">{{ loginErrorInfo }}</div>
+        <div class="form-field"><label class="formTitle" for="register-phone">手机号</label><div class="p-a-c"><countryCodeSelector :countryCode.sync="areaCode" /><input id="register-phone" v-model.trim="RegForm.username" class="login-input regPhoneInput" autocomplete="tel" placeholder="请输入手机号" /></div></div>
+        <div class="form-field"><label class="formTitle" for="register-password">设置密码</label><input id="register-password" v-model="RegForm.password" class="login-input" type="password" autocomplete="new-password" placeholder="至少8位，包含字母和数字" /></div>
+        <div class="form-field"><label class="formTitle" for="register-confirm">确认密码</label><input id="register-confirm" v-model="RegForm.checkPass" class="login-input" type="password" autocomplete="new-password" placeholder="请再次输入密码" /></div>
         <button class="confirmBtn" type="submit" :disabled="logining">下一步</button>
+        <p class="form-bottom">已有账号？<button class="toggle" type="button" @click="goLogin">返回登录</button></p>
       </form>
     </template>
 
     <form v-else class="loginForm" novalidate @submit.prevent="handleRegistered">
-      <div class="title">填写企业信息</div>
-      <div class="user-login-text">
-        请填写营业执照上的企业名称<span class="toggle" @click="goback_">返回</span>
-      </div>
-      <div v-if="isLoginError" class="login-error">{{ loginErrorInfo }}</div>
-
-      <div class="formTitle">企业名称</div>
-      <input v-model.trim="firmForm.firmName" class="login-input" placeholder="请填写企业名称" />
-
-      <button class="confirmBtn" type="submit" :disabled="logining">
-        {{ logining ? '提交中...' : '完 成' }}
-      </button>
+      <p class="form-eyebrow">YOUR TEAM STARTS HERE</p>
+      <h2 class="title">完善企业信息</h2>
+      <p class="user-login-text">填写企业名称，建立团队的协作空间。</p>
+      <div v-if="isLoginError" class="login-error" role="alert">{{ loginErrorInfo }}</div>
+      <div class="form-field"><label class="formTitle" for="firm-name">企业名称</label><input id="firm-name" v-model.trim="firmForm.firmName" class="login-input" placeholder="请输入营业执照上的企业名称" /></div>
+      <button class="confirmBtn" type="submit" :disabled="logining">{{ logining ? '提交中…' : '完成注册' }}</button>
+      <p class="form-bottom"><button class="toggle" type="button" @click="goback_">返回上一步</button></p>
     </form>
   </div>
 </template>
@@ -71,6 +58,7 @@ import { mapActions } from 'vuex'
 import { timeFix } from '/src/utils/common/util.js'
 import { getCodeImg } from '/src/api/user/login.js'
 import { loadApplicationRuntime } from '/src/plugins/runtime/application.js'
+import { setDocumentTitle } from '/src/utils/common/domUtil.js'
 
 const phonePattern = /^1[3-9]\d{9}$/
 const passwordPattern = /^(?![0-9]+$)(?![a-zA-Z]+$)[0-9A-Za-z]{8,}$/
@@ -82,6 +70,7 @@ export default {
   data() {
     return {
       codeUrl: '',
+      showPassword: false,
       isLoginError: false,
       loginErrorInfo: '',
       loginForm: {
@@ -109,6 +98,7 @@ export default {
     this.getCookie()
   },
   mounted() {
+    setDocumentTitle('登录协同工作台 - UMM 加木企服')
     const preloadRuntime = () => loadApplicationRuntime().catch(() => {})
     if (window.requestIdleCallback) {
       window.requestIdleCallback(preloadRuntime, { timeout: 1500 })

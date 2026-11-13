@@ -1,0 +1,271 @@
+{
+  "templates": {
+    "customer": {
+      "name": "客户档案导入模板",
+      "moduleId": 340352,
+      "note": "公司名称必填。编号、税号使用文本；日期填写YYYY-MM-DD。数据导入仍按现有客户导入校验和权限执行。",
+      "fields": [
+        {
+          "key": "name",
+          "label": "公司名称",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "serial",
+          "label": "客户编号",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "industry",
+          "label": "行业",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "companyScale",
+          "label": "规模",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "region",
+          "label": "地区",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "enterpriseNature",
+          "label": "企业性质",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "customerSource",
+          "label": "客户来源",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "cooperationStatus",
+          "label": "合作状态",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "address",
+          "label": "地址",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "taxNumber",
+          "label": "税号",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "taxpayerType",
+          "label": "纳税人类别",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "cooperationPositions",
+          "label": "合作职位数",
+          "type": "number",
+          "required": false
+        },
+        {
+          "key": "referralCount",
+          "label": "推荐人数",
+          "type": "number",
+          "required": false
+        },
+        {
+          "key": "hireCount",
+          "label": "入职人数",
+          "type": "number",
+          "required": false
+        },
+        {
+          "key": "contractAmount",
+          "label": "合同金额",
+          "type": "number",
+          "required": false
+        },
+        {
+          "key": "receivedAmount",
+          "label": "回款金额",
+          "type": "number",
+          "required": false
+        },
+        {
+          "key": "contractExpireDate",
+          "label": "合同到期",
+          "type": "date",
+          "required": false
+        },
+        {
+          "key": "lastPaymentDate",
+          "label": "最近回款",
+          "type": "date",
+          "required": false
+        },
+        {
+          "key": "remark",
+          "label": "备注",
+          "type": "text",
+          "required": false
+        }
+      ]
+    },
+    "jobs": {
+      "name": "职位管理导入模板",
+      "moduleId": 341301,
+      "note": "每次最多导入200条。客户、负责人和合同填写ID，参考当前用户可见的可选编号。任一行错误则整批取消；固定模板不含真实客户或人员数据。",
+      "fields": [
+        {
+          "key": "title",
+          "label": "职位名称",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "customerId",
+          "label": "客户ID",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "ownerUserId",
+          "label": "负责人ID",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "contractId",
+          "label": "合同ID",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "city",
+          "label": "城市",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "industry",
+          "label": "行业",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "salaryMin",
+          "label": "月薪下限",
+          "type": "number",
+          "required": false
+        },
+        {
+          "key": "salaryMax",
+          "label": "月薪上限",
+          "type": "number",
+          "required": false
+        },
+        {
+          "key": "headcount",
+          "label": "招聘人数",
+          "type": "number",
+          "required": false
+        },
+        {
+          "key": "requirements",
+          "label": "岗位要求",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "feeTerms",
+          "label": "收费条件",
+          "type": "text",
+          "required": false
+        }
+      ]
+    },
+    "talents": {
+      "name": "人才库导入模板",
+      "moduleId": 341302,
+      "note": "每次最多导入200条。手机号码和编号使用文本，负责人填写当前可选人员ID。任一行错误则整批取消；固定模板不含真实人才或人员数据。",
+      "fields": [
+        {
+          "key": "name",
+          "label": "姓名",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "phone",
+          "label": "手机号",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "email",
+          "label": "邮箱",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "ownerUserId",
+          "label": "负责人ID",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "city",
+          "label": "城市",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "industry",
+          "label": "行业",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "skills",
+          "label": "技能",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "experienceYears",
+          "label": "经验年限",
+          "type": "number",
+          "required": false
+        },
+        {
+          "key": "expectedSalary",
+          "label": "期望月薪",
+          "type": "number",
+          "required": false
+        },
+        {
+          "key": "source",
+          "label": "来源",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "remark",
+          "label": "备注",
+          "type": "text",
+          "required": false
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,1316 @@
+{
+  "templates": {
+    "employee": {
+      "name": "员工档案批量导入模板",
+      "title": "批量导入档案",
+      "note": "仅更新已有员工，不新增成员。先“导出档案”获取员工编号和档案版本，再填写本模板；版本必填，档案变更后需重新导出。空白字段保留原值，单人修改或清空字段请在“查看档案”中操作。用工类型填写“填写说明”列出的名称或编码；入职日期须为真实日期。",
+      "fields": [
+        {
+          "key": "employeeNo",
+          "label": "员工编号",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "employeeName",
+          "label": "员工姓名",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "dingtalkUserId",
+          "label": "钉钉人员ID",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "revision",
+          "label": "档案版本",
+          "type": "number",
+          "required": true
+        },
+        {
+          "key": "entryDate",
+          "label": "入职日期",
+          "type": "date",
+          "required": false
+        },
+        {
+          "key": "regularDate",
+          "label": "转正日期",
+          "type": "date",
+          "required": false
+        },
+        {
+          "key": "employmentType",
+          "label": "用工类型",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "emergencyContact",
+          "label": "紧急联系人",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "emergencyPhone",
+          "label": "紧急联系电话",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "contractStart",
+          "label": "合同开始日期",
+          "type": "date",
+          "required": false
+        },
+        {
+          "key": "contractEnd",
+          "label": "合同结束日期",
+          "type": "date",
+          "required": false
+        }
+      ]
+    },
+    "salary": {
+      "name": "员工薪资标准模板",
+      "note": "定薪与调薪新增生效版本，导入后需提交审批；monthly为月薪，daily为日薪。固定补贴按月维护，生成工资时按计薪比例折算。禁止用本期工资调整覆盖长期标准。",
+      "fields": [
+        {
+          "key": "employeeNo",
+          "label": "员工编号",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "employeeName",
+          "label": "员工姓名",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "dingtalkUserId",
+          "label": "钉钉人员ID",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "effectiveDate",
+          "label": "薪资生效日期",
+          "type": "date",
+          "required": true
+        },
+        {
+          "key": "payType",
+          "label": "计薪方式（monthly或daily）",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "baseAmount",
+          "label": "工资标准",
+          "type": "number",
+          "required": true
+        },
+        {
+          "key": "allowance",
+          "label": "月固定补贴",
+          "type": "number",
+          "required": true
+        },
+        {
+          "key": "reason",
+          "label": "定薪调薪原因",
+          "type": "text",
+          "required": true
+        }
+      ]
+    },
+    "monthly": {
+      "name": "钉钉月度考勤导入模板",
+      "note": "一人一月一行。实际出勤不含请假：实际出勤×每日工时＋各类请假小时＋缺勤天数×每日工时应与应出勤×每日工时相等。缺失不是零；钉钉未启用的字段可在映射时明确选择按0导入。每日与请假明细仅供追溯，不重复累计到月汇总。",
+      "fields": [
+        {
+          "key": "employeeNo",
+          "label": "员工编号",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "employeeName",
+          "label": "员工姓名",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "dingtalkUserId",
+          "label": "钉钉人员ID",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "period",
+          "label": "考勤月份（YYYY-MM）",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "requiredDays",
+          "label": "应出勤天数",
+          "type": "number",
+          "required": true
+        },
+        {
+          "key": "actualDays",
+          "label": "实际出勤天数（不含请假）",
+          "type": "number",
+          "required": true
+        },
+        {
+          "key": "personalLeaveHours",
+          "label": "事假小时",
+          "type": "number",
+          "required": true
+        },
+        {
+          "key": "sickLeaveHours",
+          "label": "病假小时",
+          "type": "number",
+          "required": true
+        },
+        {
+          "key": "paidLeaveHours",
+          "label": "带薪假小时",
+          "type": "number",
+          "required": true
+        },
+        {
+          "key": "absentDays",
+          "label": "缺勤天数",
+          "type": "number",
+          "required": true
+        },
+        {
+          "key": "overtimeHours",
+          "label": "加班小时",
+          "type": "number",
+          "required": true
+        },
+        {
+          "key": "lateCount",
+          "label": "迟到次数",
+          "type": "number",
+          "required": true
+        },
+        {
+          "key": "earlyCount",
+          "label": "早退次数",
+          "type": "number",
+          "required": true
+        },
+        {
+          "key": "missingCount",
+          "label": "缺卡次数",
+          "type": "number",
+          "required": true
+        }
+      ]
+    },
+    "daily": {
+      "name": "钉钉每日考勤导入模板",
+      "note": "一人一天一行，需补齐全月排班工时。用于考勤日历及月中调薪、入离职分段核算；跨夜班次按钉钉归属考勤日期导入，工时使用已核准结果。",
+      "fields": [
+        {
+          "key": "employeeNo",
+          "label": "员工编号",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "employeeName",
+          "label": "员工姓名",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "dingtalkUserId",
+          "label": "钉钉人员ID",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "workDate",
+          "label": "考勤日期",
+          "type": "date",
+          "required": true
+        },
+        {
+          "key": "checkIn",
+          "label": "首次打卡",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "checkOut",
+          "label": "末次打卡",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "result",
+          "label": "考勤结果",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "scheduledHours",
+          "label": "排班工时",
+          "type": "number",
+          "required": true
+        },
+        {
+          "key": "actualHours",
+          "label": "实际出勤小时",
+          "type": "number",
+          "required": true
+        },
+        {
+          "key": "personalLeaveHours",
+          "label": "事假小时",
+          "type": "number",
+          "required": true
+        },
+        {
+          "key": "sickLeaveHours",
+          "label": "病假小时",
+          "type": "number",
+          "required": true
+        },
+        {
+          "key": "paidLeaveHours",
+          "label": "带薪假小时",
+          "type": "number",
+          "required": true
+        },
+        {
+          "key": "absentHours",
+          "label": "缺勤小时",
+          "type": "number",
+          "required": true
+        },
+        {
+          "key": "overtimeHours",
+          "label": "加班小时",
+          "type": "number",
+          "required": true
+        },
+        {
+          "key": "lateCount",
+          "label": "迟到次数",
+          "type": "number",
+          "required": true
+        },
+        {
+          "key": "earlyCount",
+          "label": "早退次数",
+          "type": "number",
+          "required": true
+        },
+        {
+          "key": "missingCount",
+          "label": "缺卡次数",
+          "type": "number",
+          "required": true
+        }
+      ]
+    },
+    "leave": {
+      "name": "钉钉请假记录导入模板",
+      "note": "一人一审批实例一行。请假申请和审批在钉钉完成，本表留存结果，不重复审批、不叠加扣款。跨月请假可分别归属月份留存。",
+      "fields": [
+        {
+          "key": "employeeNo",
+          "label": "员工编号",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "employeeName",
+          "label": "员工姓名",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "dingtalkUserId",
+          "label": "钉钉人员ID",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "leaveId",
+          "label": "钉钉审批实例ID",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "leaveType",
+          "label": "请假类型",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "startDate",
+          "label": "开始日期",
+          "type": "date",
+          "required": true
+        },
+        {
+          "key": "endDate",
+          "label": "结束日期",
+          "type": "date",
+          "required": true
+        },
+        {
+          "key": "leaveHours",
+          "label": "请假小时",
+          "type": "number",
+          "required": true
+        },
+        {
+          "key": "approvalStatus",
+          "label": "钉钉审批状态",
+          "type": "text",
+          "required": true
+        }
+      ]
+    },
+    "payroll": {
+      "name": "工资表导出回传模板",
+      "note": "请从具体工资草稿导出。批次、月份、版本、员工编号及基础核算项不能修改。可调整奖金、提成、本期调整、扣款、个税和个人承担项目；正负差额用本期调整。核对说明必填。缺行不会删除原记录，回传前展示差异。",
+      "fields": [
+        {
+          "key": "batchId",
+          "label": "工资批次",
+          "type": "number",
+          "required": true
+        },
+        {
+          "key": "period",
+          "label": "工资月份",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "revision",
+          "label": "工资版本",
+          "type": "number",
+          "required": true
+        },
+        {
+          "key": "employeeNo",
+          "label": "员工编号",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "employeeName",
+          "label": "员工姓名",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "dingtalkUserId",
+          "label": "钉钉人员ID",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "baseAmount",
+          "label": "核算基本工资",
+          "type": "number",
+          "required": true
+        },
+        {
+          "key": "allowance",
+          "label": "核算固定补贴",
+          "type": "number",
+          "required": true
+        },
+        {
+          "key": "overtime",
+          "label": "核算加班工资",
+          "type": "number",
+          "required": true
+        },
+        {
+          "key": "bonus",
+          "label": "奖金",
+          "type": "number",
+          "required": true
+        },
+        {
+          "key": "commission",
+          "label": "提成",
+          "type": "number",
+          "required": true
+        },
+        {
+          "key": "adjustment",
+          "label": "本期调整",
+          "type": "number",
+          "required": true
+        },
+        {
+          "key": "deduction",
+          "label": "其他扣款",
+          "type": "number",
+          "required": true
+        },
+        {
+          "key": "tax",
+          "label": "个人所得税",
+          "type": "number",
+          "required": true
+        },
+        {
+          "key": "contribution",
+          "label": "个人承担项目",
+          "type": "number",
+          "required": true
+        },
+        {
+          "key": "grossAmount",
+          "label": "应发合计（系统重算）",
+          "type": "number",
+          "required": false
+        },
+        {
+          "key": "netAmount",
+          "label": "实发合计（系统重算）",
+          "type": "number",
+          "required": false
+        },
+        {
+          "key": "reason",
+          "label": "核对调整说明",
+          "type": "text",
+          "required": true
+        }
+      ]
+    },
+    "supplement": {
+      "name": "工资补发扣回模板",
+      "note": "补发填正数，扣回填负数；按员工编号匹配，需填写批次说明并审批后登记实际付款或扣回凭证。",
+      "fields": [
+        {
+          "key": "employeeNo",
+          "label": "员工编号",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "employeeName",
+          "label": "员工姓名",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "dingtalkUserId",
+          "label": "钉钉人员ID",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "adjustment",
+          "label": "补发扣回金额",
+          "type": "number",
+          "required": true
+        }
+      ]
+    },
+    "payment": {
+      "name": "工资发放回执报表",
+      "note": "用于对账与留存，实际发放在系统逐笔登记流水及私有凭证，不能仅凭导入表标记成功。",
+      "fields": [
+        {
+          "key": "period",
+          "label": "工资月份",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "employeeNo",
+          "label": "员工编号",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "employeeName",
+          "label": "员工姓名",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "dingtalkUserId",
+          "label": "钉钉人员ID",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "bankName",
+          "label": "银行",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "bankAccount",
+          "label": "银行卡号",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "netAmount",
+          "label": "实发金额",
+          "type": "number",
+          "required": true
+        },
+        {
+          "key": "paidAmount",
+          "label": "已支付金额",
+          "type": "number",
+          "required": true
+        },
+        {
+          "key": "remainingAmount",
+          "label": "未付金额",
+          "type": "number",
+          "required": true
+        },
+        {
+          "key": "referenceNo",
+          "label": "银行流水",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "paymentDate",
+          "label": "实际付款日期",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "status",
+          "label": "付款结果",
+          "type": "text",
+          "required": true
+        }
+      ]
+    },
+    "employeeReport": {
+      "name": "员工花名册",
+      "note": "按当前筛选和数据范围导出。任职状态与账号启停分开管理。此报表不包含薪资和银行卡信息；批量更新请使用档案导入模板，并保留本表的员工编号和档案版本。",
+      "fields": [
+        {
+          "key": "employeeNo",
+          "label": "员工编号",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "revision",
+          "label": "档案版本",
+          "type": "number",
+          "required": false
+        },
+        {
+          "key": "employeeName",
+          "label": "姓名",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "deptName",
+          "label": "部门",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "phonenumber",
+          "label": "手机",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "email",
+          "label": "邮箱",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "employmentStatus",
+          "label": "任职状态",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "entryDate",
+          "label": "入职日期",
+          "type": "date",
+          "required": false
+        },
+        {
+          "key": "regularDate",
+          "label": "转正日期",
+          "type": "date",
+          "required": false
+        },
+        {
+          "key": "exitDate",
+          "label": "离职日期",
+          "type": "date",
+          "required": false
+        },
+        {
+          "key": "employmentType",
+          "label": "用工类型",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "contractStart",
+          "label": "劳动合同开始",
+          "type": "date",
+          "required": false
+        },
+        {
+          "key": "contractEnd",
+          "label": "劳动合同结束",
+          "type": "date",
+          "required": false
+        }
+      ]
+    },
+    "salaryReport": {
+      "name": "员工薪资标准报表",
+      "note": "按当前员工筛选、组织数据范围和薪资查看权限导出。导出的必填列与薪资导入模板一致，可修改生效日期后直接导入为新版本；已生效标准不可覆盖。",
+      "fields": [
+        {
+          "key": "employeeNo",
+          "label": "员工编号",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "employeeName",
+          "label": "员工姓名",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "dingtalkUserId",
+          "label": "钉钉人员ID",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "effectiveDate",
+          "label": "薪资生效日期",
+          "type": "date",
+          "required": true
+        },
+        {
+          "key": "payType",
+          "label": "计薪方式（monthly或daily）",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "baseAmount",
+          "label": "工资标准",
+          "type": "number",
+          "required": true
+        },
+        {
+          "key": "allowance",
+          "label": "月固定补贴",
+          "type": "number",
+          "required": true
+        },
+        {
+          "key": "reason",
+          "label": "定薪调薪原因",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "deptName",
+          "label": "部门",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "status",
+          "label": "状态",
+          "type": "text",
+          "required": false
+        }
+      ]
+    },
+    "changeReport": {
+      "name": "员工状态与异动历史",
+      "note": "每次异动单独留存，包括草稿、审批中、待生效、生效、退回和取消记录。审批通过不代表未来日期已生效。",
+      "fields": [
+        {
+          "key": "id",
+          "label": "异动单号",
+          "type": "number",
+          "required": false
+        },
+        {
+          "key": "employeeNo",
+          "label": "员工编号",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "nickName",
+          "label": "姓名",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "eventType",
+          "label": "异动类型",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "effectiveDate",
+          "label": "生效日期",
+          "type": "date",
+          "required": false
+        },
+        {
+          "key": "status",
+          "label": "处理状态",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "reason",
+          "label": "办理原因",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "operatorName",
+          "label": "办理人",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "createTime",
+          "label": "创建时间",
+          "type": "text",
+          "required": false
+        }
+      ]
+    },
+    "payrollSummary": {
+      "name": "月度工资汇总报表",
+      "note": "汇总工资批次的审批、工资条发布和实际付款情况。补发与扣回为独立批次；付款以实际登记凭证为准，不以审批通过或发布工资条代替到账。",
+      "fields": [
+        {
+          "key": "id",
+          "label": "工资批次",
+          "type": "number",
+          "required": false
+        },
+        {
+          "key": "period",
+          "label": "工资月份",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "batchType",
+          "label": "批次类型",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "employeeCount",
+          "label": "人数",
+          "type": "number",
+          "required": false
+        },
+        {
+          "key": "status",
+          "label": "审批状态",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "published",
+          "label": "工资条发布",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "netAmount",
+          "label": "实发合计",
+          "type": "money",
+          "required": false
+        },
+        {
+          "key": "paidAmount",
+          "label": "实际已付",
+          "type": "money",
+          "required": false
+        },
+        {
+          "key": "remainingAmount",
+          "label": "未付或待扣回",
+          "type": "money",
+          "required": false
+        },
+        {
+          "key": "reason",
+          "label": "补发扣回说明",
+          "type": "text",
+          "required": false
+        }
+      ],
+      "totals": [
+        "employeeCount",
+        "netAmount",
+        "paidAmount",
+        "remainingAmount"
+      ]
+    },
+    "payslip": {
+      "name": "员工工资条报表",
+      "note": "个人工资条仅展示本人已发布记录。实际已付单独列示，查看工资条不代表已到账。工资调整回传请使用具体草稿导出的工资表。",
+      "fields": [
+        {
+          "key": "period",
+          "label": "工资月份",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "employeeNo",
+          "label": "员工编号",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "employeeName",
+          "label": "员工姓名",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "dingtalkUserId",
+          "label": "钉钉人员ID",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "deptName",
+          "label": "部门",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "baseAmount",
+          "label": "基本工资",
+          "type": "money",
+          "required": false
+        },
+        {
+          "key": "allowance",
+          "label": "固定补贴",
+          "type": "money",
+          "required": false
+        },
+        {
+          "key": "overtime",
+          "label": "加班工资",
+          "type": "money",
+          "required": false
+        },
+        {
+          "key": "bonus",
+          "label": "奖金",
+          "type": "money",
+          "required": false
+        },
+        {
+          "key": "commission",
+          "label": "提成",
+          "type": "money",
+          "required": false
+        },
+        {
+          "key": "adjustment",
+          "label": "本期调整",
+          "type": "money",
+          "required": false
+        },
+        {
+          "key": "grossAmount",
+          "label": "应发合计",
+          "type": "money",
+          "required": false
+        },
+        {
+          "key": "deduction",
+          "label": "其他扣款",
+          "type": "money",
+          "required": false
+        },
+        {
+          "key": "tax",
+          "label": "个人所得税",
+          "type": "money",
+          "required": false
+        },
+        {
+          "key": "contribution",
+          "label": "个人承担项目",
+          "type": "money",
+          "required": false
+        },
+        {
+          "key": "netAmount",
+          "label": "实发金额",
+          "type": "money",
+          "required": false
+        },
+        {
+          "key": "paidAmount",
+          "label": "实际已付",
+          "type": "money",
+          "required": false
+        },
+        {
+          "key": "remainingAmount",
+          "label": "未付或待扣回",
+          "type": "money",
+          "required": false
+        },
+        {
+          "key": "reason",
+          "label": "核对说明",
+          "type": "text",
+          "required": false
+        }
+      ],
+      "totals": [
+        "grossAmount",
+        "deduction",
+        "tax",
+        "contribution",
+        "netAmount",
+        "paidAmount",
+        "remainingAmount"
+      ]
+    },
+    "departmentPayroll": {
+      "name": "部门工资汇总报表",
+      "note": "按工资冻结时的部门归集基本工资、补贴、奖金、扣款和实发；不包含未维护的单位承担社保、公积金等费用，不能直接视为完整用工成本。",
+      "fields": [
+        {
+          "key": "period",
+          "label": "工资月份",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "deptName",
+          "label": "部门",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "employeeCount",
+          "label": "人数",
+          "type": "number",
+          "required": true
+        },
+        {
+          "key": "baseAmount",
+          "label": "基本工资",
+          "type": "money",
+          "required": false
+        },
+        {
+          "key": "allowance",
+          "label": "固定补贴",
+          "type": "money",
+          "required": false
+        },
+        {
+          "key": "overtime",
+          "label": "加班工资",
+          "type": "money",
+          "required": false
+        },
+        {
+          "key": "bonus",
+          "label": "奖金",
+          "type": "money",
+          "required": false
+        },
+        {
+          "key": "commission",
+          "label": "提成",
+          "type": "money",
+          "required": false
+        },
+        {
+          "key": "adjustment",
+          "label": "本期调整",
+          "type": "money",
+          "required": false
+        },
+        {
+          "key": "grossAmount",
+          "label": "应发合计",
+          "type": "money",
+          "required": false
+        },
+        {
+          "key": "deduction",
+          "label": "其他扣款",
+          "type": "money",
+          "required": false
+        },
+        {
+          "key": "tax",
+          "label": "个人所得税",
+          "type": "money",
+          "required": false
+        },
+        {
+          "key": "contribution",
+          "label": "个人承担项目",
+          "type": "money",
+          "required": false
+        },
+        {
+          "key": "netAmount",
+          "label": "实发金额",
+          "type": "money",
+          "required": false
+        },
+        {
+          "key": "paidAmount",
+          "label": "实际已付",
+          "type": "money",
+          "required": false
+        },
+        {
+          "key": "remainingAmount",
+          "label": "未付或待扣回",
+          "type": "money",
+          "required": false
+        }
+      ],
+      "totals": [
+        "employeeCount",
+        "baseAmount",
+        "allowance",
+        "overtime",
+        "bonus",
+        "commission",
+        "adjustment",
+        "grossAmount",
+        "deduction",
+        "tax",
+        "contribution",
+        "netAmount",
+        "paidAmount",
+        "remainingAmount"
+      ]
+    },
+    "paymentDetail": {
+      "name": "工资发放流水明细",
+      "note": "每次付款、失败及重试分别列示。失败金额不计入已付，负数为实际扣回。凭证仅供有权限的人员在系统私有下载。",
+      "fields": [
+        {
+          "key": "batchId",
+          "label": "工资批次",
+          "type": "number",
+          "required": false
+        },
+        {
+          "key": "period",
+          "label": "工资月份",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "employeeNo",
+          "label": "员工编号",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "employeeName",
+          "label": "姓名",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "deptName",
+          "label": "部门",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "paymentId",
+          "label": "发放记录",
+          "type": "number",
+          "required": false
+        },
+        {
+          "key": "amount",
+          "label": "本次金额",
+          "type": "money",
+          "required": false
+        },
+        {
+          "key": "paymentDate",
+          "label": "实际付款日期",
+          "type": "date",
+          "required": false
+        },
+        {
+          "key": "status",
+          "label": "付款结果",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "referenceNo",
+          "label": "银行流水或失败单号",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "reason",
+          "label": "失败或备注",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "operatorName",
+          "label": "登记人",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "createTime",
+          "label": "登记时间",
+          "type": "text",
+          "required": false
+        }
+      ]
+    }
+  },
+  "groups": [
+    {
+      "label": "人员资料",
+      "types": [
+        "employee",
+        "salary",
+        "employeeReport",
+        "salaryReport",
+        "changeReport"
+      ]
+    },
+    {
+      "label": "钉钉考勤",
+      "types": [
+        "monthly",
+        "daily",
+        "leave"
+      ]
+    },
+    {
+      "label": "工资与发放",
+      "types": [
+        "payroll",
+        "supplement",
+        "payment",
+        "payrollSummary",
+        "payslip",
+        "departmentPayroll",
+        "paymentDetail"
+      ]
+    }
+  ],
+  "aliases": {
+    "employeeNo": [
+      "工号",
+      "员工工号",
+      "人员编号"
+    ],
+    "employeeName": [
+      "姓名",
+      "员工"
+    ],
+    "dingtalkUserId": [
+      "用户ID",
+      "userid",
+      "钉钉UserId"
+    ],
+    "workDate": [
+      "日期",
+      "考勤日期"
+    ],
+    "requiredDays": [
+      "应出勤天数"
+    ],
+    "actualDays": [
+      "出勤天数",
+      "实际出勤天数"
+    ],
+    "checkIn": [
+      "上班打卡时间",
+      "上班1打卡时间"
+    ],
+    "checkOut": [
+      "下班打卡时间",
+      "下班1打卡时间"
+    ],
+    "lateCount": [
+      "迟到次数"
+    ],
+    "earlyCount": [
+      "早退次数"
+    ],
+    "missingCount": [
+      "缺卡次数"
+    ],
+    "personalLeaveHours": [
+      "事假(小时)",
+      "事假（小时）"
+    ],
+    "sickLeaveHours": [
+      "病假(小时)",
+      "病假（小时）"
+    ],
+    "overtimeHours": [
+      "加班时长",
+      "加班小时"
+    ],
+    "leaveId": [
+      "审批编号",
+      "审批实例ID"
+    ]
+  }
+}

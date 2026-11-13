@@ -1,5 +1,20 @@
 <template>
   <div>
+    <template v-if="row.memberImport">
+      <a-alert type="info" show-icon :message="'批量邀请 ' + (row.rows || []).length + ' 名成员。以下为申请时校验通过的名单与部门，审批通过后整批创建。'" class="tw-mb-4" />
+      <a-table :data-source="row.rows || []" row-key="rowNumber" :pagination="{ pageSize: 8 }" :scroll="{ x: 950 }" size="small">
+        <a-table-column title="文件行号" data-index="rowNumber" />
+        <a-table-column title="姓名" data-index="nickName" />
+        <a-table-column title="手机号码" data-index="phonenumber" />
+        <a-table-column title="邮箱" data-index="email" />
+        <a-table-column title="部门ID" data-index="deptId" />
+        <a-table-column title="部门" data-index="deptName" />
+        <a-table-column title="性别"
+          ><template slot-scope="_, member">{{ { 0: '男', 1: '女', 2: '未知' }[member.sex] || member.sex }}</template></a-table-column
+        >
+        <a-table-column title="备注" data-index="remark" />
+      </a-table>
+    </template>
     <a-descriptions v-if="displayFields.length" title="审批申请内容" bordered :column="1" class="tw-mb-4">
       <a-descriptions-item v-for="(field, index) in displayFields" :key="index" :label="field.label">
         <span style="white-space: pre-wrap; overflow-wrap: anywhere">{{ formatApprovalValue(field.value) }}</span>
@@ -9,9 +24,14 @@
       <a-alert type="info" show-icon :message="'提成核算 #' + row.batchId + ' · ' + row.period + '：以下为提交时冻结的差额，审批通过后仍需纳入工资并实际发放。'" />
       <a-table :data-source="row.lines || []" row-key="id" :pagination="false" size="small" :scroll="{ x: 1000 }">
         <a-table-column title="人员" data-index="employeeName" />
-        <a-table-column title="贡献"><template slot-scope="_, r">{{ r.side === 'development' ? '客户拓展' : '招聘交付' }}</template></a-table-column>
+        <a-table-column title="贡献"
+          ><template slot-scope="_, r">{{ r.side === 'development' ? '客户拓展' : '招聘交付' }}</template></a-table-column
+        >
         <a-table-column title="客户" data-index="snapshot.customerName" /><a-table-column title="职位" data-index="snapshot.jobTitle" /><a-table-column title="候选人" data-index="snapshot.talentName" />
-        <a-table-column title="净回款" data-index="snapshot.netAllocated" /><a-table-column title="规则" data-index="snapshot.rule.name" /><a-table-column title="累计可核算" data-index="snapshot.eligible" /><a-table-column title="以前核算" data-index="snapshot.reserved" /><a-table-column title="本次差额" data-index="amount" />
+        <a-table-column title="净回款" data-index="snapshot.netAllocated" /><a-table-column title="规则" data-index="snapshot.rule.name" /><a-table-column title="累计可核算" data-index="snapshot.eligible" /><a-table-column
+          title="以前核算"
+          data-index="snapshot.reserved"
+        /><a-table-column title="本次差额" data-index="amount" />
       </a-table>
     </template>
     <hr-approval-detail v-if="row.payrollId || row.salaryId || row.eventId" :row="row" />
@@ -179,7 +199,10 @@ export default {
     },
     formItems() {
       if (this.displayFields.length) return []
-      if (this.row._workflowApi) return Object.keys(this.row).filter(key => !key.startsWith('_') && !['id', 'state', 'status', 'title', 'actionName', 'actionCode'].includes(key)).map(key => ({ label: labels[key] || key, prop: key, formatter: formatApprovalValue }))
+      if (this.row._workflowApi)
+        return Object.keys(this.row)
+          .filter(key => !key.startsWith('_') && !['id', 'state', 'status', 'title', 'actionName', 'actionCode'].includes(key))
+          .map(key => ({ label: labels[key] || key, prop: key, formatter: formatApprovalValue }))
       const fields = this.row.financeRecord ? financeLabels : labels
       return Object.keys(this.row || {})
         .filter(key => fields[key])

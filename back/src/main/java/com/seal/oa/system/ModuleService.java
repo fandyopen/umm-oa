@@ -53,6 +53,7 @@ public class ModuleService {
         for (Map<String, Object> row : rows) {
             row.put("flowConditions", normalizeFlowConditions(row.get("flowConditions")));
             Long moduleId = number(row.get("moduleId"));
+            if (!admin && Long.valueOf(341500L).equals(moduleId)) continue;
             if (!admin && !isModuleAllowed(row, moduleId, permissions, expandedAllowedIds)) {
                 continue;
             }

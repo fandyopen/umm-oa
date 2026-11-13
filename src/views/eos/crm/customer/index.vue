@@ -107,6 +107,7 @@
 </template>
 
 <script lang="jsx">
+import { downloadFixedTemplate, getBusinessTemplateSchema } from '/src/api/system/templates.js'
 import { withModuleContexts } from '/src/utils/moduleContext.js'
 import { crmModules } from '/src/views/eos/crm/moduleContexts.js'
 import STable from '/src/components/Table/index.jsx'
@@ -126,28 +127,6 @@ const options = {
   sources: ['官网咨询', '客户转介绍', '展会活动', '销售拓展', '渠道合作', '广告投放', '公开信息', '组织分配', '其他'],
   statuses: ['潜在客户', '初步接洽', '合作中', '重点客户', '暂停合作', '已流失']
 }
-
-const excelColumns = [
-  { key: 'name', label: '公司名称' },
-  { key: 'serial', label: '客户编号' },
-  { key: 'industry', label: '行业' },
-  { key: 'companyScale', label: '规模' },
-  { key: 'region', label: '地区' },
-  { key: 'enterpriseNature', label: '企业性质' },
-  { key: 'customerSource', label: '客户来源' },
-  { key: 'cooperationStatus', label: '合作状态' },
-  { key: 'address', label: '地址' },
-  { key: 'taxNumber', label: '税号' },
-  { key: 'taxpayerType', label: '纳税人类别' },
-  { key: 'cooperationPositions', label: '合作职位数' },
-  { key: 'referralCount', label: '推荐人数' },
-  { key: 'hireCount', label: '入职人数' },
-  { key: 'contractAmount', label: '合同金额' },
-  { key: 'receivedAmount', label: '回款金额' },
-  { key: 'contractExpireDate', label: '合同到期' },
-  { key: 'lastPaymentDate', label: '最近回款' },
-  { key: 'remark', label: '备注' }
-]
 
 export default {
   mixins: [
@@ -260,11 +239,12 @@ export default {
     canAction(action) {
       return this.showModuleAction('customer', action)
     },
-    downloadImportTemplate() {
-      const worksheet = xlsxUtils.aoa_to_sheet([excelColumns.map(column => column.label)])
-      const workbook = xlsxUtils.book_new()
-      xlsxUtils.book_append_sheet(workbook, worksheet, '客户档案')
-      writeXlsxFile(workbook, '客户档案导入模板.xlsx')
+    async downloadImportTemplate() {
+      try {
+        await downloadFixedTemplate('business/customer', '客户档案导入模板')
+      } catch (error) {
+        this.$message.error(error.message || '模板下载失败')
+      }
     },
     handleImportFile(file) {
       this.importCustomerFile(file)
@@ -275,6 +255,7 @@ export default {
       this.importing = true
       reader.onload = async event => {
         try {
+          const excelColumns = (await getBusinessTemplateSchema('customer')).fields
           const workbook = readXlsx(event.target.result, { type: 'array', cellDates: false })
           const firstSheet = workbook.Sheets[workbook.SheetNames[0]]
           const sourceRows = xlsxUtils.sheet_to_json(firstSheet, { defval: '', raw: false })
@@ -326,7 +307,8 @@ export default {
         ...this.queryParam,
         publicPool: this.activePool === 'public' ? '1' : '0'
       }
-      exportCustomers(query).then(response => {
+      exportCustomers(query).then(async response => {
+        const excelColumns = (await getBusinessTemplateSchema('customer')).fields
         const rows = response.data || []
         const worksheet = xlsxUtils.aoa_to_sheet([excelColumns.map(column => column.label), ...rows.map(row => excelColumns.map(column => row[column.key] ?? ''))])
         const workbook = xlsxUtils.book_new()
@@ -356,7 +338,9 @@ export default {
     },
     handleAction(key, record) {
       const actions = {
-        commission: async () => { if (await this.checkModuleAction({ module: 'commission', label: '查看客户提成' })) this.$router.push({ path: '/finance/commission', query: { customerId: String(record.id) } }) },
+        commission: async () => {
+          if (await this.checkModuleAction({ module: 'commission', label: '查看客户提成' })) this.$router.push({ path: '/finance/commission', query: { customerId: String(record.id) } })
+        },
         detail: () => this.handleDetail(record),
         followup: () => this.openFollowup(record),
         edit: () => this.handleUpdate(record),

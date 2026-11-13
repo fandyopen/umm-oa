@@ -63,7 +63,7 @@ import { withModuleContexts } from '/src/utils/moduleContext.js'
 import { hr } from '/src/api/enterprise/hr.js'
 import HrTemplateDownloads from '/src/components/HrTemplateDownloads/index.vue'
 import HrExcelImport from '/src/components/HrExcelImport/index.vue'
-import { templates, exportTemplate } from './templates.js'
+import { getTemplateSchema, loadTemplateCatalog, exportTemplate } from './templates.js'
 import { statusNames } from './hrShared.js'
 import { saveAs } from 'file-saver'
 export default {
@@ -78,11 +78,13 @@ export default {
         { title: '员工编号', dataIndex: 'employeeNo', width: 130, fixed: 'left' },
         { title: '姓名', dataIndex: 'employeeName', width: 100, fixed: 'left' },
         { title: '部门', dataIndex: 'deptName', width: 140 },
-        ...templates[this.kind].fields.filter(f => !['employeeNo', 'employeeName', 'dingtalkUserId', 'period'].includes(f.key)).map(f => ({ title: f.label, dataIndex: f.key, width: 130 }))
+        ...getTemplateSchema(this.kind)
+          .fields.filter(f => !['employeeNo', 'employeeName', 'dingtalkUserId', 'period'].includes(f.key))
+          .map(f => ({ title: f.label, dataIndex: f.key, width: 130 }))
       ]
     },
     dayFields() {
-      return templates.daily.fields
+      return getTemplateSchema('daily').fields
     },
     dayCount() {
       if (!this.period) return 0
@@ -105,6 +107,7 @@ export default {
     }
   },
   mounted() {
+    loadTemplateCatalog().catch(error => this.$message.error(error.message || '模板字段加载失败'))
     this.load()
   },
   methods: {
@@ -152,8 +155,12 @@ export default {
         }
       })
     },
-    downloadTemplate({ key }) {
-      exportTemplate(key)
+    async downloadTemplate({ key }) {
+      try {
+        await exportTemplate(key)
+      } catch (error) {
+        this.$message.error(error.message || '模板下载失败')
+      }
     },
     async exportRows() {
       if (!(await this.checkModuleAction({ module: 'attendance', action: 'export', label: '导出考勤' }))) return

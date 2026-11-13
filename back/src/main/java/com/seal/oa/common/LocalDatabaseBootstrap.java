@@ -59,7 +59,8 @@ public class LocalDatabaseBootstrap implements ApplicationRunner {
             "retire-admin-groups.sql",
             "hr-schema.sql",
             "hr-menu.sql",
-            "commission.sql"
+            "commission.sql",
+            "data-table-management.sql"
     );
 
     private final DataSource dataSource;

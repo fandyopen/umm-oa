@@ -146,8 +146,6 @@
 <script>
 import { withModuleContexts } from '/src/utils/moduleContext.js'
 import { commission } from '/src/api/eos/crm/commission.js'
-import { executeWorkflowAction } from '/src/api/workflow/action.js'
-import { createWorkflowActionSubmitter } from '/src/utils/workflowActionSubmit.js'
 import { money } from '/src/views/enterprise/hr/hrShared.js'
 import * as XLSX from 'xlsx'
 
@@ -159,8 +157,7 @@ export default {
   data: () => ({
     calculationError: '', tab: 'performance', loading: false, busy: false, keyword: '', options: {}, overview: [], batches: [], detail: null,
     ruleVisible: false, ruleForm: {}, attributionVisible: false, attributionForm: emptyAttribution(), currentApplication: null,
-    allocationVisible: false, allocationForm: { rows: [] }, generateVisible: false, generateForm: {},
-    submitter: createWorkflowActionSubmitter(executeWorkflowAction)
+    allocationVisible: false, allocationForm: { rows: [] }, generateVisible: false, generateForm: {}
   }),
   computed: {
     applicationRows() {
@@ -256,8 +253,8 @@ export default {
     async openBatch(id) { this.detail = (await commission('/batches/' + id)).data },
     async submitBatch() {
       await this.run(async () => {
-        if (!(await this.checkModuleAction({ module: 'commission', action: 'submit', label: '提交提成核算' }))) return
-        const result = await this.submitter.submit({ moduleId: this.moduleContexts.commission.moduleId, actionCode: 'submit', payload: { batchId: this.detail.id, revision: this.detail.revision, title: '提成核算：' + this.detail.period } })
+        const result = await this.submitConfiguredAction('submit', { batchId: this.detail.id, revision: this.detail.revision, title: '提成核算：' + this.detail.period }, '提交提成核算')
+        if (!result) return
         this.$message.success(result.data.status === 'pendingApproval' ? '已进入审批，请在待办办理' : '核算已确认')
         await this.openBatch(this.detail.id); await this.load()
       })

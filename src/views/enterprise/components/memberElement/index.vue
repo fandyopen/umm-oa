@@ -91,6 +91,10 @@
         </s-table>
       </div>
     </div>
+    <a-modal :visible="importPreviewVisible" title="通讯录导入预览" :width="1050" :confirm-loading="!!moduleActionBusy.submitMemberImport" ok-text="确认提交" @ok="submitMemberImport" @cancel="importPreviewVisible = false">
+      <a-alert type="info" show-icon :message="'校验通过，共 ' + importRows.length + ' 名成员。确认后按邀请成员流程提交；需审批时不会立即创建成员。'" class="tw-mb-4" />
+      <a-table :columns="importColumns" :data-source="importRows" row-key="rowNumber" :pagination="{ pageSize: 8 }" :scroll="{ x: 1030 }" size="small" />
+    </a-modal>
     <!-- 邀请成员弹窗 -->
     <a-modal v-model="isIMmodal" title="邀请成员" width="600px" :footer="null" destroyOnClose>
       <a-menu v-model="current" mode="horizontal">
@@ -134,10 +138,14 @@
         <div v-if="current[0] === '批量导入成员'">
           <div class="manual-tip">
             <li class="tip-item">请下载<span class="Download_tem" @click="downloadTem">通讯录模板</span>，按格式修改后导入</li>
-            <li class="tip-item">每次最多导入200名成员,已经在通讯录内或信息有误的成员不导入</li>
+            <li class="tip-item">部门可填ID或完整名称；名称错误、停用或重名时整批不导入，重名请填写部门ID。</li>
+            <li class="tip-item">每次最多200名成员，先校验预览再确认；任一行错误整批不导入，沿用邀请成员审批流程。</li>
           </div>
           <div class="upload-wrapper">
-            <SUpload :uploadData="uploadData" btn="批量导入成员" />
+            <a-upload :before-upload="readMemberImport" :show-upload-list="false" accept=".xlsx,.xls">
+              <a-button :loading="!!moduleActionBusy.readMemberImport">选择文件并校验</a-button>
+            </a-upload>
+            <a-alert v-if="importError" type="error" show-icon message="导入校验失败，整批未导入" :description="importError" class="tw-mt-3" style="white-space: pre-wrap" />
           </div>
         </div>
         <div v-if="current[0] === '公开链接邀请'">
@@ -165,12 +173,13 @@
 
 <script>
 import { withModuleActionGuards } from '/src/utils/moduleActionGuard.js'
-import { STable, SUpload } from '/src/components/index.js'
-import downloadUtil from '/src/utils/common/download.js'
+import { STable } from '/src/components/index.js'
+import { parseMemberImport } from '/src/utils/memberImport.mjs'
+import { downloadFixedTemplate, getMemberTemplateSchema, previewMemberImport } from '/src/api/system/templates.js'
 import { previewDoc } from '/src/components/Office/office.js'
 import { getUserList, getDismissList, editDeptName, getTreeMenu, addSystemDepchild, setDeptPrincipal, clearDeptPrincipal } from '/src/api/enterprise/index.js'
 import { delDept } from '/src/api/system/dept.js'
-import { excelImport, delUser } from '/src/api/system/user.js'
+import { delUser } from '/src/api/system/user.js'
 import SelectDepartmentElement from '../selectDepartmentElement/index.vue'
 import countryCodeSelector from '/src/components/CountryCodeSelector/index.vue'
 import Details from './details.vue'
@@ -181,6 +190,8 @@ export default {
     withModuleActionGuards({
       inviteMembers: { module: 'members', action: 'invite', label: '邀请成员' },
       onSubmit: { module: 'members', action: 'invite', label: '提交成员邀请' },
+      readMemberImport: { module: 'members', action: 'invite', label: '校验导入成员' },
+      submitMemberImport: { module: 'members', action: 'invite', label: '批量邀请成员' },
       initAdjusDepTreeData: { module: 'members', action: 'transfer', label: '调整部门' },
       adjusting: function (value) {
         return value === 1 ? { module: 'members', action: 'transfer', label: '保存部门调整' } : null
@@ -199,7 +210,7 @@ export default {
       }
     })
   ],
-  components: { STable, SelectDepartmentElement, SUpload, countryCodeSelector },
+  components: { STable, SelectDepartmentElement, countryCodeSelector },
   props: {
     configuredActionSubmitter: { type: Function, default: null },
     moduleActionGuard: { type: Function, default: null },
@@ -297,6 +308,13 @@ export default {
           customRender: (text, record) => record.dept?.deptName || text || '-'
         },
         {
+          title: '部门ID',
+          dataIndex: 'deptId',
+          width: 100,
+          align: 'center',
+          customRender: (text, record) => text ?? record.dept?.deptId ?? '-'
+        },
+        {
           title: '新增日期',
           dataIndex: 'createTime',
           align: 'center',
@@ -355,46 +373,20 @@ export default {
       },
       /* 部门树 */
       treeData: [],
-      /* 上传 */
-      uploadData: {
-        compProps: {
-          props: {
-            multiple: false,
-            // name只能叫file Excelfile
-            name: 'file',
-            accept: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel',
-            // 上传之前回调，判断上传类型
-            beforeUpload: file => {
-              return new Promise((resolve, reject) => {
-                if (file.type !== 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' && file.type !== 'sheet,application/vnd.ms-excel') {
-                  this.$message.warning('请选择xlsx类型文件')
-                  return reject
-                }
-                return resolve()
-              })
-            },
-            remove: file => {}
-          },
-          on: {
-            // 上传文件改变时的状态
-            change: ({ file, fileList, event }) => {
-              if (file.status === 'done') {
-                // 导入成员
-                const url = file.response.url
-                excelImport({ url: url }).then(res => {
-                  if (res.code === 200) {
-                    this.isIMmodal = false
-                    this.$message.success('导入成功')
-                    this.$refs.table.refresh()
-                  }
-                })
-              }
-            },
-            // 点击图片预览回调
-            preview: this.handlePreview
-          }
-        }
-      },
+      importPreviewVisible: false,
+      importRows: [],
+      importFileName: '',
+      importError: '',
+      importColumns: [
+        { title: '文件行号', dataIndex: 'rowNumber', width: 90 },
+        { title: '姓名', dataIndex: 'nickName', width: 110 },
+        { title: '手机号码', dataIndex: 'phonenumber', width: 150 },
+        { title: '邮箱', dataIndex: 'email', width: 180 },
+        { title: '部门ID', dataIndex: 'deptId', width: 100 },
+        { title: '部门', dataIndex: 'deptName', width: 140 },
+        { title: '性别', dataIndex: 'sex', width: 80, customRender: value => ({ 0: '男', 1: '女', 2: '未知' }[value] || value) },
+        { title: '备注', dataIndex: 'remark', width: 180 }
+      ],
       /* 是否开启链接 */
       checked: false,
       /* 链接地址 */
@@ -619,10 +611,14 @@ export default {
         if (this.selectedRowKeys.length === 0) {
           return this.$message.warning('选择需要调整的部门成员')
         }
-        this.submitConfiguredAction('transfer', {
-          deptId: this.adjus_rData,
-          userIds: this.selectedRowKeys
-        }, '调整部门').then(res => {
+        this.submitConfiguredAction(
+          'transfer',
+          {
+            deptId: this.adjus_rData,
+            userIds: this.selectedRowKeys
+          },
+          '调整部门'
+        ).then(res => {
           if (res && res.code === 200) {
             this.$message.success(this.actionSuccessMessage(res, '调整成功'))
             this.adjusDepVisible = false
@@ -686,9 +682,45 @@ export default {
     },
     /* 再次邀请 */
     makeInvite(text, record, index) {},
+    async readMemberImport(file) {
+      this.importError = ''
+      this.importRows = []
+      this.importPreviewVisible = false
+      try {
+        if (file.size > 10 * 1024 * 1024) throw new Error('文件不能超过10MB')
+        const schema = await getMemberTemplateSchema()
+        const rows = parseMemberImport(await file.arrayBuffer(), schema)
+        const response = await previewMemberImport(this.moduleMeta?.moduleId, rows)
+        this.importRows = response.data.rows
+        this.importFileName = file.name
+        this.importPreviewVisible = true
+      } catch (error) {
+        this.importError = error.message || String(error)
+      }
+      return false
+    },
+    async submitMemberImport() {
+      if (!this.importRows.length) return
+      try {
+        const response = await this.submitConfiguredAction('invite', { rows: this.importRows, memberImport: true, fileName: this.importFileName, title: '批量邀请成员（' + this.importRows.length + '人）' }, '批量邀请成员')
+        if (response?.code !== 200) return
+        this.importPreviewVisible = false
+        this.isIMmodal = false
+        this.importRows = []
+        this.$refs.table.refresh()
+        this.$message.success(this.actionSuccessMessage(response, '成员导入成功'))
+      } catch (error) {
+        this.importPreviewVisible = false
+        this.importError = error.message || String(error)
+      }
+    },
     /* 下载模板 */
-    downloadTem() {
-      downloadUtil.resource('/profile/template/通讯录批量导入模板.xlsx')
+    async downloadTem() {
+      try {
+        await downloadFixedTemplate('members/address-book', '通讯录批量导入模板')
+      } catch (error) {
+        this.$message.error(error.message || '模板下载失败')
+      }
     },
     // 查看图片
     async handlePreview(file) {

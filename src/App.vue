@@ -8,11 +8,14 @@ import { mapGetters } from 'vuex'
 import defaultSettings from '/src/config/defaultSettings.js'
 import { domTitle, setDocumentTitle } from '/src/utils/common/domUtil.js'
 import { i18nRender } from '/src/locales/index.js'
+import { applyAppearance } from '/src/utils/appearance.mjs'
+import '/src/assets/style/appearance.less'
 
 export default {
   data() { return { watermarkTimer: null } },
   computed: {
-    ...mapGetters(['nickname', 'defaultCompany']),
+    ...mapGetters(['nickname', 'defaultCompany', 'userName']),
+    appearance() { return this.$store.state.appearance.preferences },
     isLoginPage() { return /\/user\/login(?:\/|$)/.test(this.$route.path) },
     locale() {
       const { title } = this.$route.meta
@@ -20,15 +23,33 @@ export default {
       return this.$i18n.getLocaleMessage(this.$store.getters.lang).antLocale || undefined
     }
   },
-  async mounted() {
-    if (this.isLoginPage || !defaultSettings.watermark) return
-    const watermark = (await import('/src/utils/common/watermark.js')).default
-    const renderWatermark = () => {
-      const now = new Date().toLocaleString('zh-CN', { hour12: false })
-      watermark(`${this.defaultCompany || defaultSettings.comany}<br>${now}<br>${this.nickname || ''}`)
+  watch: {
+    userName: { immediate: true, handler(username) { this.$store.dispatch('appearance/load', username) } },
+    appearance: { deep: true, immediate: true, handler() { this.syncAppearance() } },
+    isLoginPage() { this.updateWatermark(); this.syncAppearance() }
+  },
+  mounted() { this.updateWatermark() },
+  methods: {
+    syncAppearance() {
+      if (this.isLoginPage) delete document.documentElement.dataset.appearance
+      else applyAppearance(this.appearance)
+    },
+    async updateWatermark() {
+      clearInterval(this.watermarkTimer)
+      if (!defaultSettings.watermark) return
+      const watermark = (await import('/src/utils/common/watermark.js')).default
+      clearInterval(this.watermarkTimer)
+      const renderWatermark = () => {
+        if (this.isLoginPage) {
+          watermark('')
+          return
+        }
+        const now = new Date().toLocaleString('zh-CN', { hour12: false })
+        watermark(`${this.defaultCompany || defaultSettings.comany}<br>${now}<br>${this.nickname || ''}`)
+      }
+      renderWatermark()
+      if (!this.isLoginPage) this.watermarkTimer = setInterval(renderWatermark, 60000)
     }
-    renderWatermark()
-    this.watermarkTimer = setInterval(renderWatermark, 60000)
   },
   beforeDestroy() { clearInterval(this.watermarkTimer) }
 }

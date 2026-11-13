@@ -30,16 +30,30 @@ export default {
     }
   },
   mounted() {
+    window.addEventListener('umm:appearance-change', this.updateChartTheme)
     if (window.requestIdleCallback) {
       window.requestIdleCallback(() => this.queryData(), { timeout: 800 })
     } else {
       setTimeout(() => this.queryData(), 200)
     }
   },
+  beforeDestroy() {
+    window.removeEventListener('umm:appearance-change', this.updateChartTheme)
+    if (this.chartObj) this.chartObj.destroy()
+  },
   methods: {
+    chartColors() {
+      const root = document.documentElement
+      const primary = root.dataset.appearance && root.dataset.appearance !== 'blue'
+        ? getComputedStyle(root).getPropertyValue('--umm-primary').trim() : '#009EFB'
+      return [primary || '#009EFB', '#55CE63', '#745AF2', '#EDF1F5', '#8BBFF2', '#C836E7', '#115494']
+    },
+    updateChartTheme() { if (this.chartObj) this.chartObj.update({ color: this.chartColors() }) },
     queryData() {
+      if (this._isDestroyed || this._isBeingDestroyed) return
       // todo api请求
       businessSale().then(res => {
+        if (this._isDestroyed || this._isBeingDestroyed) return
         res.data.forEach((item, index) => {
           item.num = Number(item.num)
         })
@@ -54,7 +68,7 @@ export default {
         angleField: 'num',
         colorField: 'name',
         radius: 1,
-        color: ['#009EFB', '#55CE63', '#745AF2', '#EDF1F5', '#8BBFF2', '#C836E7', '#115494'],
+        color: this.chartColors(),
         innerRadius: 0.64,
         meta: {
           num: {

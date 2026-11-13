@@ -9,6 +9,7 @@
       </a-menu>
     </div>
     <div class="header-right-content" :class="{ 'header-msg-bkc': layout !== 'sidemenu' }">
+      <theme-switcher />
       <a-tooltip v-if="canOpenDocs" :title="docsTitle">
         <a class="docs-entry" @click="openDocs"
           ><a-icon type="book" /><span v-if="!isMobile">{{ docsTitle }}</span></a
@@ -46,10 +47,11 @@ import AvatarDropdown from './AvatarDropdown.vue'
 import Ellipsis from '/src/components/Ellipsis/Ellipsis.vue'
 import { mapState, mapGetters, mapActions } from 'vuex'
 import { IconFont } from '/src/components/IconFont/index.js'
+import ThemeSwitcher from './ThemeSwitcher.vue'
 
 export default {
   name: 'RightContent',
-  components: { Ellipsis, AvatarDropdown, IconFont },
+  components: { Ellipsis, AvatarDropdown, IconFont, ThemeSwitcher },
   props: {
     prefixCls: { type: String, default: 'ant-pro-global-header-index-action' },
     isMobile: { type: Boolean, default: false },

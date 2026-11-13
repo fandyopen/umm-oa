@@ -10,7 +10,11 @@ function component(api = async () => ({ data: {} }), execute = async () => ({ da
   const parsed = compiler.parseComponent(read('src/views/eos/crm/finance/commission.vue'))
   const compiled = compiler.compile(parsed.template.content)
   assert.deepEqual(compiled.errors, [])
-  const options = new Function('withModuleContexts', 'commission', 'executeWorkflowAction', 'createWorkflowActionSubmitter', 'money', 'XLSX', parsed.script.content.replace(/^import .*$/gm, '').replace('export default', 'return'))(() => ({}), api, execute, createWorkflowActionSubmitter, String, {})
+  const options = new Function('withModuleContexts', 'commission', 'executeWorkflowAction', 'createWorkflowActionSubmitter', 'money', 'XLSX', parsed.script.content.replace(/^import .*$/gm, '').replace('export default', 'return'))(() => ({ methods: { async submitConfiguredAction(actionCode, payload, label) {
+    if (!(await this.checkModuleAction({ module: 'commission', action: actionCode, label }))) return null
+    this._submitter ||= createWorkflowActionSubmitter(execute)
+    return this._submitter.submit({ moduleId: this.moduleContexts.commission.moduleId, actionCode, payload })
+  } } }), api, execute, createWorkflowActionSubmitter, String, {})
   const vm = new Vue(options)
   const messages = []
   vm.$message = { success: message => messages.push(message) }
@@ -77,5 +81,19 @@ test('allocation dropdown only offers confirmed outcomes under the same contract
     { attributionId: 4, attributionStatus: 'confirmed', contractId: 2, guaranteeTermKey: 'other' }
   ] }
   assert.deepEqual(vm.allocationCandidates.map(row => row.attributionId), [1])
+  vm.$destroy()
+})
+
+
+test('commission permission denial preserves the batch and does not report or submit approval', async () => {
+  const submitted = []
+  const { vm, messages } = component(undefined, async body => { submitted.push(body) })
+  vm.detail = { id: 5, revision: 3, period: '2026-11', status: 'draft' }
+  vm.checkModuleAction = async () => false
+  await vm.submitBatch()
+  assert.equal(submitted.length, 0)
+  assert.equal(messages.length, 0)
+  assert.equal(vm.detail.status, 'draft')
+  assert.equal(vm.busy, false)
   vm.$destroy()
 })
