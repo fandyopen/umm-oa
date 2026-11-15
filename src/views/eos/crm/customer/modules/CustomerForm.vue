@@ -275,7 +275,6 @@ export default {
     if (this.isUpdate && this.updateRow.id) {
       this.loadCustomer(this.updateRow.id)
     } else {
-      this.form.ownerUserId = this.$store.getters.userInfo?.userId || null
       if (this.copySourceId) this.loadCustomer(this.copySourceId)
     }
   },
@@ -284,7 +283,8 @@ export default {
       listCustomerOwners({ keyword }).then(res => {
         this.owners = res.data || []
         if (!this.form.ownerUserId && this.owners.length) {
-          this.form.ownerUserId = this.owners[0].userId
+          const currentUserId = this.$store.getters.userInfo?.userId
+          this.form.ownerUserId = this.owners.find(owner => String(owner.userId) === String(currentUserId))?.userId || this.owners[0].userId
         }
       })
     },

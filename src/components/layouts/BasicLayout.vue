@@ -22,8 +22,10 @@
     -->
     <template v-slot:menuHeaderRender>
       <div class="logo-container">
-        <img v-if="collapsed" :src="smallLogo" class="logo" alt="logo" />
-        <img v-else :src="bigLogo" class="logo-name tw-w-[141px] tw-h-14" alt="logo-name" />
+        <div class="brand-logo">
+          <img v-if="collapsed" :src="smallLogo" class="brand-mark" alt="UMM 加木企服" />
+          <img v-else :src="bigLogo" class="brand-wordmark" alt="UMM 加木企服" />
+        </div>
         <div class="index-menu">
           <a-button type="primary" v-show="!collapsed" @click="goHome">
             <img class="btn-icon" :src="imgHome" alt="" />
@@ -56,8 +58,8 @@ import RightContent from './GlobalHeader/RightContent.vue'
 import GlobalFooter from './GlobalFooter/index.vue'
 import { firstUpperCase } from '/src/utils/common/util.js'
 
-import smallLogo from '/src/assets/img/home.png'
-import bigLogo from '/src/assets/img/home.png'
+import smallLogo from '/src/assets/img/umm-mark.svg'
+import bigLogo from '/src/assets/img/umm-logo.svg'
 import imgHome from '/src/assets/img/home.png'
 
 export default {

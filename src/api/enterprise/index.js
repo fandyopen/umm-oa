@@ -16,6 +16,9 @@ export function getUserList(query) {
     params: query
   })
 }
+export function replaceMemberRoles(data) {
+  return request({ url: '/system/user/roles', method: 'put', data })
+}
 // 离职成员
 export function getDismissList(params) {
   return request({

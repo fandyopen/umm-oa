@@ -59,7 +59,10 @@ public class WorkflowCatalogService {
                 Map<String, Object> item = new LinkedHashMap<>();
                 item.put("actionCode", code); item.put("actionName", action.get("actionName"));
                 item.put("ready", ready);
-                item.put("integrationLabel", ready ? "已接入" : !frontend ? "待接入：前端尚未使用统一提交" : !error.isEmpty() ? "待接入：业务执行配置未完成" : "按钮已停用");
+                boolean permissionOnly = Boolean.TRUE.equals(action.get("approvalPermissionOnly"));
+                item.put("approvalPermissionOnly", permissionOnly);
+                if (permissionOnly) item.put("approvalPermissionHint", action.get("approvalPermissionHint"));
+                item.put("integrationLabel", permissionOnly ? "仅审批授权" : ready ? "已接入" : !frontend ? "待接入：前端尚未使用统一提交" : !error.isEmpty() ? "待接入：业务执行配置未完成" : "按钮已停用");
                 Map<String, Object> binding = bindings.binding(1, moduleId, code);
                 item.put("currentProcessId", text(binding.get("processDesignId")));
                 buttons.add(item);
@@ -163,6 +166,7 @@ public class WorkflowCatalogService {
     }
 
     private void requireIntegrated(long moduleId, String code) {
+        if (ModuleActionService.isApprovalPermissionOnly(moduleId, code)) actions.requireWorkflowExecution(moduleId, code);
         if (!WorkflowIntegrationRegistry.integrated(moduleId, code)) throw new ApiException(400, "该按钮前端尚未接入统一提交，不能启用审批");
         List<Map<String, Object>> found = rows("SELECT action_code FROM sys_module_action WHERE module_id=? AND action_code=? AND status='0' FOR UPDATE", moduleId, code);
         if (found.isEmpty()) throw new ApiException(400, "按钮不存在或已停用");

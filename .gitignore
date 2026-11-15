@@ -28,5 +28,12 @@ dist-ssr
 # lock
 yarn.lock
 
+# Independent uni-app output and local credentials
+mobile/unpackage/
+mobile/.env.local
+mobile/.env.*.local
+mobile/test-results/
+mobile/playwright-report/
+
 # MySQL build fragments under back/db/mysql/source are kept in Git.
 # The deployment script excludes that directory and uploads only umm_oa.sql.

@@ -11,7 +11,7 @@ final class DataTableRegistry {
     static final Map<String, Set<String>> EDITABLE = new HashMap<>();
     static final Set<String> CRUD = Set.of("oa_merchant_contact", "oa_merchant_account", "sys_dict_type", "sys_dict_data", "sys_notice");
     static final Set<String> GLOBAL = Set.of("sys_post", "sys_menu", "sys_dict_type", "sys_dict_data", "sys_config", "sys_notice", "sys_bootstrap_marker", "sys_permission_migration", "oa_recruit_tag");
-    static final Set<String> LEGACY = Set.of("sys_role_group", "sys_role_group_member", "sys_role_menu", "sys_menu", "sys_dept_module", "oa_project", "oa_project_member", "oa_contract", "oa_contract_item", "oa_purchase_apply", "oa_purchase_apply_item", "oa_purchase_payment", "oa_expense", "oa_expense_item", "oa_expense_invoice", "oa_loan", "oa_loan_detail", "oa_repayment", "oa_budget", "oa_budget_item", "oa_fund_plan", "oa_warehouse", "oa_warehouse_in", "oa_warehouse_out", "oa_invoice");
+    static final Set<String> LEGACY = Set.of("sys_role_group", "sys_role_group_member", "sys_role_menu", "sys_menu", "sys_dept_module");
     static final Map<String, String> FIELDS = new HashMap<>();
     static {
         String definitions = """
@@ -44,6 +44,7 @@ final class DataTableRegistry {
             sys_bootstrap_marker|数据库初始化标记|系统
             sys_permission_migration|权限升级标记|系统
             sys_data_table_history|数据维护记录|系统
+            sys_customer_cleanup_history|客户数据清理记录|系统
             oa_merchant|客户主档|客户与合同|客户档案
             oa_merchant_contact|客户联系人|客户与合同
             oa_merchant_account|客户银行账户|客户与合同
@@ -52,6 +53,7 @@ final class DataTableRegistry {
             oa_business_opportunity|商机|客户与合同|商机管理
             oa_crm_contract|客户合同|客户与合同|合同列表
             oa_crm_contract_version|客户合同版本|客户与合同
+            oa_crm_contract_history|合同操作记录|客户与合同
             oa_crm_contract_receipt|合同到账记录|财务
             oa_crm_contract_reminder_log|合同提醒记录|客户与合同
             oa_finance_receivable|应收台账|财务|应收台账
@@ -62,9 +64,11 @@ final class DataTableRegistry {
             oa_hr_employment_period|员工任职期间|人事
             oa_hr_event|人事异动|人事|人事异动
             oa_hr_salary|薪资标准|人事|薪资标准
+            oa_hr_salary_effective|薪资更正期间的原生效快照|人事
             oa_hr_attachment|人事附件|人事
             oa_hr_attendance_batch|考勤批次|人事
             oa_hr_attendance_row|考勤明细|人事
+            oa_hr_payroll_rule|公司计薪规则|人事|工资管理
             oa_hr_payroll|薪资核算批次|人事|薪资核算
             oa_hr_payroll_item|员工薪资明细|人事
             oa_hr_payment|发薪记录|人事
@@ -104,26 +108,6 @@ final class DataTableRegistry {
             oa_workflow_action_submission|按钮提交去重记录|审批流程
             oa_workflow_catalog|审批流程目录|审批流程|审批流程
             biz_record|通用业务数据|审批流程
-            oa_project|原项目|历史业务
-            oa_project_member|原项目成员|历史业务
-            oa_contract|原项目合同|历史业务
-            oa_contract_item|原项目合同明细|历史业务
-            oa_purchase_apply|原采购申请|历史业务
-            oa_purchase_apply_item|原采购申请明细|历史业务
-            oa_purchase_payment|原采购付款|历史业务
-            oa_expense|原报销|历史业务
-            oa_expense_item|原报销明细|历史业务
-            oa_expense_invoice|原报销发票|历史业务
-            oa_loan|原借款|历史业务
-            oa_loan_detail|原借款明细|历史业务
-            oa_repayment|原还款|历史业务
-            oa_budget|原预算|历史业务
-            oa_budget_item|原预算明细|历史业务
-            oa_fund_plan|原资金计划|历史业务
-            oa_warehouse|原仓库|历史业务
-            oa_warehouse_in|原入库|历史业务
-            oa_warehouse_out|原出库|历史业务
-            oa_invoice|原项目发票|历史业务
             """;
         for (String line : definitions.strip().split("\n")) {
             String[] parts = line.trim().split("\\|");
@@ -152,18 +136,25 @@ final class DataTableRegistry {
         rel("oa_recruit_version","job_id","oa_recruit_job","id"); rel("oa_recruit_resume","talent_id","oa_recruit_talent","id");
         for (String table : List.of("oa_recruit_interview","oa_recruit_exception","oa_recruit_dispute","oa_recruit_replacement","oa_recruit_guarantee_handling","oa_commission_attribution")) rel(table,"application_id","oa_recruit_application","id");
         rel("oa_hr_payment","item_id","oa_hr_payroll_item","id"); rel("oa_hr_payroll_item","payroll_id","oa_hr_payroll","id");
+        rel("oa_hr_payroll_rule","create_by","sys_user","user_id");
+        rel("oa_hr_salary_effective","salary_id","oa_hr_salary","id");
         rel("oa_hr_attendance_row","batch_id","oa_hr_attendance_batch","id");
         for (String table : List.of("oa_hr_payroll","oa_hr_attendance_batch","oa_hr_attachment","oa_recruit_approval")) rel(table,"create_by","sys_user","user_id");
         for (String table : List.of("oa_hr_history","oa_recruit_event")) rel(table,"operator_id","sys_user","user_id");
         rel("oa_recruit_search","user_id","sys_user","user_id"); rel("oa_recruit_task","talent_id","oa_recruit_talent","id");
         rel("oa_recruit_dispute","talent_id","oa_recruit_talent","id"); rel("oa_recruit_attachment","application_id","oa_recruit_application","id");
         rel("oa_commission_line","batch_id","oa_commission_batch","id");
+        rel("oa_crm_contract_history","contract_id","oa_crm_contract","id");
+        rel("oa_finance_record","job_id","oa_recruit_job","id");
+        rel("oa_finance_record","workflow_request_id","oa_workflow_request","id");
+        rel("oa_finance_record","original_record_id","oa_finance_record","id");
+        rel("oa_finance_record","original_receipt_id","oa_crm_contract_receipt","id");
+        rel("oa_commission_allocation","receipt_id","oa_crm_contract_receipt","id");
+        rel("oa_commission_allocation","attribution_id","oa_commission_attribution","id");
+        rel("oa_commission_line","attribution_id","oa_commission_attribution","id");
+        rel("oa_workflow_request","process_instance_id","oa_process_instance","id");
         rel("sys_logininfor","user_name","sys_user","user_name"); rel("sys_oper_log","oper_name","sys_user","user_name");
         rel("oa_process_task","instance_id","oa_process_instance","id");
-        for (String table : List.of("oa_contract","oa_project_member","oa_budget","oa_purchase_apply","oa_expense","oa_loan","oa_fund_plan","oa_invoice","oa_warehouse_in","oa_warehouse_out")) rel(table,"project_id","oa_project","id");
-        rel("oa_contract_item","contract_id","oa_contract","id"); rel("oa_purchase_apply_item","apply_id","oa_purchase_apply","id");
-        rel("oa_expense_item","expense_id","oa_expense","id"); rel("oa_expense_invoice","expense_id","oa_expense","id");
-        rel("oa_loan_detail","loan_id","oa_loan","id"); rel("oa_repayment","loan_id","oa_loan","id"); rel("oa_budget_item","budget_id","oa_budget","id");
     }
     static {
         String systemFields = "parent_id=上级ID,module_name=模块名称,route_name=路由名称,path=路径,component=页面组件,icon=图标,module_sort=模块排序,hidden=隐藏菜单,perms=权限标识,has_flow=启用流程,flow_conditions=流程条件,no_cache=关闭页面缓存,is_app=应用标志,is_frame=外链标志,query=路由参数,redirect=默认跳转,dept_name=部门名称,ancestors=上级路径,order_num=排序,leader=部门负责人,role_name=角色名称,role_key=角色编码,role_sort=角色排序,data_scope=数据范围,action_code=动作编码,action_name=动作名称,permission_code=按钮权限标识,handler_key=业务处理器,config_json=配置内容,builtin=内置标志,tenant_name=企业名称,tenant_app_id=企业应用ID,contact_name=联系姓名,contact_phone=联系电话,is_admin=管理员标志,is_owner=企业负责人标志,post_id=岗位ID,post_code=岗位编码,post_name=岗位名称,post_sort=岗位排序,config_id=参数ID,config_name=参数名称,config_key=参数编码,config_value=参数值,config_type=参数类型,sex=性别,avatar=头像,login_ip=登录IP,login_date=登录时间,record_key=记录主键,before_data=修改前内容,after_data=修改后内容,operator_name=操作人,table_name=数据表名";

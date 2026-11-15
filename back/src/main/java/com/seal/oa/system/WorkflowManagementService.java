@@ -64,6 +64,85 @@ public class WorkflowManagementService {
         return result;
     }
 
+    public Map<String, Object> todoMessages(SystemService.UserAccount user) {
+        long tenant = user.tenantId();
+        List<Map<String, Object>> modules = rows("SELECT module_id,module_name,parent_id FROM sys_module WHERE tenant_id=?", tenant);
+        Map<Long, Map<String, Object>> moduleIndex = new LinkedHashMap<>();
+        modules.forEach(module -> moduleIndex.put(number(module.get("moduleId")), module));
+        Map<String, String> actionNames = new LinkedHashMap<>();
+        rows("""
+                SELECT a.module_id,a.action_code,a.action_name FROM sys_module_action a
+                JOIN sys_module m ON m.module_id=a.module_id WHERE m.tenant_id=? AND a.status='0'
+                """, tenant).forEach(action -> actionNames.put(
+                action.get("moduleId") + ":" + action.get("actionCode"), text(action.get("actionName"))));
+
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Map<String, Object> flow : configurations(user)) {
+            if (!Boolean.TRUE.equals(flow.get("published")) || !enabled(flow.get("approvalEnabled"))
+                    || !Boolean.TRUE.equals(flow.get("moduleEnabled")) || !"0".equals(text(flow.get("actionStatus")))
+                    || text(flow.get("handlerKey")).isBlank()
+                    || ("catalog".equals(flow.get("source")) && !Boolean.TRUE.equals(flow.get("bound")))) continue;
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("key", "approval:" + flow.get("key"));
+            row.put("modulePath", flow.get("modulePath"));
+            row.put("flowName", flow.get("flowName"));
+            row.put("entryName", flow.get("actionName"));
+            row.put("actionCode", flow.get("actionCode"));
+            row.put("messageType", "审批待办");
+            row.put("recipient", "流程节点配置的审批人");
+            row.put("trigger", "执行该按钮并进入已发布、已启用的审批流程时，为当前审批节点生成待办");
+            row.put("source", "审批流程");
+            result.add(row);
+        }
+
+        addBusinessTodo(result, moduleIndex, actionNames, 340352L, "add", "客户首次跟进提醒", "业务提醒",
+                "客户负责人", "新建客户档案后；客户保持启用、非公海且负责人为有效成员时创建，首次跟进后办结。",
+                "客户档案创建、负责人变更、认领或跟进会重新核对该待办。");
+        addBusinessTodo(result, moduleIndex, actionNames, 340590L, "add", "商机首次跟进提醒", "业务提醒",
+                "商机负责人", "新增或更新仍在推进中的商机且尚未跟进时创建；阶段结束或首次跟进后关闭。",
+                "商机新增、编辑或阶段变更会重新核对该待办。");
+        addBusinessTodo(result, moduleIndex, actionNames, 340352L, "", "客户风险提醒", "风险提醒",
+                "客户负责人", "风险扫描发现需处理的客户风险时创建；风险消除后办结。",
+                "系统按客户风险扫描结果维护，不对应单个按钮。");
+        addBusinessTodo(result, moduleIndex, actionNames, 341005L, "publish", "工资条发布提醒", "业务提醒",
+                "对应员工", "工资批次审批通过并发布工资条后，为批次内员工生成待办。",
+                "工资管理中的发布工资条操作。");
+        addBusinessTodo(result, moduleIndex, actionNames, 341003L, "handover", "离职交接提醒", "业务提醒",
+                "部门负责人", "成员离职时存在待交接业务，系统为部门负责人生成交接待办。",
+                "人事异动中的离职处理触发，不是单独的审批流程。");
+        result.sort(Comparator.comparing(row -> text(row.get("modulePath")) + text(row.get("entryName")) + text(row.get("flowName"))));
+        return Map.of("rows", result, "total", result.size());
+    }
+
+    private void addBusinessTodo(List<Map<String, Object>> rows, Map<Long, Map<String, Object>> modules,
+                                 Map<String, String> actionNames, long moduleId, String actionCode,
+                                 String flowName, String type, String recipient, String trigger, String source) {
+        Map<String, Object> module = modules.get(moduleId);
+        if (module == null) return;
+        String entryName = actionCode.isBlank() ? "系统自动提醒"
+                : actionNames.getOrDefault(moduleId + ":" + actionCode, actionCode);
+        if (moduleId == 340352L && "add".equals(actionCode)) entryName = "新建客户档案";
+        Map<String, Object> row = new LinkedHashMap<>();
+        row.put("key", "business:" + moduleId + ":" + (actionCode.isBlank() ? flowName : actionCode));
+        row.put("modulePath", modulePath(moduleId, modules));
+        row.put("flowName", flowName);
+        row.put("entryName", entryName);
+        row.put("actionCode", actionCode.isBlank() ? "—" : actionCode);
+        row.put("messageType", type);
+        row.put("recipient", recipient);
+        row.put("trigger", trigger);
+        row.put("source", source);
+        rows.add(row);
+    }
+
+    private String modulePath(long moduleId, Map<Long, Map<String, Object>> modules) {
+        List<String> path = new ArrayList<>();
+        Set<Long> visited = new LinkedHashSet<>();
+        for (Map<String, Object> current = modules.get(moduleId); current != null && visited.add(number(current.get("moduleId")));
+             current = modules.get(number(current.get("parentId")))) path.add(0, text(current.get("moduleName")));
+        return String.join(" / ", path);
+    }
+
     private List<Map<String, Object>> configurations(SystemService.UserAccount user) {
         long tenant = user.tenantId();
         Map<Long, Map<String, Object>> modules = new LinkedHashMap<>();
@@ -79,6 +158,7 @@ public class WorkflowManagementService {
                 WHERE m.tenant_id=? AND a.status<>'2'
                 ORDER BY m.module_sort,m.module_id,a.action_sort,a.action_code
                 """, tenant)) {
+            if (ModuleActionService.isApprovalPermissionOnly(number(row.get("moduleId")), text(row.get("actionCode")))) continue;
             actions.put(row.get("moduleId") + ":" + row.get("actionCode"), row);
         }
         Map<String, Map<String, Object>> buttons = new LinkedHashMap<>();

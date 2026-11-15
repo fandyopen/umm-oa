@@ -39,6 +39,10 @@ public class ModuleService {
             Set<String> permissions,
             Set<Long> allowedModuleIds
     ) {
+        if (!admin && allowedModuleIds.isEmpty() && permissions.isEmpty()) {
+            // A member without a business role can only access their personal task center.
+            allowedModuleIds = Set.of(340340L, 340341L, 340342L, 340527L, 340785L);
+        }
         List<Map<String, Object>> rows = JdbcMaps.camelCase(jdbc.queryForList("""
                 SELECT module_id, tenant_id, parent_id, module_name, route_name, path, component, icon,
                        module_sort, hidden, perms, has_flow, flow_conditions, no_cache,
@@ -54,6 +58,9 @@ public class ModuleService {
             row.put("flowConditions", normalizeFlowConditions(row.get("flowConditions")));
             Long moduleId = number(row.get("moduleId"));
             if (!admin && Long.valueOf(341500L).equals(moduleId)) continue;
+            if (Long.valueOf(341510L).equals(moduleId) && (!admin || jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM sys_admin_identity a JOIN sys_user u ON u.user_name=a.user_name WHERE u.user_id=? AND u.del_flag='0'",
+                    Long.class, com.seal.oa.auth.AuthContext.userId()) == 0)) continue;
             if (!admin && !isModuleAllowed(row, moduleId, permissions, expandedAllowedIds)) {
                 continue;
             }

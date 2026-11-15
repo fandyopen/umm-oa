@@ -8,6 +8,8 @@ const previewDir = process.argv[3]
 const catalog = JSON.parse(await fs.readFile(path.join(root, 'hr/catalog.json'), 'utf8'))
 const member = JSON.parse(await fs.readFile(path.join(root, 'members/catalog.json'), 'utf8'))
 const types = catalog.groups.flatMap(group => group.types)
+const hrType = process.argv.find(arg => arg.startsWith('--hr-type='))?.slice('--hr-type='.length)
+if (hrType && !types.includes(hrType)) throw new Error('Unknown HR template: ' + hrType)
 const employmentTypes = '直接聘用（direct）、劳务派遣（dispatch）、实习（internship）、劳务合作（labor）'
 const general = '空模板不含示例人员；前500行的编号、银行卡、日期等字段已设为文本。超过500行请复制已有空白行格式。工号或已绑定钉钉人员ID用于匹配，不能仅凭姓名。缺失数据不能默认当零；工资调整回传必须使用实际批次导出文件。'
 const col = index => {
@@ -78,7 +80,7 @@ async function save(book, relative, previewName) {
   console.log('Created ' + relative)
 }
 if (!process.argv.includes('--business-only') && !process.argv.includes('--members-only')) {
-  for (const type of types) {
+  for (const type of hrType ? [hrType] : types) {
     const book = Workbook.create()
     dataSheet(book, '数据', catalog.templates[type])
     instructions(book, [catalog.templates[type]])
@@ -92,14 +94,14 @@ if (!process.argv.includes('--business-only') && !process.argv.includes('--membe
   )
   await save(pack, 'hr/all.xlsx')
 }
-if (!process.argv.includes('--business-only')) {
+if (!hrType && !process.argv.includes('--business-only')) {
   const members = Workbook.create()
   dataSheet(members, '数据', member)
   instructions(members, [member], true)
   await save(members, 'members/address-book.xlsx', 'address-book')
 }
 const business = JSON.parse(await fs.readFile(path.join(root, 'business/catalog.json'), 'utf8'))
-for (const [type, schema] of Object.entries(process.argv.includes('--members-only') ? {} : business.templates)) {
+for (const [type, schema] of Object.entries(hrType || process.argv.includes('--members-only') ? {} : business.templates)) {
   const book = Workbook.create()
   dataSheet(book, '数据', schema)
   instructions(book, [schema])

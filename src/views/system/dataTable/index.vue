@@ -9,6 +9,22 @@
         <a-button icon="reload" :loading="catalogLoading" @click="refresh">刷新</a-button>
       </div>
       <a-alert v-if="error" type="error" show-icon :message="error" />
+      <div class="dt-page-picker">
+        <strong>按业务页面定位数据</strong>
+        <a-select :value="activePage ? activePage.key : undefined" show-search allow-clear :filter-option="filterPage" placeholder="输入页面标题，如：回款登记、员工考勤表" @change="selectPage">
+          <a-select-option v-for="item in businessPages" :key="item.key" :value="item.key">{{ pageTitle(item) }}</a-select-option>
+        </a-select>
+        <span class="dt-muted">也可在左侧直接选择原始数据表</span>
+      </div>
+      <div v-if="activePage" class="dt-sources">
+        <div><strong>{{ pageTitle(activePage) }}</strong> <a v-if="activePage.route" @click="openBusiness">打开业务页面</a></div>
+        <p>{{ activePage.note }}</p>
+        <a-tag v-for="f in activePage.filters" :key="f.field" color="blue">固定条件：{{ f.field }} {{ f.op === 'in' ? '属于' : f.op === 'ne' ? '≠' : '=' }} {{ f.values.join('、') }}</a-tag>
+        <div class="dt-source-list">
+          <div v-for="source in activePage.sources" :key="source.table"><a-tag>{{ source.role }}</a-tag><strong>{{ source.label }}</strong> <code>{{ source.table }}</code><span>{{ source.note }}</span><a @click="jump(source.table)">查看原始表</a></div>
+        </div>
+      </div>
+      <a-alert v-if="activeRelation" type="info" show-icon :message="'本条关联数据：' + activeRelation.label" :description="activeRelation.note + '；查询、重置和翻页均保留关联范围。选择左侧表可退出关联定位。'" />
       <div class="dt-layout">
         <aside class="dt-directory">
           <a-input-search v-model="keyword" allow-clear placeholder="搜索中文名称 / 表名" />
@@ -59,7 +75,7 @@
                   >
                   <a-input v-model="filterValue" placeholder="筛选值" :disabled="['null', 'notnull'].includes(filterOp)" style="width: 180px" @pressEnter="search" />
                   <a-button type="primary" icon="search" :disabled="!selected.readable" @click="search">查询</a-button><a-button @click="reset">重置</a-button>
-                  <a-button v-if="structure.createAllowed" type="primary" icon="plus" :disabled="loading" @click="openEditor()">新增数据</a-button>
+                  <a-button v-if="structure.createAllowed && !activePage && !activeRelation" type="primary" icon="plus" :disabled="loading" @click="openEditor()">新增数据</a-button>
                   <a-select v-model="shownFields" mode="multiple" placeholder="显示字段" :max-tag-count="0" :max-tag-placeholder="() => '选择显示字段'" style="width: 160px">
                     <a-select-option v-for="field in visibleFields" :key="field.name" :value="field.name">{{ field.label }}</a-select-option>
                   </a-select>
@@ -71,14 +87,14 @@
                     ></template
                   >
                   <template slot="operations" slot-scope="text, row"
-                    ><a @click="viewRow(row)">查看</a><template v-if="structure.editAllowed"><a-divider type="vertical" /><a @click="openEditor(row)">修改</a></template
-                    ><template v-if="structure.deleteAllowed"><a-divider type="vertical" /><a class="dt-delete" @click="openDelete(row)">删除</a></template></template
+                    ><a @click="viewRow(row)">查看</a><a-divider type="vertical" /><a @click="viewRelated(row)">关联数据</a><template v-if="structure.editAllowed && !row.maintenanceBlock"><a-divider type="vertical" /><a @click="openEditor(row)">修改</a></template
+                    ><template v-if="structure.deleteAllowed && !row.maintenanceBlock"><a-divider type="vertical" /><a class="dt-delete" @click="openDelete(row)">删除</a></template><a-tooltip v-if="row.maintenanceBlock" :title="row.maintenanceBlock"><a-tag color="orange">业务办理</a-tag></a-tooltip></template
                   >
                 </a-table>
                 <div class="dt-footnote">敏感认证字段不返回数据；大整数和金额按字符串展示，避免精度丢失。点击列头可以排序。</div>
               </a-tab-pane>
               <a-tab-pane key="structure" tab="表结构">
-                <a-table size="small" :columns="structureColumns" :data-source="structure.columns || []" row-key="name" :pagination="false" :scroll="{ x: 1060 }">
+                <a-table size="small" :columns="structureColumns" :data-source="structure.columns || []" row-key="name" :pagination="false">
                   <template slot="flags" slot-scope="text, field"
                     ><a-tag v-if="field.primary" color="gold">主键</a-tag><a-tag v-if="field.auto">自增</a-tag><a-tag v-if="field.sensitive" color="orange">敏感 / 已隐藏</a-tag
                     ><a-tag v-if="field.editable || field.createEditable" color="cyan">{{ field.immutable || !field.editable ? '仅新增填写' : '可修改' }}</a-tag></template
@@ -88,14 +104,15 @@
               </a-tab-pane>
               <a-tab-pane key="relations" tab="关联关系">
                 <p class="dt-muted">包含数据库外键与已登记的业务关联。点击表名可跳转查看；删除时会检查被引用的数据。</p>
-                <a-table size="small" :columns="relationColumns" :data-source="structure.relations || []" :row-key="relationKey" :pagination="false" :scroll="{ x: 800 }">
+                <a-table size="small" :columns="relationColumns" :data-source="structure.relations || []" :row-key="relationKey" :pagination="false">
                   <a slot="tableLink" slot-scope="value" @click="jump(value)"
                     >{{ tableLabel(value) }}<br /><code>{{ value }}</code></a
                   >
                 </a-table>
               </a-tab-pane>
               <a-tab-pane key="history" tab="修改记录">
-                <a-table size="small" :loading="historyLoading" :columns="historyColumns" :data-source="historyRows" row-key="id" :pagination="historyPagination" :scroll="{ x: 900 }" @change="historyChanged"
+                <p class="dt-muted">此处展示当前整张表的数据维护记录。</p>
+                <a-table size="small" :loading="historyLoading" :columns="historyColumns" :data-source="historyRows" row-key="id" :pagination="historyPagination" @change="historyChanged"
                   ><a slot="historyDetail" slot-scope="text, record" @click="viewHistory(record)">查看对比</a></a-table
                 >
               </a-tab-pane>
@@ -105,6 +122,21 @@
         </section>
       </div>
     </a-card>
+    <a-drawer title="本条关联数据" width="min(1040px, 100vw)" :visible="relatedVisible" @close="closeRelated">
+      <p class="dt-muted">{{ relatedTitle }}。只展示与选中记录直接关联的数据；每组预览 5 条，定位后可继续筛选、翻页和维护。</p>
+      <a-alert v-if="relatedError" type="error" show-icon :message="relatedError" />
+      <a-spin :spinning="relatedLoading">
+        <a-collapse>
+          <a-collapse-panel v-for="group in relatedGroups" :key="group.id" :header="group.label + '（' + group.total + ' 条） · ' + group.table">
+            <p>{{ group.note }} <a v-if="group.total" @click="locateRelated(group)">定位本组数据</a></p>
+            <a-table size="small" :columns="relatedColumns(group)" :data-source="group.rows" :row-key="rowKey" :pagination="false">
+              <template slot="relatedCell" slot-scope="value"><a-tooltip :title="display(value)"><span class="dt-cell">{{ display(value) }}</span></a-tooltip></template>
+            </a-table>
+          </a-collapse-panel>
+        </a-collapse>
+        <a-empty v-if="!relatedLoading && !relatedError && !relatedGroups.length" description="未发现已登记且可访问的直接关联" />
+      </a-spin>
+    </a-drawer>
     <a-drawer :title="viewerTitle" width="min(880px, 100vw)" :visible="viewerVisible" @close="viewerVisible = false">
       <a-descriptions v-if="viewerRow" bordered :column="1" size="small"
         ><a-descriptions-item v-for="field in visibleFields" :key="field.name" :label="fieldTitle(field)">
@@ -113,7 +145,7 @@
       >
       <template v-else
         ><p>{{ viewerReason }}</p>
-        <a-table size="small" :columns="diffColumns" :data-source="viewerDiff" row-key="field" :pagination="false" :scroll="{ x: 700 }">
+        <a-table size="small" :columns="diffColumns" :data-source="viewerDiff" row-key="field" :pagination="false">
           <pre slot="diffValue" slot-scope="value" class="dt-value">{{ display(value) }}</pre>
         </a-table></template
       >
@@ -159,7 +191,7 @@
       /></template>
       <template v-else
         ><p>操作原因：{{ reason }}</p>
-        <a-table size="small" :columns="diffColumns" :data-source="previewDiff" row-key="field" :pagination="false" :scroll="{ x: 700 }">
+        <a-table size="small" :columns="diffColumns" :data-source="previewDiff" row-key="field" :pagination="false">
           <pre slot="diffValue" slot-scope="value" class="dt-value">{{ display(value) }}</pre>
         </a-table></template
       >
@@ -170,7 +202,7 @@
 
 <script>
 import { Empty } from 'ant-design-vue'
-import { listDataTables, getDataTableStructure, getDataTableRows, getDataTableHistory, getDataTableImpact, saveDataTableRow, deleteDataTableRow } from '/src/api/system/dataTable'
+import { listDataTables, listDataPages, getDataTableRelated, getDataTableStructure, getDataTableRows, getDataTableHistory, getDataTableImpact, saveDataTableRow, deleteDataTableRow } from '/src/api/system/dataTable'
 
 const diffColumns = [
   { title: '字段', dataIndex: 'label', width: 220 },
@@ -183,6 +215,15 @@ export default {
   data() {
     return {
       tables: [],
+      businessPages: [],
+      activePage: null,
+      activeRelation: null,
+      relatedVisible: false,
+      relatedGroups: [],
+      relatedTitle: '',
+      relatedLoading: false,
+      relatedError: '',
+      relatedSequence: 0,
       selected: null,
       structure: {},
       keyword: '',
@@ -292,16 +333,17 @@ export default {
           title: this.fieldTitle(f),
           dataIndex: 'values.' + f.name,
           key: f.name,
-          width: 200,
+          width: 160,
           sorter: true,
           sortOrder: this.sort === f.name ? (this.direction === 'asc' ? 'ascend' : 'descend') : false,
           scopedSlots: { customRender: 'cell' }
         }))
-      columns.push({ title: '操作', key: 'operations', width: this.structure.deleteAllowed ? 180 : this.structure.editAllowed ? 130 : 80, fixed: 'right', scopedSlots: { customRender: 'operations' } })
+      columns.push({ title: '操作', key: 'operations', width: this.structure.deleteAllowed ? 290 : this.structure.editAllowed ? 230 : 180, fixed: 'right', scopedSlots: { customRender: 'operations' } })
       return columns
     },
     dataWidth() {
-      return Math.max(600, this.shownFields.length * 200 + 180)
+      const operationWidth = this.structure.deleteAllowed ? 290 : this.structure.editAllowed ? 230 : 180
+      return Math.max(600, this.shownFields.length * 160 + operationWidth + (this.shownFields.length + 1) * 32)
     },
     pagination() {
       return { current: this.page, pageSize: this.size, total: this.total, showSizeChanger: true, pageSizeOptions: ['10', '20', '50', '100'], showTotal: n => '共 ' + n + ' 条' }
@@ -317,8 +359,61 @@ export default {
     this.requestSequence++
     this.rowSequence++
     this.historySequence++
+    this.relatedSequence++
   },
   methods: {
+    pageTitle(item) {
+      return item.currentTitle && !item.title.includes(item.currentTitle) ? item.title + '（当前：' + item.currentTitle + '）' : item.title
+    },
+    filterPage(input, option) {
+      const item = this.businessPages.find(p => p.key === option.key)
+      return item && [item.title, item.currentTitle, item.table, item.component].join(' ').toLowerCase().includes(input.toLowerCase())
+    },
+    async selectPage(key) {
+      const profile = this.businessPages.find(p => p.key === key)
+      if (!profile) {
+        if (this.selected) await this.selectTable(this.selected)
+        return
+      }
+      const table = this.tables.find(t => t.name === profile.table)
+      if (table) await this.selectTable(table, { profile })
+    },
+    contextParams() {
+      return { pageKey: this.activePage ? this.activePage.key : undefined, relationContext: this.activeRelation ? JSON.stringify(this.activeRelation.context) : undefined }
+    },
+    openBusiness() {
+      if (this.activePage && this.activePage.route) this.$router.push(this.activePage.route)
+    },
+    closeRelated() {
+      this.relatedVisible = false
+      this.relatedSequence++
+    },
+    async viewRelated(row) {
+      const seq = ++this.relatedSequence
+      const table = this.selected.name
+      this.relatedVisible = true
+      this.relatedLoading = true
+      this.relatedGroups = []
+      this.relatedError = ''
+      this.relatedTitle = this.selected.label + ' · ' + JSON.stringify(row.key)
+      try {
+        const { data } = await getDataTableRelated(table, { key: row.key, version: row.version })
+        if (seq === this.relatedSequence) this.relatedGroups = data
+      } catch (e) {
+        if (seq === this.relatedSequence) this.relatedError = e.message || '加载关联数据失败'
+      } finally {
+        if (seq === this.relatedSequence) this.relatedLoading = false
+      }
+    },
+    relatedColumns(group) {
+      const keys = Object.keys((group.rows[0] || {}).values || {})
+      const preferred = ['id', 'user_id', 'name', 'title', 'status', 'amount', 'action', 'create_time']
+      return [...preferred.filter(k => keys.includes(k)), ...keys.filter(k => !preferred.includes(k))].slice(0, 5).map(k => ({ title: k, dataIndex: 'values.' + k, width: 160, scopedSlots: { customRender: 'relatedCell' } }))
+    },
+    async locateRelated(group) {
+      const table = this.tables.find(t => t.name === group.table)
+      if (table) await this.selectTable(table, { relation: { context: group.context, label: group.label, note: group.note } })
+    },
     fieldTitle(field) {
       const label = (field.label || '').trim()
       return !label || label === field.name ? field.name : label + ' · ' + field.name
@@ -327,10 +422,17 @@ export default {
       this.catalogLoading = true
       this.error = ''
       try {
-        const { data } = await listDataTables()
+        const [catalog, pages] = await Promise.all([listDataTables(), listDataPages()])
+        const data = catalog.data
         this.tables = data
+        this.businessPages = pages.data
         const current = data.find(t => this.selected && t.name === this.selected.name)
-        if (current) await this.selectTable(current)
+        if (current) {
+          this.selected = current
+          // Preserve the source context and current filters when refreshing after maintenance.
+          if (this.activePage) this.activePage = this.businessPages.find(p => p.key === this.activePage.key) || null
+          await this.loadRows()
+        }
         else if (!this.selected) await this.selectTable(data.find(t => t.name === 'sys_user') || data[0])
       } catch (e) {
         this.error = e.message || '加载数据表失败'
@@ -338,11 +440,14 @@ export default {
         this.catalogLoading = false
       }
     },
-    async selectTable(item) {
+    async selectTable(item, context = {}) {
       if (!item) return
       const seq = ++this.requestSequence
       this.rowSequence++
       this.historySequence++
+      this.closeRelated()
+      this.activePage = context.profile || null
+      this.activeRelation = context.relation || null
       this.selected = item
       this.structure = {}
       this.rows = []
@@ -382,10 +487,14 @@ export default {
       this.loading = true
       this.error = ''
       try {
-        const { data } = await getDataTableRows(table, { page: this.page, size: this.size, sort: this.sort, direction: this.direction, filters: JSON.stringify(this.appliedFilters) })
+        const { data } = await getDataTableRows(table, { ...this.contextParams(), page: this.page, size: this.size, sort: this.sort, direction: this.direction, filters: JSON.stringify(this.appliedFilters) })
         if (seq !== this.rowSequence || table !== this.selected.name) return
         this.rows = data.rows
         this.total = data.total
+        if (this.page > 1 && !this.rows.length && this.total <= (this.page - 1) * this.size) {
+          this.page = Math.max(1, Math.ceil(this.total / this.size))
+          await this.loadRows()
+        }
       } catch (e) {
         if (seq === this.rowSequence) this.error = e.message || '查询数据失败'
       } finally {
@@ -477,6 +586,7 @@ export default {
       this.viewerVisible = true
     },
     openEditor(row) {
+      if (row && row.maintenanceBlock) return this.$message.warning(row.maintenanceBlock)
       this.creating = !row
       this.original = row || null
       this.form = {}
@@ -510,12 +620,13 @@ export default {
       this.confirmVisible = true
     },
     async openDelete(row) {
+      if (row.maintenanceBlock) return this.$message.warning(row.maintenanceBlock)
       const table = this.selected.name
       const seq = this.requestSequence
       this.saveError = ''
       this.reason = ''
       try {
-        const { data } = await getDataTableImpact(table, { key: row.key, version: row.version })
+        const { data } = await getDataTableImpact(table, { ...this.contextParams(), key: row.key, version: row.version })
         if (seq !== this.requestSequence) return
         this.impacts = data
         this.pendingRow = row
@@ -526,13 +637,14 @@ export default {
       }
     },
     async commit() {
+      if (this.saving) return
       if (!this.reason.trim()) return this.$message.warning('请填写操作原因')
       this.saving = true
       this.saveError = ''
       const table = this.selected.name
       try {
-        if (this.deleting) await deleteDataTableRow(table, { key: this.pendingRow.key, version: this.pendingRow.version, reason: this.reason })
-        else await saveDataTableRow(table, { values: this.pendingValues, key: this.original ? this.original.key : {}, version: this.original ? this.original.version : '', reason: this.reason }, this.creating)
+        if (this.deleting) await deleteDataTableRow(table, { ...this.contextParams(), key: this.pendingRow.key, version: this.pendingRow.version, reason: this.reason })
+        else await saveDataTableRow(table, { ...this.contextParams(), values: this.pendingValues, key: this.original ? this.original.key : {}, version: this.original ? this.original.version : '', reason: this.reason }, this.creating)
         this.$message.success('操作成功，已记录修改内容')
         this.editorVisible = false
         this.confirmVisible = false
@@ -548,6 +660,32 @@ export default {
 </script>
 
 <style lang="less" scoped>
+.dt-page-picker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 18px;
+  .ant-select {
+    width: 680px;
+    max-width: 100%;
+  }
+}
+.dt-sources {
+  padding: 16px;
+  margin-top: 14px;
+  background: var(--umm-surface-soft, #f6f9fc);
+  border: 1px solid var(--umm-border, #e8edf3);
+  border-radius: 8px;
+  p { margin: 8px 0; }
+}
+.dt-source-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+  > div { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
+  span:not(.ant-tag) { color: var(--umm-muted, #718096); font-size: 12px; }
+}
 .data-tables {
   min-height: 680px;
 }

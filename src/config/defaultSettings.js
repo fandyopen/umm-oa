@@ -37,7 +37,7 @@ export default {
   footerView: false,
   watermark: true, // 水印,
   comany: 'QS',
-  companyDoc: '海豹科技有限公司',
+  companyDoc: 'UMM加木企服',
   codePrefix: 'QS',
   websocketHost: 'ws://' + location.host + '/websocket/ws/wait/',
   menu: {

@@ -16,18 +16,30 @@ public class HrController {
     private final HrAttendanceService attendance;
     private final HrPayrollService payroll;
     private final HrReportService reports;
+    private final HrPayrollRuleService rules;
+    private final HrWorkLocations workLocations;
 
     public HrController(
             HrData d,
             HrEmployeeService employees,
             HrAttendanceService attendance,
             HrPayrollService payroll,
-            HrReportService reports) {
+            HrReportService reports,
+            HrPayrollRuleService rules,
+            HrWorkLocations workLocations) {
         this.d = d;
         this.employees = employees;
         this.attendance = attendance;
         this.payroll = payroll;
         this.reports = reports;
+        this.rules = rules;
+        this.workLocations = workLocations;
+    }
+
+    @GetMapping("/employees/work-locations")
+    public Map<String, Object> workLocations() {
+        d.require(EMPLOYEES, "access");
+        return ApiResult.ok(workLocations.options());
     }
 
     @GetMapping("/employees")
@@ -100,6 +112,8 @@ public class HrController {
                             + " WHERE s.id=?",
                         id);
         d.employee(HrData.id(row.get("userId")));
+        var approved = d.rows("SELECT snapshot_json FROM oa_hr_salary_effective WHERE salary_id=?", id);
+        if (!approved.isEmpty()) row.put("confirmedSalary", d.object(approved.get(0).get("snapshotJson")));
         return ApiResult.ok(row);
     }
 
@@ -188,7 +202,7 @@ public class HrController {
                                         "SELECT"
                                             + " u.user_id,u.nick_name,u.dept_id,u.del_flag,u.status,e.employee_no,e.revision,e.employment_status"
                                             + " FROM sys_user u JOIN oa_hr_employee e ON"
-                                            + " e.user_id=u.user_id WHERE u.del_flag IN ('0','2')")
+                                            + " e.user_id=u.user_id WHERE u.del_flag IN ('0','2') AND " + d.memberCondition("u"))
                                 .stream()
                                 .filter(
                                         u ->
@@ -214,6 +228,16 @@ public class HrController {
         return ApiResult.ok(attendance.preview(b));
     }
 
+    @PostMapping("/attendance/generate")
+    public Map<String, Object> generateAttendance(@RequestBody Map<String, Object> b) {
+        return ApiResult.ok(attendance.generate(b));
+    }
+
+    @PutMapping("/attendance/{id}")
+    public Map<String, Object> updateAttendance(@PathVariable long id, @RequestBody Map<String, Object> b) {
+        return ApiResult.ok(attendance.update(id, b));
+    }
+
     @PostMapping("/attendance")
     public Map<String, Object> importAttendance(@RequestBody Map<String, Object> b) {
         return ApiResult.ok(attendance.save(b));
@@ -223,6 +247,16 @@ public class HrController {
     public Map<String, Object> confirm(@PathVariable long id, @RequestBody Map<String, Object> b) {
         attendance.confirm(id, b);
         return ApiResult.ok();
+    }
+
+    @GetMapping("/payroll/rules")
+    public Map<String, Object> payrollRules(@RequestParam String period) {
+        return ApiResult.ok(rules.list(period));
+    }
+
+    @PostMapping("/payroll/rules")
+    public Map<String, Object> savePayrollRule(@RequestBody Map<String, Object> body) {
+        return ApiResult.ok(rules.save(body));
     }
 
     @GetMapping("/payroll")
@@ -275,10 +309,15 @@ public class HrController {
         return ApiResult.ok();
     }
 
+    @PutMapping("/payroll/{id}/items/{item}/tax")
+    public Map<String, Object> saveTax(@PathVariable long id, @PathVariable long item,
+                                      @RequestBody Map<String, Object> b) {
+        return ApiResult.ok(payroll.saveTax(id, item, b));
+    }
+
     @PostMapping("/payroll/{id}/accounts")
     public Map<String, Object> accounts(@PathVariable long id, @RequestBody Map<String, Object> b) {
-        payroll.refreshAccounts(id, b);
-        return ApiResult.ok();
+        return ApiResult.ok(payroll.refreshAccounts(id, b));
     }
 
     @PostMapping("/payroll/{id}/reopen")
@@ -296,6 +335,11 @@ public class HrController {
     @PostMapping("/payroll/items/{id}/pay")
     public Map<String, Object> pay(@PathVariable long id, @RequestBody Map<String, Object> b) {
         return ApiResult.ok(payroll.pay(id, b));
+    }
+
+    @PostMapping("/payroll/{id}/payments")
+    public Map<String, Object> payBatch(@PathVariable long id, @RequestBody Map<String, Object> b) {
+        return ApiResult.ok(payroll.payBatch(id, b));
     }
 
     @GetMapping("/self/attendance")

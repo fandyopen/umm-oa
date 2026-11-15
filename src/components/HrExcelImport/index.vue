@@ -12,6 +12,7 @@
   >
     <a-alert v-if="catalog.error" type="error" :message="catalog.error" class="tw-mb-4"><a-button slot="description" size="small" @click="loadCatalog">重试加载模板</a-button></a-alert>
     <a-alert v-if="schema.note" :message="schema.note" type="info" show-icon class="tw-mb-4" />
+    <a-alert v-if="notice" :message="notice" type="info" show-icon class="tw-mb-4" />
     <div class="excel-tools">
       <a-button icon="download" :loading="catalog.loading" :disabled="!catalog.ready" @click="download">下载模板</a-button
       ><a-upload :before-upload="read" :show-upload-list="false" accept=".xlsx,.xls,.csv"
@@ -36,7 +37,7 @@
       </div>
       <a-alert v-if="errors.length" type="error" :message="errors.slice(0, 8).join('；')" class="tw-my-3 tw-mx-0" />
       <a-alert v-if="previewed" type="success" :message="'校验通过，共 ' + rows.length + ' 行。请核对预览后确认导入。'" class="tw-my-3 tw-mx-0" />
-      <a-table v-if="previewed" :columns="previewColumns" :data-source="rows" :row-key="(_, index) => index" :pagination="{ pageSize: 8 }" size="small" :scroll="{ x: 1200 }" />
+      <a-table v-if="previewed" :columns="previewColumns" :data-source="rows" :row-key="(_, index) => index" :pagination="{ pageSize: 8 }" :scroll="{ x: previewTableWidth }" size="small" />
       <div v-if="previewed && rows.some(row => row.changes && Object.keys(row.changes).length)" class="diff">
         <div v-for="(row, index) in rows" :key="index">
           <template v-if="row.changes && Object.keys(row.changes).length"
@@ -56,6 +57,7 @@ export default {
   name: 'HrExcelImport',
   props: {
     visible: Boolean,
+    notice: { type: String, default: '' },
     type: { type: String, required: true },
     extra: { type: Object, default: () => ({}) },
     previewApi: { type: Function, default: null },
@@ -80,6 +82,9 @@ export default {
         width: 150,
         customRender: value => (value === undefined ? '—' : f.key === 'employmentType' ? this.employmentTypes.find(option => option.value === value)?.label || String(value) : String(value))
       }))
+    },
+    previewTableWidth() {
+      return this.previewColumns.length * 182
     }
   },
   created() {

@@ -24,8 +24,8 @@ public class RecruitmentOwnershipService {
             throw new ApiException(409, "该人才已有待处理归属争议，请继续处理原记录");
         long proposed = num(body.get("proposedOwnerId"));
         long handler = num(body.get("handlerUserId"));
-        s.user(proposed);
-        s.user(handler);
+        s.member(proposed);
+        s.member(handler);
         if (proposed == num(talent.get("ownerUserId"))) throw new ApiException(400, "拟归属人与当前负责人相同");
         if (!s.system().hasModuleAction(handler, TALENT, "dispute"))
             throw new ApiException(400, "处理人须具有人才库归属争议处理权限");

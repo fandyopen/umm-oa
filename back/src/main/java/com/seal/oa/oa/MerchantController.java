@@ -172,7 +172,7 @@ public class MerchantController {
     @GetMapping("/project/merchant/owner/options")
     @RequiresModuleAction(moduleId = CUSTOMER_MODULE_ID, action = "access")
     public Map<String, Object> ownerOptions(@RequestParam Map<String, String> query) {
-        StringBuilder where = new StringBuilder("WHERE u.del_flag = '0' AND u.status = '0'");
+        StringBuilder where = new StringBuilder("WHERE u.del_flag = '0' AND u.status = '0' AND " + com.seal.oa.system.MemberIdentity.condition("u"));
         List<Object> args = new ArrayList<>();
         if (text(query.get("keyword"))) {
             where.append(" AND (u.nick_name LIKE ? OR u.user_name LIKE ?)");
@@ -269,10 +269,10 @@ public class MerchantController {
     @RequiresModuleAction(moduleId = CUSTOMER_MODULE_ID, action = "edit")
     public Map<String, Object> update(@RequestBody Map<String, Object> body) {
         long id = number(body.get("id"), 0L);
-        requireAccessibleMerchant(id);
+        Map<String, Object> customer = requireAccessibleMerchant(id);
         if ("1".equals(String.valueOf(body.get("publicPool")))) contracts.requireReleasable(id);
         validateDuplicate(body, id);
-        long ownerUserId = ownerId(body);
+        long ownerUserId = body.containsKey("ownerUserId") ? ownerId(body) : number(customer.get("ownerUserId"), 0L);
         requireOwnerAccess(ownerUserId);
         jdbc.update("""
                 UPDATE oa_merchant SET serial = ?, name = ?, type = ?, address = ?, tax_number = ?,
@@ -689,9 +689,9 @@ public class MerchantController {
     private void requireOwnerAccess(Long userId) {
         List<Map<String, Object>> rows = JdbcMaps.camelCase(jdbc.queryForList("""
                 SELECT user_id, user_name, nick_name, dept_id
-                FROM sys_user
-                WHERE user_id = ? AND del_flag = '0' AND status = '0'
-                """, userId));
+                FROM sys_user u
+                WHERE user_id = ? AND del_flag = '0' AND status = '0' AND %s
+                """.formatted(com.seal.oa.system.MemberIdentity.condition("u")), userId));
         if (rows.isEmpty()) {
             throw new ApiException(400, "客户负责人不存在或已停用");
         }

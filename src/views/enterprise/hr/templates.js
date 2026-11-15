@@ -55,7 +55,9 @@ export function convertCell(value, f) {
     if (!match) throw new Error(f.label + '应为YYYY-MM-DD')
     return match[1] + '-' + match[2].padStart(2, '0') + '-' + match[3].padStart(2, '0')
   }
-  return String(value).trim()
+  const text = String(value).trim()
+  if (f.key === 'email' && text && (text.length > 128 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text))) throw new Error('邮箱格式错误或超过128个字符')
+  return text
 }
 export function buildWorkbook(entries, employmentTypes = []) {
   const book = XLSX.utils.book_new()

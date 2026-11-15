@@ -25,6 +25,7 @@ class CommissionIntegrationTest {
     @Autowired com.fasterxml.jackson.databind.ObjectMapper json;
     @Autowired com.seal.oa.system.ModuleActionService actions;
     @Autowired CommissionService service;
+    @Autowired com.seal.oa.recruitment.RecruitmentService recruitment;
     @Autowired CommissionWorkflowHandler handler;
     @Autowired WorkflowActionService workflows;
     @Autowired WorkflowActionRequestService requests;
@@ -57,6 +58,22 @@ class CommissionIntegrationTest {
     void direct(Map<String,Object>b){var r=workflows.execute(Map.of("moduleId",341410,"actionCode","submit","payload",payload(b),"submissionKey","commission_"+b.get("id")));assertEquals("completed",r.get("status"));}
     BigDecimal total(Map<String,Object>b){return ((List<Map<String,Object>>)b.get("lines")).stream().map(r->CommissionService.money(r.get("amount"))).reduce(BigDecimal.ZERO,BigDecimal::add);}
     void refund(String amount){long negative=service.insert("INSERT INTO oa_crm_contract_receipt(contract_id,term_key,amount,receipt_date) VALUES(?,'fee-main',?,?)",contract,new BigDecimal(amount).negate(),date);jdbc.update("INSERT INTO oa_finance_record(record_type,customer_id,contract_id,term_key,amount,business_date,status,original_receipt_id,receipt_id,create_token) VALUES('refund',?,?,'fee-main',?,?,'confirmed',?,?,?)",customer,contract,new BigDecimal(amount),date,receipt,negative,UUID.randomUUID().toString());}
+
+    @Test void deletingClosedJobPreservesCommissionAndReceiptAllocation(){
+        long attribution=ready();
+        jdbc.update("UPDATE oa_recruit_job SET status='closed' WHERE id=?",job);
+        recruitment.deleteJob(job);
+        var history=service.attributionForApplication(application);
+        assertTrue(((Map<?,?>)history.get("application")).get("jobTitle").toString().contains("职位已删除"));
+        assertEquals(attribution,CommissionService.number(((Map<?,?>)history.get("attribution")).get("id")));
+        var options=(List<Map<String,Object>>)service.options().get("applications");
+        assertTrue(options.stream().anyMatch(row->CommissionService.number(row.get("id"))==application&&row.get("jobTitle").toString().contains("职位已删除")));
+        var batch=generate();assertEquals(new BigDecimal("500.00"),total(batch));
+        direct(batch);
+        assertEquals("approved",service.detail(CommissionService.number(batch.get("id"))).get("status"));
+        assertEquals(new BigDecimal("10000.00"),jdbc.queryForObject("SELECT amount FROM oa_crm_contract_receipt WHERE id=?",BigDecimal.class,receipt));
+        assertEquals("deleted",jdbc.queryForObject("SELECT status FROM oa_recruit_job WHERE id=?",String.class,job));
+    }
 
     @Test void stagingApprovalPayrollAndGuaranteeReleaseCloseTheLoop(){
         ready();var b=generate();assertEquals(new BigDecimal("500.00"),total(b));
@@ -134,7 +151,10 @@ class CommissionIntegrationTest {
         assertThrows(ApiException.class,()->workflows.execute(Map.of("moduleId",341005,"actionCode","submit","payload",Map.of("payrollId",p,"revision",pay.get("revision")))));
         var modified=new LinkedHashMap<>(row);modified.put("commission",9999);modified.put("reason","试图覆盖提成");modified.put("employeeNo",((Map<?,?>)row.get("snapshot")).get("employeeNo"));
         assertThrows(ApiException.class,()->payroll.previewImport(p,Map.of("revision",pay.get("revision"),"rows",List.of(modified))));
-        payroll.verify(p,Map.of("revision",pay.get("revision"),"reason","个税及扣款测试为零，逐人核对"));
+        var taxPay=pay;
+        for(var taxRow:(List<Map<String,Object>>)pay.get("rows"))
+            taxPay=payroll.saveTax(p,CommissionService.number(taxRow.get("id")),Map.of("revision",taxPay.get("revision"),"tax",0,"reason","测试明确核对零税额"));
+        payroll.verify(p,Map.of("revision",taxPay.get("revision"),"reason","个税及扣款测试为零，逐人核对"));
         workflows.execute(Map.of("moduleId",341005,"actionCode","submit","payload",Map.of("payrollId",p,"revision",payroll.detail(p,false).get("revision"))));
         var payment=new HashMap<String,Object>(Map.of("requestToken",UUID.randomUUID().toString(),"amount",100,"paymentDate",date.toString(),"status","paid","referenceNo",UUID.randomUUID().toString(),"fileName","bank.pdf","fileContent",Base64.getEncoder().encodeToString("test proof".getBytes())));
         payroll.pay(CommissionService.number(row.get("id")),payment);

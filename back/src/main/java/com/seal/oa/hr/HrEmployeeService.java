@@ -21,19 +21,23 @@ public class HrEmployeeService {
     private final CrmContractService contracts;
     private final CustomerFollowupReminderService reminders;
     private final TransactionTemplate transactions;
+    private final HrWorkLocations workLocations;
 
     public HrEmployeeService(
             HrData d,
             CrmContractService contracts,
             CustomerFollowupReminderService reminders,
-            PlatformTransactionManager transactionManager) {
+            PlatformTransactionManager transactionManager,
+            HrWorkLocations workLocations) {
         this.d = d;
         this.contracts = contracts;
         this.reminders = reminders;
         this.transactions = new TransactionTemplate(transactionManager);
+        this.workLocations = workLocations;
     }
 
     public void ensure(long user) {
+        if (user == 1L || d.system.isSuperAdminIdentity(user)) return;
         d.jdbc.update(
                 "INSERT INTO oa_hr_employee(user_id,employee_no,employment_status) SELECT"
                     + " user_id,CONCAT('EMP',user_id),CASE WHEN del_flag='2' THEN 'departed' ELSE"
@@ -124,10 +128,10 @@ public class HrEmployeeService {
         return d
                 .rows(
                         "SELECT"
-                            + " u.user_id,u.nick_name,u.phonenumber,u.dept_id,d.dept_name,e.employee_no,e.entry_date,e.exit_date,e.regular_date,e.employment_status,e.revision"
+                            + " u.user_id,u.nick_name,u.phonenumber,u.dept_id,d.dept_name,e.employee_no,e.entry_date,e.exit_date,e.regular_date,e.employment_status,e.work_province,e.work_city,e.revision"
                             + " FROM sys_user u JOIN oa_hr_employee e ON e.user_id=u.user_id LEFT"
                             + " JOIN sys_dept d ON d.dept_id=u.dept_id WHERE u.del_flag IN"
-                            + " ('0','2')"
+                            + " ('0','2') AND " + d.memberCondition("u")
                                 + filter
                                 + " ORDER BY u.user_id",
                         args.toArray())
@@ -135,10 +139,8 @@ public class HrEmployeeService {
                 .filter(
                         r ->
                                 text(q.get("keyword")).isEmpty()
-                                        || (text(r.get("nickName"))
-                                                        + text(r.get("employeeNo"))
-                                                        + text(r.get("phonenumber")))
-                                                .contains(text(q.get("keyword"))))
+                                || (text(r.get("nickName")) + " " + text(r.get("employeeNo")) + " " + text(r.get("phonenumber")))
+                                                .toLowerCase(Locale.ROOT).contains(text(q.get("keyword")).trim().toLowerCase(Locale.ROOT)))
                 .filter(
                         r ->
                                 text(q.get("status")).isEmpty()
@@ -163,10 +165,26 @@ public class HrEmployeeService {
                 "salaries",
                 sensitive
                         ? d.rows(
-                                "SELECT * FROM oa_hr_salary WHERE user_id=? ORDER BY effective_date"
+                                "SELECT s.*,e.snapshot_json AS confirmed_snapshot FROM oa_hr_salary s"
+                                        + " LEFT JOIN oa_hr_salary_effective e ON e.salary_id=s.id"
+                                        + " WHERE s.user_id=? ORDER BY s.effective_date"
                                         + " DESC",
                                 user)
                         : List.of());
+        if (sensitive) {
+            for (var salary : (List<Map<String, Object>>) row.get("salaries")) {
+                Object snapshot = salary.remove("confirmedSnapshot");
+                if (snapshot != null) salary.put("confirmedSalary", d.object(snapshot));
+            }
+        }
+        row.put("salaryHistory", sensitive
+                ? d.rows("SELECT action,detail_json,create_time FROM oa_hr_history WHERE"
+                        + " entity_type='salary' AND user_id=? ORDER BY id DESC", user).stream()
+                        .map(history -> {
+                            history.put("detail", d.object(history.remove("detailJson")));
+                            return history;
+                        }).toList()
+                : List.of());
         row.put("events", events(user, false));
         row.put(
                 "employmentPeriods",
@@ -190,6 +208,18 @@ public class HrEmployeeService {
         d.revision(old, b);
         String no = required(b.get("employeeNo"), "员工编号", 64),
                 ding = limited(b.get("dingtalkUserId"), 128);
+        String province = text(b.getOrDefault("workProvince", old.get("workProvince"))),
+                city = text(b.getOrDefault("workCity", old.get("workCity")));
+        workLocations.validate(province, city);
+        String email = text(b.getOrDefault("email", old.get("email")));
+        if (!email.equals(text(old.get("email")))
+                && (email.length() > 128 || (!email.isEmpty() && !email.matches("[^\\s@]+@[^\\s@]+\\.[^\\s@]+"))))
+            throw new ApiException(400, "邮箱格式错误或超过128个字符");
+        boolean accountsEditable = d.allowed(EMPLOYEES, "salary_manage");
+        for (String field : List.of("accountName", "bankName", "bankAccount")) {
+            if (b.containsKey(field) && !text(b.get(field)).equals(text(old.get(field))) && !accountsEditable)
+                throw new ApiException(403, "修改发薪账户需要员工档案的薪资及账户维护权限");
+        }
         String employmentType =
                 HrEmploymentType.normalize(
                         b.containsKey("employmentType")
@@ -246,7 +276,7 @@ public class HrEmployeeService {
         }
         d.jdbc.update(
                 "UPDATE oa_hr_employee SET"
-                    + " employee_no=?,dingtalk_user_id=?,entry_date=?,regular_date=?,employment_type=?,emergency_contact=?,emergency_phone=?,contract_start=?,contract_end=?,revision=revision+1,update_time=CURRENT_TIMESTAMP"
+                    + " employee_no=?,dingtalk_user_id=?,entry_date=?,regular_date=?,employment_type=?,emergency_contact=?,emergency_phone=?,contract_start=?,contract_end=?,work_province=?,work_city=?,revision=revision+1,update_time=CURRENT_TIMESTAMP"
                     + " WHERE user_id=?",
                 no,
                 ding.isEmpty() ? null : ding,
@@ -257,14 +287,18 @@ public class HrEmployeeService {
                 limited(b.get("emergencyPhone"), 32),
                 start,
                 end,
+                province,
+                city,
                 user);
-        if (d.allowed(EMPLOYEES, "salary_manage"))
+        if (!email.equals(text(old.get("email"))))
+            d.jdbc.update("UPDATE sys_user SET email=?,update_time=CURRENT_TIMESTAMP WHERE user_id=?", email, user);
+        if (accountsEditable)
             d.jdbc.update(
                     "UPDATE oa_hr_employee SET account_name=?,bank_name=?,bank_account=? WHERE"
                             + " user_id=?",
-                    limited(b.get("accountName"), 100),
-                    limited(b.get("bankName"), 200),
-                    limited(b.get("bankAccount"), 100),
+                    limited(b.getOrDefault("accountName", old.get("accountName")), 100),
+                    limited(b.getOrDefault("bankName", old.get("bankName")), 200),
+                    limited(b.getOrDefault("bankAccount", old.get("bankAccount")), 100),
                     user);
         d.history(
                 "employee",
@@ -277,7 +311,10 @@ public class HrEmployeeService {
                         "previousEntryDate",
                         text(old.get("entryDate")),
                         "entryDate",
-                        text(entry)));
+                        text(entry),
+                        "previousWorkplace", text(old.get("workProvince")) + " / " + text(old.get("workCity")),
+                        "workplace", province + " / " + city,
+                        "previousEmail", text(old.get("email")), "email", email));
         return detail(user);
     }
 
@@ -337,14 +374,20 @@ public class HrEmployeeService {
         if (base.signum() < 0 || allowance.signum() < 0)
             throw new ApiException(400, "薪资标准与补贴不能为负数");
         long editId = optionalId(b.get("id"));
+        Map<String, Object> previous = null;
         if (editId > 0) {
-            var previous =
+            previous =
                     d.one(
                             "SELECT * FROM oa_hr_salary WHERE id=? AND user_id=? FOR UPDATE",
                             editId,
                             user);
-            d.expect(previous, "draft", "rejected");
+            d.expect(previous, "draft", "rejected", "confirmed");
             d.revision(previous, b);
+            boolean correction = "confirmed".equals(previous.get("status"))
+                    || d.jdbc.queryForObject("SELECT COUNT(*) FROM oa_hr_salary_effective WHERE salary_id=?",
+                            Long.class, editId) > 0;
+            if (correction && !date.equals(date(previous.get("effectiveDate"))))
+                throw new ApiException(409, "更正已确认标准时不能修改生效日期，调薪请新增生效版本");
         }
         if (d.jdbc.queryForObject(
                         "SELECT COUNT(*) FROM oa_hr_salary WHERE user_id=? AND effective_date=? AND"
@@ -356,6 +399,12 @@ public class HrEmployeeService {
                 > 0) throw new ApiException(409, "该生效日期已有薪资标准，历史记录不能覆盖");
         String reason = required(b.get("reason"), "定薪或调薪原因", 1000);
         if (editId > 0) {
+            if ("confirmed".equals(previous.get("status"))) {
+                var approved = new LinkedHashMap<>(previous);
+                approved.put("effectiveDate", date(previous.get("effectiveDate")).toString());
+                d.jdbc.update("INSERT INTO oa_hr_salary_effective(salary_id,snapshot_json) VALUES(?,?)",
+                        editId, d.json(approved));
+            }
             d.jdbc.update(
                     "UPDATE oa_hr_salary SET"
                         + " effective_date=?,pay_type=?,base_amount=?,allowance=?,reason=?,status='draft',workflow_request_id=NULL,revision=revision+1"
@@ -366,7 +415,9 @@ public class HrEmployeeService {
                     allowance,
                     reason,
                     editId);
-            d.history("salary", editId, user, "修订薪资草稿", b);
+            d.history("salary", editId, user,
+                    "confirmed".equals(previous.get("status")) ? "更正已确认薪资" : "修订薪资草稿",
+                    Map.of("before", previous, "after", b));
             return d.one("SELECT id,revision,status FROM oa_hr_salary WHERE id=?", editId);
         }
         long salary =
@@ -429,7 +480,7 @@ public class HrEmployeeService {
                         "SELECT e.*,u.nick_name,p.employee_no,o.nick_name AS operator_name FROM"
                                 + " oa_hr_event e JOIN sys_user u ON u.user_id=e.user_id JOIN"
                                 + " oa_hr_employee p ON p.user_id=e.user_id LEFT JOIN sys_user o ON"
-                                + " o.user_id=e.operator_id ORDER BY e.id DESC")
+                                + " o.user_id=e.operator_id WHERE " + d.memberCondition("u") + " ORDER BY e.id DESC")
                 .stream()
                 .filter(
                         r ->

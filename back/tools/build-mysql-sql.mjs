@@ -11,8 +11,15 @@ const recruitmentSchema = fs.readFileSync(path.join(projectDir, 'src/main/resour
 const recruitmentMenu = fs.readFileSync(path.join(projectDir, 'src/main/resources/recruitment-menu.sql'), 'utf8')
 const customerFinanceSchema = fs.readFileSync(path.join(projectDir, 'src/main/resources/customer-finance-schema.sql'), 'utf8')
 const customerFinanceMenu = fs.readFileSync(path.join(projectDir, 'src/main/resources/customer-finance-menu.sql'), 'utf8')
+const salesPerformanceMenu = fs.readFileSync(path.join(projectDir, 'src/main/resources/sales-performance-menu.sql'), 'utf8')
 const hrSchema = fs.readFileSync(path.join(projectDir, 'src/main/resources/hr-schema.sql'), 'utf8')
 const hrMenu = fs.readFileSync(path.join(projectDir, 'src/main/resources/hr-menu.sql'), 'utf8')
+const customerCleanup = fs.readFileSync(path.join(projectDir, 'src/main/resources/customer-cleanup.sql'), 'utf8')
+const contractLifecycle = fs.readFileSync(path.join(projectDir, 'src/main/resources/contract-lifecycle.sql'), 'utf8')
+const mysqlContractLifecycle = contractLifecycle.replace(/ALTER TABLE (\w+) ADD COLUMN IF NOT EXISTS (\w+) ([^;]+);/g, (_, table, column, definition) => `SET @contract_sql = (SELECT IF(COUNT(*)=0,'ALTER TABLE ${table} ADD COLUMN ${column} ${definition.replaceAll("'", "''")}','SELECT 1') FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='${table}' AND column_name='${column}');
+PREPARE contract_stmt FROM @contract_sql;
+EXECUTE contract_stmt;
+DEALLOCATE PREPARE contract_stmt;`)
 const data = fs.readFileSync(path.join(projectDir, 'src/main/resources/data.sql'), 'utf8')
 const moduleDataPath = path.join(mysqlSourceDir, 'module-data.sql')
 const moduleData = fs.existsSync(moduleDataPath)
@@ -109,17 +116,44 @@ ${customerFinanceSchema}
 
 ${customerFinanceMenu}
 
+${salesPerformanceMenu}
+
 ${hrSchema}
 
 ${hrMenu}
+
+${customerCleanup}
+
+${mysqlContractLifecycle}
 
 SET FOREIGN_KEY_CHECKS = 1;
 `
 
 const outputDir = path.join(projectDir, 'db/mysql')
 fs.mkdirSync(outputDir, { recursive: true })
+fs.writeFileSync(path.join(outputDir, 'contract-lifecycle-upgrade.sql'), '-- Contract retirement upgrade; preserves existing business data.\n' + mysqlContractLifecycle)
+fs.writeFileSync(path.join(outputDir, 'customer-cleanup-upgrade.sql'), '-- Customer cleanup menu and audit table; does not delete business data.\n' + customerCleanup)
 fs.writeFileSync(path.join(outputDir, 'umm_oa.sql'), output)
 fs.writeFileSync(path.join(outputDir, 'recruitment-upgrade.sql'), '-- Existing MySQL 8 databases: recruitment upgrade; preserves business data.\n' + recruitmentSchema + '\n' + recruitmentMenu)
 fs.writeFileSync(path.join(outputDir, 'customer-finance-upgrade.sql'), '-- Existing MySQL 8 databases: customer finance upgrade; preserves business data.\n' + customerFinanceSchema + '\n' + customerFinanceMenu)
-fs.writeFileSync(path.join(outputDir, 'hr-upgrade.sql'), '-- Existing MySQL 8 databases: personnel, attendance and payroll upgrade; preserves business data.\n' + hrSchema + '\n' + hrMenu)
+fs.writeFileSync(path.join(outputDir, 'sales-performance-upgrade.sql'), '-- Existing MySQL 8 databases: customer sales performance menu upgrade.\n' + salesPerformanceMenu)
+const hrColumns = [
+  ['oa_hr_employee', 'work_province', "VARCHAR(64) NOT NULL DEFAULT '广东省'"],
+  ['oa_hr_employee', 'work_city', "VARCHAR(64) NOT NULL DEFAULT '广州市'"],
+  ['oa_hr_payroll_item', 'tax_entered', 'INT NOT NULL DEFAULT 0'],
+  ['oa_hr_payroll_item', 'tax_reason', 'VARCHAR(1000)'],
+  ['oa_hr_payroll_item', 'tax_operator_id', 'BIGINT'],
+  ['oa_hr_payroll_item', 'tax_update_time', 'DATETIME']
+]
+const hrColumnUpgrade = hrColumns.map(([table, column, definition]) => `SET @hr_sql = (SELECT IF(COUNT(*)=0,'ALTER TABLE ${table} ADD COLUMN ${column} ${definition.replaceAll("'", "''")}','SELECT 1') FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='${table}' AND column_name='${column}');
+PREPARE hr_stmt FROM @hr_sql;
+EXECUTE hr_stmt;
+DEALLOCATE PREPARE hr_stmt;`).join('\n') + `
+CREATE TABLE IF NOT EXISTS oa_hr_upgrade (upgrade_key VARCHAR(100) PRIMARY KEY);
+UPDATE oa_hr_payroll_item SET tax_entered=1,tax_reason='升级前已核对或已冻结的历史个税'
+WHERE tax_entered=0 AND (tax<>0 OR verified=1 OR payroll_id IN (SELECT id FROM oa_hr_payroll WHERE status IN ('approving','approved')))
+AND NOT EXISTS (SELECT 1 FROM oa_hr_upgrade WHERE upgrade_key='manual_tax_v1');
+INSERT INTO oa_hr_upgrade(upgrade_key) SELECT 'manual_tax_v1' WHERE NOT EXISTS (SELECT 1 FROM oa_hr_upgrade WHERE upgrade_key='manual_tax_v1');
+`
+fs.writeFileSync(path.join(outputDir, 'hr-upgrade.sql'), '-- Existing MySQL 8 databases: personnel, attendance and payroll upgrade; preserves business data.\n' + hrSchema + '\n' + hrColumnUpgrade + '\n' + hrMenu)
 console.log(`Generated ${path.join(outputDir, 'umm_oa.sql')}`)

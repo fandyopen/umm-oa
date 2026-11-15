@@ -62,7 +62,7 @@ public class SystemController {
             @ModuleActionRequirement(moduleId = 341001L, action = "access")
     })
     public Map<String, Object> users(@RequestParam Map<String, String> query) {
-        String where = "WHERE u.del_flag = '0'";
+        String where = "WHERE u.del_flag = '0' AND " + MemberIdentity.condition("u");
         List<Object> arguments = new ArrayList<>();
         if (StringUtils.hasText(query.get("userName"))) {
             where += " AND u.user_name LIKE ?";
@@ -75,6 +75,11 @@ public class SystemController {
         if (StringUtils.hasText(query.get("phonenumber"))) {
             where += " AND u.phonenumber LIKE ?";
             arguments.add("%" + query.get("phonenumber") + "%");
+        }
+        if (StringUtils.hasText(query.get("keyword"))) {
+            String keyword = "%" + query.get("keyword").trim() + "%";
+            where += " AND (u.nick_name LIKE ? OR u.phonenumber LIKE ? OR u.user_name LIKE ? OR EXISTS (SELECT 1 FROM oa_hr_employee he WHERE he.user_id=u.user_id AND he.employee_no LIKE ?))";
+            arguments.add(keyword); arguments.add(keyword); arguments.add(keyword); arguments.add(keyword);
         }
         if (StringUtils.hasText(query.get("deptId"))) {
             where += " AND u.dept_id = ?";
@@ -110,13 +115,14 @@ public class SystemController {
                        u.email, u.phonenumber, u.sex, u.avatar, u.status, u.del_flag,
                        u.is_admin, u.is_owner, u.login_ip, u.login_date,
                        u.create_by, u.create_time, u.remark,
-                       d.dept_name,
+                       d.dept_name, e.employee_no,
                        CASE WHEN EXISTS (
                            SELECT 1 FROM sys_dept_principal dp
                            WHERE dp.dept_id = u.dept_id AND dp.user_id = u.user_id
                        ) THEN 1 ELSE 0 END AS dept_principal
                 FROM sys_user u
                 LEFT JOIN sys_dept d ON d.dept_id = u.dept_id
+                LEFT JOIN oa_hr_employee e ON e.user_id = u.user_id
                 %s
                 ORDER BY u.create_time DESC, u.user_id DESC
                 LIMIT ? OFFSET ?
@@ -143,8 +149,8 @@ public class SystemController {
     public Map<String, Object> usersAll() {
         List<Map<String, Object>> rows = jdbc.queryForList("""
                 SELECT user_id, tenant_id, dept_id, user_name, nick_name, phonenumber, status
-                FROM sys_user WHERE del_flag = '0' ORDER BY user_id
-                """);
+                FROM sys_user u WHERE del_flag = '0' AND %s ORDER BY user_id
+                """.formatted(MemberIdentity.condition("u")));
         List<Map<String, Object>> result = JdbcMaps.camelCase(rows);
         return ApiResult.page(result, result.size());
     }
@@ -155,7 +161,7 @@ public class SystemController {
             @ModuleActionRequirement(moduleId = 341001L, action = "access")
     })
     public Map<String, Object> dismissedUsers(@RequestParam Map<String, String> query) {
-        String where = "WHERE u.del_flag = '2'";
+        String where = "WHERE u.del_flag = '2' AND " + MemberIdentity.condition("u");
         List<Object> arguments = new ArrayList<>();
         if (StringUtils.hasText(query.get("userName"))) {
             where += " AND u.user_name LIKE ?";
@@ -168,6 +174,11 @@ public class SystemController {
         if (StringUtils.hasText(query.get("phonenumber"))) {
             where += " AND u.phonenumber LIKE ?";
             arguments.add("%" + query.get("phonenumber") + "%");
+        }
+        if (StringUtils.hasText(query.get("keyword"))) {
+            String keyword = "%" + query.get("keyword").trim() + "%";
+            where += " AND (u.nick_name LIKE ? OR u.phonenumber LIKE ? OR u.user_name LIKE ? OR EXISTS (SELECT 1 FROM oa_hr_employee he WHERE he.user_id=u.user_id AND he.employee_no LIKE ?))";
+            arguments.add(keyword); arguments.add(keyword); arguments.add(keyword); arguments.add(keyword);
         }
         if (StringUtils.hasText(query.get("deptId"))) {
             where += " AND u.dept_id = ?";
@@ -194,12 +205,13 @@ public class SystemController {
         pageArguments.add((pageNum - 1) * pageSize);
         List<Map<String, Object>> rows = JdbcMaps.camelCase(jdbc.queryForList("""
                 SELECT u.user_id, u.tenant_id, u.dept_id, u.user_name, u.nick_name,
-                        u.email, u.phonenumber, u.status, u.create_time, d.dept_name,
+                        u.email, u.phonenumber, u.status, u.create_time, d.dept_name, e.employee_no,
                         CASE WHEN EXISTS (
                             SELECT 1 FROM sys_dept_principal dp
                             WHERE dp.dept_id = u.dept_id AND dp.user_id = u.user_id
                         ) THEN 1 ELSE 0 END AS dept_principal
                 FROM sys_user u LEFT JOIN sys_dept d ON d.dept_id = u.dept_id
+                LEFT JOIN oa_hr_employee e ON e.user_id = u.user_id
                 %s ORDER BY u.create_time DESC, u.user_id DESC LIMIT ? OFFSET ?
                 """.formatted(where), pageArguments.toArray()));
         rows.forEach(row -> {
@@ -522,9 +534,9 @@ public class SystemController {
         long userId = longValue(body.get("userId"), 0L);
         List<String> userNames = jdbc.queryForList("""
                 SELECT user_name
-                FROM sys_user
-                WHERE user_id = ? AND dept_id = ? AND del_flag = '0' AND status = '0'
-                """, String.class, userId, deptId);
+                FROM sys_user u
+                WHERE user_id = ? AND dept_id = ? AND del_flag = '0' AND status = '0' AND %s
+                """.formatted(MemberIdentity.condition("u")), String.class, userId, deptId);
         if (userNames.isEmpty()) {
             throw new ApiException(400, "只能将当前部门的在职成员设为部门主管");
         }
@@ -843,9 +855,9 @@ public class SystemController {
                 FROM sys_user u
                 JOIN sys_user_role ur ON ur.user_id = u.user_id
                 LEFT JOIN sys_dept d ON d.dept_id = u.dept_id
-                WHERE ur.role_id = ? AND u.del_flag = '0'
+                WHERE ur.role_id = ? AND u.del_flag = '0' AND %s
                 ORDER BY u.user_id
-                """, roleId));
+                """.formatted(MemberIdentity.condition("u")), roleId));
         rows.forEach(row -> {
             row.put("dept", Map.of(
                     "deptId", row.getOrDefault("deptId", 0L),
@@ -874,6 +886,30 @@ public class SystemController {
             }
         }
         return ApiResult.ok();
+    }
+
+    @PutMapping("/system/user/roles")
+    @RequiresModuleAction(moduleId = 340597L, action = "manage")
+    @Transactional
+    public Map<String, Object> replaceMemberRoles(@RequestBody Map<String, Object> body) {
+        List<Long> userIds = ids(body, "userIds").stream().distinct().toList();
+        List<Long> roleIds = ids(body, "roleIds").stream().distinct().toList();
+        if (userIds.isEmpty() || userIds.size() > 500) throw new ApiException(400, "请选择1至500名成员");
+        if (roleIds.contains(SUPER_ADMIN_ROLE_ID)) throw new ApiException(403, "超级管理员角色不允许手工分配");
+        long tenantId = systemService.requireCurrentUser().tenantId();
+        for (Long roleId : roleIds) {
+            if (jdbc.queryForObject("SELECT COUNT(*) FROM sys_role WHERE role_id=? AND status='0' AND del_flag='0' AND tenant_id=?", Integer.class, roleId, tenantId) != 1)
+                throw new ApiException(400, "角色不存在或已停用");
+        }
+        for (Long userId : userIds) {
+            if (userId == SUPER_ADMIN_USER_ID || jdbc.queryForObject("SELECT COUNT(*) FROM sys_user u WHERE user_id=? AND tenant_id=? AND del_flag='0' AND " + MemberIdentity.condition("u"), Integer.class, userId, tenantId) != 1)
+                throw new ApiException(400, "所选成员不存在、已离职或属于系统管理员");
+        }
+        for (Long userId : userIds) {
+            jdbc.update("DELETE FROM sys_user_role WHERE user_id=? AND role_id<>?", userId, SUPER_ADMIN_ROLE_ID);
+            for (Long roleId : roleIds) jdbc.update("INSERT INTO sys_user_role(user_id,role_id) VALUES (?,?)", userId, roleId);
+        }
+        return ApiResult.ok(Map.of("memberCount", userIds.size(), "roleCount", roleIds.size()));
     }
 
     @DeleteMapping("/system/role/remove_member")

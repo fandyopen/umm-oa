@@ -8,7 +8,7 @@
       <a-button icon="reload" @click="load">刷新</a-button>
       <a-button v-if="showModuleAction('finance', 'collect')" type="primary" icon="plus" @click="openPlan" v-hasModuleAction="moduleActionBinding('finance', 'collect')">新增催收计划</a-button>
     </div>
-    <a-table :loading="loading" :data-source="rows" row-key="id" :pagination="false" :scroll="{ x: 1100 }" size="small">
+    <a-table :loading="loading" :data-source="rows" row-key="id" :pagination="false" size="small">
       <a-table-column title="客户" data-index="customerName" /><a-table-column title="负责人" data-index="ownerName" /><a-table-column title="下次催收" data-index="nextDate" /><a-table-column
         title="跟进内容"
         data-index="content"
@@ -103,7 +103,8 @@ export default {
     },
     async openPlan() {
       await this.loadOptions()
-      this.form = { ownerUserId: this.$store.getters.userInfo?.userId }
+      const currentUserId = this.$store.getters.userInfo?.userId
+      this.form = { ownerUserId: this.owners.find(owner => String(owner.id) === String(currentUserId))?.id }
       this.visible = true
     },
     updatePlan(r) {

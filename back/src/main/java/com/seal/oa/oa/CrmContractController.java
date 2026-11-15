@@ -15,10 +15,12 @@ public class CrmContractController {
     private final CrmContractService contracts;
     private final CrmContractWorkflowService workflow;
     private final CustomerFinanceService finance;
-    public CrmContractController(CrmContractService contracts, CrmContractWorkflowService workflow, CustomerFinanceService finance) {
+    private final ContractLifecycleService lifecycle;
+    public CrmContractController(CrmContractService contracts, CrmContractWorkflowService workflow, CustomerFinanceService finance, ContractLifecycleService lifecycle) {
         this.contracts = contracts;
         this.workflow = workflow;
         this.finance = finance;
+        this.lifecycle = lifecycle;
     }
 
     @GetMapping
@@ -69,7 +71,21 @@ public class CrmContractController {
 
     @DeleteMapping("/{id}")
     @RequiresModuleAction(moduleId = 341201, action = "remove")
-    public Map<String, Object> delete(@PathVariable long id) { contracts.delete(id); return ApiResult.ok(); }
+    public Map<String, Object> delete(@PathVariable long id, @RequestBody(required=false) Map<String,Object> body) {
+        return ApiResult.ok(lifecycle.delete(id, body==null?Map.of("revision",contracts.detail(id).get("revision")):body));
+    }
+
+    @PostMapping("/{id}/withdraw")
+    @RequiresModuleAction(moduleId=341201,action="withdraw")
+    public Map<String,Object> withdraw(@PathVariable long id,@RequestBody Map<String,Object> body) { return ApiResult.ok(lifecycle.withdraw(id,body)); }
+
+    @PostMapping("/{id}/void")
+    @RequiresModuleAction(moduleId=341201,action="void")
+    public Map<String,Object> voidContract(@PathVariable long id,@RequestBody Map<String,Object> body) { return ApiResult.ok(workflow.lifecycle(id,"void",body)); }
+
+    @PostMapping("/{id}/terminate")
+    @RequiresModuleAction(moduleId=341201,action="terminate")
+    public Map<String,Object> terminate(@PathVariable long id,@RequestBody Map<String,Object> body) { return ApiResult.ok(workflow.lifecycle(id,"terminate",body)); }
 
     @PostMapping("/{id}/submit")
     @RequiresModuleAction(moduleId = 341201, action = "submit")

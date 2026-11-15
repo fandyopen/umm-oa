@@ -19,7 +19,7 @@
       <a-table row-key="key" :loading="loading" :columns="columns" :data-source="filteredTree" :expanded-row-keys="expandedRowKeys" :pagination="false" @expand="handleExpand">
         <span slot="name" slot-scope="text, record">
           <icon-font v-if="record.nodeType === 'module' && record.icon" :type="record.icon" class="module-icon" />
-          <a-tag v-if="record.nodeType === 'action'" color="green">按钮</a-tag>
+            <a-tag v-if="record.nodeType === 'action'" :color="record.approvalPermissionOnly ? undefined : 'green'">{{ record.approvalPermissionOnly ? '审批授权' : '按钮' }}</a-tag>
           <span>{{ record.nodeType === 'action' ? record.actionName : record.moduleName }}</span>
           <span v-if="record.nodeType === 'action'" class="module-code">{{ record.actionCode }}</span>
         </span>
@@ -62,7 +62,7 @@
           <template v-else-if="record.nodeType === 'action'">
             <template>
               <a v-if="canManageStructure || canManageWorkflow" @click="openActionForm(record)">修改</a>
-              <template v-if="canManageWorkflow && record.flowDesignEnabled && String(record.status) === '0'">
+                <template v-if="!record.approvalPermissionOnly && canManageWorkflow && record.flowDesignEnabled && String(record.status) === '0'">
                 <a-divider type="vertical" />
                 <a @click="openFlowDesign(record)">流程设计</a>
               </template>

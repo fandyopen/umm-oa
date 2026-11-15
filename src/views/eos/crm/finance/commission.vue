@@ -8,7 +8,7 @@
     <a-tabs v-model="tab">
       <a-tab-pane key="rules" tab="提成规则">
         <a-button v-if="allowed('rule')" type="primary" icon="plus" @click="newRule">新增规则版本</a-button>
-        <a-table :data-source="options.rules || []" row-key="id" :pagination="{ pageSize: 10 }" class="tw-mt-4" :scroll="{ x: 1000 }">
+        <a-table :data-source="options.rules || []" row-key="id" :pagination="{ pageSize: 10 }" class="tw-mt-4">
           <a-table-column title="版本" data-index="id" /><a-table-column title="规则名称" data-index="name" />
           <a-table-column title="业务类型"><template slot-scope="_, r">{{ kindName(r.businessKind) }}</template></a-table-column>
           <a-table-column title="生效日" data-index="effectiveDate" />
@@ -26,7 +26,7 @@
           <a-button v-if="$route.query.customerId || $route.query.applicationId" @click="clearLocation">查看全部</a-button>
         </div>
         <h3>招聘成果与业绩归属</h3>
-        <a-table :data-source="applicationRows" row-key="id" :pagination="{ pageSize: 10 }" size="small" :scroll="{ x: 1050 }">
+        <a-table :data-source="applicationRows" row-key="id" :pagination="{ pageSize: 10 }" size="small">
           <a-table-column title="客户" data-index="customerName" /><a-table-column title="职位" data-index="jobTitle" /><a-table-column title="候选人" data-index="talentName" />
           <a-table-column title="实际入职" data-index="actualEntryDate" /><a-table-column title="保证期"><template slot-scope="_, r">{{ guaranteeName(r.guaranteeStatus) }}</template></a-table-column>
           <a-table-column title="归属"><template slot-scope="_, r">{{ r.attributionId ? '已建档，点击核对' : '待维护' }}</template></a-table-column>
@@ -42,7 +42,7 @@
           <a-table-column title="操作"><template slot-scope="_, r"><a-button type="link" @click="editAllocation(r)">查看 / 分摊</a-button></template></a-table-column>
         </a-table>
         <h3 class="tw-mt-6">累计提成与本次可核算差额</h3><a-alert v-if="calculationError" type="error" show-icon :message="calculationError" class="tw-mb-4" />
-        <a-table :data-source="performanceRows" :row-key="r => r.attributionId + ':' + r.userId + ':' + r.side" :pagination="{ pageSize: 10 }" size="small" :scroll="{ x: 1550 }">
+        <a-table :data-source="performanceRows" :row-key="r => r.attributionId + ':' + r.userId + ':' + r.side" :pagination="{ pageSize: 10 }" size="small">
           <a-table-column title="客户 / 候选人" :width="200"><template slot-scope="_, r">{{ r.customerName }}<small>{{ r.jobTitle }} · {{ r.talentName }}</small></template></a-table-column>
           <a-table-column title="人员" data-index="name" /><a-table-column title="贡献"><template slot-scope="_, r">{{ sideName(r.side) }}</template></a-table-column>
           <a-table-column title="分摊净回款"><template slot-scope="_, r">{{ money(r.netAllocated) }}</template></a-table-column>
@@ -127,7 +127,7 @@
           <a-button v-if="allowed('export')" icon="download" @click="exportDetail">导出明细</a-button>
         </a-space>
         <a-alert type="info" show-icon message="正数为本次新增提成，负数为退款、冲销或重新分摊产生的扣回。纳入工资仍须核对个税、审批及实际发放，工资未结清时不会标记提成已结清。" />
-        <a-table :data-source="detail.lines" row-key="id" :pagination="{ pageSize: 15 }" size="small" class="tw-mt-4" :scroll="{ x: 1500 }">
+        <a-table :data-source="detail.lines" row-key="id" :pagination="{ pageSize: 15 }" size="small" class="tw-mt-4">
           <a-table-column title="人员" data-index="employeeName" /><a-table-column title="贡献"><template slot-scope="_, r">{{ sideName(r.side) }}</template></a-table-column>
           <a-table-column title="业务来源"><template slot-scope="_, r">{{ r.snapshot.customerName }}<small>{{ r.snapshot.jobTitle }} · {{ r.snapshot.talentName }}</small></template></a-table-column>
           <a-table-column title="分摊净回款"><template slot-scope="_, r">{{ money(r.snapshot.netAllocated) }}</template></a-table-column>

@@ -13,17 +13,20 @@ public class WebConfig implements WebMvcConfigurer {
     private final ModuleActionInterceptor moduleActionInterceptor;
     private final OperationLogInterceptor operationLogInterceptor;
     private final com.seal.oa.workflow.WorkflowApiGuardInterceptor workflowApiGuard;
+    private final com.seal.oa.system.CustomerCleanupGate cleanupGate;
 
     public WebConfig(
             AuthInterceptor authInterceptor,
             ModuleActionInterceptor moduleActionInterceptor,
             OperationLogInterceptor operationLogInterceptor,
-            com.seal.oa.workflow.WorkflowApiGuardInterceptor workflowApiGuard
+            com.seal.oa.workflow.WorkflowApiGuardInterceptor workflowApiGuard,
+            com.seal.oa.system.CustomerCleanupGate cleanupGate
     ) {
         this.authInterceptor = authInterceptor;
         this.moduleActionInterceptor = moduleActionInterceptor;
         this.operationLogInterceptor = operationLogInterceptor;
         this.workflowApiGuard = workflowApiGuard;
+        this.cleanupGate = cleanupGate;
     }
 
     @Override
@@ -45,6 +48,7 @@ public class WebConfig implements WebMvcConfigurer {
         registry.addInterceptor(moduleActionInterceptor)
                 .addPathPatterns("/**");
         registry.addInterceptor(workflowApiGuard).addPathPatterns("/**");
+        registry.addInterceptor(cleanupGate).addPathPatterns("/**");
         registry.addInterceptor(operationLogInterceptor)
                 .addPathPatterns("/**");
     }

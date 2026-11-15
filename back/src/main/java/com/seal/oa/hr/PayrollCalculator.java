@@ -53,24 +53,19 @@ public final class PayrollCalculator {
                 divisor = required.multiply(hours);
         if (nonnegative(attendance.get("missingCount"), "缺卡次数").signum() > 0)
             throw new ApiException(409, "考勤存在未处理缺卡，请在钉钉处理后重新导入");
-        var initial = salary(salaries, from);
+        // One standard per payroll month: use the latest approved effective date up to month end.
+        var initial = salary(salaries, month.atEndOfMonth());
         boolean segmented =
                 periods.size() > 1
                         || !from.equals(month.atDay(1))
-                        || !to.equals(month.atEndOfMonth())
-                        || salaries.stream()
-                                .anyMatch(
-                                        s ->
-                                                date(s.get("effectiveDate")).isAfter(from)
-                                                        && !date(s.get("effectiveDate"))
-                                                                .isAfter(to));
+                        || !to.equals(month.atEndOfMonth());
         BigDecimal base = BigDecimal.ZERO,
                 allowance = BigDecimal.ZERO,
                 overtime = BigDecimal.ZERO,
                 deductions = BigDecimal.ZERO;
         List<Map<String, Object>> segments = new ArrayList<>();
         if (segmented) {
-            if (daily.isEmpty()) throw new ApiException(409, "月中入离职或调薪需要已确认的每日考勤，不能用最新薪资覆盖整月");
+            if (daily.isEmpty()) throw new ApiException(409, "月中入离职或多段任职需要已确认的每日考勤，用于按实际任职期间折算工资");
             BigDecimal scheduledTotal = BigDecimal.ZERO;
             Set<LocalDate> seen = new HashSet<>();
             for (var row : daily) {
@@ -88,7 +83,7 @@ public final class PayrollCalculator {
                     continue;
                 if (optionalMoney(row.get("missingCount")).signum() > 0)
                     throw new ApiException(409, "每日考勤存在未处理缺卡");
-                var s = salary(salaries, day);
+                var s = initial;
                 BigDecimal paid = payable(row, scheduled, hours, personal, sick, absence, true);
                 BigDecimal hourly =
                         "daily".equals(s.get("payType"))
@@ -201,7 +196,7 @@ public final class PayrollCalculator {
         return rows.stream()
                 .filter(r -> !date(r.get("effectiveDate")).isAfter(day))
                 .max(Comparator.comparing(r -> date(r.get("effectiveDate"))))
-                .orElseThrow(() -> new ApiException(409, "缺少" + day + "生效的薪资标准"));
+                .orElseThrow(() -> new ApiException(409, "截至" + day + "没有已确认的薪资标准，请先维护并提交生效"));
     }
 
     private static BigDecimal positive(Object value, String label) {

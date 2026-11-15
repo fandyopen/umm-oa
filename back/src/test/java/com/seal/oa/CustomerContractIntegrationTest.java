@@ -697,6 +697,115 @@ class CustomerContractIntegrationTest {
                 storageId, "/project/business/list:" + opportunity.getOrDefault("id", storageId), mapper.writeValueAsString(opportunity), opportunity.getOrDefault("createBy", "13610316814"));
     }
 
+    @Test
+    void unsignedApprovedContractCanBeVoidedThenDeletedWithoutLosingHistory() throws Exception {
+        JsonNode approved=approveDraft(createDraft(createCustomer("待签署作废客户")));
+        long id=approved.path("id").asLong();
+        call(admin,post(base+"/"+id+"/void"),Map.of("revision",approved.path("revision").asInt(),"reason","不再签约"),200);
+        JsonNode result=call(admin,get(base+"/"+id),null,200).path("data");
+        assertEquals("void",result.path("status").asText());assertTrue(result.path("canDelete").asBoolean());
+        call(admin,delete(base+"/"+id),Map.of("revision",result.path("revision").asInt()),200);
+        assertEquals(1,jdbc.queryForObject("SELECT deleted FROM oa_crm_contract WHERE id=?",Integer.class,id));
+        assertEquals(1,jdbc.queryForObject("SELECT COUNT(*) FROM oa_crm_contract_version WHERE contract_id=?",Integer.class,id));
+        assertEquals(0,call(admin,get(base).param("keyword",result.path("code").asText()),null,200).path("total").asInt());
+        assertEquals(1,call(admin,get(base).param("keyword",result.path("code").asText()).param("includeDeleted","true"),null,200).path("total").asInt());
+        assertFalse(call(admin,get(base+"/"+id),null,200).path("data").path("canEditCustomer").asBoolean());
+        call(admin,post(base+"/"+id+"/sign"),Map.of("revision",result.path("revision").asInt(),"signedDate",today.toString()),409);
+    }
+
+    @Test
+    void voidApprovalFreezesContractAndOnlyTakesEffectAfterApproval() throws Exception {
+        JsonNode draft=createDraft(createCustomer("作废审批客户"));long id=draft.path("id").asLong();
+        call(admin,put("/system/module/341201/actions/void"),Map.of("flowDesignEnabled",true),200);
+        publishContractButtonFlow("void","17690000901");
+        JsonNode pending=call(admin,post(base+"/"+id+"/void"),Map.of("revision",0,"reason","测试审批"),200).path("data");
+        assertEquals("pendingApproval",pending.path("status").asText());
+        JsonNode current=call(admin,get(base+"/"+id),null,200).path("data");
+        assertEquals("draft",current.path("status").asText());assertTrue(current.path("lifecyclePending").asBoolean());
+        call(admin,delete(base+"/"+id),null,409);
+        Map<String,Object> changed=payload(draft.path("customerId").asLong());changed.put("revision",current.path("revision").asInt());
+        call(admin,put(base+"/"+id),changed,409);
+        completeSigning(reviewer,pending,true,"同意作废",200);
+        assertEquals("void",call(admin,get(base+"/"+id),null,200).path("data").path("status").asText());
+        assertEquals(1,call(reviewer,get(base+"/"+id),null,200).path("data").path("lifecycleHistory").size());
+    }
+
+    @Test
+    void enabledButUnpublishedVoidRunsDirectlyAndApprovalRejectionLeavesContractUsable() throws Exception {
+        call(admin,put("/system/module/341201/actions/void"),Map.of("flowDesignEnabled",true),200);
+        long first=createDraft(createCustomer("未发布作废客户")).path("id").asLong();
+        assertEquals("completed",call(admin,post(base+"/"+first+"/void"),Map.of("revision",0,"reason","未发布流程"),200).path("data").path("status").asText());
+        publishContractButtonFlow("void","17690000901");
+        long second=createDraft(createCustomer("退回作废客户")).path("id").asLong();
+        JsonNode pending=call(admin,post(base+"/"+second+"/void"),Map.of("revision",0,"reason","申请作废"),200).path("data");
+        completeSigning(reviewer,pending,false,"继续跟进",200);
+        JsonNode current=call(admin,get(base+"/"+second),null,200).path("data");
+        assertEquals("draft",current.path("status").asText());assertFalse(current.path("lifecyclePending").asBoolean());
+        assertTrue(current.path("canVoid").asBoolean());
+    }
+
+    @Test
+    void withdrawalStopsOldTasksAndAllowsANewSubmissionWithoutDeletingVersions() throws Exception {
+        long id=createDraft(createCustomer("撤回合同客户")).path("id").asLong();
+        JsonNode pending=action(admin,id,"submit",Map.of("revision",0));
+        JsonNode draft=action(admin,id,"withdraw",Map.of("revision",pending.path("revision").asInt(),"reason","补充条款"));
+        assertEquals("draft",draft.path("status").asText());
+        assertEquals("withdrawn",draft.path("versions").get(0).path("status").asText());
+        completeContractTask(reviewer,pending,true,"旧任务不能通过",409);
+        assertEquals(0,jdbc.queryForObject("SELECT COUNT(*) FROM oa_todo WHERE process_instance_id=? AND status='todo'",Integer.class,pending.path("workflow").path("instanceId").asText()));
+        JsonNode next=action(admin,id,"submit",Map.of("revision",draft.path("revision").asInt()));
+        assertEquals(2,next.path("versions").size());
+        completeContractTask(reviewer,next,true,"新流程正常通过",200);
+        assertEquals("approved",call(admin,get(base+"/"+id),null,200).path("data").path("status").asText());
+    }
+
+    @Test
+    void signingAndLifecycleApprovalsCanBeWithdrawnWithoutExecutingTheOldRequest() throws Exception {
+        JsonNode approved=approveDraft(createDraft(createCustomer("撤回签署客户")));long id=approved.path("id").asLong();
+        publishSignFlow("17690000901");
+        JsonNode signing=action(admin,id,"sign",Map.of("revision",approved.path("revision").asInt(),"signedDate",today.toString()));
+        JsonNode withdrawn=action(admin,id,"withdraw",Map.of("revision",signing.path("revision").asInt(),"reason","签署日期需核实"));
+        assertEquals("approved",withdrawn.path("status").asText());
+        completeSigning(reviewer,signing.path("signingWorkflow"),true,"过期签署",409);
+        call(admin,put("/system/module/341201/actions/void"),Map.of("flowDesignEnabled",true),200);
+        publishContractButtonFlow("void","17690000901");
+        JsonNode pending=call(admin,post(base+"/"+id+"/void"),Map.of("revision",withdrawn.path("revision").asInt(),"reason","取消签约"),200).path("data");
+        JsonNode now=call(admin,get(base+"/"+id),null,200).path("data");
+        action(admin,id,"withdraw",Map.of("revision",now.path("revision").asInt(),"reason","恢复洽谈"));
+        completeSigning(reviewer,pending,true,"旧作废",409);
+        assertEquals("approved",call(admin,get(base+"/"+id),null,200).path("data").path("status").asText());
+    }
+
+    @Test
+    void activeVersionCannotBeVoidedOrDeletedButCanTerminateAndSettle() throws Exception {
+        JsonNode active=activate(createDraft(createCustomer("终止合同客户")));long id=active.path("id").asLong();
+        JsonNode revised=action(admin,id,"revision",Map.of("revision",active.path("revision").asInt()));
+        call(admin,post(base+"/"+id+"/void"),Map.of("revision",revised.path("revision").asInt(),"reason","不能作废生效版本"),409);
+        call(admin,delete(base+"/"+id),null,409);
+        call(admin,post(base+"/"+id+"/terminate"),Map.of("revision",revised.path("revision").asInt(),"reason","提前结束合作"),200);
+        JsonNode terminated=call(admin,get(base+"/"+id),null,200).path("data");
+        assertEquals("terminated",terminated.path("status").asText());
+        call(admin,post(base+"/"+id+"/finish"),Map.of("revision",terminated.path("revision").asInt()),409);
+        jdbc.update("INSERT INTO oa_crm_contract_receipt(contract_id,term_key,amount,receipt_date) VALUES(?,'first',1000,CURRENT_DATE)",id);
+        JsonNode closed=action(admin,id,"finish",Map.of("revision",terminated.path("revision").asInt()));
+        call(admin,delete(base+"/"+id),Map.of("revision",closed.path("revision").asInt()),200);
+        JsonNode historical=call(admin,get(base+"/"+id),null,200).path("data");
+        assertEquals(1000,historical.path("receivedAmount").asInt());assertEquals(1,historical.path("deleted").asInt());
+        assertEquals(1000,jdbc.queryForObject("SELECT contract_amount FROM oa_merchant WHERE id=?",BigDecimal.class,active.path("customerId").asLong()).intValue());
+        assertTrue(contracts.reminders(false).stream().noneMatch(r -> ((Number)r.get("contractId")).longValue()==id));
+    }
+
+    @Test
+    void lifecyclePermissionsReasonsAndRevisionsAreEnforced() throws Exception {
+        JsonNode draft=createDraft(createCustomer("作废权限客户"));long id=draft.path("id").asLong();
+        call(outsider,post(base+"/"+id+"/void"),Map.of("revision",0,"reason","无权操作"),403);
+        call(admin,post(base+"/"+id+"/void"),Map.of("revision",0,"reason",""),400);
+        call(admin,post(base+"/"+id+"/void"),Map.of("revision",99,"reason","旧版本"),409);
+        assertTrue(call(admin,delete(base+"/"+id),Map.of("revision",0),200).path("data").path("physical").asBoolean());
+        assertEquals(0,jdbc.queryForObject("SELECT COUNT(*) FROM oa_crm_contract WHERE id=?",Integer.class,id));
+        assertEquals(1,jdbc.queryForObject("SELECT COUNT(*) FROM oa_crm_contract_history WHERE contract_id=? AND action='delete'",Integer.class,id));
+    }
+
     private JsonNode approveDraft(JsonNode draft) throws Exception {
         long id = draft.path("id").asLong();
         JsonNode pending = action(admin, id, "submit", Map.of("revision", draft.path("revision").asInt()));
@@ -736,7 +845,7 @@ class CustomerContractIntegrationTest {
     }
 
     private long createCustomer(String name) throws Exception {
-        return call(admin, post("/project/merchant"), Map.of("name", name, "industry", "软件与信息服务", "ownerUserId", 1), 200).path("data").asLong();
+        return call(admin, post("/project/merchant"), Map.of("name", name, "industry", "软件与信息服务", "ownerUserId", 4), 200).path("data").asLong();
     }
     private Map<String, Object> term(int amount) {
         return new LinkedHashMap<>(Map.of("key", "first", "title", "服务费", "chargeMode", "fixed", "amount", amount, "trigger", "候选人入职", "dueDate", today.minusDays(1).toString(), "guaranteeDays", 90));

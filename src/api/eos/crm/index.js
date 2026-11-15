@@ -129,6 +129,10 @@ export function getCustomerAnalysis() {
   })
 }
 
+export function getSalesPerformance(params) {
+  return request({ url: '/project/crm/sales-performance', method: 'get', params })
+}
+
 export function listCustomerRisks(params) {
   return request({
     url: '/project/crm/risk/list',

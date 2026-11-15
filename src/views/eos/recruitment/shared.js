@@ -48,7 +48,7 @@ export const applicationActions = row => {
   const available = new Set(row.availableOperations || [])
   return definitions.filter(([key]) => available.has(key)).map(([key, label, permission, detailsOnly = false]) => ({ key, label, permission, detailsOnly }))
 }
-export const statuses = { ...jobStates, ...talentStates, ...stages, ...approvalStates, active: '有效', disabled: '停用', scheduled: '待面试', cancelled: '已取消', issued: '已发放', accepted: '已接受', pass: '通过', fail: '未通过', interested: '有意向', need_info: '待补充', open: '待处理', closed: '已关闭', todo: '待跟进', done: '已完成', refund: '退费', replacement: '替换', exit: '离职' }
+export const statuses = { ...jobStates, ...talentStates, ...stages, ...approvalStates, deleted: '已删除', active: '有效', disabled: '停用', scheduled: '待面试', cancelled: '已取消', issued: '已发放', accepted: '已接受', pass: '通过', fail: '未通过', interested: '有意向', need_info: '待补充', open: '待处理', closed: '已关闭', todo: '待跟进', done: '已完成', refund: '退费', replacement: '替换', exit: '离职' }
 export const label = value => statuses[value] || value || '—'
 export const choices = obj => Object.entries(obj).map(([value, label]) => ({ value, label }))
 export const optionRows = rows => (rows || []).map(row => ({ value: row.id, label: row.name }))

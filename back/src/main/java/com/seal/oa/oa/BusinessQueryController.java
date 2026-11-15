@@ -88,7 +88,7 @@ public class BusinessQueryController {
     @GetMapping("/owner/options")
     @RequiresModuleAction(moduleId = 340590L, action = "access")
     public Map<String, Object> ownerOptions(@RequestParam Map<String, String> query) {
-        StringBuilder where = new StringBuilder("WHERE u.del_flag = '0' AND u.status = '0' AND u.dept_id = ?");
+        StringBuilder where = new StringBuilder("WHERE u.del_flag = '0' AND u.status = '0' AND u.dept_id = ? AND " + com.seal.oa.system.MemberIdentity.condition("u"));
         List<Object> args = new ArrayList<>();
         args.add(CUSTOMER_SALES_DEPARTMENT_ID);
         if (query.get("keyword") != null && !query.get("keyword").isBlank()) {
@@ -367,18 +367,18 @@ public class BusinessQueryController {
         long requestedOwnerId = number(payload.get("ownerUserId"), 0L);
         if (requestedOwnerId <= 0L) {
             List<Long> owners = jdbc.queryForList("""
-                    SELECT user_id FROM sys_user
-                    WHERE dept_id = ? AND del_flag = '0' AND status = '0'
+                    SELECT user_id FROM sys_user u
+                    WHERE dept_id = ? AND del_flag = '0' AND status = '0' AND %s
                     ORDER BY user_id
-                    """, Long.class, CUSTOMER_SALES_DEPARTMENT_ID);
+                    """.formatted(com.seal.oa.system.MemberIdentity.condition("u")), Long.class, CUSTOMER_SALES_DEPARTMENT_ID);
             if (owners.isEmpty()) throw new ApiException(400, "客户销售部没有可用成员，无法设置商机负责人");
             requestedOwnerId = owners.get(0);
         }
         List<Map<String, Object>> owners = jdbc.queryForList("""
                 SELECT u.user_id, u.nick_name, u.dept_id, d.dept_name
                 FROM sys_user u JOIN sys_dept d ON d.dept_id = u.dept_id
-                WHERE u.user_id = ? AND u.dept_id = ? AND u.del_flag = '0' AND u.status = '0'
-                """, requestedOwnerId, CUSTOMER_SALES_DEPARTMENT_ID);
+                WHERE u.user_id = ? AND u.dept_id = ? AND u.del_flag = '0' AND u.status = '0' AND %s
+                """.formatted(com.seal.oa.system.MemberIdentity.condition("u")), requestedOwnerId, CUSTOMER_SALES_DEPARTMENT_ID);
         if (owners.isEmpty()) throw new ApiException(400, "商机负责人必须属于客户销售部");
         Map<String, Object> owner = owners.get(0);
         payload.put("ownerUserId", owner.get("user_id"));

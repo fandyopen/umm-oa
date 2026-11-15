@@ -61,6 +61,41 @@ test('salary exports can be imported with the same headers and raw pay types',()
     }
   }
 })
+
+test('employee roster exports workplace, contacts and payroll accounts for archive reimport',()=>{
+  const record={employeeNo:'000012',revision:3,email:'employee@example.com',emergencyContact:'测试联系人',emergencyPhone:'01001234567',workProvince:'广东省',workCity:'广州市',accountName:'测试开户人',bankName:'测试开户银行',bankAccount:'001234567890123456789'}
+  const book=buildWorkbook([{type:'employeeReport',records:[record]}])
+  const restored=XLSX.read(XLSX.write(book,{type:'buffer',bookType:'xlsx'}),{type:'buffer',cellNF:true})
+  const matrix=XLSX.utils.sheet_to_json(restored.Sheets['数据'],{header:1})
+  for(const key of ['email','emergencyContact','emergencyPhone','workProvince','workCity','accountName','bankName','bankAccount']) {
+    const field=templates.employee.fields.find(field=>field.key===key)
+    const header=suggestColumn(matrix[0],field)
+    assert.equal(header,field.label)
+    assert.equal(convertCell(matrix[1][matrix[0].indexOf(header)],field),record[key])
+  }
+  const email=templates.employee.fields.find(f=>f.key==='email')
+  assert.equal(convertCell(' employee@example.com ',email),'employee@example.com')
+  assert.equal(convertCell('',email),'')
+  assert.throws(()=>convertCell('invalid-email',email),/邮箱格式/)
+})
+
+test('payroll exports default tax as numeric zero and allows blank tax imports',()=>{
+  const batch={id:21,period:'2026-11',revision:2,rows:[
+    {id:7,tax:0,taxEntered:0,netAmount:1000,paidAmount:0,snapshot:{employeeNo:'0001',nickName:'待填写'}},
+    {id:8,tax:0,taxEntered:1,netAmount:1000,paidAmount:0,snapshot:{employeeNo:'0002',nickName:'零税额'}}
+  ]}
+  const entries=reports.payrollReportEntries(batch)
+  const records=entries.find(e=>e.type==='payroll').records
+  assert.equal(records[0].tax,0);assert.equal(records[0].taxStatus,'默认0')
+  assert.equal(records[1].tax,0);assert.equal(records[1].taxStatus,'已填写')
+  const book=buildWorkbook(entries)
+  const matrix=XLSX.utils.sheet_to_json(book.Sheets['工资表（草稿可回传）'],{header:1,defval:'',raw:true})
+  const field=templates.payroll.fields.find(f=>f.key==='tax')
+  assert.ok(!field.required)
+  const index=matrix[0].indexOf(field.label)
+  assert.equal(convertCell(matrix[1][index],field),0)
+  assert.equal(convertCell(matrix[2][index],field),0)
+})
 test('member template is empty, matches its catalog and protects phone text formatting',()=>{
   const schema=JSON.parse(read('back/src/main/resources/templates/members/catalog.json'))
   const book=XLSX.readFile(new URL('../src/main/resources/templates/members/address-book.xlsx',import.meta.url),{cellNF:true,sheetStubs:true})
@@ -121,6 +156,6 @@ test('payroll roundtrip preserves version; reports separate failed and successfu
   assert.equal(reports.changeRecords([{eventType:'regular',status:'effective'}])[0].eventType,'转正')
 })
 test('new Vue pages and reusable components compile without template errors',()=>{
-  const files=['src/views/enterprise/hr/employees.vue','src/views/enterprise/hr/changes.vue','src/views/enterprise/hr/AttendanceWorkspace.vue','src/views/enterprise/hr/PayrollWorkspace.vue','src/views/enterprise/hr/self.vue','src/components/HrExcelImport/index.vue','src/components/HrTemplateDownloads/index.vue','src/components/HrApprovalDetail/index.vue']
+  const files=['src/views/enterprise/hr/employees.vue','src/views/enterprise/hr/changes.vue','src/views/enterprise/hr/AttendanceWorkspace.vue','src/views/enterprise/hr/PayrollWorkspace.vue','src/views/enterprise/hr/PayrollRules.vue','src/views/enterprise/hr/self.vue','src/components/HrExcelImport/index.vue','src/components/HrTemplateDownloads/index.vue','src/components/HrApprovalDetail/index.vue']
   files.forEach(file=>{const parsed=compiler.parseComponent(read(file));assert.deepEqual(compiler.compile(parsed.template.content).errors,[],file)})
 })

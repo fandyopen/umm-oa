@@ -29,6 +29,7 @@ class WorkflowCatalogIntegrationTest {
     @Autowired JdbcTemplate jdbc;
     @Autowired ObjectMapper json;
     @Autowired JwtService jwt;
+    @Autowired com.seal.oa.system.ModuleActionService moduleActions;
     String admin;
 
     @BeforeEach void setup() {
@@ -138,6 +139,84 @@ class WorkflowCatalogIntegrationTest {
         JsonNode old=call(post("/activiti/mongo/detailProcess"),Map.of("menuId",340590,"actionCode","edit"),200);
         assertTrue(old.path("_id").asText().startsWith("process-"));
         assertEquals("原入口独立配置",old.path("processData").path("nodes").get(1).path("name").asText());
+    }
+
+    @Test void salaryActionLabelsMigrateWithoutChangingWorkflowOrApprovalGrants() throws Exception {
+        jdbc.update("DELETE FROM sys_permission_migration WHERE migration_key='hr_salary_action_labels_v1'");
+        jdbc.update("UPDATE sys_module_action SET action_name='提交定薪调薪',flow_design_enabled=1,config_json='{}' WHERE module_id=341002 AND action_code='salary_submit'");
+        jdbc.update("UPDATE sys_module_action SET action_name='审批薪资标准' WHERE module_id=341002 AND action_code='approve'");
+        var permissions = jdbc.queryForList("SELECT role_id,action_code FROM sys_role_module_action WHERE module_id=341002 ORDER BY role_id,action_code");
+        var submitBefore = jdbc.queryForMap("SELECT permission_code,handler_key,config_json,status,flow_design_enabled FROM sys_module_action WHERE module_id=341002 AND action_code='salary_submit'");
+        moduleActions.bootstrap();
+        assertEquals("提交薪资审批", jdbc.queryForObject("SELECT action_name FROM sys_module_action WHERE module_id=341002 AND action_code='salary_submit'", String.class));
+        assertEquals("薪资审批权限", jdbc.queryForObject("SELECT action_name FROM sys_module_action WHERE module_id=341002 AND action_code='approve'", String.class));
+        assertEquals(submitBefore, jdbc.queryForMap("SELECT permission_code,handler_key,config_json,status,flow_design_enabled FROM sys_module_action WHERE module_id=341002 AND action_code='salary_submit'"));
+        assertEquals(permissions, jdbc.queryForList("SELECT role_id,action_code FROM sys_role_module_action WHERE module_id=341002 ORDER BY role_id,action_code"));
+        JsonNode options = call(get("/system/workflows/catalog/options").param("moduleId", "341002"), null, 200).path("data").path("buttons");
+        for (JsonNode option : options) {
+            if ("approve".equals(option.path("actionCode").asText())) {
+                assertEquals("仅审批授权", option.path("integrationLabel").asText());
+                assertFalse(option.path("ready").asBoolean());
+            } else if ("salary_submit".equals(option.path("actionCode").asText())) {
+                assertTrue(option.path("ready").asBoolean());
+            }
+        }
+        JsonNode actions = call(get("/system/module/341002/actions"), null, 200).path("data");
+        for (JsonNode action : actions) if ("approve".equals(action.path("actionCode").asText())) {
+            assertTrue(action.path("approvalPermissionOnly").asBoolean());
+            assertEquals("仅审批授权", action.path("workflowState").asText());
+            assertEquals("hr:employee:approve", action.path("permissionCode").asText());
+        }
+        call(put("/system/module/341002/actions/approve"), Map.of("flowDesignEnabled", true), 400);
+        call(put("/system/module/341002/actions/approve"), Map.of("handlerKey", "hr.salary.submit"), 400);
+        jdbc.update("UPDATE sys_module_action SET action_name='自定义薪资申请' WHERE module_id=341002 AND action_code='salary_submit'");
+        moduleActions.bootstrap();
+        assertEquals("自定义薪资申请", jdbc.queryForObject("SELECT action_name FROM sys_module_action WHERE module_id=341002 AND action_code='salary_submit'", String.class));
+    }
+
+    @Test void allKnownApprovalPermissionsAreLabeledAndCannotInitiateWorkflowsWithoutChangingGrants() throws Exception {
+        var labels = Map.of(341002L,"薪资审批权限",341003L,"人事异动审批权限",341005L,"工资审批权限",
+                341410L,"提成审批权限",341400L,"财务审批权限",341202L,"合同审批权限");
+        var oldLabels = Map.of(341002L,"审批薪资标准",341003L,"审批人事异动",341005L,"审批工资",
+                341410L,"审批提成",341400L,"办理财务审批或退回",341202L,"审批");
+        jdbc.update("DELETE FROM sys_permission_migration WHERE migration_key='approval_permission_labels_v1'");
+        for (var entry : oldLabels.entrySet())
+            jdbc.update("UPDATE sys_module_action SET action_name=? WHERE module_id=? AND action_code='approve'",entry.getValue(),entry.getKey());
+        var grants = jdbc.queryForList("SELECT * FROM sys_role_module_action ORDER BY role_id,module_id,action_code");
+        var submissions = jdbc.queryForList("SELECT * FROM sys_module_action WHERE handler_key IS NOT NULL AND TRIM(handler_key)<>'' ORDER BY module_id,action_code");
+        var bindings = jdbc.queryForList("SELECT * FROM oa_module_action_flow ORDER BY id");
+        moduleActions.bootstrap();
+        assertEquals(grants,jdbc.queryForList("SELECT * FROM sys_role_module_action ORDER BY role_id,module_id,action_code"));
+        assertEquals(submissions,jdbc.queryForList("SELECT * FROM sys_module_action WHERE handler_key IS NOT NULL AND TRIM(handler_key)<>'' ORDER BY module_id,action_code"));
+        assertEquals(bindings,jdbc.queryForList("SELECT * FROM oa_module_action_flow ORDER BY id"));
+        for (var entry : labels.entrySet()) {
+            long module = entry.getKey();
+            var action = moduleActions.actions(module).stream().filter(a->"approve".equals(a.get("actionCode"))).findFirst().orElseThrow();
+            assertEquals(entry.getValue(),action.get("actionName"));
+            assertEquals(true,action.get("approvalPermissionOnly"));
+            assertEquals("仅审批授权",action.get("workflowState"));
+            assertTrue(action.get("approvalPermissionHint").toString().contains("发起流程"));
+            assertTrue(assertThrows(com.seal.oa.common.ApiException.class,()->moduleActions.requireFlowDesign(module,"approve")).getMessage().contains("仅审批授权"));
+            assertThrows(com.seal.oa.common.ApiException.class,()->moduleActions.requireWorkflowExecution(module,"approve"));
+            assertThrows(com.seal.oa.common.ApiException.class,()->moduleActions.updateAction(module,"approve",Map.of("flowDesignEnabled",true)));
+            moduleActions.updateAction(module,"approve",Map.of("actionName","自定义审批权限"));
+            assertEquals("自定义审批权限",moduleActions.action(module,"approve").get("actionName"));
+            jdbc.update("UPDATE sys_module_action SET handler_key='workflow.business-api',flow_design_enabled=1 WHERE module_id=? AND action_code='approve'",module);
+            assertTrue(moduleActions.workflowActions(module).stream().noneMatch(a->"approve".equals(a.get("actionCode"))));
+            // A prior mistaken configuration cannot turn an authorization into a workflow entry.
+            assertThrows(com.seal.oa.common.ApiException.class,()->moduleActions.requireWorkflowExecution(module,"approve"));
+        }
+        var rows = call(get("/system/workflows"), null, 200).path("data");
+        assertFalse(rows.toString().contains("自定义审批权限"));
+        jdbc.update("DELETE FROM sys_permission_migration WHERE migration_key='approval_permission_labels_v1'");
+        moduleActions.bootstrap();
+        for(long module:labels.keySet()) assertEquals("自定义审批权限",moduleActions.action(module,"approve").get("actionName"));
+    }
+
+    @Test void customActionNamedApproveRemainsAConfigurableBusinessButton() {
+        moduleActions.createAction(340590L, Map.of("actionCode","approve","actionName","自定义业务审批","flowDesignEnabled",true));
+        assertFalse(com.seal.oa.system.ModuleActionService.isApprovalPermissionOnly(340590L,"approve"));
+        assertDoesNotThrow(()->moduleActions.requireFlowDesign(340590L,"approve"));
     }
 
     String create() throws Exception { return call(post("/system/workflows/catalog"),Map.of("moduleId",340590,"flowName","目录测试审批"),200).path("data").path("id").asText(); }

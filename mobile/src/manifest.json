@@ -1,0 +1,13 @@
+{
+  "name": "UMM 协同办公",
+  "appid": "__UNI__UMMOA",
+  "description": "客户、招聘、财务与审批移动工作台",
+  "versionName": "1.0.0",
+  "versionCode": "100",
+  "transformPx": false,
+  "vueVersion": "2",
+  "locale": "zh-Hans",
+  "h5": { "router": { "mode": "hash", "base": "/mobile/" }, "title": "UMM 移动办公" },
+  "mp-weixin": { "appid": "", "setting": { "urlCheck": true }, "usingComponents": true },
+  "uniStatistics": { "enable": false }
+}

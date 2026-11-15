@@ -8,6 +8,8 @@ CREATE TABLE IF NOT EXISTS oa_hr_employee (
     exit_date DATE,
     employment_status VARCHAR(32) NOT NULL DEFAULT 'active',
     employment_type VARCHAR(64),
+    work_province VARCHAR(64) NOT NULL DEFAULT '广东省',
+    work_city VARCHAR(64) NOT NULL DEFAULT '广州市',
     emergency_contact VARCHAR(100),
     emergency_phone VARCHAR(32),
     contract_start DATE,
@@ -20,7 +22,8 @@ CREATE TABLE IF NOT EXISTS oa_hr_employee (
 );
 INSERT INTO oa_hr_employee (user_id, employee_no, employment_status)
 SELECT user_id, CONCAT('EMP', user_id), CASE WHEN del_flag = '2' THEN 'departed' ELSE 'active' END
-FROM sys_user u WHERE del_flag IN ('0','2')
+FROM sys_user u WHERE del_flag IN ('0','2') AND u.user_id<>1
+AND NOT EXISTS (SELECT 1 FROM sys_admin_identity a WHERE a.user_name=u.user_name)
 AND NOT EXISTS (SELECT 1 FROM oa_hr_employee e WHERE e.user_id = u.user_id);
 
 CREATE TABLE IF NOT EXISTS oa_hr_employment_period (
@@ -63,6 +66,11 @@ CREATE TABLE IF NOT EXISTS oa_hr_salary (
     create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (user_id, effective_date)
 );
+-- Keep the approved salary available while a correction is drafted, reviewed or rejected.
+CREATE TABLE IF NOT EXISTS oa_hr_salary_effective (
+    salary_id BIGINT PRIMARY KEY,
+    snapshot_json TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS oa_hr_attachment (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT,
@@ -92,6 +100,20 @@ CREATE TABLE IF NOT EXISTS oa_hr_attendance_row (
     work_date DATE,
     data_json TEXT NOT NULL
 );
+-- Immutable company calculation rules; batches keep independent snapshots in rules_json.
+CREATE TABLE IF NOT EXISTS oa_hr_payroll_rule (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    tenant_id BIGINT NOT NULL,
+    version_no INT NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    effective_month VARCHAR(7) NOT NULL,
+    rules_json TEXT NOT NULL,
+    reason VARCHAR(1000) NOT NULL,
+    create_by BIGINT NOT NULL,
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (tenant_id, version_no)
+);
+
 CREATE TABLE IF NOT EXISTS oa_hr_payroll (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     period VARCHAR(7) NOT NULL,
@@ -121,6 +143,10 @@ CREATE TABLE IF NOT EXISTS oa_hr_payroll_item (
     adjustment DECIMAL(18,2) NOT NULL DEFAULT 0,
     deduction DECIMAL(18,2) NOT NULL DEFAULT 0,
     tax DECIMAL(18,2) NOT NULL DEFAULT 0,
+    tax_entered INT NOT NULL DEFAULT 0,
+    tax_reason VARCHAR(1000),
+    tax_operator_id BIGINT,
+    tax_update_time DATETIME,
     contribution DECIMAL(18,2) NOT NULL DEFAULT 0,
     gross_amount DECIMAL(18,2) NOT NULL,
     net_amount DECIMAL(18,2) NOT NULL,

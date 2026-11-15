@@ -11,6 +11,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.security.MessageDigest;
 import java.time.YearMonth;
+import java.time.LocalDate;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 @Service
@@ -49,6 +51,10 @@ public class HrAttendanceService {
 
     public Map<String, Object> preview(Map<String, Object> b) {
         d.require(ATTENDANCE, "import");
+        return validate(b);
+    }
+
+    private Map<String, Object> validate(Map<String, Object> b) {
         String period = period(b.get("period")), kind = required(b.get("kind"), "数据类型", 16);
         if (!Set.of("monthly", "daily", "leave").contains(kind))
             throw new ApiException(400, "考勤类型无效");
@@ -119,68 +125,157 @@ public class HrAttendanceService {
 
     @Transactional
     public Map<String, Object> save(Map<String, Object> b) {
-        var checked = preview(b);
-        if (!Boolean.TRUE.equals(checked.get("valid")))
-            throw new ApiException(
-                    400,
-                    String.join(
-                            "；",
-                            ((List<String>) checked.get("errors")).stream().limit(10).toList()));
-        String period = period(b.get("period")), kind = text(b.get("kind"));
-        String canonical = d.json(checked.get("rows"));
-        String hash;
-        try {
-            hash =
-                    HexFormat.of()
-                            .formatHex(
-                                    MessageDigest.getInstance("SHA-256")
-                                            .digest(
-                                                    canonical.getBytes(
-                                                            java.nio.charset.StandardCharsets
-                                                                    .UTF_8)));
-        } catch (Exception ex) {
-            throw new IllegalStateException(ex);
+        d.require(ATTENDANCE, "import");
+        return persist(b, "导入覆盖考勤", false);
+    }
+
+    @Transactional
+    public Map<String, Object> update(long batch, Map<String, Object> b) {
+        d.require(ATTENDANCE, "edit");
+        var body = new LinkedHashMap<>(b);
+        var base = d.one("SELECT period,kind FROM oa_hr_attendance_batch WHERE id=?", batch);
+        body.put("period", base.get("period"));
+        body.put("kind", base.get("kind"));
+        body.put("baseBatchId", batch);
+        return persist(body, "修改考勤", true);
+    }
+
+    @Transactional
+    public Map<String, Object> generate(Map<String, Object> b) {
+        d.require(ATTENDANCE, "generate");
+        String period = period(b.get("period")), kind = text(b.getOrDefault("kind", "monthly"));
+        if (!Set.of("monthly", "daily").contains(kind)) throw new ApiException(400, "正常考勤仅支持月度汇总或每日考勤");
+        BigDecimal hours = nonnegative(b.getOrDefault("hoursPerDay", 8), "每日工时");
+        if (hours.signum() == 0 || hours.compareTo(new BigDecimal("24")) > 0)
+            throw new ApiException(400, "每日工时须大于0且不超过24小时");
+        Set<Long> weekdays = new LinkedHashSet<>();
+        Object days = b.getOrDefault("workdays", List.of(1, 2, 3, 4, 5));
+        if (!(days instanceof List<?> values) || values.isEmpty()) throw new ApiException(400, "请选择每周工作日");
+        for (Object value : (List<?>) days) {
+            long day = id(value);
+            if (day < 1 || day > 7) throw new ApiException(400, "工作日须在周一至周日之间");
+            weekdays.add(day);
         }
-        var existing =
-                d.rows(
-                        "SELECT * FROM oa_hr_attendance_batch WHERE period=? AND kind=? AND"
-                                + " source_hash=?",
-                        period,
-                        kind,
-                        hash);
-        if (!existing.isEmpty()) return detail(id(existing.get(0).get("id")), false);
-        long file = saveFile(null, null, b);
-        long batch =
-                d.insert(
-                        "INSERT INTO"
-                            + " oa_hr_attendance_batch(period,kind,file_id,source_hash,create_by)"
-                            + " VALUES(?,?,?,?,?)",
-                        period,
-                        kind,
-                        file,
-                        hash,
-                        AuthContext.userId());
-        for (var r : (List<Map<String, Object>>) checked.get("rows"))
-            d.insert(
-                    "INSERT INTO oa_hr_attendance_row(batch_id,user_id,work_date,data_json)"
-                            + " VALUES(?,?,?,?)",
-                    batch,
-                    r.get("userId"),
-                    r.get("workDate"),
-                    d.json(r));
-        d.history(
-                "attendance",
-                batch,
-                null,
-                "导入钉钉考勤",
-                Map.of(
-                        "period",
-                        period,
-                        "kind",
-                        kind,
-                        "rows",
-                        ((List<?>) checked.get("rows")).size()));
+        var month = YearMonth.parse(period);
+        List<Map<String, Object>> rows = new ArrayList<>();
+        for (var user : d.rows("""
+                SELECT u.user_id,u.dept_id FROM sys_user u
+                JOIN oa_hr_employee e ON e.user_id=u.user_id AND e.employment_status='active'
+                WHERE u.del_flag='0' AND u.status='0' AND %s
+                ORDER BY u.user_id
+                """.formatted(d.memberCondition("u")))) {
+            long uid = id(user.get("userId"));
+            if (!d.scope.canAccess(AuthContext.userId(), user.get("deptId"), uid)) continue;
+            var employee = d.employee(uid);
+            var periods = d.rows("SELECT entry_date,exit_date FROM oa_hr_employment_period WHERE user_id=?", uid);
+            if (month.atDay(1).datesUntil(month.plusMonths(1).atDay(1)).noneMatch(day -> employedOn(day, employee, periods))) continue;
+            int required = 0, actual = 0;
+            for (int n = 1; n <= month.lengthOfMonth(); n++) {
+                var date = month.atDay(n);
+                boolean working = weekdays.contains((long) date.getDayOfWeek().getValue());
+                boolean employed = employedOn(date, employee, periods);
+                if (working) required++;
+                if (working && employed) actual++;
+                if ("daily".equals(kind)) {
+                    var row = normalRow(employee, DAY_FIELDS);
+                    row.put("workDate", date.toString());
+                    row.put("scheduledHours", working ? hours : BigDecimal.ZERO);
+                    row.put("actualHours", working && employed ? hours : BigDecimal.ZERO);
+                    row.put("result", !employed ? "非任职期间" : working ? "正常" : "休息");
+                    rows.add(row);
+                }
+            }
+            if ("monthly".equals(kind)) {
+                var row = normalRow(employee, MONTH_FIELDS);
+                row.put("requiredDays", required);
+                row.put("actualDays", actual);
+                rows.add(row);
+            }
+        }
+        if (rows.isEmpty()) throw new ApiException(400, "本月没有可生成考勤的在职成员");
+        var body = new LinkedHashMap<String, Object>();
+        body.put("period", period);
+        body.put("kind", kind);
+        body.put("rows", rows);
+        return persist(body, "生成正常考勤", true);
+    }
+
+    private Map<String, Object> normalRow(Map<String, Object> employee, List<String> fields) {
+        var row = new LinkedHashMap<String, Object>();
+        row.put("employeeNo", employee.get("employeeNo"));
+        row.put("employeeName", employee.get("nickName"));
+        for (String field : fields) row.put(field, 0);
+        return row;
+    }
+
+    private boolean employedOn(LocalDate day, Map<String, Object> employee, List<Map<String, Object>> periods) {
+        if (!periods.isEmpty()) return periods.stream().anyMatch(p ->
+                !day.isBefore(date(p.get("entryDate"))) && (p.get("exitDate") == null || !day.isAfter(date(p.get("exitDate")))));
+        LocalDate entry = nullableDate(employee.get("entryDate")), exit = nullableDate(employee.get("exitDate"));
+        return (entry == null || !day.isBefore(entry)) && (exit == null || !day.isAfter(exit));
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> persist(Map<String, Object> b, String action, boolean internalFile) {
+        var checked = validate(b);
+        if (!Boolean.TRUE.equals(checked.get("valid")))
+            throw new ApiException(400, String.join("；", ((List<String>) checked.get("errors")).stream().limit(10).toList()));
+        String period = period(b.get("period")), kind = text(b.get("kind"));
+        long baseId = optionalId(b.get("baseBatchId"));
+        Map<String, Object> base = null;
+        List<Map<String, Object>> records = (List<Map<String, Object>>) checked.get("rows");
+        if (baseId > 0) {
+            base = d.one("SELECT * FROM oa_hr_attendance_batch WHERE id=? FOR UPDATE", baseId);
+            d.revision(base, b);
+            d.expect(base, "draft", "confirmed");
+            if (!period.equals(base.get("period")) || !kind.equals(base.get("kind")))
+                throw new ApiException(400, "覆盖批次的月份或类型不一致");
+            var merged = new LinkedHashMap<String, Map<String, Object>>();
+            for (var raw : d.rows("SELECT r.user_id,r.data_json FROM oa_hr_attendance_row r JOIN sys_user u ON u.user_id=r.user_id WHERE r.batch_id=? AND " + d.memberCondition("u") + " ORDER BY r.user_id,r.work_date,r.id", baseId)) {
+                d.employee(id(raw.get("userId")));
+                var row = d.object(raw.get("dataJson"));
+                merged.put(rowKey(row, kind), row);
+            }
+            for (var row : records) {
+                String key = rowKey(row, kind);
+                if (internalFile && !merged.containsKey(key)) throw new ApiException(400, "只能修改当前批次已有员工的考勤记录");
+                merged.put(key, row);
+            }
+            records = new ArrayList<>(merged.values());
+        }
+        if (records.size() > 5000) throw new ApiException(400, "每批最多5000条考勤记录，请缩小范围");
+        String canonical = d.json(records);
+        String hash, fingerprint = (base == null ? "" : baseId + ":" + base.get("revision") + ":") + canonical;
+        while (true) {
+            try {
+                hash = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(fingerprint.getBytes(StandardCharsets.UTF_8)));
+            } catch (Exception ex) { throw new IllegalStateException(ex); }
+            var existing = d.rows("SELECT id,status,revision FROM oa_hr_attendance_batch WHERE period=? AND kind=? AND source_hash=?", period, kind, hash);
+            if (existing.isEmpty()) break;
+            if (!"superseded".equals(existing.get(0).get("status"))) return detail(id(existing.get(0).get("id")), false);
+            fingerprint += ":after:" + existing.get(0).get("id") + ":" + existing.get(0).get("revision");
+        }
+        var source = new LinkedHashMap<>(b);
+        if (internalFile) {
+            source.put("fileName", action + "-" + period + "-" + kind + ".json");
+            source.put("fileContent", Base64.getEncoder().encodeToString(canonical.getBytes(StandardCharsets.UTF_8)));
+        }
+        long file = saveFile(null, null, source);
+        long batch;
+        if (base != null && "draft".equals(base.get("status"))) {
+            batch = baseId;
+            d.jdbc.update("UPDATE oa_hr_attendance_batch SET file_id=?,source_hash=?,revision=revision+1 WHERE id=?", file, hash, batch);
+            d.jdbc.update("DELETE FROM oa_hr_attendance_row WHERE batch_id=?", batch);
+        } else {
+            batch = d.insert("INSERT INTO oa_hr_attendance_batch(period,kind,file_id,source_hash,create_by) VALUES(?,?,?,?,?)", period, kind, file, hash, AuthContext.userId());
+        }
+        for (var row : records) d.insert("INSERT INTO oa_hr_attendance_row(batch_id,user_id,work_date,data_json) VALUES(?,?,?,?)", batch, row.get("userId"), row.get("workDate"), d.json(row));
+        d.history("attendance", batch, null, action, Map.of("period", period, "kind", kind, "rows", records.size(), "baseBatchId", baseId));
         return detail(batch, false);
+    }
+
+    private String rowKey(Map<String, Object> row, String kind) {
+        return id(row.get("userId")) + "/" + ("daily".equals(kind) ? row.get("workDate") : "leave".equals(kind) ? row.get("leaveId") : "monthly");
     }
 
     long saveFile(Long user, Long payroll, Map<String, Object> b) {
@@ -227,7 +322,7 @@ public class HrAttendanceService {
         return d
                 .rows(
                         "SELECT r.user_id,r.data_json,u.dept_id FROM oa_hr_attendance_row r JOIN"
-                                + " sys_user u ON u.user_id=r.user_id WHERE r.batch_id=? ORDER BY"
+                                + " sys_user u ON u.user_id=r.user_id WHERE r.batch_id=? AND " + d.memberCondition("u") + " ORDER BY"
                                 + " r.user_id,r.work_date,r.id",
                         batch)
                 .stream()
@@ -241,6 +336,10 @@ public class HrAttendanceService {
                                                 r.get("userId")))
                 .map(r -> d.object(r.get("dataJson")))
                 .toList();
+    }
+
+    List<Long> memberUserIds(long batch) {
+        return d.jdbc.queryForList("SELECT r.user_id FROM oa_hr_attendance_row r JOIN sys_user u ON u.user_id=r.user_id WHERE r.batch_id=? AND " + d.memberCondition("u"), Long.class, batch);
     }
 
     public Map<String, Object> detail(long batch, boolean self) {
@@ -266,11 +365,8 @@ public class HrAttendanceService {
         var current = d.one("SELECT * FROM oa_hr_attendance_batch WHERE id=? FOR UPDATE", batch);
         d.revision(current, b);
         d.expect(current, "draft");
-        var users =
-                d.jdbc.queryForList(
-                        "SELECT user_id FROM oa_hr_attendance_row WHERE batch_id=?",
-                        Long.class,
-                        batch);
+        var users = memberUserIds(batch);
+        if (users.isEmpty()) throw new ApiException(400, "当前批次没有可确认的员工考勤");
         users.forEach(d::employee);
         // Serialize confirmation of overlapping monthly versions.
         d.jdbc.queryForList("SELECT user_id FROM oa_hr_employee ORDER BY user_id FOR UPDATE");
@@ -281,11 +377,7 @@ public class HrAttendanceService {
                         current.get("period"),
                         current.get("kind"),
                         batch)) {
-            var oldUsers =
-                    d.jdbc.queryForList(
-                            "SELECT user_id FROM oa_hr_attendance_row WHERE batch_id=?",
-                            Long.class,
-                            old.get("id"));
+            var oldUsers = memberUserIds(id(old.get("id")));
             if (Collections.disjoint(users, oldUsers)) continue;
             if (!new HashSet<>(users).containsAll(oldUsers))
                 throw new ApiException(409, "重新导入须覆盖被替换批次的全部员工，避免遗漏");
@@ -304,6 +396,7 @@ public class HrAttendanceService {
 
     public List<Map<String, Object>> self() {
         d.require(SELF, "access");
+        if (AuthContext.userId() == 1L || d.system.isSuperAdminIdentity(AuthContext.userId())) return List.of();
         return d.rows(
                 "SELECT DISTINCT b.id,b.period,b.kind,b.status,b.revision FROM"
                     + " oa_hr_attendance_batch b JOIN oa_hr_attendance_row r ON r.batch_id=b.id"
@@ -330,11 +423,7 @@ public class HrAttendanceService {
         } else {
             d.require(ATTENDANCE, "export");
             var batch = d.one("SELECT id FROM oa_hr_attendance_batch WHERE file_id=?", file);
-            d.jdbc.queryForList(
-                            "SELECT user_id FROM oa_hr_attendance_row WHERE batch_id=?",
-                            Long.class,
-                            batch.get("id"))
-                    .forEach(d::employee);
+            memberUserIds(id(batch.get("id"))).forEach(d::employee);
         }
         return Map.of("fileName", f.get("fileName"), "fileContent", f.get("contentBase64"));
     }

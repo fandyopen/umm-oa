@@ -293,6 +293,7 @@ public class LowCodeWorkflowService {
         if ("done".equals(value(task.get("status"), ""))) {
             return existingResult(row("SELECT * FROM oa_process_instance WHERE id = ?", instanceId));
         }
+        if(!"todo".equals(value(task.get("status"),"")))throw new ApiException(409,"该审批任务已撤回或停止，不能继续办理");
         if (number(task.get("assignee_id"), 0L) != operatorId) {
             throw new ApiException(403, "当前账号不是该任务审批人");
         }

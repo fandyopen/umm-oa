@@ -60,6 +60,7 @@ public class CrmContractService {
 
     public List<Map<String, Object>> list(Map<String, String> query) {
         return rows().stream().filter(this::visible)
+                .filter(row -> "true".equalsIgnoreCase(query.get("includeDeleted")) || number(row.get("deleted"))==0)
                 .filter(row -> blank(query.get("customerId")) || text(row.get("customerId")).equals(query.get("customerId")))
                 .filter(row -> blank(query.get("status")) || text(row.get("status")).equals(query.get("status")))
                 .filter(row -> blank(query.get("keyword")) || (text(row.get("name")) + text(row.get("code"))
@@ -77,6 +78,13 @@ public class CrmContractService {
         row.put("reminders", reminders(true).stream().filter(item -> number(item.get("contractId")) == id).toList());
         row.put("receipts", JdbcMaps.camelCase(jdbc.queryForList(
                 "SELECT * FROM oa_crm_contract_receipt WHERE contract_id = ? ORDER BY receipt_date DESC, id DESC", id)));
+        row.put("operationHistory", JdbcMaps.camelCase(jdbc.queryForList("SELECT * FROM oa_crm_contract_history WHERE contract_id=? ORDER BY id DESC",id)));
+        row.put("lifecycleHistory",JdbcMaps.camelCase(jdbc.queryForList("SELECT id AS request_id,process_instance_id AS instance_id,process_task_name AS task_name,status,action_code,payload_json FROM oa_workflow_request WHERE module_id=341201 AND handler_key IN ('crm.contract.void','crm.contract.terminate') ORDER BY id DESC"))
+                .stream().filter(r -> number(readMap(r.get("payloadJson")).get("contractId"))==id).map(r -> {
+                    r.remove("payloadJson");
+                    r.put("history",JdbcMaps.camelCase(jdbc.queryForList("SELECT id AS task_id,task_name,assignee_name,status,complete_time FROM oa_process_task WHERE instance_id=? ORDER BY create_time,id",r.get("instanceId"))));
+                    return r;
+                }).toList());
         row.put("reminderLogs", JdbcMaps.camelCase(jdbc.queryForList(
                 "SELECT * FROM oa_crm_contract_reminder_log WHERE contract_id = ? ORDER BY id DESC", id)));
         return row;
@@ -124,7 +132,7 @@ public class CrmContractService {
         long parentId = number(body.get("parentContractId"));
         if (parentId > 0) {
             Map<String, Object> parent = require(parentId, false);
-            if (number(parent.get("customerId")) != number(customer.get("id")) || number(parent.get("effectiveVersion")) == 0) {
+            if (number(parent.get("deleted"))!=0 || number(parent.get("customerId")) != number(customer.get("id")) || number(parent.get("effectiveVersion")) == 0) {
                 throw new ApiException(400, "续约必须关联同一客户的已生效合同");
             }
         }
@@ -171,14 +179,9 @@ public class CrmContractService {
         return detail(id);
     }
 
-    @Transactional
-    public void delete(long id) {
-        Map<String, Object> row = require(id, true);
-        requireCustomerAccess(row);
-        expectStatus(row, "draft");
-        Long versions = jdbc.queryForObject("SELECT COUNT(*) FROM oa_crm_contract_version WHERE contract_id = ?", Long.class, id);
-        if (versions > 0) throw new ApiException(409, "有提交版本的合同必须保留历史，不能删除");
-        jdbc.update("DELETE FROM oa_crm_contract WHERE id = ?", id);
+    public void refreshLifecycle(long contractId,long customerId) {
+        syncCustomer(customerId);
+        closeResolvedReminders(contractId);
     }
 
     public void validateWorkflowSubmission(long id, Map<String, Object> body) {
@@ -491,8 +494,14 @@ public class CrmContractService {
         Map<String, Object> row = require(id, true);
         requireCustomerAccess(row);
         expectRevision(row, body);
-        expectStatus(row, "active");
+        expectStatus(row, "active", "terminated");
         if (feeRows(row).stream().anyMatch(term -> money(term.get("outstandingAmount")).signum() > 0)) throw new ApiException(409, "仍有未结清收费，请先完成回款");
+        if("terminated".equals(row.get("status"))) {
+            if(jdbc.queryForObject("SELECT COUNT(*) FROM oa_finance_record WHERE contract_id=? AND status IN ('approving','approved')",Long.class,id)>0)
+                throw new ApiException(409,"仍有在途财务记录，请先完成或作废");
+            if(jdbc.queryForObject("SELECT COUNT(*) FROM oa_recruit_application a JOIN oa_recruit_job j ON j.id=a.job_id WHERE j.contract_id=? AND a.stage NOT IN ('completed','exited','terminated','withdrawn','rejected')",Long.class,id)>0)
+                throw new ApiException(409,"仍有未结束的招聘流程或保证期，请先处理后结案");
+        }
         jdbc.update("UPDATE oa_crm_contract SET status = 'completed', revision = revision + 1, update_time = CURRENT_TIMESTAMP WHERE id = ?", id);
         syncCustomer(number(row.get("customerId")));
         closeResolvedReminders(id);
@@ -514,12 +523,12 @@ public class CrmContractService {
         LocalDate today = LocalDate.now(ZONE);
         for (Map<String, Object> row : rows()) {
             if ((scoped && !customerVisible(row)) || number(row.get("effectiveVersion")) == 0
-                    || "completed".equals(row.get("status")) || !"0".equals(row.get("customerStatus"))
+                    || number(row.get("deleted"))!=0 || Set.of("completed","void").contains(text(row.get("status"))) || !"0".equals(row.get("customerStatus"))
                     || "1".equals(row.get("publicPool")) || number(row.get("ownerUserId")) == 0) continue;
             Map<String, Object> effective = effective(row);
             LocalDate end = date(effective.get("endDate"), "到期日期");
             long days = ChronoUnit.DAYS.between(today, end);
-            if (days <= 30 && !hasSignedRenewal(number(row.get("id")), end)) {
+            if (!"terminated".equals(row.get("status")) && days <= 30 && !hasSignedRenewal(number(row.get("id")), end)) {
                 result.add(reminder(row, "expiry", "contract_expiry", days < 0 ? "合同已到期" : "合同即将到期",
                         days <= 7 ? "high" : "medium", days < 0 ? "已到期 " + (-days) + " 天，请办理续约或结案" : "将在 " + days + " 天后到期，请提前跟进续约", end));
             }
@@ -564,7 +573,7 @@ public class CrmContractService {
             Map<String, Object> effective = effective(row);
             total = total.add(money(effective.get("amount")));
             LocalDate day = date(effective.get("endDate"), "到期日期");
-            if (!"completed".equals(row.get("status")) && (expiry == null || day.isBefore(expiry))) expiry = day;
+            if (number(row.get("deleted"))==0 && !Set.of("completed","terminated","void").contains(text(row.get("status"))) && (expiry == null || day.isBefore(expiry))) expiry = day;
         }
         BigDecimal received = jdbc.queryForObject("""
                 SELECT COALESCE(SUM(r.amount), 0) FROM oa_crm_contract_receipt r
@@ -585,7 +594,7 @@ public class CrmContractService {
     public void requireReleasable(long customerId) {
         if (jdbc.queryForObject("""
                 SELECT COUNT(*) FROM oa_crm_contract WHERE customer_id = ?
-                AND ((effective_version > 0 AND status <> 'completed') OR status IN ('pending', 'approved'))
+                AND deleted=0 AND ((effective_version > 0 AND status NOT IN ('completed','void')) OR status IN ('pending', 'approved'))
                 """, Long.class, customerId) > 0) throw new ApiException(409, "客户仍有待审批、待签署或履约中的合同，请交接负责人而非转入公海");
     }
 
@@ -612,6 +621,7 @@ public class CrmContractService {
     }
 
     private boolean visible(Map<String, Object> row) {
+        if(system.hasModuleAction(AuthContext.userId(),341202L,"approve") && jdbc.queryForList("SELECT r.payload_json FROM oa_workflow_request r JOIN oa_process_task t ON t.instance_id=r.process_instance_id WHERE r.module_id=341201 AND r.handler_key IN ('crm.contract.void','crm.contract.terminate') AND t.assignee_id=?",String.class,AuthContext.userId()).stream().anyMatch(payload -> number(readMap(payload).get("contractId"))==number(row.get("id"))))return true;
         boolean assigned = number(row.get("approvalUserId")) == AuthContext.userId()
                 && system.hasModuleAccess(AuthContext.userId(), 341202L);
         boolean customerRead = List.of(341201L, 341203L, 341204L, 341205L, 341101L).stream()
@@ -633,6 +643,9 @@ public class CrmContractService {
 
     private void requireCustomerAccess(Map<String, Object> row) {
         if (!customerVisible(row)) throw new ApiException(403, "无权操作该客户的合同");
+        if(number(row.get("deleted"))!=0)throw new ApiException(409,"合同已删除，仅可查看历史");
+        if(jdbc.queryForObject("SELECT COUNT(*) FROM oa_workflow_request WHERE id=? AND status='running'",Long.class,row.get("lifecycleRequestId"))>0)
+            throw new ApiException(409,"合同作废或终止正在审批，请等待审批或先撤回");
     }
 
     private Map<String, Object> customer(long id) {
@@ -656,8 +669,16 @@ public class CrmContractService {
         row.put("effectiveFeeTerms", effective.isEmpty() ? List.of() : feeRows(row));
         row.put("receivedAmount", netReceived(number(row.get("id")), null));
         row.put("outstandingAmount", feeRows(row).stream().map(term -> money(term.get("outstandingAmount"))).reduce(BigDecimal.ZERO, BigDecimal::add));
-        row.put("canEditCustomer", customerVisible(row));
+        row.put("canEditCustomer", customerVisible(row) && number(row.get("deleted"))==0);
         row.put("signingPending", "running".equals(signingWorkflow(number(row.get("id")), false).get("status")));
+        boolean retiring=jdbc.queryForObject("SELECT COUNT(*) FROM oa_workflow_request WHERE id=? AND status='running'",Long.class,row.get("lifecycleRequestId"))>0;
+        row.put("lifecyclePending",retiring);
+        boolean idle=!retiring && !Boolean.TRUE.equals(row.get("signingPending")) && !"pending".equals(row.get("status"));
+        boolean owned=Boolean.TRUE.equals(row.get("canEditCustomer"));
+        row.put("canVoid",owned && idle && number(row.get("effectiveVersion"))==0 && Set.of("draft","rejected","approved").contains(text(row.get("status"))));
+        row.put("canTerminate",owned && idle && number(row.get("effectiveVersion"))>0 && Set.of("active","draft","rejected","approved").contains(text(row.get("status"))));
+        row.put("canWithdraw",owned && !idle);
+        row.put("canDelete",owned && idle && Set.of("draft","completed","void").contains(text(row.get("status"))) && (number(row.get("effectiveVersion"))==0 || "completed".equals(row.get("status"))));
         return row;
     }
 

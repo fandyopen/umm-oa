@@ -5,6 +5,8 @@ const request = options => http({ ...options, silentError: true })
 const base = '/system/data-tables'
 const url = (table, suffix) => base + '/' + encodeURIComponent(table) + '/' + suffix
 export const listDataTables = () => request({ url: base, method: 'get' })
+export const listDataPages = () => request({ url: base + '/pages', method: 'get' })
+export const getDataTableRelated = (table, data) => request({ url: url(table, 'related'), method: 'post', data })
 export const getDataTableStructure = table => request({ url: url(table, 'structure'), method: 'get' })
 export const getDataTableRows = (table, params) => request({ url: url(table, 'rows'), method: 'get', params })
 export const getDataTableHistory = (table, params) => request({ url: url(table, 'history'), method: 'get', params })

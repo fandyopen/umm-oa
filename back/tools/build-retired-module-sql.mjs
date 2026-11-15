@@ -63,7 +63,7 @@ const lines = [
   "WHERE module LIKE 'workflow:%'",
   '  AND (' + workflowPayloadConditions + ');',
   '',
-  ...config.domainTables.map(table => `DELETE FROM ${table};`),
+  ...config.domainTables.map(table => `DROP TABLE IF EXISTS ${table};`),
   '',
   'DELETE FROM sys_module WHERE module_id IN (' + moduleList + ');',
   ''
@@ -77,6 +77,13 @@ const targets = [
 for (const target of targets) {
   fs.writeFileSync(target, output)
 }
+// Existing MySQL installations only need table removal; never re-import the full seed database.
+fs.writeFileSync(path.join(projectDir, 'db/mysql/upgrade-retired-business-tables.sql'), [
+  '-- Back up the database before applying. Removes only the 20 retired domain tables.',
+  '-- Current CRM contracts, finance, recruitment, HR, commission and workflow tables are preserved.',
+  ...config.domainTables.map(table => `DROP TABLE IF EXISTS ${table};`),
+  ''
+].join('\n'))
 console.log(`Generated retired-module cleanup for ${moduleIds.length} modules`)
 for (const target of targets) {
   console.log(target)

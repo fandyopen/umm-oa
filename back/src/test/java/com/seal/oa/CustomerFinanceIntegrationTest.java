@@ -24,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -192,7 +193,9 @@ class CustomerFinanceIntegrationTest {
         Map<String,Object> receipt = draft("receipt", id, "10.00");
         approveDirect(receipt, "receipt_confirm");
         Map<String,Object> excessReceipt = draft("receipt", id, "0.01");
-        assertThrows(RuntimeException.class, () -> approveDirect(excessReceipt, "receipt_confirm"));
+        assertTrue(text(excessReceipt.get("submissionBlockedReason")).contains("已收齐"));
+        assertEquals(new BigDecimal("0.00"), excessReceipt.get("receiptAvailable"));
+        assertTrue(assertThrows(ApiException.class, () -> approveDirect(excessReceipt, "receipt_confirm")).getMessage().contains("已收齐"));
 
         Map<String,Object> invoice = draft("invoice", id, "10.00");
         approveDirect(invoice, "invoice_submit");
@@ -207,7 +210,7 @@ class CustomerFinanceIntegrationTest {
                 "dueDate", "2026-12-01", "revision", 0));
         long id = number(receivable.get("id"));
         finance.confirmReceivable(id, Map.of("revision", 0), true);
-        finance.collect(Map.of("receivableId", id, "ownerUserId", 1, "nextDate", java.time.LocalDate.now().plusDays(7).toString(), "content", "跟进回款"));
+        finance.collect(Map.of("receivableId", id, "ownerUserId", 4, "nextDate", java.time.LocalDate.now().plusDays(7).toString(), "content", "跟进回款"));
 
         approveDirect(draft("receipt", id, "25.00"), "receipt_confirm");
 
@@ -224,12 +227,52 @@ class CustomerFinanceIntegrationTest {
         assertEquals(Boolean.TRUE, requests.payload(request).get("financeRecord"));
         assertEquals(new BigDecimal("30.00"), ledger(source).get("receiptAvailable"));
         Map<String,Object> excess = draft("writeoff", source, "40.00");
-        assertThrows(ApiException.class, () -> approveDirect(excess, "adjust_confirm"));
+        assertTrue(text(excess.get("submissionBlockedReason")).contains("待审申请已占用 70.00"));
+        assertEquals(new BigDecimal("30.00"), excess.get("receiptAvailable"));
+        assertTrue(assertThrows(ApiException.class, () -> approveDirect(excess, "adjust_confirm")).getMessage().contains("当前可提交金额为 30.00"));
+        assertFalse(text(finance.detail(number(pending.get("id"))).get("submissionBlockedReason")).contains("占用"));
 
         requests.updateWorkflowState("test-rejected", request, "审批未通过", "test-task", "财务审核");
         assertEquals("rejected", finance.detail(number(pending.get("id"))).get("status"));
         assertEquals(new BigDecimal("100.00"), ledger(source).get("receiptAvailable"));
         assertEquals(0, ((BigDecimal) ledger(source).get("netReceivedAmount")).signum());
+        assertEquals("", finance.detail(number(excess.get("id"))).get("submissionBlockedReason"));
+        approveDirect(finance.detail(number(excess.get("id"))), "adjust_confirm");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void submissionGuidanceOnlyLinksConfirmedReceiptsFromTheSameSourceAndKeepsDrafts() {
+        long source = confirmedReceivable("50.00"), otherSource = confirmedReceivable("50.00");
+        Map<String,Object> receipt = draft("receipt", source, "50.00");
+        approveDirect(receipt, "receipt_confirm");
+        approveDirect(draft("receipt", otherSource, "50.00"), "receipt_confirm");
+        draft("receipt", source, "1.00");
+        Map<String,Object> blocked = draft("receipt", source, "5.00");
+        Map<String,Object> row = ((List<Map<String,Object>>) finance.records("receipt", Map.of()).get("rows")).stream()
+                .filter(r -> number(r.get("id")) == number(blocked.get("id"))).findFirst().orElseThrow();
+        List<Map<String,Object>> related = (List<Map<String,Object>>) row.get("confirmedReceipts");
+        assertEquals(1, related.size());
+        assertEquals(receipt.get("id"), related.get(0).get("id"));
+        assertEquals(new BigDecimal("50.00"), related.get(0).get("amount"));
+        assertEquals("draft", finance.detail(number(blocked.get("id"))).get("status"));
+        assertTrue(text(row.get("submissionBlockedReason")).contains("已收齐"));
+        AuthContext.set(new AuthContext.CurrentUser(999999L, "unrelated-user"));
+        assertTrue(((List<?>) finance.records("receipt", Map.of()).get("rows")).isEmpty());
+        assertThrows(ApiException.class, () -> finance.detail(number(blocked.get("id"))));
+    }
+
+    @Test
+    void submissionGuidanceSeparatesExcessAmountFromPendingReservation() {
+        long source = confirmedReceivable("100.00");
+        submit(draft("receipt", source, "70.00"), "receipt_confirm");
+        Map<String,Object> excess = draft("receipt", source, "101.00");
+        assertTrue(text(excess.get("submissionBlockedReason")).contains("超过未收余额 100.00"));
+        assertTrue(assertThrows(ApiException.class, () -> approveDirect(excess, "receipt_confirm")).getMessage().contains("超过未收余额"));
+        Map<String,Object> allowed = draft("receipt", source, "30.00");
+        assertEquals("", allowed.get("submissionBlockedReason"));
+        approveDirect(allowed, "receipt_confirm");
+        assertEquals(new BigDecimal("30.00"), ledger(source).get("netReceivedAmount"));
     }
 
     @Test
@@ -286,7 +329,7 @@ class CustomerFinanceIntegrationTest {
     @Test
     void updatingCollectionKeepsOneTaskAndRecordsTheHistory() {
         long source = confirmedReceivable("100.00");
-        Map<String,Object> body = new LinkedHashMap<>(Map.of("receivableId", source, "ownerUserId", 1,
+        Map<String,Object> body = new LinkedHashMap<>(Map.of("receivableId", source, "ownerUserId", 4,
                 "nextDate", java.time.LocalDate.now().plusDays(7).toString(), "content", "首次催收"));
         finance.collect(body);
         Map<String,Object> task = finance.collections(Map.of()).get(0);
@@ -329,6 +372,35 @@ class CustomerFinanceIntegrationTest {
         assertEquals(new BigDecimal("70.00"), contracts.detail(contract).get("outstandingAmount"));
         assertEquals(new BigDecimal("30.00"), jdbc.queryForObject("SELECT received_amount FROM oa_merchant WHERE id=?", BigDecimal.class, customerId));
         assertEquals(2, jdbc.queryForObject("SELECT COUNT(*) FROM oa_crm_contract_receipt WHERE contract_id=?", Integer.class, contract));
+        Map<String,Object> remaining = finance.save("receipt", 0, Map.of("contractId", contract, "termKey", "fee-main",
+                "amount", new BigDecimal("70.00"), "businessDate", "2026-11-02", "attachment", proof(), "createToken", UUID.randomUUID().toString()));
+        approveDirect(remaining, "receipt_confirm");
+        jdbc.update("UPDATE oa_crm_contract SET status='completed' WHERE id=?", contract);
+        Map<String,Object> duplicate = finance.save("receipt", 0, Map.of("contractId", contract, "termKey", "fee-main",
+                "amount", new BigDecimal("5.00"), "businessDate", "2026-11-02", "attachment", proof(), "createToken", UUID.randomUUID().toString()));
+        assertTrue(text(duplicate.get("submissionBlockedReason")).contains("已收齐"));
+        assertTrue(assertThrows(ApiException.class, () -> approveDirect(duplicate, "receipt_confirm")).getMessage().contains("已收齐"));
+    }
+
+    @Test
+    void refundReopensArchivedContractsAndPreservesTheirTerminationState() {
+        for(boolean terminated:java.util.List.of(false,true)) {
+            String terms="[{\"key\":\"fee-main\",\"title\":\"服务费\",\"amount\":100,\"dueDate\":\"2026-12-01\"}]";
+            String snapshot="{\"amount\":100,\"endDate\":\"2027-12-31\",\"feeTerms\":"+terms+"}";
+            jdbc.update("INSERT INTO oa_crm_contract(customer_id,code,name,service_type,amount,start_date,end_date,status,effective_version,terms_json,deleted) VALUES(?,?,?,'猎头服务',100,'2026-01-01','2027-12-31','completed',1,?,1)",customerId,"ARCH-"+UUID.randomUUID(),"已删除结案合同",terms);
+            long contract=jdbc.queryForObject("SELECT MAX(id) FROM oa_crm_contract",Long.class);
+            jdbc.update("INSERT INTO oa_crm_contract_version(contract_id,version_no,snapshot_json,status,submit_user_id,approval_user_id) VALUES(?,1,?,'signed',1,1)",contract,snapshot);
+            jdbc.update("INSERT INTO oa_crm_contract_receipt(contract_id,term_key,amount,receipt_date) VALUES(?,'fee-main',100,'2026-11-01')",contract);
+            if(terminated)jdbc.update("INSERT INTO oa_crm_contract_history(customer_id,contract_id,action,reason) VALUES(?,?,'terminate','提前结束')",customerId,contract);
+            long original=jdbc.queryForObject("SELECT MAX(id) FROM oa_crm_contract_receipt WHERE contract_id=?",Long.class,contract);
+            Map<String,Object> refund=finance.save("refund",0,Map.of("contractId",contract,"termKey","fee-main","originalReceiptId",original,"amount",20,"reason","退回多收款","createToken",UUID.randomUUID().toString()));
+            approveDirect(refund,"refund_submit");
+            finance.operate(number(refund.get("id")),"pay",Map.of("revision",finance.detail(number(refund.get("id"))).get("revision"),"businessDate","2026-11-02","attachment",proof()));
+            assertEquals(0,jdbc.queryForObject("SELECT deleted FROM oa_crm_contract WHERE id=?",Integer.class,contract));
+            assertEquals(terminated?"terminated":"active",contracts.detail(contract).get("status"));
+            assertEquals(new BigDecimal("80.00"),contracts.detail(contract).get("receivedAmount"));
+            assertEquals(new BigDecimal("20.00"),contracts.detail(contract).get("outstandingAmount"));
+        }
     }
 
     private long confirmedReceivable(String amount) {
@@ -367,5 +439,6 @@ class CustomerFinanceIntegrationTest {
                 .filter(row -> number(row.get("receivableId")) == id).findFirst().orElseThrow();
     }
     private long number(Object value) { return ((Number)value).longValue(); }
+    private String text(Object value) { return value == null ? "" : value.toString(); }
     private String proof() { return "[{\"name\":\"凭证.pdf\",\"url\":\"/profile/finance/proof.pdf\",\"fileName\":\"/profile/finance/proof.pdf\"}]"; }
 }

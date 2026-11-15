@@ -1,11 +1,13 @@
 ## 本地项目
 
-当前维护范围为客户与合同、待办、成员与组织、角色权限、模块动作、系统设置及低代码流程设计。
-旧项目、采购、财务和仓库模块已经退役，下面的上游介绍和截图仅作历史参考。
+当前维护范围为客户与合同、招聘、人事、财务与回款、提成核算、待办、组织权限、系统设置及低代码流程设计。
+旧项目、采购和仓库等模块已经退役，下面的上游介绍和截图仅作历史参考。
 
 - 前端：安装依赖后运行 npm run dev；发布前运行 npm run audit:source 和 npm run build。
+- 独立移动端：在 `mobile` 目录安装依赖后运行 `npm run dev:h5`，访问 http://localhost:3001/mobile/；H5、小程序构建及业务流程见 [移动端使用与开发说明](mobile/README.md)。
 - 后端：使用 Java 17，通过 back/start-local.bat 或桌面启动脚本启动，脚本负责构建最新 JAR。
 - 当前结构及保留的隐藏入口见 [实现说明](back/docs/implementation-status.md)。
+- 历史业务表瘦身范围、备份与数据库升级见 [清理记录](back/docs/retired-business-cleanup.md)。
 - 通用工具类及动态样式的维护规则见 [前端样式约定](back/docs/frontend-styles.md)。
 - 客户和合同的审批、版本、回款规则见 [客户与合同生命周期](back/docs/customer-contract-lifecycle.md)。
 - 开发脚本与数据生成说明见 [工具说明](back/tools/README.md)。

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="174" height="64" viewBox="0 0 174 64">
+  <defs>
+    <linearGradient id="umm-logo" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#18c5ae"/>
+      <stop offset=".55" stop-color="#0aa99f"/>
+      <stop offset="1" stop-color="#198cb5"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="8" width="48" height="48" rx="14" fill="url(#umm-logo)"/>
+  <path d="M13 22h5v13c0 3.3 1.2 5 3.8 5s3.8-1.7 3.8-5V22h5v13c0 6.4-3.1 9.8-8.8 9.8S13 41.4 13 35Z" fill="#fff"/>
+  <circle cx="34.5" cy="42" r="2.5" fill="#fff"/>
+  <g fill="#123e66" font-family="'Microsoft YaHei','PingFang SC',Arial,sans-serif" font-weight="700">
+    <text x="63" y="27" font-size="23" letter-spacing="2">UMM</text>
+    <text x="63" y="51" font-size="19" letter-spacing="2">加木企服</text>
+  </g>
+</svg>

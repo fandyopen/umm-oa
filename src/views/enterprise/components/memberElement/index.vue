@@ -67,20 +67,22 @@
         </a-popover>
         <a-button ghost type="primary" @click="mitosis" v-hasModuleAction="{ ...moduleMeta, actionCode: 'dismiss', allowUnresolved: !!moduleActionGuard }" :loading="!!moduleActionBusy.mitosis"> 转为离职 </a-button>
       </div>
-      <a-button v-if="canDeleteMembers" type="danger" icon="delete" :disabled="!selectedRowKeys.length" @click="deleteMembers()">删除员工</a-button>
+          <a-button v-if="canAssignRoles" icon="team" :disabled="!selectedRows.length" @click="openRoleAssignment()">批量设置角色{{ selectedRows.length ? '（' + selectedRows.length + '人）' : '' }}</a-button>
+          <a-button v-if="canDeleteMembers" type="danger" icon="delete" :disabled="!selectedRowKeys.length" @click="deleteMembers()">删除员工</a-button>
       <div class="member-filter-pane" v-if="showQueryFilters">
         <a-tree-select v-model="filterDeptId" :tree-data="treeData" :replace-fields="deptFilterFields" placeholder="全部部门" allow-clear show-search tree-default-expand-all class="tw-w-[190px]" @change="handleDeptFilterChange" />
         <a-range-picker v-model="addedDateRange" format="YYYY-MM-DD" :placeholder="['新增开始日期', '新增结束日期']" class="tw-w-[260px]" @change="handleAddedDateChange" />
       </div>
       <div class="earch-input">
-        <a-input-search placeholder="搜索成员" size="small" class="tw-w-[200px]" allow-clear @search="onSearch" />
+        <a-input-search placeholder="手机号 / 姓名 / 员工编号" size="small" class="tw-w-[220px]" allow-clear @search="onSearch" />
       </div>
     </div>
     <div class="member-table-content">
       <div class="member-table">
         <!-- 数据表格 -->
         <s-table ref="table" size="default" rowKey="userId" :columns="visibleColumns" :data="loadData" :rowSelection="rowSelection" :customRow="customRow" :scroll="tableScroll">
-          <span slot="deptAction" slot-scope="text, record" class="dept-action" @click.stop>
+          <span slot="memberAction" slot-scope="text, record" class="dept-action" @click.stop>
+            <a-button v-if="canAssignRoles" type="link" @click.stop="openRoleAssignment(record)">修改角色</a-button>
             <template v-if="showDepartmentActions">
               <a-button v-if="isDepartmentPrincipal(record)" type="link" class="cancel-principal" @click.stop="clearDepartmentPrincipal(record)" :loading="!!moduleActionBusy.clearDepartmentPrincipal">取消主管</a-button>
               <a-button v-else type="link" @click.stop="setDepartmentPrincipal(record)" :loading="!!moduleActionBusy.setDepartmentPrincipal">设为主管</a-button>
@@ -93,7 +95,13 @@
     </div>
     <a-modal :visible="importPreviewVisible" title="通讯录导入预览" :width="1050" :confirm-loading="!!moduleActionBusy.submitMemberImport" ok-text="确认提交" @ok="submitMemberImport" @cancel="importPreviewVisible = false">
       <a-alert type="info" show-icon :message="'校验通过，共 ' + importRows.length + ' 名成员。确认后按邀请成员流程提交；需审批时不会立即创建成员。'" class="tw-mb-4" />
-      <a-table :columns="importColumns" :data-source="importRows" row-key="rowNumber" :pagination="{ pageSize: 8 }" :scroll="{ x: 1030 }" size="small" />
+      <a-table :columns="importColumns" :data-source="importRows" row-key="rowNumber" :pagination="{ pageSize: 8 }" size="small" />
+    </a-modal>
+    <a-modal v-model="roleAssignmentVisible" :title="roleAssignmentTitle" :confirm-loading="roleSaving" :ok-button-props="{ props: { disabled: roleSaving } }" @ok="saveRoleAssignment">
+      <a-alert type="info" show-icon :message="roleAssignmentNotice" class="tw-mb-4" />
+      <a-select v-model="assignedRoleIds" mode="multiple" show-search option-filter-prop="children" :filter-option="filterRole" :loading="rolesLoading" :disabled="roleSaving" placeholder="搜索并选择角色" class="tw-w-full">
+        <a-select-option v-for="role in assignableRoles" :key="role.roleId" :value="role.roleId">{{ role.roleName }}</a-select-option>
+      </a-select>
     </a-modal>
     <!-- 邀请成员弹窗 -->
     <a-modal v-model="isIMmodal" title="邀请成员" width="600px" :footer="null" destroyOnClose>
@@ -180,6 +188,7 @@ import { previewDoc } from '/src/components/Office/office.js'
 import { getUserList, getDismissList, editDeptName, getTreeMenu, addSystemDepchild, setDeptPrincipal, clearDeptPrincipal } from '/src/api/enterprise/index.js'
 import { delDept } from '/src/api/system/dept.js'
 import { delUser } from '/src/api/system/user.js'
+import { getRoleByAdmin, replaceMemberRoles } from '/src/api/enterprise/index.js'
 import SelectDepartmentElement from '../selectDepartmentElement/index.vue'
 import countryCodeSelector from '/src/components/CountryCodeSelector/index.vue'
 import Details from './details.vue'
@@ -242,12 +251,20 @@ export default {
     readOnlyDepartments: {
       type: Boolean,
       default: false
-    }
+    },
+    allowRoleManagement: { type: Boolean, default: false }
   },
   data() {
     return {
       selectedRowKeys: [],
       selectedRows: [],
+      roleAssignmentVisible: false,
+      roleSaving: false,
+      rolesLoading: false,
+      roleAssignmentTarget: [],
+      roleAssignmentBulk: false,
+      assignableRoles: [],
+      assignedRoleIds: [],
       /* 查询参数 */
       UserListParams: {
         orderByColumn: 'create_time',
@@ -287,36 +304,51 @@ export default {
       },
       columns: [
         {
+          title: '员工编号',
+          dataIndex: 'employeeNo',
+          width: 100,
+          align: 'center',
+          ellipsis: true,
+          customRender: text => text || '-'
+        },
+        {
           title: '姓名',
           dataIndex: 'nickName',
-          align: 'center'
+          align: 'center',
+          width: 100,
+          ellipsis: true,
         },
         {
           title: '手机',
           dataIndex: 'phonenumber',
-          align: 'center'
+          align: 'center',
+          width: 120,
+          ellipsis: true,
         },
         {
           title: '邮箱',
           dataIndex: 'email',
-          align: 'center'
+          align: 'center',
+          ellipsis: true,
         },
         {
           title: '部门',
           dataIndex: 'deptName',
           align: 'center',
+          ellipsis: true,
           customRender: (text, record) => record.dept?.deptName || text || '-'
         },
         {
           title: '部门ID',
           dataIndex: 'deptId',
-          width: 100,
+          width: 80,
           align: 'center',
           customRender: (text, record) => text ?? record.dept?.deptId ?? '-'
         },
         {
           title: '新增日期',
           dataIndex: 'createTime',
+          width: 155,
           align: 'center',
           customRender: text => text || '-'
         },
@@ -325,6 +357,8 @@ export default {
           dataIndex: 'roles',
           roleRelated: true,
           align: 'center',
+          width: 150,
+          ellipsis: true,
           customRender: (text, record) => {
             if (text.length > 1) {
               let roles = ''
@@ -335,7 +369,7 @@ export default {
             } else if (text.length === 1) {
               return text[0].roleName
             } else {
-              return ''
+            return '未分配角色'
             }
           }
         },
@@ -343,6 +377,7 @@ export default {
           title: '部门身份',
           dataIndex: 'deptPrincipal',
           roleRelated: true,
+          width: 150,
           align: 'center',
           customRender: text => (Number(text) === 1 ? '部门主管' : '成员')
         }
@@ -422,12 +457,38 @@ export default {
     },
     /* 搜索成员 */
     onSearch(val) {
-      if (val) {
-        this.UserListParams.nickName = val
-      } else {
-        delete this.UserListParams.nickName
-      }
+      if (val) this.UserListParams.keyword = val.trim()
+      else delete this.UserListParams.keyword
       this.$refs.table.refresh(true)
+    },
+    filterRole(input, option) { return String(option.componentOptions.children[0].text || '').toLowerCase().includes(String(input || '').toLowerCase()) },
+    async openRoleAssignment(record) {
+      if (this.title === '离职成员') return
+      this.roleAssignmentTarget = record ? [record] : this.selectedRows.filter(row => Number(row.userId) !== 1)
+      if (!this.roleAssignmentTarget.length) return this.$message.warning('请选择成员')
+      this.roleAssignmentBulk = !record
+      this.rolesLoading = true
+      this.roleAssignmentVisible = true
+      try {
+        const response = await getRoleByAdmin()
+        this.assignableRoles = (response.data.roles || []).filter(role => Number(role.roleId) !== 1)
+        this.assignedRoleIds = record ? (record.roles || []).map(role => Number(role.roleId)).filter(id => this.assignableRoles.some(role => Number(role.roleId) === id)) : []
+      } catch (error) {
+        this.roleAssignmentVisible = false
+        this.$message.error('角色列表加载失败')
+      } finally { this.rolesLoading = false }
+    },
+    async saveRoleAssignment() {
+      if (this.roleSaving) return
+      this.roleSaving = true
+      try {
+        await replaceMemberRoles({ userIds: this.roleAssignmentTarget.map(row => row.userId), roleIds: this.assignedRoleIds })
+        this.roleAssignmentVisible = false
+        this.selectedRowKeys = []
+        this.selectedRows = []
+        this.$refs.table.refresh()
+        this.$message.success('已更新 ' + this.roleAssignmentTarget.length + ' 名成员的角色')
+      } finally { this.roleSaving = false }
     },
     handleDeptFilterChange(value) {
       if (value) {
@@ -816,31 +877,33 @@ export default {
     }
   },
   computed: {
+    roleAssignmentTitle() { return this.roleAssignmentBulk ? '批量设置成员角色' : '修改成员角色' },
+    roleAssignmentNotice() { return this.roleAssignmentBulk ? '将把所选 ' + this.roleAssignmentTarget.length + ' 名成员的现有角色统一替换为下方选择。' : '保存后将替换该成员当前的角色；未选择角色表示移除全部业务角色。' },
     showQueryFilters() {
       return this.title === '全部成员' || this.title === '离职成员'
     },
     visibleColumns() {
       const columns = this.showRoleInfo ? this.columns : this.columns.filter(column => !column.roleRelated)
-      if (!this.showDepartmentActions && !this.canDeleteMembers) {
+      if (!this.showDepartmentActions && !this.canDeleteMembers && !this.canAssignRoles) {
         return columns
       }
-      return columns.concat({
+    return columns.concat({
         title: '操作',
-        key: 'deptAction',
-        width: this.showDepartmentActions && this.canDeleteMembers ? 180 : 140,
-        fixed: 'right',
+        key: 'memberAction',
+        width: (this.showDepartmentActions ? 1 : 0) * 130 + (this.canDeleteMembers ? 90 : 0) + (this.canAssignRoles ? 100 : 0),
+        fixed: this.tableScroll ? 'right' : undefined,
         align: 'center',
-        scopedSlots: { customRender: 'deptAction' }
+        scopedSlots: { customRender: 'memberAction' }
       })
     },
     showDepartmentActions() {
       return Boolean(this.deptId) && this.title !== '全部成员' && this.title !== '离职成员' && this.canManageDepartment
     },
     tableScroll() {
-      return this.showDepartmentActions || this.canDeleteMembers ? { x: 1230 } : {}
+      return window.innerWidth <= 1200 && (this.showDepartmentActions || this.canDeleteMembers || this.canAssignRoles) ? { x: 1020 } : undefined
     },
     rowSelection() {
-      if (!this.canManageMembers) {
+      if (!this.canManageMembers && !this.canAssignRoles) {
         return null
       }
       return {
@@ -852,6 +915,7 @@ export default {
     canDeleteMembers() {
       return (this.$store.getters.roles || []).includes('admin') || (this.$store.getters.permissions || []).includes('*:*:*')
     },
+    canAssignRoles() { return this.allowRoleManagement && this.$store.getters.userPermission?.has_role_manage_perms === true && this.title !== '离职成员' },
     canManageMembers() {
       const permissions = this.$store.getters.permissions || []
       const meta = this.moduleMeta

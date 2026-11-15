@@ -34,11 +34,9 @@ public class HrReportService {
                             for (String key :
                                     List.of(
                                             "salaries",
+                                            "salaryHistory",
                                             "attachments",
-                                            "events",
-                                            "accountName",
-                                            "bankName",
-                                            "bankAccount")) e.remove(key);
+                                            "events")) e.remove(key);
                             e.put("employeeName", e.get("nickName"));
                             return (Map<String, Object>) e;
                         })

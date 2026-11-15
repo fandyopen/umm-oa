@@ -102,6 +102,10 @@ public class DataTableService {
         if (!visited.add(t.name)) return null;
         if (t.columns.containsKey("tenant_id")) return alias + ".`tenant_id`=" + tenant;
         if (DataTableRegistry.GLOBAL.contains(t.name)) return "1=1";
+        // Customer ownership is authoritative. Optional contract/job links must not make
+        // manual financial records disappear, or select an unrelated tenant scope.
+        if (Set.of("oa_finance_record","oa_finance_receivable","oa_finance_collection","oa_recruit_job").contains(t.name) && t.columns.containsKey("customer_id"))
+            return "EXISTS (SELECT 1 FROM oa_merchant " + alias + "m WHERE " + alias + "m.id=" + alias + ".customer_id AND " + alias + "m.tenant_id=" + tenant + ")";
         if (t.name.equals("oa_finance_history")) {
             List<String> terms = new ArrayList<>();
             for (var e : Map.of("record","oa_finance_record","receivable","oa_finance_receivable","collection","oa_finance_collection").entrySet()) {
@@ -202,8 +206,113 @@ public class DataTableService {
         if (c == null || hidden(t,c)) throw new ApiException(400,"无效或不可查询的字段");
         return c;
     }
+    public List<Map<String,Object>> pages() {
+        long tenant = admin().tenantId();
+        var modules = jdbc.queryForList("SELECT module_id,parent_id,module_name,component,path FROM sys_module WHERE tenant_id=? ORDER BY module_id",tenant);
+        Map<String,Map<String,Object>> byId = new HashMap<>();
+        modules.forEach(m -> byId.put(m.get("module_id").toString(),m));
+        List<Map<String,Object>> result = new ArrayList<>();
+        for (var p : DataPageRegistry.PAGES.values()) {
+            Table t = catalog().tables.get(p.table());
+            if (t == null || p.filters().stream().anyMatch(f -> !t.columns.containsKey(f.field()))) continue;
+            Map<String,Object> item = new LinkedHashMap<>();
+            item.put("key",p.key()); item.put("title",p.title()); item.put("component",p.component());
+            item.put("table",p.table()); item.put("note",p.note()); item.put("route",p.route());
+            item.put("filters",p.filters());
+            List<Map<String,Object>> sources = new ArrayList<>();
+            sources.add(Map.of("table",p.table(),"role","主数据来源","note",p.note(),"label",DataTableRegistry.describe(p.table(),"").label()));
+            for (var s : p.sources()) if (catalog().tables.containsKey(s.table()))
+                sources.add(Map.of("table",s.table(),"role",s.role(),"note",s.note(),"label",DataTableRegistry.describe(s.table(),"").label()));
+            item.put("sources",sources);
+            // Resolve renames from stable components. Never guess a source from the submitted title.
+            for (var m : modules) if (p.component().equals(Objects.toString(m.get("component"),""))) {
+                LinkedList<String> names = new LinkedList<>(), paths = new LinkedList<>();
+                Set<String> seen = new HashSet<>(); Map<String,Object> current = m;
+                while (current != null && seen.add(current.get("module_id").toString())) {
+                    names.addFirst(Objects.toString(current.get("module_name"),""));
+                    String path = Objects.toString(current.get("path"),"");
+                    paths.addFirst(path); if (path.startsWith("/")) break;
+                    current = byId.get(Objects.toString(current.get("parent_id"),""));
+                }
+                item.put("currentTitle",String.join(" / ",names));
+                String route = String.join("/",paths).replaceAll("/+","/");
+                if (!route.isBlank()) item.put("route",route.startsWith("/") ? route : "/"+route);
+                break;
+            }
+            item.put("readable",scope(t) != null); result.add(item);
+        }
+        return result;
+    }
+    private DataPageRegistry.Page page(String key, Table t) {
+        var p = DataPageRegistry.PAGES.get(key);
+        if (p == null || !p.table().equals(t.name)) throw new ApiException(400,"业务页面与数据表不匹配");
+        return p;
+    }
+    private String fixedFilters(Table t, List<DataPageRegistry.Filter> filters, List<Object> args) {
+        String sql = "";
+        for (var f : filters) {
+            Column c = visibleColumn(t,f.field());
+            String col = "d." + q(c.name);
+            if (f.op().equals("in")) {
+                sql += " AND " + col + " IN (" + String.join(",",Collections.nCopies(f.values().size(),"?")) + ")";
+                f.values().forEach(v -> args.add(convert(c,v)));
+            } else {
+                sql += " AND " + col + (f.op().equals("ne") ? "<>?" : "=?"); args.add(convert(c,f.values().get(0)));
+            }
+        }
+        return sql;
+    }
+    private record Related(String id, Table table, String column, Object value, List<DataPageRegistry.Filter> filters, String note) {}
+    private List<Related> relations(Table t, Map<String,Object> row) {
+        Map<String,Related> result = new LinkedHashMap<>();
+        for (var r : catalog().relations) {
+            if (r.table().equals(t.name)) addRelated(result,"parent:"+r.table()+":"+r.column(),r.target(),r.targetColumn(),row.get(r.column()),List.of(),r.column()+" → "+r.targetColumn());
+            if (r.target().equals(t.name)) addRelated(result,"child:"+r.table()+":"+r.column(),r.table(),r.column(),row.get(r.targetColumn()),List.of(),r.column()+" = 本条 "+r.targetColumn());
+        }
+        String entity = switch(t.name) { case "oa_finance_record" -> "record"; case "oa_finance_receivable" -> "receivable"; case "oa_finance_collection" -> "collection"; default -> ""; };
+        if (!entity.isEmpty()) addRelated(result,"finance-history","oa_finance_history","entity_id",row.get("id"),
+            List.of(new DataPageRegistry.Filter("entity_type","eq",List.of(entity))),"entity_type="+entity+" 且 entity_id=本条 ID");
+        if (t.name.equals("oa_finance_record")) addRelated(result,"receipt-allocations","oa_commission_allocation","receipt_id",row.get("receipt_id"),List.of(),"使用本条 receipt_id 关联实际到账的提成分配");
+        return new ArrayList<>(result.values());
+    }
+    private void addRelated(Map<String,Related> result, String id, String table, String column, Object value, List<DataPageRegistry.Filter> filters, String note) {
+        Table target = catalog().tables.get(table);
+        if (value != null && target != null && target.columns.containsKey(column) && !hidden(target,target.columns.get(column)) && scope(target) != null)
+            result.put(id,new Related(id,target,column,value,filters,note));
+    }
+    private Map<String,Object> relationContext(String table, Map<String,Object> body, String id) {
+        return Map.of("table",table,"key",object(body,"key"),"version",Objects.toString(body.get("version"),""),"relation",id);
+    }
+    private Related relatedScope(Table target, String encoded) {
+        Map<String,Object> context;
+        try { context = json.readValue(encoded,new TypeReference<>() {}); }
+        catch (Exception e) { throw new ApiException(400,"关联定位格式错误"); }
+        Table origin = table(Objects.toString(context.get("table"),""));
+        var row = current(origin,context,false);
+        return relations(origin,row).stream().filter(r -> r.id.equals(context.get("relation")) && r.table.name.equals(target.name))
+            .findFirst().orElseThrow(() -> new ApiException(400,"关联定位与数据表不匹配"));
+    }
+    public List<Map<String,Object>> related(String name, Map<String,Object> body) {
+        Table t = table(name); var row = current(t,body,false);
+        List<Map<String,Object>> result = new ArrayList<>();
+        for (var r : relations(t,row)) {
+            var context = relationContext(name,body,r.id);
+            Map<String,Object> item = new LinkedHashMap<>();
+            item.put("id",r.id); item.put("table",r.table.name); item.put("label",DataTableRegistry.describe(r.table.name,"").label());
+            item.put("note",r.note); item.put("context",context);
+            var data = rows(r.table.name,Map.of("relationContext",stringify(context),"size","5"));
+            item.putAll(data); result.add(item);
+        }
+        return result;
+    }
     public Map<String,Object> rows(String name, Map<String,String> query) {
         Table t = table(name); String where = requiredScope(t); List<Object> args = new ArrayList<>();
+        if (query.containsKey("pageKey") && !query.get("pageKey").isBlank()) where += fixedFilters(t,page(query.get("pageKey"),t).filters(),args);
+        if (query.containsKey("relationContext") && !query.get("relationContext").isBlank()) {
+            var r = relatedScope(t,query.get("relationContext"));
+            where += " AND d."+q(r.column)+"=?"; args.add(convert(t.columns.get(r.column),r.value));
+            where += fixedFilters(t,r.filters,args);
+        }
         if (query.containsKey("filters") && !query.get("filters").isBlank()) {
             List<Map<String,Object>> filters;
             try { filters = json.readValue(query.get("filters"),new TypeReference<>() {}); }
@@ -259,7 +368,29 @@ public class DataTableService {
     }
     private Map<String,Object> pack(Table t, Map<String,Object> row) {
         Map<String,Object> key = new LinkedHashMap<>(); t.keys.forEach(k -> key.put(k,scalar(row.get(k))));
-        return Map.of("values",snapshot(t,row),"key",key,"version",hash(normalized(row,false)));
+        return Map.of("values",snapshot(t,row),"key",key,"version",hash(normalized(row,false)),"maintenanceBlock",maintenanceBlock(t,row));
+    }
+    private String maintenanceBlock(Table t, Map<String,Object> row) {
+        if (t.name.equals("oa_crm_contract_receipt")) return "实际到账流水请通过财务与回款管理办理退款或到账冲销；整客户清理请使用系统 → 特殊功能";
+        if (t.name.equals("oa_finance_record") && (!"draft".equals(Objects.toString(row.get("status"),"draft")) || row.get("receipt_id") != null
+            || row.get("workflow_request_id") != null || row.get("confirm_time") != null || row.get("confirm_by") != null))
+            return "仅未提交、未入账的财务草稿可直接维护；请到对应业务页面办理撤回、作废、退款或冲销，整客户清理使用系统 → 特殊功能";
+        return "";
+    }
+    private void assertContext(Table t, Map<String,Object> row, Map<String,Object> body) {
+        List<DataPageRegistry.Filter> filters = new ArrayList<>();
+        String pageKey = Objects.toString(body.get("pageKey"),"");
+        if (!pageKey.isBlank()) filters.addAll(page(pageKey,t).filters());
+        String context = Objects.toString(body.get("relationContext"),"");
+        if (!context.isBlank()) {
+            var r = relatedScope(t,context); filters.addAll(r.filters);
+            filters.add(new DataPageRegistry.Filter(r.column,"eq",List.of(r.value.toString())));
+        }
+        for (var f : filters) {
+            Column c = visibleColumn(t,f.field());
+            boolean match = f.values().stream().anyMatch(v -> Objects.equals(Objects.toString(scalar(row.get(c.name)),null),Objects.toString(scalar(convert(c,v)),null)));
+            if ((f.op().equals("ne") && match) || (!f.op().equals("ne") && !match)) throw new ApiException(409,"数据超出当前页面或关联定位范围，请刷新后重试");
+        }
     }
     private Map<String,Object> snapshot(Table t, Map<String,Object> row) {
         Map<String,Object> visible = new LinkedHashMap<>();
@@ -318,7 +449,9 @@ public class DataTableService {
         return row;
     }
     public List<Map<String,Object>> impact(String name,Map<String,Object> body) {
-        Table t = table(name); return references(t,current(t,body,false));
+        Table t = table(name); var row = current(t,body,false); assertContext(t,row,body);
+        String block = maintenanceBlock(t,row); if (!block.isEmpty()) throw new ApiException(409,block);
+        return references(t,row);
     }
     private List<Map<String,Object>> references(Table t, Map<String,Object> row) {
         List<Map<String,Object>> result = new ArrayList<>();
@@ -344,6 +477,10 @@ public class DataTableService {
         Set<String> allowed = writable(t,create,full);
         if (t.keys.isEmpty() || allowed.isEmpty() || (create && !canCreate(t,full))) throw new ApiException(403,"此表不支持当前维护操作");
         Map<String,Object> before = create ? null : current(t,body,true);
+        if (before != null) {
+            assertContext(t,before,body);
+            String block = maintenanceBlock(t,before); if (!block.isEmpty()) throw new ApiException(409,block);
+        }
         Map<String,Object> input = object(body,"values"), values = new LinkedHashMap<>();
         if (input.isEmpty()) throw new ApiException(400,"没有提交修改内容");
         for (var e : input.entrySet()) {
@@ -372,6 +509,8 @@ public class DataTableService {
             }
         }
         Map<String,Object> merged = new LinkedHashMap<>(); if (before != null) merged.putAll(before); merged.putAll(values);
+        assertContext(t,merged,body);
+        String block = maintenanceBlock(t,merged); if (!block.isEmpty()) throw new ApiException(409,block);
         validate(t,merged,create,full);
         Map<String,Object> key = new LinkedHashMap<>();
         if (create) {
@@ -439,7 +578,19 @@ public class DataTableService {
         Table t = table(name); String reason = reason(body);
         if (!canDelete(t,fullMaintenance())) throw new ApiException(403,"此表不支持当前删除操作");
         var before = current(t,body,true);
+        assertContext(t,before,body);
+        String block = maintenanceBlock(t,before); if (!block.isEmpty()) throw new ApiException(409,block);
         if (!references(t,before).isEmpty()) throw new ApiException(409,"存在关联数据，不能直接删除，请先在业务页面处理关联");
+        if (name.equals("oa_finance_record")) {
+            // A pristine draft has no posting/approval side effects. Archive its exclusively owned
+            // polymorphic history in maintenance audit before deleting it, in this same transaction.
+            Table history = table("oa_finance_history");
+            var children = jdbc.queryForList("SELECT " + select(history) + " FROM oa_finance_history d WHERE " + requiredScope(history) + " AND entity_type='record' AND entity_id=? FOR UPDATE",before.get("id"));
+            for (var child : children) {
+                audit(history,"删除",Map.of("id",scalar(child.get("id"))),snapshot(history,child),null,reason);
+                jdbc.update("DELETE FROM oa_finance_history WHERE id=?",child.get("id"));
+            }
+        }
         List<Object> args = new ArrayList<>(); String key = keyWhere(t,object(body,"key"),args);
         jdbc.update("DELETE FROM " + q(name) + " d WHERE " + requiredScope(t) + " AND " + key,args.toArray());
         audit(t,"删除",object(body,"key"),snapshot(t,before),null,reason);

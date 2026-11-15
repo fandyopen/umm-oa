@@ -8,7 +8,7 @@ public final class WorkflowIntegrationRegistry {
     private static final Map<Long, Set<String>> ACTIONS = Map.ofEntries(
             Map.entry(340352L, Set.of("track")),
             Map.entry(340590L, Set.of("add", "edit")),
-            Map.entry(341201L, Set.of("submit", "sign")),
+            Map.entry(341201L, Set.of("submit", "sign", "void", "terminate")),
             Map.entry(341400L, Set.of("invoice_submit", "receipt_confirm", "refund_submit", "adjust_confirm", "cost_confirm")),
             Map.entry(341410L, Set.of("submit")),
             Map.entry(341001L, Set.of("invite", "transfer", "dismiss")),

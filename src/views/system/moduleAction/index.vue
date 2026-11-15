@@ -33,13 +33,14 @@
             {{ String(text) === '0' ? '启用' : '停用' }}
           </a-tag>
         </span>
-        <span slot="handlerKey" slot-scope="text">
-          <a-tag v-if="text" color="geekblue">{{ text }}</a-tag>
+        <span slot="handlerKey" slot-scope="text, record">
+          <a-tag v-if="record.approvalPermissionOnly">仅审批授权</a-tag>
+          <a-tag v-else-if="text" color="geekblue">{{ text }}</a-tag>
           <span v-else class="action-empty">未配置</span>
         </span>
         <span slot="operation" slot-scope="text, record">
-          <a v-if="canManageWorkflow && record.flowDesignEnabled && String(record.status) === '0'" @click="configureWorkflow(record)">流程设计</a>
-          <a-divider v-if="canManageWorkflow && record.flowDesignEnabled && String(record.status) === '0'" type="vertical" />
+          <a v-if="!record.approvalPermissionOnly && canManageWorkflow && record.flowDesignEnabled && String(record.status) === '0'" @click="configureWorkflow(record)">流程设计</a>
+          <a-divider v-if="!record.approvalPermissionOnly && canManageWorkflow && record.flowDesignEnabled && String(record.status) === '0'" type="vertical" />
           <a v-if="canManageStructure || canManageWorkflow" @click="openEdit(record)">修改</a>
           <a-divider v-if="canManageStructure" type="vertical" />
           <a-popconfirm v-if="canManageStructure" title="确认删除该按钮？已有审批记录会保留。" ok-text="删除" cancel-text="取消" @confirm="removeAction(record)">

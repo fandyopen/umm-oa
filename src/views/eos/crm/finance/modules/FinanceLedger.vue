@@ -10,7 +10,7 @@
       <a-button icon="reload" @click="reset">重置</a-button>
       <a-button v-if="showModuleAction('finance', 'add')" type="primary" icon="plus" @click="openReceivable()" v-hasModuleAction="moduleActionBinding('finance', 'add')">新建手工应收</a-button>
     </div>
-    <a-table :loading="loading" :data-source="rows" :pagination="pagination" row-key="sourceKey" :scroll="{ x: 1450 }" size="small" @change="page">
+    <a-table :loading="loading" :data-source="rows" :pagination="pagination" row-key="sourceKey" size="small" @change="page">
       <a-table-column title="客户" data-index="customerName" width="170" /><a-table-column title="应收来源" width="250"
         ><template slot-scope="r"
           >{{ r.manual ? '手工应收' : '生效合同收费节点' }}<small class="subline">{{ r.contractCode || r.sourceEvent }}</small></template

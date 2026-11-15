@@ -7,7 +7,7 @@
     </template>
     <!-- 数据表格 -->
     <no-data index v-show="noData" />
-    <s-table :customRow="rowClick" class="todo-list" :class="{ 'dashboard-table': simple }" v-show="!noData" :data="loadData" ref="table" :size="simple ? 'small' : 'default'" tableLayout="fixed" :scroll="{ x: simple ? 720 : 1100 }" :showPagination="!simple" :rowKey="item => item.taskId || item.id" :columns="columns">
+    <s-table :customRow="rowClick" class="todo-list" :class="{ 'dashboard-table': simple }" v-show="!noData" :data="loadData" ref="table" :size="simple ? 'small' : 'default'" tableLayout="fixed" :showPagination="!simple" :rowKey="item => item.taskId || item.id" :columns="columns">
       <span slot="action" slot-scope="text, item" class="todo-actions">
         <a v-if="isHrReminder(item)" @click.stop="openHrReminder(item)">进入办理</a>
         <a v-else-if="item.businessType === 'crmCustomerFollowup'" @click.stop="openCustomerReminder(item)">跟进客户</a>

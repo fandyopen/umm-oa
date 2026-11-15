@@ -44,13 +44,13 @@ public class CustomerFinanceService {
                 .stream().filter(this::visible).toList();
         Set<Long> ids = new HashSet<>(); customers.forEach(c -> ids.add(id(c.get("id"))));
         List<Map<String, Object>> jobs = JdbcMaps.camelCase(jdbc.queryForList(
-                "SELECT id,title,customer_id,contract_id FROM oa_recruit_job"))
+                "SELECT id,CASE WHEN status='deleted' THEN CONCAT(title,'（职位已删除）') ELSE title END AS title,customer_id,contract_id FROM oa_recruit_job"))
                 .stream().filter(j -> ids.contains(id(j.get("customerId")))).toList();
         List<Map<String, Object>> linkedContracts = JdbcMaps.camelCase(jdbc.queryForList(
                 "SELECT id,name,code,customer_id FROM oa_crm_contract WHERE effective_version>0"))
                 .stream().filter(c -> ids.contains(id(c.get("customerId")))).toList();
         List<Map<String, Object>> owners = JdbcMaps.camelCase(jdbc.queryForList(
-                "SELECT user_id AS id,nick_name AS name FROM sys_user WHERE status='0' AND del_flag='0' ORDER BY nick_name"));
+                "SELECT user_id AS id,nick_name AS name FROM sys_user u WHERE status='0' AND del_flag='0' AND " + com.seal.oa.system.MemberIdentity.condition("u") + " ORDER BY nick_name"));
         return Map.of("customers", customers, "jobs", jobs, "contracts", linkedContracts, "owners", owners, "sources", ledgerRows(Map.of()).stream()
                 .filter(r -> "confirmed".equals(r.get("status"))).toList());
     }
@@ -61,7 +61,7 @@ public class CustomerFinanceService {
         List<Map<String, Object>> result = new ArrayList<>();
         List<Map<String, Object>> records = rawRecords();
         List<Map<String, Object>> terms = JdbcMaps.camelCase(jdbc.queryForList("""
-                SELECT c.id,c.customer_id,c.code,c.name,c.status,c.effective_version,v.snapshot_json,
+                SELECT c.id,c.customer_id,c.code,c.name,c.status,c.effective_version,c.deleted,v.snapshot_json,
                        m.name AS customer_name,m.owner_user_id,m.owner_user_name
                 FROM oa_crm_contract c JOIN oa_merchant m ON m.id=c.customer_id
                 JOIN oa_crm_contract_version v ON v.contract_id=c.id AND v.version_no=c.effective_version
@@ -75,6 +75,7 @@ public class CustomerFinanceService {
                 row.put("contractId", c.get("id")); row.put("termKey", term.get("key"));
                 row.put("contractCode", c.get("code")); row.put("contractName", c.get("name"));
                 row.put("contractStatus", c.get("status")); row.put("effectiveVersion", c.get("effectiveVersion"));
+                row.put("contractDeleted", c.get("deleted"));
                 row.put("customerId", c.get("customerId")); row.put("customerName", c.get("customerName"));
                 row.put("ownerUserName", c.get("ownerUserName")); row.put("ownerUserId", c.get("ownerUserId"));
                 row.put("title", term.get("title")); row.put("amount", term.get("amount")); row.put("dueDate", term.get("dueDate"));
@@ -129,7 +130,11 @@ public class CustomerFinanceService {
     public Map<String, Object> records(String type, Map<String, String> query) {
         if ("receivable".equals(type)) return page(manualRows(query), query);
         validateType(type, true);
-        return page(filteredRecords(type, query), query);
+        Map<String, Object> result = page(filteredRecords(type, query), query);
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> rows = (List<Map<String, Object>>) result.get("rows");
+        decorateSubmission(rows);
+        return result;
     }
 
     private List<Map<String, Object>> manualRows(Map<String, String> query) {
@@ -150,7 +155,7 @@ public class CustomerFinanceService {
     private List<Map<String, Object>> rawRecords() {
         return JdbcMaps.camelCase(jdbc.queryForList("""
                 SELECT r.*,m.name AS customer_name,m.owner_user_id,c.name AS contract_name,c.code AS contract_code,
-                       j.title AS job_title,w.status AS workflow_status,w.process_instance_id AS instance_id,
+                       CASE WHEN j.status='deleted' THEN CONCAT(j.title,'（职位已删除）') ELSE j.title END AS job_title,w.status AS workflow_status,w.process_instance_id AS instance_id,
                        w.process_task_name AS task_name
                 FROM oa_finance_record r JOIN oa_merchant m ON m.id=r.customer_id
                 LEFT JOIN oa_crm_contract c ON c.id=r.contract_id LEFT JOIN oa_recruit_job j ON j.id=r.job_id
@@ -161,7 +166,49 @@ public class CustomerFinanceService {
     public Map<String, Object> detail(long id) {
         Map<String, Object> row = rawRecords().stream().filter(r -> id(r.get("id")) == id).findFirst().orElseThrow(() -> new ApiException(404, "财务记录不存在")); checkCustomer(id(row.get("customerId")));
         row.put("history", JdbcMaps.camelCase(jdbc.queryForList("SELECT * FROM oa_finance_history WHERE entity_type='record' AND entity_id=? ORDER BY id DESC", id)));
+        decorateSubmission(List.of(row));
         return row;
+    }
+
+    /** Read-only guidance uses the same balance rule as the final transactional check. */
+    private void decorateSubmission(List<Map<String, Object>> rows) {
+        List<Map<String, Object>> drafts = rows.stream()
+                .filter(r -> Set.of("receipt", "writeoff").contains(text(r.get("recordType"))))
+                .filter(r -> Set.of("draft", "rejected").contains(text(r.get("status")))).toList();
+        if (drafts.isEmpty()) return;
+        List<Map<String, Object>> sources = ledgerRows(Map.of()), records = rawRecords();
+        for (Map<String, Object> row : drafts) {
+            Map<String, Object> source = sources.stream().filter(s -> sameSource(row, s)).findFirst().orElse(null);
+            if (source == null) {
+                row.put("submissionBlockedReason", "应收节点不存在或不在数据范围内，请检查关联节点");
+                continue;
+            }
+            BigDecimal outstanding = money(source.get("outstandingAmount"));
+            BigDecimal available = money(source.get("receiptAvailable"));
+            row.put("outstandingAmount", outstanding);
+            row.put("receiptAvailable", available);
+            row.put("receiptReservedAmount", outstanding.subtract(available));
+            row.put("submissionBlockedReason", receiptSubmissionReason(row, source, outstanding.subtract(available)));
+            row.put("confirmedReceipts", records.stream().filter(this::visible)
+                    .filter(r -> sameSource(row, r) && "receipt".equals(r.get("recordType")) && "confirmed".equals(r.get("status")))
+                    .map(r -> { Map<String, Object> summary = new LinkedHashMap<>();
+                        for (String key : List.of("id", "amount", "businessDate", "referenceNo")) summary.put(key, r.get(key));
+                        return summary;
+                    }).toList());
+        }
+    }
+
+    private String receiptSubmissionReason(Map<String, Object> row, Map<String, Object> source, BigDecimal reserved) {
+        if(id(source.get("contractDeleted"))>0) return "合同已删除，请先处理退款或冲销使合同重新打开";
+        if (!"confirmed".equals(source.get("status"))) return "请先确认应收";
+        BigDecimal outstanding = money(source.get("outstandingAmount")), amount = money(row.get("amount"));
+        if (outstanding.signum() <= 0) return "该节点已收齐（未收余额为0），当前草稿无法提交；请核对已确认回款，无需保留的草稿可作废";
+        if ("receipt".equals(row.get("recordType")) && "completed".equals(source.get("contractStatus")))
+            return "已结案合同不能继续登记到账";
+        if (amount.compareTo(outstanding) > 0) return "本次金额超过未收余额 " + outstanding.toPlainString() + " 元，请修改金额后提交";
+        if (amount.add(reserved).compareTo(outstanding) > 0)
+            return "待审申请已占用 " + reserved.toPlainString() + " 元，当前可提交金额为 " + outstanding.subtract(reserved).toPlainString() + " 元；请调整金额或等待审批结束";
+        return "";
     }
 
     @Transactional
@@ -372,8 +419,8 @@ public class CustomerFinanceService {
             if (amount.add(used).compareTo(money(source.get("amount"))) > 0) throw new ApiException(409, "累计开票申请不能超过应收金额");
         } else if (Set.of("receipt", "writeoff").contains(type)) {
             for (Map<String, Object> d : others) if (Set.of("receipt", "writeoff").contains(text(d.get("recordType"))) && "approving".equals(d.get("status"))) used = used.add(money(d.get("amount")));
-            if (amount.add(used).compareTo(money(source.get("outstandingAmount"))) > 0) throw new ApiException(409, "金额超过未收余额或已被待审申请占用");
-            if ("receipt".equals(type) && "completed".equals(source.get("contractStatus"))) throw new ApiException(409, "已结案合同不能继续登记到账");
+            String reason = receiptSubmissionReason(row, source, used);
+            if (!reason.isEmpty()) throw new ApiException(409, reason);
         } else {
             Map<String, Object> original = original(row);
             for (Map<String, Object> d : others) if (Set.of("refund", "reversal").contains(text(d.get("recordType"))) && RESERVED.contains(text(d.get("status")))
@@ -433,7 +480,7 @@ public class CustomerFinanceService {
         if (id(row.get("contractId")) > 0) {
             // A refund after close reopens the contract when its receivable is no longer settled.
             if (Set.of("refund", "reversal").contains(text(row.get("recordType"))))
-                jdbc.update("UPDATE oa_crm_contract SET status='active',revision=revision+1,update_time=CURRENT_TIMESTAMP WHERE id=? AND status='completed'", row.get("contractId"));
+                jdbc.update("UPDATE oa_crm_contract SET status=CASE WHEN EXISTS (SELECT 1 FROM oa_crm_contract_history h WHERE h.contract_id=oa_crm_contract.id AND h.action='terminate') THEN 'terminated' ELSE 'active' END,deleted=0,revision=revision+1,update_time=CURRENT_TIMESTAMP WHERE id=? AND status='completed'", row.get("contractId"));
             contracts.syncCustomer(id(row.get("customerId")));
         }
         Map<String, Object> source = "cost".equals(row.get("recordType")) ? Map.of() : source(row, false);
@@ -522,7 +569,7 @@ public class CustomerFinanceService {
     public void collect(Map<String, Object> body) {
         Map<String, Object> source = source(body, true); checkCustomer(id(source.get("customerId")));
         long owner = positiveId(body.get("ownerUserId"));
-        if (count("SELECT COUNT(*) FROM sys_user WHERE user_id=? AND status='0' AND del_flag='0'", owner) == 0) throw new ApiException(400, "请选择在职催收负责人");
+        if (count("SELECT COUNT(*) FROM sys_user u WHERE user_id=? AND status='0' AND del_flag='0' AND " + com.seal.oa.system.MemberIdentity.condition("u"), owner) == 0) throw new ApiException(400, "请选择在职催收负责人");
         String content = required(body.get("content"), 2000, "催收内容");
         boolean close = Boolean.TRUE.equals(body.get("close"));
         if (close) required(body.get("reason"), 1000, "关闭原因");
@@ -558,6 +605,8 @@ public class CustomerFinanceService {
     public Map<String, Object> registerFromContract(long contractId, Map<String, Object> body) {
         Map<String, Object> contract = contracts.detail(contractId);
         checkCustomer(id(contract.get("customerId")));
+        if(id(contract.get("deleted"))>0)throw new ApiException(409,"合同已删除，不能新增回款申请");
+        if(Boolean.TRUE.equals(contract.get("lifecyclePending")))throw new ApiException(409,"合同作废或终止正在审批，请先处理当前申请");
         if ("completed".equals(contract.get("status"))) throw new ApiException(409, "已结案合同不能继续登记回款申请");
         String key = required(body.get("termKey"), 64, "收费节点");
         BigDecimal amount = positiveMoney(body.get("amount"));

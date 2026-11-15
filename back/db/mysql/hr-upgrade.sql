@@ -9,6 +9,8 @@ CREATE TABLE IF NOT EXISTS oa_hr_employee (
     exit_date DATE,
     employment_status VARCHAR(32) NOT NULL DEFAULT 'active',
     employment_type VARCHAR(64),
+    work_province VARCHAR(64) NOT NULL DEFAULT '广东省',
+    work_city VARCHAR(64) NOT NULL DEFAULT '广州市',
     emergency_contact VARCHAR(100),
     emergency_phone VARCHAR(32),
     contract_start DATE,
@@ -21,7 +23,8 @@ CREATE TABLE IF NOT EXISTS oa_hr_employee (
 );
 INSERT INTO oa_hr_employee (user_id, employee_no, employment_status)
 SELECT user_id, CONCAT('EMP', user_id), CASE WHEN del_flag = '2' THEN 'departed' ELSE 'active' END
-FROM sys_user u WHERE del_flag IN ('0','2')
+FROM sys_user u WHERE del_flag IN ('0','2') AND u.user_id<>1
+AND NOT EXISTS (SELECT 1 FROM sys_admin_identity a WHERE a.user_name=u.user_name)
 AND NOT EXISTS (SELECT 1 FROM oa_hr_employee e WHERE e.user_id = u.user_id);
 
 CREATE TABLE IF NOT EXISTS oa_hr_employment_period (
@@ -64,6 +67,11 @@ CREATE TABLE IF NOT EXISTS oa_hr_salary (
     create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (user_id, effective_date)
 );
+-- Keep the approved salary available while a correction is drafted, reviewed or rejected.
+CREATE TABLE IF NOT EXISTS oa_hr_salary_effective (
+    salary_id BIGINT PRIMARY KEY,
+    snapshot_json TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS oa_hr_attachment (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT,
@@ -93,6 +101,20 @@ CREATE TABLE IF NOT EXISTS oa_hr_attendance_row (
     work_date DATE,
     data_json TEXT NOT NULL
 );
+-- Immutable company calculation rules; batches keep independent snapshots in rules_json.
+CREATE TABLE IF NOT EXISTS oa_hr_payroll_rule (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    tenant_id BIGINT NOT NULL,
+    version_no INT NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    effective_month VARCHAR(7) NOT NULL,
+    rules_json TEXT NOT NULL,
+    reason VARCHAR(1000) NOT NULL,
+    create_by BIGINT NOT NULL,
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (tenant_id, version_no)
+);
+
 CREATE TABLE IF NOT EXISTS oa_hr_payroll (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     period VARCHAR(7) NOT NULL,
@@ -122,6 +144,10 @@ CREATE TABLE IF NOT EXISTS oa_hr_payroll_item (
     adjustment DECIMAL(18,2) NOT NULL DEFAULT 0,
     deduction DECIMAL(18,2) NOT NULL DEFAULT 0,
     tax DECIMAL(18,2) NOT NULL DEFAULT 0,
+    tax_entered INT NOT NULL DEFAULT 0,
+    tax_reason VARCHAR(1000),
+    tax_operator_id BIGINT,
+    tax_update_time DATETIME,
     contribution DECIMAL(18,2) NOT NULL DEFAULT 0,
     gross_amount DECIMAL(18,2) NOT NULL,
     net_amount DECIMAL(18,2) NOT NULL,
@@ -163,6 +189,36 @@ CREATE TABLE IF NOT EXISTS oa_hr_handover (
     create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (user_id, business_type, business_id)
 );
+
+SET @hr_sql = (SELECT IF(COUNT(*)=0,'ALTER TABLE oa_hr_employee ADD COLUMN work_province VARCHAR(64) NOT NULL DEFAULT ''广东省''','SELECT 1') FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='oa_hr_employee' AND column_name='work_province');
+PREPARE hr_stmt FROM @hr_sql;
+EXECUTE hr_stmt;
+DEALLOCATE PREPARE hr_stmt;
+SET @hr_sql = (SELECT IF(COUNT(*)=0,'ALTER TABLE oa_hr_employee ADD COLUMN work_city VARCHAR(64) NOT NULL DEFAULT ''广州市''','SELECT 1') FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='oa_hr_employee' AND column_name='work_city');
+PREPARE hr_stmt FROM @hr_sql;
+EXECUTE hr_stmt;
+DEALLOCATE PREPARE hr_stmt;
+SET @hr_sql = (SELECT IF(COUNT(*)=0,'ALTER TABLE oa_hr_payroll_item ADD COLUMN tax_entered INT NOT NULL DEFAULT 0','SELECT 1') FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='oa_hr_payroll_item' AND column_name='tax_entered');
+PREPARE hr_stmt FROM @hr_sql;
+EXECUTE hr_stmt;
+DEALLOCATE PREPARE hr_stmt;
+SET @hr_sql = (SELECT IF(COUNT(*)=0,'ALTER TABLE oa_hr_payroll_item ADD COLUMN tax_reason VARCHAR(1000)','SELECT 1') FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='oa_hr_payroll_item' AND column_name='tax_reason');
+PREPARE hr_stmt FROM @hr_sql;
+EXECUTE hr_stmt;
+DEALLOCATE PREPARE hr_stmt;
+SET @hr_sql = (SELECT IF(COUNT(*)=0,'ALTER TABLE oa_hr_payroll_item ADD COLUMN tax_operator_id BIGINT','SELECT 1') FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='oa_hr_payroll_item' AND column_name='tax_operator_id');
+PREPARE hr_stmt FROM @hr_sql;
+EXECUTE hr_stmt;
+DEALLOCATE PREPARE hr_stmt;
+SET @hr_sql = (SELECT IF(COUNT(*)=0,'ALTER TABLE oa_hr_payroll_item ADD COLUMN tax_update_time DATETIME','SELECT 1') FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='oa_hr_payroll_item' AND column_name='tax_update_time');
+PREPARE hr_stmt FROM @hr_sql;
+EXECUTE hr_stmt;
+DEALLOCATE PREPARE hr_stmt;
+CREATE TABLE IF NOT EXISTS oa_hr_upgrade (upgrade_key VARCHAR(100) PRIMARY KEY);
+UPDATE oa_hr_payroll_item SET tax_entered=1,tax_reason='升级前已核对或已冻结的历史个税'
+WHERE tax_entered=0 AND (tax<>0 OR verified=1 OR payroll_id IN (SELECT id FROM oa_hr_payroll WHERE status IN ('approving','approved')))
+AND NOT EXISTS (SELECT 1 FROM oa_hr_upgrade WHERE upgrade_key='manual_tax_v1');
+INSERT INTO oa_hr_upgrade(upgrade_key) SELECT 'manual_tax_v1' WHERE NOT EXISTS (SELECT 1 FROM oa_hr_upgrade WHERE upgrade_key='manual_tax_v1');
 
 -- Personnel menus: create once; preserve subsequent permission edits.
 INSERT INTO sys_role_module (role_id,module_id) SELECT grants.role_id,341002 FROM (SELECT role_id FROM sys_role WHERE role_id=19) grants WHERE NOT EXISTS (SELECT 1 FROM sys_module WHERE module_id=341002) AND NOT EXISTS (SELECT 1 FROM sys_role_module current_grant WHERE current_grant.role_id=grants.role_id AND current_grant.module_id=341002);

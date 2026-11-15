@@ -1,6 +1,7 @@
 import request from '/src/utils/axios/request.js'
 
 export const listWorkflowConfigurations = params => request({ url: '/system/workflows', method: 'get', params })
+export const listTodoMessageFlows = () => request({ url: '/system/workflows/todo-messages', method: 'get' })
 export const getWorkflowConfiguration = params => request({ url: '/system/workflows/detail', method: 'get', params })
 
 export const getWorkflowCatalogOptions = params => request({ url: '/system/workflows/catalog/options', method: 'get', params })

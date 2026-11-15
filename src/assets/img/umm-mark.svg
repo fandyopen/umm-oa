@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">
+  <defs>
+    <linearGradient id="umm-mark" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#18c5ae"/>
+      <stop offset=".55" stop-color="#0aa99f"/>
+      <stop offset="1" stop-color="#198cb5"/>
+    </linearGradient>
+  </defs>
+  <rect width="48" height="48" rx="14" fill="url(#umm-mark)"/>
+  <path d="M13 14h5v13c0 3.3 1.2 5 3.8 5s3.8-1.7 3.8-5V14h5v13c0 6.4-3.1 9.8-8.8 9.8S13 33.4 13 27Z" fill="#fff"/>
+  <circle cx="34.5" cy="34" r="2.5" fill="#fff"/>
+</svg>

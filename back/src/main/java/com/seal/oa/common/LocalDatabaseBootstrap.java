@@ -48,8 +48,10 @@ public class LocalDatabaseBootstrap implements ApplicationRunner {
             "docs-config.sql",
             "crm-upgrade.sql",
             "crm-menu.sql",
+            "sales-performance-menu.sql",
             "retire-business-modules.sql",
             "customer-contract-schema.sql",
+            "contract-lifecycle.sql",
             "customer-contract-menu.sql",
             "customer-finance-schema.sql",
             "customer-finance-menu.sql",
@@ -60,7 +62,9 @@ public class LocalDatabaseBootstrap implements ApplicationRunner {
             "hr-schema.sql",
             "hr-menu.sql",
             "commission.sql",
-            "data-table-management.sql"
+            "data-table-management.sql",
+            "customer-cleanup.sql",
+            "mobile.sql"
     );
 
     private final DataSource dataSource;

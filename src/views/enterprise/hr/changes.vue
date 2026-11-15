@@ -11,7 +11,7 @@
           ><a-button type="primary" v-if="showModuleAction('changes', 'edit')" @click="open">新建异动</a-button><a-button icon="reload" @click="load">刷新</a-button></a-space
         >
       </div>
-      <a-table :loading="loading" :data-source="rows" row-key="id" :scroll="{ x: 1000 }"
+      <a-table :loading="loading" :data-source="rows" row-key="id"
         ><a-table-column title="员工" data-index="nickName" /><a-table-column title="类型" data-index="eventType"
           ><template slot-scope="v">{{ eventNames[v] || v }}</template></a-table-column
         ><a-table-column title="生效日期" data-index="effectiveDate"
@@ -159,4 +159,4 @@ export default {
   }
 }
 </script>
-<style scoped src="./hr.css"></style>
+<style src="./hr.css"></style>

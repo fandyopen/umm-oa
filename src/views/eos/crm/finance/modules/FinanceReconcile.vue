@@ -14,7 +14,7 @@
         ><template slot-scope="v">{{ money(v) }}</template></a-table-column
       ></a-table
     >
-    <a-table :loading="loading" :data-source="rows" row-key="customerId" :pagination="false" size="small" :scroll="{ x: 1250 }">
+    <a-table :loading="loading" :data-source="rows" row-key="customerId" :pagination="false" size="small">
       <a-table-column title="客户" data-index="customerName" fixed="left" width="180" />
       <a-table-column title="应收" data-index="receivableAmount"
         ><template slot-scope="v">{{ money(v) }}</template></a-table-column

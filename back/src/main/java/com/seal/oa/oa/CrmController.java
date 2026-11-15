@@ -22,6 +22,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -39,19 +40,22 @@ public class CrmController {
     private final ParityRecordService parityRecords;
     private final CrmContractService contracts;
     private final CustomerAccessService customerAccess;
+    private final com.seal.oa.system.CustomerCleanupGate cleanupGate;
 
     public CrmController(
             JdbcTemplate jdbc,
             DataScopeService dataScopeService,
             ParityRecordService parityRecords,
             CrmContractService contracts,
-            CustomerAccessService customerAccess
+            CustomerAccessService customerAccess,
+            com.seal.oa.system.CustomerCleanupGate cleanupGate
     ) {
         this.jdbc = jdbc;
         this.dataScopeService = dataScopeService;
         this.parityRecords = parityRecords;
         this.contracts = contracts;
         this.customerAccess = customerAccess;
+        this.cleanupGate = cleanupGate;
     }
 
     @GetMapping("/analysis/overview")
@@ -119,7 +123,7 @@ public class CrmController {
 
     @Scheduled(cron = "0 0 8 * * ?")
     public void generateDailyRiskTodos() {
-        synchronizeRiskTodos(risks(false), false);
+        cleanupGate.backgroundWrite(() -> synchronizeRiskTodos(risks(false), false));
     }
 
     private List<Map<String, Object>> customerRows(boolean scoped) {
@@ -139,8 +143,14 @@ public class CrmController {
         List<Map<String, Object>> customers = customerRows(scoped);
         List<Map<String, Object>> risks = new ArrayList<>();
         LocalDate today = LocalDate.now();
+        Set<Long> clearedCustomers = new HashSet<>(jdbc.queryForList("""
+                SELECT DISTINCT m.id FROM oa_merchant m JOIN sys_customer_cleanup_history h
+                  ON h.customer_id=m.id AND h.tenant_id=m.tenant_id
+                WHERE h.operation='cleanup' AND h.create_time>=m.update_time
+                """, Long.class));
         for (Map<String, Object> customer : customers) {
             long id = number(customer.get("id"), 0L);
+            if (clearedCustomers.contains(id)) continue;
             long ownerUserId = number(customer.get("ownerUserId"), 0L);
             if (ownerUserId <= 0L || "1".equals(String.valueOf(customer.get("publicPool")))) {
                 continue;

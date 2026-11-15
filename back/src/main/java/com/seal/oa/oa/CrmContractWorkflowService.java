@@ -28,6 +28,15 @@ public class CrmContractWorkflowService {
     }
 
     @Transactional
+    public Map<String,Object> lifecycle(long id,String action,Map<String,Object> body) {
+        var contract=contracts.detail(id);
+        var payload=new LinkedHashMap<String,Object>(body);
+        payload.put("contractId",id);
+        payload.put("title",("void".equals(action)?"合同作废：":"合同终止：")+contract.get("name"));
+        return actions.execute(Map.of("moduleId",341201,"actionCode",action,"payload",payload));
+    }
+
+    @Transactional
     public Map<String, Object> sign(long id, Map<String, Object> body) {
         Map<String, Object> contract = contracts.detail(id);
         Map<String, Object> payload = new LinkedHashMap<>(body);

@@ -3,14 +3,16 @@
     <a-card :bordered="false" class="workflow-management">
       <div class="workflow-heading">
         <div>
-          <h2>审批流程</h2>
-          <p>可先新建并发布审批流程，再关联模块按钮；也可继续从模块管理按钮配置流程。</p>
+          <h2>{{ activeTab === 'approval' ? '审批流程' : '待办消息流程' }}</h2>
+          <p>{{ activeTab === 'approval' ? '可先新建并发布审批流程，再关联模块按钮；也可继续从模块管理按钮配置流程。' : '查看审批节点和业务事件会向成员生成的待办消息。' }}</p>
         </div>
         <a-space>
-          <a-button v-if="canDesign" type="primary" icon="plus" @click="openCreate">新增审批流程</a-button>
-          <a-button icon="reload" :loading="loading" @click="load">刷新</a-button>
+          <a-button v-if="activeTab === 'approval' && canDesign" type="primary" icon="plus" @click="openCreate">新增审批流程</a-button>
+          <a-button icon="reload" :loading="activeTab === 'approval' ? loading : todoLoading" @click="refreshCurrent">刷新</a-button>
         </a-space>
       </div>
+      <a-tabs v-model="activeTab" @change="tabChanged">
+        <a-tab-pane key="approval" tab="审批流程">
       <div class="workflow-stats">
         <span>全部配置 <strong>{{ statistics.total }}</strong></span>
         <span>已生效 <strong class="workflow-stats__active">{{ statistics.active }}</strong></span>
@@ -40,7 +42,7 @@
         :loading="loading"
         :columns="columns"
         :data-source="rows"
-        :scroll="{ x: 1520 }"
+        :scroll="{ x: 1360 }"
         :pagination="{ current: page, pageSize: 15, showTotal: total => '共 ' + total + ' 条配置', onChange: value => page = value }"
       >
         <span slot="module" slot-scope="text"><a-tooltip :title="text">{{ text }}</a-tooltip></span>
@@ -62,6 +64,25 @@
         </span>
         <div slot="emptyText" class="workflow-empty">暂无符合条件的流程配置</div>
       </a-table>
+        </a-tab-pane>
+        <a-tab-pane key="todo" tab="待办消息流程">
+          <a-alert type="info" show-icon class="workflow-error" message="审批待办按已发布并启用的流程配置展示；业务提醒按实际触发条件自动生成，不代表每条记录当前都有待办。" />
+          <a-table
+            row-key="key"
+            size="small"
+            :loading="todoLoading"
+            :columns="todoColumns"
+            :data-source="todoRows"
+            :pagination="{ pageSize: 15, showTotal: total => '共 ' + total + ' 项' }"
+          >
+            <span slot="module" slot-scope="text"><a-tooltip :title="text">{{ text }}</a-tooltip></span>
+            <code slot="code" slot-scope="text">{{ text }}</code>
+            <span slot="type" slot-scope="text"><a-tag :color="text === '审批待办' ? 'blue' : text === '风险提醒' ? 'orange' : 'green'">{{ text }}</a-tag></span>
+            <div slot="trigger" slot-scope="text" class="todo-trigger">{{ text }}</div>
+            <div slot="emptyText" class="workflow-empty">暂无会生成待办消息的流程或业务事件</div>
+          </a-table>
+        </a-tab-pane>
+      </a-tabs>
     </a-card>
     <a-modal title="新增审批流程" :visible="createVisible" :confirm-loading="saving" @ok="create" @cancel="createVisible = false">
       <a-form layout="vertical">
@@ -119,13 +140,14 @@
 
 <script>
 import moment from 'moment'
-import { listWorkflowConfigurations, getWorkflowConfiguration, getWorkflowCatalogOptions, createWorkflowCatalog, associateWorkflowCatalog } from '/src/api/system/workflow.js'
+import { listWorkflowConfigurations, listTodoMessageFlows, getWorkflowConfiguration, getWorkflowCatalogOptions, createWorkflowCatalog, associateWorkflowCatalog } from '/src/api/system/workflow.js'
 import WorkflowPreview from './WorkflowPreview.vue'
 
 export default {
   name: 'WorkflowManage',
   components: { WorkflowPreview },
   data: () => ({
+    activeTab: 'approval', todoRows: [], todoLoading: false, todoLoaded: false,
     query: { keyword: '', module: undefined, source: undefined, state: undefined },
     rows: [], modules: [], statistics: { total: 0, active: 0, draft: 0, closed: 0 },
     createVisible: false, associateVisible: false, saving: false, optionsLoading: false, optionSequence: 0,
@@ -138,14 +160,23 @@ export default {
     ],
     stateColors: { unbound: 'blue', active: 'green', unconfigured: undefined, integration: 'orange', unpublished: 'blue', disabled: 'orange', closed: undefined },
     columns: [
-      { title: '所属模块', dataIndex: 'modulePath', width: 300, ellipsis: true, scopedSlots: { customRender: 'module' } },
-      { title: '流程名称', dataIndex: 'flowName', width: 220, ellipsis: true },
-      { title: '关联按钮 / 表单', dataIndex: 'actionName', width: 180, ellipsis: true },
-      { title: '动作编码', dataIndex: 'actionCode', width: 130, scopedSlots: { customRender: 'code' } },
-      { title: '流程来源', dataIndex: 'source', width: 140, scopedSlots: { customRender: 'source' } },
-      { title: '流程状态', dataIndex: 'state', width: 210, scopedSlots: { customRender: 'state' } },
-      { title: '最近修改时间', dataIndex: 'updateTime', width: 180, scopedSlots: { customRender: 'time' } },
-      { title: '操作', key: 'operation', width: 230, align: 'center', fixed: 'right', scopedSlots: { customRender: 'operation' } }
+      { title: '所属模块', dataIndex: 'modulePath', width: 220, ellipsis: true, scopedSlots: { customRender: 'module' } },
+      { title: '流程名称', dataIndex: 'flowName', width: 180, ellipsis: true },
+      { title: '关联按钮 / 表单', dataIndex: 'actionName', width: 160, ellipsis: true },
+      { title: '动作编码', dataIndex: 'actionCode', width: 110, ellipsis: true, scopedSlots: { customRender: 'code' } },
+      { title: '流程来源', dataIndex: 'source', width: 120, scopedSlots: { customRender: 'source' } },
+      { title: '流程状态', dataIndex: 'state', width: 195, ellipsis: true, scopedSlots: { customRender: 'state' } },
+      { title: '最近修改时间', dataIndex: 'updateTime', width: 175, scopedSlots: { customRender: 'time' } },
+      { title: '操作', key: 'operation', width: 200, align: 'center', fixed: 'right', scopedSlots: { customRender: 'operation' } }
+    ],
+    todoColumns: [
+      { title: '所属模块', dataIndex: 'modulePath', width: 220, ellipsis: true, scopedSlots: { customRender: 'module' } },
+      { title: '流程 / 事件', dataIndex: 'flowName', width: 190, ellipsis: true },
+      { title: '触发入口', dataIndex: 'entryName', width: 160, ellipsis: true },
+      { title: '动作编码', dataIndex: 'actionCode', width: 110, scopedSlots: { customRender: 'code' } },
+      { title: '消息类型', dataIndex: 'messageType', width: 110, scopedSlots: { customRender: 'type' } },
+      { title: '待办接收人', dataIndex: 'recipient', width: 150, ellipsis: true },
+      { title: '触发条件与处理', dataIndex: 'trigger', scopedSlots: { customRender: 'trigger' } }
     ]
   }),
   computed: {
@@ -156,6 +187,17 @@ export default {
   beforeDestroy() { this.sequence++; this.detailSequence++; this.optionSequence++ },
   methods: {
     sourceLabel(source) { return { catalog: '独立配置流程', form: '低代码表单流程', button: '模块按钮流程' }[source] || source },
+    tabChanged(key) { if (key === 'todo' && !this.todoLoaded) this.loadTodoMessages() },
+    refreshCurrent() { return this.activeTab === 'approval' ? this.load() : this.loadTodoMessages() },
+    async loadTodoMessages() {
+      this.todoLoading = true
+      try {
+        const response = await listTodoMessageFlows()
+        this.todoRows = response.data.rows || []
+        this.todoLoaded = true
+      } catch (error) { this.$message.error(error.message || '待办消息流程加载失败') }
+      finally { this.todoLoading = false }
+    },
     async openCreate() {
       this.newFlow = { flowName: '', moduleId: undefined }
       this.createVisible = true
@@ -281,6 +323,7 @@ export default {
 .workflow-management code { font-size: 12px; overflow-wrap: anywhere; }
 .workflow-error, .workflow-detail-hint { margin-bottom: 18px; }
 .workflow-empty { padding: 32px 0; color: #8a94a2; }
+.todo-trigger { white-space: normal; line-height: 1.6; color: #667085; }
 .workflow-detail-info { margin-bottom: 20px; }
 .workflow-draft-setting { color: #758195; font-size: 13px; }
 @media (max-width: 768px) {

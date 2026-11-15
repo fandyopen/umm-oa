@@ -27,8 +27,9 @@
           ><a-select-option v-for="(label, key) in statuses" :key="key">{{ label }}</a-select-option></a-select
         >
         <a-button icon="reload" @click="reset">重置</a-button>
+        <a-checkbox v-model="query.includeDeleted" @change="refresh">包含已删除</a-checkbox>
       </div>
-      <a-table :loading="loading" :columns="columns" :data-source="rows" row-key="id" :pagination="pagination" :scroll="{ x: 1150 }" size="middle" @change="changePage">
+      <a-table :loading="loading" :columns="columns" :data-source="rows" row-key="id" :pagination="pagination" size="middle" @change="changePage">
         <span slot="contract" slot-scope="text, record"
           ><a @click="openDetail(record.id)">{{ text }}</a
           ><small class="subline">{{ record.code }}</small></span
@@ -40,20 +41,17 @@
         <span slot="money" slot-scope="value">{{ money(value) }}</span>
         <span slot="status" slot-scope="value, record"
           ><a-tag :color="statusColors[value]">{{ statuses[value] }}</a-tag
-          ><a-tag v-if="record.signingPending" color="blue">签署审批中</a-tag><small v-if="record.effectiveVersion && !['active', 'completed'].includes(value)" class="subline">V{{ record.effectiveVersion }} 继续生效</small></span
+          ><a-tag v-if="record.deleted">已删除</a-tag><a-tag v-if="record.lifecyclePending" color="orange">作废 / 终止审批中</a-tag><a-tag v-if="record.signingPending" color="blue">签署审批中</a-tag><small v-if="record.effectiveVersion && !['active', 'completed', 'terminated'].includes(value)" class="subline">V{{ record.effectiveVersion }} 继续生效</small></span
         >
         <span slot="action" slot-scope="_, record">
           <a-button type="link" size="small" @click="openDetail(record.id, detailTab)">查看详情</a-button>
-          <a-button
-            v-if="record.status === 'draft' && record.versionNo === 1 && !record.effectiveVersion && showModuleAction('contract', 'remove')"
-            type="link"
-            size="small"
-            @click="remove(record)"
-            v-hasModuleAction="moduleActionBinding('contract', 'remove')"
-            >删除草稿</a-button
-          >
+          <a-dropdown v-if="availableActions(record).length">
+            <a-button type="link" size="small">更多<a-icon type="down" /></a-button>
+            <a-menu slot="overlay"><a-menu-item v-for="item in availableActions(record)" :key="item.action" @click="openLifecycle(record, item.action)">{{ item.label }}</a-menu-item></a-menu>
+          </a-dropdown>
         </span>
       </a-table>
+      <contract-lifecycle-dialog v-if="lifecycleRecord" :record="lifecycleRecord" :action="lifecycleAction" @close="lifecycleRecord = null" @success="load" />
     </a-card>
   </page-header-wrapper>
 </template>
@@ -61,8 +59,9 @@
 <script>
 import { withModuleContexts } from '/src/utils/moduleContext.js'
 import { crmModules } from '/src/views/eos/crm/moduleContexts.js'
-import { listContracts, listContractCustomers, deleteContract, normalizeContractId } from '/src/api/eos/crm/contracts.js'
-import { statuses, statusColors, money } from '../shared.js'
+import { listContracts, listContractCustomers, normalizeContractId } from '/src/api/eos/crm/contracts.js'
+import { contractStatuses, statusColors, money } from '../shared.js'
+import ContractLifecycleDialog from './ContractLifecycleDialog.vue'
 import { contractDetailTabs } from '../navigation.js'
 import ContractForm from './ContractForm.vue'
 import ContractDetail from './ContractDetail.vue'
@@ -77,11 +76,12 @@ export default {
         openForm: { module: 'contract', action: 'add', label: '新建合同' },
         openDetail: { module: 'contract', action: 'view', label: '查看合同详情' },
         openCustomer: { module: 'customer', action: 'view', label: '查看客户详情' },
-        remove: { module: 'contract', action: 'remove', label: '删除草稿' }
+        openLifecycle: function (record, action) { return { module: 'contract', action, label: '合同操作' } }
       }
     )
   ],
   name: 'CrmContractWorkspace',
+  components: { ContractLifecycleDialog },
   data() {
     return {
       loading: false,
@@ -89,11 +89,13 @@ export default {
       total: 0,
       summary: {},
       customers: [],
-      query: { keyword: '', customerId: normalizeContractId(this.$route.query.customerId) || undefined, status: undefined },
+      query: { keyword: '', customerId: normalizeContractId(this.$route.query.customerId) || undefined, status: undefined, includeDeleted: false },
       pageNum: 1,
       pageSize: 20,
       openedContract: '',
-      statuses,
+      lifecycleRecord: null,
+      lifecycleAction: '',
+      statuses: contractStatuses,
       statusColors
     }
   },
@@ -184,7 +186,7 @@ export default {
       this.load()
     },
     reset() {
-      this.query = { keyword: '', customerId: undefined, status: undefined }
+      this.query = { keyword: '', customerId: undefined, status: undefined, includeDeleted: false }
       this.pageNum = 1
       if (Object.keys(this.$route.query).length) this.$router.replace({ path: this.$route.path, query: {} })
       else this.load()
@@ -227,17 +229,10 @@ export default {
         content: { template: CustomerDetail, props: { moduleMeta: this.moduleContexts.customer, formId: Number(id) } }
       })
     },
-    remove(record) {
-      this.$antdconfirm({
-        title: '删除合同草稿',
-        content: `确认删除“${record.name}”？仅未提交过的草稿可删除。`,
-        onOk: async () => {
-          await deleteContract(record.id)
-          this.$message.success('草稿已删除')
-          await this.load()
-        }
-      })
-    }
+    availableActions(record) {
+      return [{ flag: 'canVoid', action: 'void', label: '作废合同' }, { flag: 'canTerminate', action: 'terminate', label: '终止合同' }, { flag: 'canWithdraw', action: 'withdraw', label: '撤回审批' }, { flag: 'canDelete', action: 'remove', label: '删除合同' }].filter(item => record[item.flag] && this.showModuleAction('contract', item.action))
+    },
+    openLifecycle(record, action) { this.lifecycleRecord = record; this.lifecycleAction = action }
   }
 }
 </script>

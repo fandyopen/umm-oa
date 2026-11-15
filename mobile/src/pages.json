@@ -1,0 +1,15 @@
+{
+  "pages": [
+    { "path": "pages/home/index", "style": { "navigationBarTitleText": "工作台" } },
+    { "path": "pages/login/index", "style": { "navigationBarTitleText": "账号登录" } },
+    { "path": "pages/apps/index", "style": { "navigationBarTitleText": "全部应用" } },
+    { "path": "pages/messages/index", "style": { "navigationBarTitleText": "消息提醒" } },
+    { "path": "pages/my/index", "style": { "navigationBarTitleText": "我的" } },
+    { "path": "pages/tasks/index", "style": { "navigationBarTitleText": "我的审批" } },
+    { "path": "pages/task/index", "style": { "navigationBarTitleText": "审批详情" } },
+    { "path": "pages/list/index", "style": { "navigationBarTitleText": "业务列表" } },
+    { "path": "pages/detail/index", "style": { "navigationBarTitleText": "业务详情" } },
+    { "path": "pages/form/index", "style": { "navigationBarTitleText": "业务办理" } }
+  ],
+  "globalStyle": { "navigationStyle": "custom", "backgroundColor": "#f3f9fa", "navigationBarTextStyle": "black" }
+}

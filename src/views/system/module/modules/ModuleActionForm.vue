@@ -15,7 +15,11 @@
       <a-form-model-item label="权限标识" prop="permissionCode">
         <a-input v-model="form.permissionCode" :disabled="!canManageStructure" placeholder="留空自动生成" />
       </a-form-model-item>
-      <a-form-model-item v-if="handlerManaged" label="业务动作">
+      <a-form-model-item v-if="approvalPermissionOnly" label="动作用途">
+        <a-tag>仅审批授权</a-tag>
+        <p class="action-flow-hint">{{ approvalPermissionHint }}</p>
+      </a-form-model-item>
+      <a-form-model-item v-else-if="handlerManaged" label="业务动作">
         <span>{{ businessActionName }}</span>
         <p class="action-flow-hint">由系统关联业务执行器，可直接配置审批流程。</p>
       </a-form-model-item>
@@ -26,11 +30,11 @@
           <a-select-option value="handler">专用业务执行器</a-select-option>
         </a-select>
       </a-form-model-item>
-      <workflow-api-config v-if="!handlerManaged && executionMode === 'api'" ref="apiConfig" v-model="form.configJson" :module-id="moduleId" :disabled="!canManageStructure" />
-      <a-form-model-item v-if="!handlerManaged && executionMode === 'handler'" label="业务执行器" prop="handlerKey">
+      <workflow-api-config v-if="!approvalPermissionOnly && !handlerManaged && executionMode === 'api'" ref="apiConfig" v-model="form.configJson" :module-id="moduleId" :disabled="!canManageStructure" />
+      <a-form-model-item v-if="!approvalPermissionOnly && !handlerManaged && executionMode === 'handler'" label="业务执行器" prop="handlerKey">
         <a-auto-complete v-model="form.handlerKey" :disabled="!canManageStructure" :data-source="handlerKeys" placeholder="选择或输入已注册的执行器" class="tw-w-full" />
       </a-form-model-item>
-      <a-form-model-item v-if="!handlerManaged && executionMode === 'handler'" label="执行器配置" prop="configJson">
+      <a-form-model-item v-if="!approvalPermissionOnly && !handlerManaged && executionMode === 'handler'" label="执行器配置" prop="configJson">
         <a-textarea v-model="form.configJson" :disabled="!canManageStructure" :rows="6" placeholder='例如 {"operation":"invite"}' />
       </a-form-model-item>
       <a-form-model-item label="排序" prop="actionSort">
@@ -39,12 +43,12 @@
       <a-form-model-item label="说明" prop="actionDescription">
         <a-textarea v-model="form.actionDescription" :disabled="!canManageStructure" :max-length="500" :rows="2" />
       </a-form-model-item>
-      <a-form-model-item label="流程设计">
+      <a-form-model-item v-if="!approvalPermissionOnly" label="流程设计">
         <a-switch v-model="form.flowDesignEnabled" :disabled="!canManageWorkflow" checked-children="开启" un-checked-children="关闭" />
         <p class="action-flow-hint">开启仅开放流程设计入口，未配置或仅保存草稿不改变按钮行为。发布并启用审批后，新操作才进入审批；关闭保留流程与历史，已发起的审批继续处理。</p>
         <a-alert v-if="Number(moduleId) === 341201 && form.actionCode === 'submit'" type="warning" show-icon message="合同提交必须审批：关闭流程设计将阻止新提交，不会直接通过。" />
       </a-form-model-item>
-      <a-form-model-item v-if="editing && canManageWorkflow" label="关联已有流程">
+      <a-form-model-item v-if="!approvalPermissionOnly && editing && canManageWorkflow" label="关联已有流程">
         <a-select v-model="selectedWorkflowId" allow-clear :loading="catalogLoading" placeholder="保留当前流程；可选择已发布的独立流程" @change="selectWorkflow">
           <a-select-option v-for="item in catalogWorkflows" :key="item.id" :value="item.id" :disabled="item.processStatus !== 'published' || (!!item.boundActionCode && item.boundActionCode !== form.actionCode)">
             {{ item.flowName }}{{ item.processStatus !== 'published' ? '（未发布）' : item.boundActionCode ? '（已关联）' : '' }}
@@ -94,6 +98,8 @@ export default {
       handlerKeys: [],
       catalogWorkflows: [], catalogLoading: false, selectedWorkflowId: undefined, currentProcessId: '',
       handlerManaged: false,
+      approvalPermissionOnly: false,
+      approvalPermissionHint: '',
       selectedExecutionMode: '',
       businessActionName: '',
       editorSequence: 0,
@@ -123,6 +129,8 @@ export default {
       this.selectedExecutionMode = ''
       this.codeManuallyEdited = false
       this.handlerManaged = false
+      this.approvalPermissionOnly = false
+      this.approvalPermissionHint = ''
       this.businessActionName = ''
       this.moduleId = page.moduleId
       this.moduleName = page.moduleName || '当前页面'
@@ -135,6 +143,8 @@ export default {
       this.editing = true
       this.selectedExecutionMode = ''
       this.handlerManaged = row.handlerManaged === true
+      this.approvalPermissionOnly = row.approvalPermissionOnly === true
+      this.approvalPermissionHint = row.approvalPermissionHint || '仅用于授予审批人办理待办的权限，请在业务提交按钮配置发起流程。'
       this.businessActionName = row.businessActionName || row.actionName
       this.moduleId = row.moduleId
       this.moduleName = row.moduleName || '当前页面'
@@ -142,9 +152,9 @@ export default {
         actionCode: row.actionCode,
         actionName: row.actionName,
         permissionCode: row.permissionCode || '',
-        handlerKey: row.handlerKey || '',
+        handlerKey: this.approvalPermissionOnly ? '' : row.handlerKey || '',
         configJson: row.configJson || '{}',
-        flowDesignEnabled: row.flowDesignEnabled === true || Number(row.flowDesignEnabled) === 1,
+        flowDesignEnabled: !this.approvalPermissionOnly && (row.flowDesignEnabled === true || Number(row.flowDesignEnabled) === 1),
         actionSort: Number(row.actionSort || 0),
         actionDescription: row.actionDescription || '',
         status: String(row.status || '0')
@@ -162,7 +172,7 @@ export default {
     selectWorkflow(id) { if (id) this.form.flowDesignEnabled = true },
     async loadCatalog(sequence) {
       this.catalogWorkflows = []; this.selectedWorkflowId = undefined; this.currentProcessId = ''
-      if (!this.editing || !this.canManageWorkflow) return
+      if (!this.editing || !this.canManageWorkflow || this.approvalPermissionOnly) return
       this.catalogLoading = true
       try {
         const response = await getWorkflowCatalogOptions({ moduleId: this.moduleId })

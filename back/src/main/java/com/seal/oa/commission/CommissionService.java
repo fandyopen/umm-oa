@@ -59,7 +59,7 @@ public class CommissionService {
     }
     Map<String,Object> application(long id) {
         Map<String,Object> r=one("""
-                SELECT a.*,j.customer_id,j.contract_id,j.title AS job_title,m.name AS customer_name,
+                SELECT a.*,j.customer_id,j.contract_id,CASE WHEN j.status='deleted' THEN CONCAT(j.title,'（职位已删除）') ELSE j.title END AS job_title,m.name AS customer_name,
                   m.owner_user_id AS development_user_id,a.consultant_id AS delivery_user_id,t.name AS talent_name,ca.rule_id AS original_rule_id,ca.business_kind AS original_business_kind
                 FROM oa_recruit_application a JOIN oa_recruit_job j ON j.id=a.job_id
                 JOIN oa_merchant m ON m.id=j.customer_id JOIN oa_recruit_talent t ON t.id=a.talent_id
@@ -84,7 +84,7 @@ public class CommissionService {
     public Map<String,Object> options() {
         require("access");
         var applications=rows("""
-                SELECT a.id,a.stage,a.actual_entry_date,a.guarantee_status,j.title AS job_title,
+                SELECT a.id,a.stage,a.actual_entry_date,a.guarantee_status,CASE WHEN j.status='deleted' THEN CONCAT(j.title,'（职位已删除）') ELSE j.title END AS job_title,
                 j.customer_id,j.contract_id,m.name AS customer_name,m.owner_user_id,
                 t.name AS talent_name,a.consultant_id,a.guarantee_term_key,c.id AS attribution_id,c.status AS attribution_status
                 FROM oa_recruit_application a JOIN oa_recruit_job j ON j.id=a.job_id
@@ -95,8 +95,8 @@ public class CommissionService {
         var people=rows("""
                 SELECT u.user_id AS id,u.nick_name AS name,d.dept_name FROM sys_user u
                 JOIN oa_hr_employee e ON e.user_id=u.user_id LEFT JOIN sys_dept d ON d.dept_id=u.dept_id
-                WHERE u.tenant_id=? AND u.del_flag='0' AND u.status='0' ORDER BY u.user_id
-                """,tenant());
+                WHERE u.tenant_id=? AND u.del_flag='0' AND u.status='0' AND %s ORDER BY u.user_id
+                """.formatted(com.seal.oa.system.MemberIdentity.condition("u")),tenant());
         return Map.of("applications",applications,"people",people,"rules",rules(),"receipts",receipts());
     }
     public Map<String,Object> attributionForApplication(long id) {
@@ -151,8 +151,8 @@ public class CommissionService {
             if(share.signum()==0 || !seen.add(side+":"+user)) throw new ApiException(400,"归属人员重复或比例为零");
             var u=one("""
                     SELECT u.user_id,u.nick_name,d.dept_name FROM sys_user u JOIN oa_hr_employee e ON e.user_id=u.user_id
-                    LEFT JOIN sys_dept d ON d.dept_id=u.dept_id WHERE u.user_id=? AND u.tenant_id=? AND u.status='0' AND u.del_flag='0'
-                    """,user,tenant());
+                    LEFT JOIN sys_dept d ON d.dept_id=u.dept_id WHERE u.user_id=? AND u.tenant_id=? AND u.status='0' AND u.del_flag='0' AND %s
+                    """.formatted(com.seal.oa.system.MemberIdentity.condition("u")),user,tenant());
             result.add(Map.of("userId",user,"name",text(u.get("nickName")),"deptName",text(u.get("deptName")),"side",side,"share",share));
             sums.merge(side,share,BigDecimal::add);
         }

@@ -7,7 +7,7 @@
         <a-descriptions bordered :column="2"
           ><a-descriptions-item v-for="field in fields" :key="field.key" :label="field.label">{{ display(field.key) }}</a-descriptions-item></a-descriptions
         >
-        <a-table v-if="kind === 'payroll'" class="tw-mt-4" :data-source="rows" row-key="id" :columns="columns" :scroll="{ x: 1600 }" size="small" />
+        <a-table v-if="kind === 'payroll'" class="tw-mt-4" :data-source="rows" row-key="id" :columns="columns" :scroll="{ x: payrollTableWidth }" size="small" />
         <a-descriptions v-if="kind === 'change'" bordered :column="1" class="tw-mt-4"
           ><a-descriptions-item label="原部门">{{ before.deptName || before.deptId || '—' }}</a-descriptions-item
           ><a-descriptions-item v-if="after.deptId" label="目标部门编号">{{ after.deptId }}</a-descriptions-item></a-descriptions
@@ -70,6 +70,9 @@ export default {
         ].map(([dataIndex, title]) => ({ title, dataIndex, width: 105, customRender: money })),
         { title: '核对说明', dataIndex: 'reason', width: 180 }
       ]
+    },
+    payrollTableWidth() {
+      return this.columns.reduce((width, column) => width + column.width, 0) + this.columns.length * 32
     },
     before() {
       return parseObject(this.detail?.beforeJson || '{}')

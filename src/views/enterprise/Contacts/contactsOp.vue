@@ -120,6 +120,7 @@
           :module-action-visible="showModuleAction"
           :module-meta="moduleContexts.members"
           :hide-department-name-actions="true"
+          :allow-role-management="true"
           v-if="selectedKeys.includes('全部成员') || selectedKeys.includes('离职成员') || deptId"
           :title="mTitle"
           :deptId="deptId"

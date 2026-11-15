@@ -21,7 +21,7 @@ public class OwnerFollowupTodoService {
     public void synchronize(String type, long businessId, Object tenantId, Object owner,
                             String title, boolean eligible, boolean followed) {
         boolean activeOwner = owner != null && jdbc.queryForObject(
-                "SELECT COUNT(*) FROM sys_user WHERE user_id = ? AND status = '0' AND del_flag = '0'",
+                "SELECT COUNT(*) FROM sys_user u WHERE user_id = ? AND status = '0' AND del_flag = '0' AND " + com.seal.oa.system.MemberIdentity.condition("u"),
                 Long.class, owner) > 0;
         if (!eligible || !activeOwner) {
             close(type, businessId, "cancelled");

@@ -216,8 +216,8 @@ for (const user of extraUsers) {
 h2.push('DELETE FROM sys_dept WHERE dept_id BETWEEN 100 AND 104;')
 mysql.push('DELETE FROM sys_dept WHERE dept_id BETWEEN 100 AND 104;')
 
-h2.push("UPDATE sys_tenant SET tenant_name = '海豹科技有限公司' WHERE tenant_id = 1;")
-mysql.push("UPDATE sys_tenant SET tenant_name = '海豹科技有限公司' WHERE tenant_id = 1;")
+h2.push("UPDATE sys_tenant SET tenant_name = 'UMM加木企服' WHERE tenant_id = 1;")
+mysql.push("UPDATE sys_tenant SET tenant_name = 'UMM加木企服' WHERE tenant_id = 1;")
 h2.push('DELETE FROM sys_dept_module;')
 mysql.push('DELETE FROM sys_dept_module;')
 h2.push(`INSERT INTO sys_dept_module (dept_id, module_id)

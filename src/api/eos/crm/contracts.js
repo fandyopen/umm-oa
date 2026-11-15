@@ -17,7 +17,7 @@ export const listContractCustomers = params => request({ url: `${base}/customers
 export const getContract = id => requestContract(id, { method: 'get' })
 export const createContract = data => request({ url: base, method: 'post', data })
 export const updateContract = (id, data) => requestContract(id, { method: 'put', data })
-export const deleteContract = id => requestContract(id, { method: 'delete' })
+export const deleteContract = (id, data) => requestContract(id, { method: 'delete', data })
 export const contractAction = (id, action, data) => requestContract(id, { method: 'post', data }, `/${action}`)
 // Only pre-workflow pending tasks use this compatibility endpoint.
 export const approveLegacyContract = (id, data) => requestContract(id, { method: 'post', data }, '/approve')

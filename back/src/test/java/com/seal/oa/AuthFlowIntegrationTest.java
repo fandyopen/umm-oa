@@ -211,12 +211,12 @@ class AuthFlowIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(404));
 
-        assertEquals(0, count("oa_project"));
-        assertEquals(0, count("oa_contract"));
-        assertEquals(0, count("oa_purchase_apply"));
-        assertEquals(0, count("oa_fund_plan"));
-        assertEquals(0, count("oa_expense"));
-        assertEquals(0, count("oa_warehouse"));
+        assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_name = ?", Integer.class, "oa_project"));
+        assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_name = ?", Integer.class, "oa_contract"));
+        assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_name = ?", Integer.class, "oa_purchase_apply"));
+        assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_name = ?", Integer.class, "oa_fund_plan"));
+        assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_name = ?", Integer.class, "oa_expense"));
+        assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_name = ?", Integer.class, "oa_warehouse"));
     }
 
     @Test

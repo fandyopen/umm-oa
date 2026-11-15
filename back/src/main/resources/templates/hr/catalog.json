@@ -3,7 +3,7 @@
     "employee": {
       "name": "员工档案批量导入模板",
       "title": "批量导入档案",
-      "note": "仅更新已有员工，不新增成员。先“导出档案”获取员工编号和档案版本，再填写本模板；版本必填，档案变更后需重新导出。空白字段保留原值，单人修改或清空字段请在“查看档案”中操作。用工类型填写“填写说明”列出的名称或编码；入职日期须为真实日期。",
+      "note": "仅更新已有员工，不新增成员。先“导出档案”获取员工编号和档案版本，再填写本模板；版本必填，档案变更后需重新导出。空白字段保留原值，单人修改或清空字段请在“查看档案”中操作。用工类型填写“填写说明”列出的名称或编码；入职日期须为真实日期。 工作地使用完整省份、城市名称，如广东省/广州市，省市须匹配；导入留空保留原值。 发薪账户包含开户人、开户银行、银行卡号，银行卡号请使用文本。账户导出需要薪资查看或维护权限，修改导入需要薪资及账户维护权限；空白保留原值。 邮箱选填，导入空白保留原值；填写时须为有效邮箱，最多128个字符，与成员账号邮箱同步。",
       "fields": [
         {
           "key": "employeeNo",
@@ -14,6 +14,12 @@
         {
           "key": "employeeName",
           "label": "员工姓名",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "email",
+          "label": "邮箱",
           "type": "text",
           "required": false
         },
@@ -48,6 +54,18 @@
           "required": false
         },
         {
+          "key": "workProvince",
+          "label": "工作省份",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "workCity",
+          "label": "工作城市",
+          "type": "text",
+          "required": false
+        },
+        {
           "key": "emergencyContact",
           "label": "紧急联系人",
           "type": "text",
@@ -69,6 +87,24 @@
           "key": "contractEnd",
           "label": "合同结束日期",
           "type": "date",
+          "required": false
+        },
+        {
+          "key": "accountName",
+          "label": "开户人",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "bankName",
+          "label": "开户银行",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "bankAccount",
+          "label": "银行卡号",
+          "type": "text",
           "required": false
         }
       ]
@@ -387,7 +423,7 @@
     },
     "payroll": {
       "name": "工资表导出回传模板",
-      "note": "请从具体工资草稿导出。批次、月份、版本、员工编号及基础核算项不能修改。可调整奖金、提成、本期调整、扣款、个税和个人承担项目；正负差额用本期调整。核对说明必填。缺行不会删除原记录，回传前展示差异。",
+      "note": "请从具体工资草稿导出。批次、月份、版本、员工编号及基础核算项不能修改。可调整奖金、提成、本期调整、扣款、个税和个人承担项目；正负差额用本期调整。核对说明必填。缺行不会删除原记录，回传前展示差异。 个税默认0，可按实际申报结果手动修改，不自动计算；回传税额留空按0处理。个税填写状态只用于查看，系统以回传的税额为准。",
       "fields": [
         {
           "key": "batchId",
@@ -470,8 +506,13 @@
         {
           "key": "tax",
           "label": "个人所得税",
-          "type": "number",
-          "required": true
+          "type": "number"
+        },
+        {
+          "key": "taxStatus",
+          "label": "个税填写状态",
+          "type": "text",
+          "required": false
         },
         {
           "key": "contribution",
@@ -609,7 +650,7 @@
     },
     "employeeReport": {
       "name": "员工花名册",
-      "note": "按当前筛选和数据范围导出。任职状态与账号启停分开管理。此报表不包含薪资和银行卡信息；批量更新请使用档案导入模板，并保留本表的员工编号和档案版本。",
+      "note": "按当前筛选和数据范围导出。任职状态与账号启停分开管理。此报表不包含薪资和银行卡信息；批量更新请使用档案导入模板，并保留本表的员工编号和档案版本。 工作地使用完整省份、城市名称，如广东省/广州市，省市须匹配；导入留空保留原值。 发薪账户包含开户人、开户银行、银行卡号，银行卡号请使用文本。账户导出需要薪资查看或维护权限，修改导入需要薪资及账户维护权限；空白保留原值。",
       "fields": [
         {
           "key": "employeeNo",
@@ -678,6 +719,18 @@
           "required": false
         },
         {
+          "key": "workProvince",
+          "label": "工作省份",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "workCity",
+          "label": "工作城市",
+          "type": "text",
+          "required": false
+        },
+        {
           "key": "contractStart",
           "label": "劳动合同开始",
           "type": "date",
@@ -687,6 +740,36 @@
           "key": "contractEnd",
           "label": "劳动合同结束",
           "type": "date",
+          "required": false
+        },
+        {
+          "key": "emergencyContact",
+          "label": "紧急联系人",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "emergencyPhone",
+          "label": "紧急联系电话",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "accountName",
+          "label": "开户人",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "bankName",
+          "label": "开户银行",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "bankAccount",
+          "label": "银行卡号",
+          "type": "text",
           "required": false
         }
       ]
@@ -891,7 +974,7 @@
     },
     "payslip": {
       "name": "员工工资条报表",
-      "note": "个人工资条仅展示本人已发布记录。实际已付单独列示，查看工资条不代表已到账。工资调整回传请使用具体草稿导出的工资表。",
+      "note": "个人工资条仅展示本人已发布记录。实际已付单独列示，查看工资条不代表已到账。工资调整回传请使用具体草稿导出的工资表。 个税默认0，可按实际申报结果手动修改，不自动计算；回传税额留空按0处理。个税填写状态只用于查看，系统以回传的税额为准。",
       "fields": [
         {
           "key": "period",
@@ -974,7 +1057,12 @@
         {
           "key": "tax",
           "label": "个人所得税",
-          "type": "money",
+          "type": "money"
+        },
+        {
+          "key": "taxStatus",
+          "label": "个税填写状态",
+          "type": "text",
           "required": false
         },
         {
@@ -1091,8 +1179,7 @@
         {
           "key": "tax",
           "label": "个人所得税",
-          "type": "money",
-          "required": false
+          "type": "money"
         },
         {
           "key": "contribution",
@@ -1311,6 +1398,27 @@
     "leaveId": [
       "审批编号",
       "审批实例ID"
+    ],
+    "accountName": [
+      "开户姓名",
+      "收款人",
+      "开户人姓名"
+    ],
+    "bankName": [
+      "开户行",
+      "银行名称"
+    ],
+    "bankAccount": [
+      "银行账号",
+      "银行账户",
+      "收款账号"
+    ],
+    "email": [
+      "电子邮箱",
+      "电子邮件",
+      "Email",
+      "E-mail",
+      "email"
     ]
   }
 }

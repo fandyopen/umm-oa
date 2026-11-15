@@ -216,4 +216,143 @@ class DataTableIntegrationTest {
         assertEquals("路由名称",DataTableRegistry.fieldLabel("route_name",null));
         assertEquals("future_unknown_field",DataTableRegistry.fieldLabel("future_unknown_field",null));
     }
+
+    long finance(String type, long owner, String status) {
+        String token=UUID.randomUUID().toString();
+        jdbc.update("INSERT INTO oa_finance_record(record_type,customer_id,amount,status,create_token) VALUES(?,?,10,?,?)",type,owner,status,token);
+        return jdbc.queryForObject("SELECT id FROM oa_finance_record WHERE create_token=?",Long.class,token);
+    }
+    Map<String,Object> financeRow(long id) throws Exception { return rows("oa_finance_record",Map.of("filters",filter("id",id))).get(0); }
+    @SuppressWarnings("unchecked") List<Map<String,Object>> relatedRows(Map<String,Object> group) { return (List<Map<String,Object>>)group.get("rows"); }
+
+    @Test void pageProfilesUseStableComponentsAndRetainDefaultTitleAliases() throws Exception {
+        jdbc.update("UPDATE sys_module SET module_name='实际到账登记' WHERE component='eos/crm/finance/receipt' AND tenant_id=1");
+        var p=service.pages().stream().filter(x->x.get("key").equals("finance-receipt")).findFirst().orElseThrow();
+        assertTrue(p.get("title").toString().contains("回款登记"));
+        assertTrue(p.get("currentTitle").toString().contains("实际到账登记"));
+        assertEquals("oa_finance_record",p.get("table")); assertEquals("/finance/receipt",p.get("route"));
+        assertTrue(service.pages().stream().anyMatch(x->x.get("title").toString().contains("员工考勤表")));
+        for (var profile : service.pages()) {
+            // Every registered profile must execute against this project's actual schema.
+            service.rows(profile.get("table").toString(),Map.of("pageKey",profile.get("key").toString(),"size","1"));
+        }
+        String catalog=json.writeValueAsString(service.pages());
+        assertTrue(catalog.contains("收费节点")); assertTrue(catalog.contains("payload_json"));
+    }
+    @Test void pageScopesAreServerEnforcedAndCannotMixOtherBusinessesOrTenants() throws Exception {
+        long receipt=finance("receipt",customer,"draft"); finance("invoice",customer,"draft"); finance("receipt",foreignCustomer,"draft");
+        var all=rows("oa_finance_record",Map.of("pageKey","finance-receipt"));
+        assertTrue(all.stream().anyMatch(x->values(x).get("id").equals(""+receipt)));
+        assertTrue(all.stream().allMatch(x->values(x).get("record_type").equals("receipt")));
+        assertFalse(all.stream().anyMatch(x->values(x).get("customer_id").equals(""+foreignCustomer)));
+        assertTrue(rows("oa_finance_record",Map.of("pageKey","finance-receipt","filters",filter("record_type","invoice"))).isEmpty());
+        assertThrows(ApiException.class,()->service.rows("sys_user",Map.of("pageKey","finance-receipt")));
+        assertThrows(ApiException.class,()->service.rows("oa_finance_record",Map.of("pageKey","finance-receipt OR 1=1")));
+        finance("writeoff",customer,"draft"); finance("reversal",customer,"draft");
+        assertTrue(rows("oa_finance_record",Map.of("pageKey","finance-adjustment")).stream().allMatch(x->Set.of("writeoff","reversal").contains(values(x).get("record_type"))));
+    }
+    @Test void opportunityProfileUsesCurrentPayloadTableAndContractsExcludeLogicalDeletes() throws Exception {
+        jdbc.update("INSERT INTO biz_record(tenant_id,module,business_key,payload_json) VALUES(1,'/project/business/list','dt-opportunity','{}')");
+        jdbc.update("INSERT INTO biz_record(tenant_id,module,business_key,payload_json) VALUES(1,'/other/list','dt-other','{}')");
+        assertTrue(rows("biz_record",Map.of("pageKey","opportunities")).stream().allMatch(x->values(x).get("module").equals("/project/business/list")));
+        assertEquals("biz_record",service.pages().stream().filter(x->x.get("key").equals("opportunities")).findFirst().orElseThrow().get("table"));
+        jdbc.update("INSERT INTO oa_crm_contract(tenant_id,customer_id,code,name,service_type,start_date,end_date,terms_json,deleted) VALUES(1,?,'DT-DELETED','已删除测试合同','recruit','2026-01-01','2026-12-31','[]',1)",customer);
+        long id=jdbc.queryForObject("SELECT id FROM oa_crm_contract WHERE code='DT-DELETED'",Long.class);
+        assertFalse(rows("oa_crm_contract",Map.of("pageKey","contracts")).stream().anyMatch(x->values(x).get("id").equals(""+id)));
+        assertEquals(1,rows("oa_crm_contract",Map.of("filters",filter("id",id))).size());
+    }
+    @Test void exactReceiptAssociationUsesReceiptIdAndHistoryIncludesDiscriminator() throws Exception {
+        long id=finance("receipt",customer,"draft");
+        long contract=90000123, receipt=90000456;
+        jdbc.update("INSERT INTO oa_crm_contract(id,tenant_id,customer_id,code,name,service_type,start_date,end_date,terms_json) VALUES(?,1,?,'DT-RELATION','测试合同','recruit','2026-01-01','2026-12-31','[]')",contract,customer);
+        for(long receiptId : List.of(receipt,id)) jdbc.update("INSERT INTO oa_crm_contract_receipt(id,contract_id,term_key,amount,receipt_date) VALUES(?,?,'term',10,'2026-11-01')",receiptId,contract);
+        jdbc.update("UPDATE oa_finance_record SET contract_id=?,receipt_id=?,status='confirmed' WHERE id=?",contract,receipt,id);
+        jdbc.update("INSERT INTO oa_finance_history(entity_type,entity_id,action,content) VALUES('record',?,'save','正确历史')",id);
+        jdbc.update("INSERT INTO oa_finance_history(entity_type,entity_id,action,content) VALUES('receivable',?,'save','同ID不同业务')",id);
+        jdbc.update("INSERT INTO oa_finance_history(entity_type,entity_id,action,content) VALUES('record',?,'save','其他记录')",id+1);
+        var row=financeRow(id); var groups=service.related("oa_finance_record",body(row,Map.of()));
+        var receipts=groups.stream().filter(g->g.get("table").equals("oa_crm_contract_receipt") && g.get("note").toString().startsWith("receipt_id")).findFirst().orElseThrow();
+        assertEquals(""+receipt,values(relatedRows(receipts).get(0)).get("id")); assertEquals(1L,receipts.get("total"));
+        full(); var actual=relatedRows(receipts).get(0);
+        assertEquals(409,assertThrows(ApiException.class,()->service.delete("oa_crm_contract_receipt",body(actual,Map.of()))).code());
+        var history=groups.stream().filter(g->g.get("id").equals("finance-history")).findFirst().orElseThrow();
+        assertEquals(1L,history.get("total")); assertEquals("正确历史",values(relatedRows(history).get(0)).get("content"));
+        String context=json.writeValueAsString(history.get("context"));
+        assertEquals(1L,service.rows("oa_finance_history",Map.of("relationContext",context,"page","1","size","1")).get("total"));
+        assertTrue(rows("oa_finance_history",Map.of("relationContext",context,"filters",filter("entity_type","receivable"))).isEmpty());
+        assertThrows(ApiException.class,()->service.rows("sys_user",Map.of("relationContext",context)));
+    }
+    @Test void relatedNavigationIsScopedRedactedPaginatedAndRejectsStaleOrigins() throws Exception {
+        full(); var parent=rows("oa_merchant",Map.of("filters",filter("id",customer))).get(0);
+        for(int n=0;n<7;n++) jdbc.update("INSERT INTO oa_merchant_contact(merchant_id,name) VALUES(?,?)",customer,"联系人"+n);
+        jdbc.update("INSERT INTO oa_merchant_contact(merchant_id,name) VALUES(?,'外部联系人')",foreignCustomer);
+        var group=service.related("oa_merchant",body(parent,Map.of())).stream().filter(g->g.get("table").equals("oa_merchant_contact")).findFirst().orElseThrow();
+        assertEquals(7L,group.get("total")); assertEquals(5,relatedRows(group).size());
+        String context=json.writeValueAsString(group.get("context"));
+        assertEquals(2,rows("oa_merchant_contact",Map.of("relationContext",context,"size","5","page","2")).size());
+        var forged=new HashMap<>(body(parent,Map.of())); forged.put("key",Map.of("id",foreignCustomer));
+        assertEquals(404,assertThrows(ApiException.class,()->service.related("oa_merchant",forged)).code());
+        jdbc.update("UPDATE oa_merchant SET remark='已变化' WHERE id=?",customer);
+        assertEquals(409,assertThrows(ApiException.class,()->service.rows("oa_merchant_contact",Map.of("relationContext",context))).code());
+        var employee=rows("sys_user",Map.of("filters",filter("user_id",limitedAdmin))).get(0);
+        String output=json.writeValueAsString(service.related("sys_user",body(employee,Map.of())));
+        assertFalse(output.contains("$2a$")); assertFalse(output.contains("\"password\""));
+    }
+    @Test void pageScopedWritesRejectOutsideRowsAndChangesToLockedBusinessType() throws Exception {
+        full(); long receipt=finance("receipt",customer,"draft"),invoice=finance("invoice",customer,"draft");
+        var wrong=body(financeRow(invoice),Map.of()); wrong.put("pageKey","finance-receipt");
+        assertEquals(409,assertThrows(ApiException.class,()->service.delete("oa_finance_record",wrong)).code());
+        var change=body(financeRow(receipt),Map.of("record_type","invoice")); change.put("pageKey","finance-receipt");
+        assertEquals(409,assertThrows(ApiException.class,()->service.save("oa_finance_record",change,false)).code());
+        assertEquals("receipt",jdbc.queryForObject("SELECT record_type FROM oa_finance_record WHERE id=?",String.class,receipt));
+    }
+    @Test void confirmedOrSubmittedFinanceCannotBeRawDeletedEvenByFullAdmin() throws Exception {
+        full();
+        for(String status:List.of("confirmed","approving","approved","rejected","void")) {
+            var row=financeRow(finance("receipt",customer,status));
+            assertFalse(row.get("maintenanceBlock").toString().isBlank());
+            assertEquals(409,assertThrows(ApiException.class,()->service.delete("oa_finance_record",body(row,Map.of()))).code());
+            assertEquals(409,assertThrows(ApiException.class,()->service.save("oa_finance_record",body(row,Map.of("status","draft")),false)).code());
+        }
+        var row=financeRow(finance("receipt",customer,"draft"));
+        assertEquals(409,assertThrows(ApiException.class,()->service.save("oa_finance_record",body(row,Map.of("status","confirmed")),false)).code());
+        long request=90000567;
+        jdbc.update("INSERT INTO oa_workflow_request(id,tenant_id,module_id,action_code,title) VALUES(?,1,341403,'submit','测试审批')",request);
+        jdbc.update("UPDATE oa_finance_record SET workflow_request_id=? WHERE id=?",request,values(row).get("id"));
+        final var submitted=financeRow(Long.parseLong(values(row).get("id").toString()));
+        assertEquals(409,assertThrows(ApiException.class,()->service.delete("oa_finance_record",body(submitted,Map.of()))).code());
+    }
+    @Test void pristineDraftDeleteArchivesOnlyItsOwnHistoryAndKeepsMaintenanceAudit() throws Exception {
+        full(); long id=finance("receipt",customer,"draft"),other=finance("receipt",customer,"draft");
+        jdbc.update("INSERT INTO oa_finance_history(entity_type,entity_id,action,content) VALUES('record',?,'save','需保留审计的草稿历史')",id);
+        jdbc.update("INSERT INTO oa_finance_history(entity_type,entity_id,action,content) VALUES('record',?,'save','其他草稿历史')",other);
+        jdbc.update("INSERT INTO oa_finance_history(entity_type,entity_id,action,content) VALUES('receivable',?,'save','另一业务历史')",id);
+        var b=body(financeRow(id),Map.of()); b.put("pageKey","finance-receipt"); service.delete("oa_finance_record",b);
+        assertEquals(0L,jdbc.queryForObject("SELECT COUNT(*) FROM oa_finance_record WHERE id=?",Long.class,id));
+        assertEquals(0L,jdbc.queryForObject("SELECT COUNT(*) FROM oa_finance_history WHERE entity_type='record' AND entity_id=?",Long.class,id));
+        assertEquals(1L,jdbc.queryForObject("SELECT COUNT(*) FROM oa_finance_history WHERE entity_type='record' AND entity_id=?",Long.class,other));
+        assertEquals(1L,jdbc.queryForObject("SELECT COUNT(*) FROM oa_finance_history WHERE entity_type='receivable' AND entity_id=?",Long.class,id));
+        assertTrue(json.writeValueAsString(service.history("oa_finance_history",1,20)).contains("需保留审计的草稿历史"));
+        assertEquals(1L,service.history("oa_finance_record",1,20).get("total"));
+    }
+    @Test void draftWithReferencesCannotBeDeletedAndItsHistoryIsNotRemoved() throws Exception {
+        full(); long id=finance("receipt",customer,"draft"),refund=finance("refund",customer,"draft");
+        jdbc.update("UPDATE oa_finance_record SET original_record_id=? WHERE id=?",id,refund);
+        jdbc.update("INSERT INTO oa_finance_history(entity_type,entity_id,action,content) VALUES('record',?,'save','仍保留')",id);
+        var row=financeRow(id);
+        assertFalse(service.impact("oa_finance_record",body(row,Map.of())).isEmpty());
+        assertEquals(409,assertThrows(ApiException.class,()->service.delete("oa_finance_record",body(row,Map.of()))).code());
+        assertEquals(1L,jdbc.queryForObject("SELECT COUNT(*) FROM oa_finance_history WHERE entity_type='record' AND entity_id=?",Long.class,id));
+    }
+    @Test void rawDraftCreationUsesDatabaseDefaultsAndRelatedEditsCannotMoveToAnotherParent() throws Exception {
+        full();
+        var created=service.save("oa_finance_record",body(null,Map.of("record_type","receipt","customer_id",customer,"amount","5.00","create_token",UUID.randomUUID().toString())),true);
+        assertEquals("draft",values(created).get("status"));
+        var parent=rows("oa_merchant",Map.of("filters",filter("id",customer))).get(0);
+        var group=service.related("oa_merchant",body(parent,Map.of())).stream().filter(g->g.get("table").equals("oa_finance_record")).findFirst().orElseThrow();
+        long another=insert("INSERT INTO oa_merchant(tenant_id,name) VALUES(1,'另一个客户')");
+        var move=body(created,Map.of("customer_id",another)); move.put("relationContext",json.writeValueAsString(group.get("context")));
+        assertEquals(409,assertThrows(ApiException.class,()->service.save("oa_finance_record",move,false)).code());
+        assertEquals(""+customer,values(financeRow(Long.parseLong(values(created).get("id").toString()))).get("customer_id"));
+    }
 }

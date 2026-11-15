@@ -13,17 +13,17 @@
         >
       </div>
       <div class="hr-toolbar">
-        <a-input-search v-model="query.keyword" placeholder="工号 / 姓名 / 手机" class="tw-w-[260px]" @search="load" /><a-select v-model="query.status" allow-clear placeholder="任职状态" class="tw-w-[140px]" @change="load"
+        <a-input-search v-model="query.keyword" placeholder="手机号 / 姓名 / 员工编号" class="tw-w-[280px]" @search="load" /><a-select v-model="query.status" allow-clear placeholder="任职状态" class="tw-w-[140px]" @change="load"
           ><a-select-option value="active">在职</a-select-option><a-select-option value="leaving">待离职</a-select-option><a-select-option value="departed">已离职</a-select-option></a-select
         ><a-button icon="reload" @click="load">刷新</a-button>
         <a-button v-if="showModuleAction('employees', 'export') && (showModuleAction('employees', 'salary_view') || showModuleAction('employees', 'salary_manage'))" icon="export" @click="exportSalaries">导出薪资标准</a-button>
         <a-button v-if="showModuleAction('employees', 'export')" icon="export" @click="exportEmployees">导出档案</a-button>
       </div>
-      <a-table :loading="loading" :data-source="rows" row-key="userId" :pagination="{ pageSize: 15 }" :scroll="{ x: 1100 }"
+      <a-table :loading="loading" :data-source="rows" row-key="userId" :pagination="{ pageSize: 15 }"
         ><a-table-column title="员工编号" data-index="employeeNo" /><a-table-column title="姓名" data-index="nickName" /><a-table-column title="部门" data-index="deptName" /><a-table-column
           title="手机"
           data-index="phonenumber"
-        /><a-table-column title="入职日期" data-index="entryDate"
+        /><a-table-column title="工作地"><template slot-scope="_, row">{{ row.workProvince }} / {{ row.workCity }}</template></a-table-column><a-table-column title="入职日期" data-index="entryDate"
           ><template slot-scope="value">{{ dateText(value) }}</template></a-table-column
         ><a-table-column title="状态"
           ><template slot-scope="_, row"
@@ -66,12 +66,18 @@
                     <div v-if="employmentTypeNeedsReview" class="employment-type-warning">历史用工类型尚未归类，请核对后重新选择；未修改时保留原值。</div>
                     <div v-if="employmentTypesError" class="employment-type-warning">{{ employmentTypesError }} <a @click="loadTypes">重试</a></div>
                   </template>
+                  <a-select v-else-if="field.key === 'workProvince'" v-model="employee.workProvince" show-search option-filter-prop="children" placeholder="请选择工作省份" :loading="locationsLoading" @change="changeWorkProvince">
+                    <a-select-option v-for="p in workLocations" :key="p.name" :value="p.name">{{ p.name }}</a-select-option>
+                  </a-select>
+                  <a-select v-else-if="field.key === 'workCity'" v-model="employee.workCity" show-search option-filter-prop="children" placeholder="请选择工作城市" :disabled="!workCities.length">
+                    <a-select-option v-for="city in workCities" :key="city" :value="city">{{ city }}</a-select-option>
+                  </a-select>
                   <a-input v-else v-model="employee[field.key]" :max-length="field.max || 100"
                 /></a-form-model-item></div></a-form-model
-            ><a-button v-if="showModuleAction('employees', 'edit')" type="primary" :loading="saving" @click="save">保存档案</a-button></a-tab-pane
+            ><a-alert v-if="locationsError" type="error" :message="locationsError" class="tw-mb-4"><a slot="description" @click="loadLocations">点击重新加载工作地选项</a></a-alert><a-button v-if="showModuleAction('employees', 'edit')" type="primary" :loading="saving" @click="save">保存档案</a-button></a-tab-pane
           >
           <a-tab-pane v-if="employee.salaryVisible" key="salary" tab="薪资标准"
-            ><a-alert type="info" show-icon message="定薪、调薪新增生效版本，工资按所属期间自动取值。已生效标准不可覆盖。" class="tw-mb-4" /><a-space class="tw-mb-4"
+            ><a-alert type="info" show-icon message="工资取所属月份月底之前最新已确认的薪资标准。同月多条取最后生效的一条。已确认标准可修改并重新提交，生效前继续使用原标准；调薪请新增生效版本。" class="tw-mb-4" /><a-space class="tw-mb-4"
               ><a-button
                 v-if="showModuleAction('employees', 'salary_manage')"
                 type="primary"
@@ -89,14 +95,22 @@
               ><a-table-column title="工资标准" data-index="baseAmount" /><a-table-column title="月固定补贴" data-index="allowance" /><a-table-column title="原因" data-index="reason" /><a-table-column
                 title="状态"
                 data-index="status"
-                ><template slot-scope="value">{{ statusNames[value] }}</template></a-table-column
+                ><template slot-scope="value, row">{{ statusNames[value] }}<div v-if="row.confirmedSalary" class="salary-correction-tip">更正未生效，仍按原标准 {{ row.confirmedSalary.baseAmount }} 元核算</div></template></a-table-column
               ><a-table-column title="操作"
                 ><template slot-scope="_, row"
-                  ><a-button v-if="['draft', 'rejected'].includes(row.status) && showModuleAction('employees', 'salary_manage')" type="link" @click="editSalary(row)">编辑</a-button
-                  ><a-button v-if="['draft', 'rejected'].includes(row.status) && showModuleAction('employees', 'salary_submit')" type="link" @click="submitSalary(row)">提交生效审批</a-button></template
+                  ><a-button v-if="['draft', 'rejected', 'confirmed'].includes(row.status) && showModuleAction('employees', 'salary_manage')" type="link" @click="editSalary(row)">修改</a-button
+                  ><a-button v-if="['draft', 'rejected'].includes(row.status) && showModuleAction('employees', 'salary_submit')" type="link" @click="submitSalary(row)">提交薪资审批</a-button></template
                 ></a-table-column
               ></a-table
-            ></a-tab-pane
+            ><a-collapse v-if="employee.salaryHistory && employee.salaryHistory.length" class="tw-mt-4">
+              <a-collapse-panel key="history" header="薪资修改与审批记录">
+                <a-timeline><a-timeline-item v-for="(record, index) in employee.salaryHistory" :key="index">
+                  <strong>{{ record.action }} · {{ dateText(record.createTime) }}</strong>
+                  <div v-if="record.detail.before && record.detail.after">原标准：{{ record.detail.before.baseAmount }} 元，补贴 {{ record.detail.before.allowance }} 元 → 修改为：{{ record.detail.after.baseAmount }} 元，补贴 {{ record.detail.after.allowance }} 元；原因：{{ record.detail.after.reason }}</div>
+                  <div v-else-if="record.detail.approvedSalary">生效标准：{{ record.detail.approvedSalary.baseAmount }} 元，补贴 {{ record.detail.approvedSalary.allowance }} 元</div>
+                </a-timeline-item></a-timeline>
+              </a-collapse-panel>
+            </a-collapse></a-tab-pane
           >
           <a-tab-pane v-if="employee.salaryVisible" key="payAccount" tab="发薪账户"
             ><a-form-model layout="vertical"
@@ -125,9 +139,9 @@
         </a-tabs>
       </template>
     </a-drawer>
-    <a-modal v-model="salaryVisible" title="新增薪资生效版本" :confirm-loading="saving" @ok="saveSalary"
-      ><a-form-model layout="vertical"
-        ><a-form-model-item label="生效日期"><a-date-picker v-model="salaryForm.effectiveDate" format="YYYY-MM-DD" value-format="YYYY-MM-DD" class="tw-w-full" /></a-form-model-item
+    <a-modal v-model="salaryVisible" :title="salaryForm.id ? '修改薪资标准' : '新增薪资生效版本'" :confirm-loading="saving" @ok="saveSalary"
+      ><a-alert v-if="salaryForm.status === 'confirmed' || salaryForm.confirmedSalary" type="info" show-icon message="保存后需重新提交生效。审批通过前继续使用原标准，已生成工资需重新核算才会更新。生效日期保持原值，调薪请新增版本。" class="tw-mb-4" /><a-form-model layout="vertical"
+        ><a-form-model-item label="生效日期"><a-date-picker v-model="salaryForm.effectiveDate" :disabled="salaryForm.status === 'confirmed' || !!salaryForm.confirmedSalary" format="YYYY-MM-DD" value-format="YYYY-MM-DD" class="tw-w-full" /></a-form-model-item
         ><a-form-model-item label="计薪方式"
           ><a-select v-model="salaryForm.payType"><a-select-option value="monthly">月薪</a-select-option><a-select-option value="daily">日薪</a-select-option></a-select></a-form-model-item
         ><a-form-model-item label="工资标准（元）"><a-input-number v-model="salaryForm.baseAmount" :min="0" :precision="2" class="tw-w-full" /></a-form-model-item
@@ -160,6 +174,9 @@ export default {
     employmentTypes: [],
     loadingTypes: false,
     employmentTypesError: '',
+    workLocations: [],
+    locationsLoading: false,
+    locationsError: '',
     tab: 'profile',
     salaryVisible: false,
     salaryForm: {},
@@ -169,9 +186,12 @@ export default {
     profileFields: [
       { key: 'employeeNo', label: '员工编号', max: 64 },
       { key: 'dingtalkUserId', label: '钉钉人员ID', max: 128 },
+      { key: 'email', label: '邮箱', max: 128 },
       { key: 'entryDate', label: '入职日期', date: true },
       { key: 'regularDate', label: '转正日期', date: true },
       { key: 'employmentType', label: '用工类型' },
+      { key: 'workProvince', label: '工作地 · 省份' },
+      { key: 'workCity', label: '工作地 · 城市' },
       { key: 'emergencyContact', label: '紧急联系人' },
       { key: 'emergencyPhone', label: '紧急联系电话', max: 32 },
       { key: 'contractStart', label: '劳动合同开始', date: true },
@@ -179,17 +199,35 @@ export default {
     ]
   }),
   computed: {
+    workCities() {
+      return this.workLocations.find(p => p.name === this.employee?.workProvince)?.cities || []
+    },
     employmentTypeNeedsReview() {
       return !!this.employee?.employmentType && !this.employmentTypes.some(option => option.value === this.employee.employmentType) && !this.loadingTypes && !this.employmentTypesError
     }
   },
   mounted() {
     this.loadTypes()
+    this.loadLocations()
     this.load()
     if (this.$route.query.userId) this.open({ userId: this.$route.query.userId })
   },
   methods: {
     dateText,
+    async loadLocations() {
+      this.locationsLoading = true
+      this.locationsError = ''
+      try {
+        this.workLocations = (await hr('/employees/work-locations')).data || []
+      } catch (error) {
+        this.locationsError = '工作地选项加载失败，请重试'
+      } finally {
+        this.locationsLoading = false
+      }
+    },
+    changeWorkProvince() {
+      this.employee.workCity = undefined
+    },
     async loadTypes() {
       this.loadingTypes = true
       this.employmentTypesError = ''
@@ -225,6 +263,7 @@ export default {
     },
     async save() {
       const accountOnly = this.tab === 'payAccount'
+      if (!accountOnly && (!this.employee.workProvince || !this.employee.workCity)) return this.$message.warning('请选择完整的工作地省份和城市')
       if (!(await this.checkModuleAction({ module: 'employees', action: accountOnly ? 'salary_manage' : 'edit', label: accountOnly ? '保存发薪账户' : '保存档案' }))) return
       this.saving = true
       try {
@@ -254,7 +293,7 @@ export default {
       }
     },
     async submitSalary(row) {
-      const response = await this.submitConfiguredAction('salary_submit', { salaryId: row.id, revision: row.revision, title: '员工定薪 / 调薪审批' }, '提交薪资生效')
+      const response = await this.submitConfiguredAction('salary_submit', { salaryId: row.id, revision: row.revision, title: '员工薪资审批' }, '提交薪资审批')
       if (!response) return
       this.setEmployee((await hr('/employees/' + this.employee.userId)).data)
       this.$message.success('已按审批配置提交或生效')
@@ -295,12 +334,17 @@ export default {
   }
 }
 </script>
-<style scoped src="./hr.css"></style>
+<style src="./hr.css"></style>
 <style scoped>
 .employment-type-warning {
   margin-top: 4px;
   color: #ad6800;
   font-size: 12px;
   line-height: 1.6;
+}
+.salary-correction-tip {
+  margin-top: 4px;
+  color: #ad6800;
+  font-size: 12px;
 }
 </style>

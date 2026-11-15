@@ -36,6 +36,16 @@ public class ModuleActionService {
     private static final List<ActionDefinition> ADD_EDIT_REMOVE = List.of(ADD, EDIT, REMOVE);
     private static final List<ActionDefinition> REMOVE_EXPORT = List.of(REMOVE, EXPORT);
 
+    // These actions authorize completion of approval tasks; they never initiate a workflow.
+    private record ApprovalPermission(String name, String previousName, String initiators) {}
+    private static final Map<Long, ApprovalPermission> APPROVAL_PERMISSIONS = Map.of(
+            341002L, new ApprovalPermission("薪资审批权限", "审批薪资标准", "员工档案的“提交薪资审批”"),
+            341003L, new ApprovalPermission("人事异动审批权限", "审批人事异动", "人事异动的“提交人事异动”"),
+            341005L, new ApprovalPermission("工资审批权限", "审批工资", "工资管理的“提交工资审批”"),
+            341410L, new ApprovalPermission("提成审批权限", "审批提成", "提成核算的“提交提成核算”"),
+            341400L, new ApprovalPermission("财务审批权限", "办理财务审批或退回", "客户财务的开票提交、回款确认、退款提交、账款调整或成本确认"),
+            341202L, new ApprovalPermission("合同审批权限", "审批", "合同列表的提交审批、签署生效、作废或终止合同"));
+
     private static final Set<Long> MANAGE_ONLY_MODULES = Set.of(
             340597L,
             340771L,
@@ -54,17 +64,17 @@ public class ModuleActionService {
 
     private static final Map<Long, List<ActionDefinition>> MODULE_ACTIONS = Map.ofEntries(
             Map.entry(340773L, List.of(new ActionDefinition("design", "流程设计"))),
-            Map.entry(341002L, List.of(EDIT, EXPORT, new ActionDefinition("salary_view", "查看薪资与发薪账户"), new ActionDefinition("salary_manage", "维护薪资与发薪账户"), new ActionDefinition("salary_submit", "提交定薪调薪", "hr.salary.submit"), new ActionDefinition("approve", "审批薪资标准"))),
-            Map.entry(341003L, List.of(EDIT, EXPORT, new ActionDefinition("submit", "提交人事异动", "hr.change.submit"), new ActionDefinition("approve", "审批人事异动"), new ActionDefinition("handover", "办理离职交接"))),
-            Map.entry(341004L, List.of(EXPORT, new ActionDefinition("import", "导入钉钉考勤"), new ActionDefinition("confirm", "确认考勤"))),
-            Map.entry(341005L, List.of(EDIT, EXPORT, new ActionDefinition("generate", "生成或重算工资"), new ActionDefinition("submit", "提交工资审批", "hr.payroll.submit"), new ActionDefinition("approve", "审批工资"), new ActionDefinition("publish", "发布工资条"), new ActionDefinition("pay", "登记工资发放"))),
+            Map.entry(341002L, List.of(EDIT, EXPORT, new ActionDefinition("salary_view", "查看薪资与发薪账户"), new ActionDefinition("salary_manage", "维护薪资与发薪账户"), new ActionDefinition("salary_submit", "提交薪资审批", "hr.salary.submit"), new ActionDefinition("approve", "薪资审批权限"))),
+            Map.entry(341003L, List.of(EDIT, EXPORT, new ActionDefinition("submit", "提交人事异动", "hr.change.submit"), new ActionDefinition("approve", "人事异动审批权限"), new ActionDefinition("handover", "办理离职交接"))),
+            Map.entry(341004L, List.of(EDIT, EXPORT, new ActionDefinition("generate", "生成正常考勤"), new ActionDefinition("import", "导入考勤"), new ActionDefinition("confirm", "确认考勤"))),
+            Map.entry(341005L, List.of(EDIT, EXPORT, new ActionDefinition("generate", "生成或重算工资"), new ActionDefinition("rule_manage", "维护公司计薪规则"), new ActionDefinition("submit", "提交工资审批", "hr.payroll.submit"), new ActionDefinition("approve", "工资审批权限"), new ActionDefinition("publish", "发布工资条"), new ActionDefinition("pay", "登记工资发放"))),
             Map.entry(341006L, List.of()),
             Map.entry(341409L, List.of(EXPORT, new ActionDefinition("pay", "登记工资发放"))),
             Map.entry(341410L, List.of(
                     new ActionDefinition("rule", "维护提成规则"), new ActionDefinition("attribute", "确认业绩归属"),
                     new ActionDefinition("allocate", "分摊实际回款"), new ActionDefinition("generate", "生成或重算提成"),
                     new ActionDefinition("submit", "提交提成核算", "commission.batch.submit"),
-                    new ActionDefinition("approve", "审批提成"), new ActionDefinition("payroll", "纳入工资"),
+                    new ActionDefinition("approve", "提成审批权限"), new ActionDefinition("payroll", "纳入工资"),
                     new ActionDefinition("void", "作废未批准核算"), EXPORT)),
             Map.entry(341301L, List.of(ADD, EDIT, REMOVE, EXPORT,
                     new ActionDefinition("import", "批量导入"), new ActionDefinition("copy", "复制职位"),
@@ -84,8 +94,8 @@ public class ModuleActionService {
                     new ActionDefinition("feedback", "登记客户反馈"), new ActionDefinition("interview", "安排面试"),
                     new ActionDefinition("offer", "管理Offer"), new ActionDefinition("entry", "登记入职"),
                     new ActionDefinition("guarantee", "保证期管理"), new ActionDefinition("exception", "异常处理"))),
-            Map.entry(341201L, List.of(ADD, EDIT, REMOVE, new ActionDefinition("submit", "提交审批", "crm.contract.submit"), new ActionDefinition("sign", "签署生效", "crm.contract.sign"))),
-            Map.entry(341202L, List.of(new ActionDefinition("approve", "审批"))),
+            Map.entry(341201L, List.of(ADD, EDIT, REMOVE, new ActionDefinition("submit", "提交审批", "crm.contract.submit"), new ActionDefinition("sign", "签署生效", "crm.contract.sign"), new ActionDefinition("void","作废合同","crm.contract.void"),new ActionDefinition("terminate","终止合同","crm.contract.terminate"),new ActionDefinition("withdraw","撤回审批"))),
+            Map.entry(341202L, List.of(new ActionDefinition("approve", "合同审批权限"))),
             Map.entry(341203L, List.of(new ActionDefinition("receive", "登记回款"))),
             Map.entry(341204L, List.of(EDIT)),
             Map.entry(341205L, List.of(new ActionDefinition("handle", "处理提醒"))),
@@ -96,12 +106,13 @@ public class ModuleActionService {
                     new ActionDefinition("refund_submit", "提交退款审批", "crm.finance.refund_submit"),
                     new ActionDefinition("adjust_confirm", "提交核销或冲销", "crm.finance.adjust_confirm"),
                     new ActionDefinition("cost_confirm", "确认成本", "crm.finance.cost_confirm"),
-                    new ActionDefinition("approve", "办理财务审批或退回"),
+                    new ActionDefinition("approve", "财务审批权限"),
                     new ActionDefinition("invoice_issue", "登记实际开票"), new ActionDefinition("refund_pay", "登记实际退款"),
                     new ActionDefinition("void", "作废财务记录"), new ActionDefinition("collect", "登记催收计划"),
                     new ActionDefinition("reconcile", "查看对账报表"))),
             Map.entry(340590L, List.of(ADD, EDIT, REMOVE, TRACK)),
             Map.entry(340644L, ADD_EDIT_REMOVE),
+            Map.entry(341112L, List.of()),
             Map.entry(340352L, List.of(ADD, EDIT, REMOVE, EXPORT, TRACK)),
             Map.entry(340314L, CRUD_ACTIONS),
             Map.entry(340315L, CRUD_ACTIONS),
@@ -164,17 +175,63 @@ public class ModuleActionService {
         );
         mergeDuplicateHrRole();
         applyDefaultRoleActions("hr_archive_actions_v1",19L,341002L,List.of("edit","export","salary_view","salary_manage","salary_submit"));
+        migrateSalaryActionLabels();
+        migrateApprovalPermissionLabels();
         applyDefaultRoleActions("hr_change_actions_v1",19L,341003L,List.of("edit","export","submit","handover"));
         applyDefaultRoleActions("hr_attendance_actions_v1",19L,341004L,List.of("import","confirm","export"));
+        migrateAttendanceActions();
         applyDefaultRoleActions("hr_payroll_actions_v1",19L,341005L,List.of("generate","edit","export","submit","publish"));
+        migratePayrollRuleActions();
         for(Long financeRole:jdbc.queryForList("SELECT DISTINCT role_id FROM sys_role_module_action WHERE module_id=341400 AND action_code='refund_pay'",Long.class))
             applyDefaultRoleActions("hr_finance_pay_"+financeRole+"_v1",financeRole,341409L,List.of("pay","export"));
         migrateWorkflowAdministration();
         migrateWorkflowOverview();
         migrateContractNavigation();
         migrateContractSigning();
+        if(!migrationApplied("contract_lifecycle_actions_v1")) {
+            for(var action:MODULE_ACTIONS.get(341201L))if(Set.of("void","terminate","withdraw").contains(action.code()))
+                insertAction(341201L,action,"module:341201:"+action.code());
+            jdbc.update("INSERT INTO sys_permission_migration(migration_key) VALUES ('contract_lifecycle_actions_v1')");
+        }
         migrateGenericFollowup();
         migrateOpportunitySubmission();
+    }
+
+    private void migrateSalaryActionLabels() {
+        String key = "hr_salary_action_labels_v1";
+        if (migrationApplied(key)) return;
+        // Rename the previous defaults once; preserve custom labels, grants and workflow settings.
+        jdbc.update("UPDATE sys_module_action SET action_name='提交薪资审批',update_time=CURRENT_TIMESTAMP"
+                + " WHERE module_id=341002 AND action_code='salary_submit' AND action_name='提交定薪调薪'");
+        jdbc.update("UPDATE sys_module_action SET action_name='薪资审批权限',update_time=CURRENT_TIMESTAMP"
+                + " WHERE module_id=341002 AND action_code='approve' AND action_name='审批薪资标准'");
+        jdbc.update("INSERT INTO sys_permission_migration(migration_key) VALUES (?)", key);
+    }
+
+    private void migrateApprovalPermissionLabels() {
+        String key = "approval_permission_labels_v1";
+        if (migrationApplied(key)) return;
+        APPROVAL_PERMISSIONS.forEach((moduleId, permission) -> jdbc.update("""
+                UPDATE sys_module_action SET action_name=?,update_time=CURRENT_TIMESTAMP
+                WHERE module_id=? AND action_code='approve' AND action_name=?
+                """, permission.name(), moduleId, permission.previousName()));
+        jdbc.update("INSERT INTO sys_permission_migration(migration_key) VALUES (?)", key);
+    }
+
+    private void migratePayrollRuleActions() {
+        String key = "hr_payroll_rule_actions_v1";
+        if (migrationApplied(key)) return;
+        insertAction(341005L, new ActionDefinition("rule_manage", "维护公司计薪规则"), "module:341005:rule_manage");
+        applyDefaultRoleActions(key, 19L, 341005L, List.of("rule_manage"));
+    }
+
+    private void migrateAttendanceActions() {
+        String key = "hr_attendance_generate_edit_actions_v2";
+        if (migrationApplied(key)) return;
+        insertAction(341004L, new ActionDefinition("generate", "生成正常考勤"), "module:341004:generate");
+        insertAction(341004L, EDIT, "module:341004:edit");
+        // Add permissions only after the corresponding action records exist. Existing role choices remain intact.
+        applyDefaultRoleActions(key, 19L, 341004L, List.of("generate", "edit"));
     }
 
     private void migrateOpportunitySubmission() {
@@ -333,7 +390,8 @@ public class ModuleActionService {
 
     public List<Map<String, Object>> workflowActions(long moduleId) {
         return actionRows(moduleId, "a.status = '0' AND a.handler_key IS NOT NULL AND TRIM(a.handler_key) <> ''",
-                "a.action_sort, a.action_code");
+                "a.action_sort, a.action_code").stream()
+                .filter(row -> !Boolean.TRUE.equals(row.get("approvalPermissionOnly"))).toList();
     }
 
     public Map<String, Object> action(long moduleId, String actionCode) {
@@ -819,7 +877,8 @@ public class ModuleActionService {
             describeBusinessAction(row);
             boolean designEnabled = enabled(row.get("flowDesignEnabled"));
             row.put("flowDesignEnabled", designEnabled);
-            row.put("workflowState", !designEnabled ? "未开启"
+            row.put("workflowState", Boolean.TRUE.equals(row.get("approvalPermissionOnly")) ? "仅审批授权"
+                    : !designEnabled ? "未开启"
                     : text(row.get("handlerKey")).isBlank() ? "待接入"
                     : text(row.get("processDesignId")).isBlank() ? "未配置"
                     : !"published".equals(text(row.get("processStatus"))) ? "未发布"
@@ -829,6 +888,7 @@ public class ModuleActionService {
     }
 
     public void requireFlowDesign(long moduleId, String actionCode) {
+        requireWorkflowInitiator(moduleId, actionCode);
         Map<String, Object> action = action(moduleId, actionCode);
         if (action.isEmpty()) throw new ApiException(400, "请选择真实存在的按钮，流程只能配置在按钮级别");
         if (!enabled(action.get("flowDesignEnabled"))) {
@@ -840,6 +900,9 @@ public class ModuleActionService {
 
     private void validateConfiguration(long moduleId, String actionCode, Map<String, Object> values) {
         String handlerKey = text(values.get("handlerKey"));
+        if (isApprovalPermissionOnly(moduleId, actionCode)
+                && (!handlerKey.isBlank() || enabled(values.get("flowDesignEnabled"))))
+            requireWorkflowInitiator(moduleId, actionCode);
         ActionDefinition businessAction = MODULE_ACTIONS.getOrDefault(moduleId, List.of()).stream()
                 .filter(item -> item.code().equals(actionCode)).findFirst().orElse(null);
         if (businessAction != null && businessAction.handlerKey() != null
@@ -866,12 +929,30 @@ public class ModuleActionService {
                 .anyMatch(item -> item.code().equals(actionCode) && item.handlerKey() != null && !item.handlerKey().isBlank());
     }
 
+    public static boolean isApprovalPermissionOnly(long moduleId, String actionCode) {
+        return "approve".equals(actionCode) && APPROVAL_PERMISSIONS.containsKey(moduleId);
+    }
+
+    private void requireWorkflowInitiator(long moduleId, String actionCode) {
+        if (isApprovalPermissionOnly(moduleId, actionCode))
+            throw new ApiException(400, approvalPermissionHint(moduleId));
+    }
+
+    private static String approvalPermissionHint(long moduleId) {
+        ApprovalPermission permission = APPROVAL_PERMISSIONS.get(moduleId);
+        return permission == null ? "" : "该动作仅审批授权，授予审批人办理待办的权限。发起流程请配置"
+                + permission.initiators() + "按钮。";
+    }
+
     public static boolean enabled(Object value) {
         return Boolean.TRUE.equals(value) || "true".equalsIgnoreCase(String.valueOf(value))
                 || "1".equals(String.valueOf(value));
     }
 
     private void describeBusinessAction(Map<String, Object> row) {
+        row.put("approvalPermissionOnly", isApprovalPermissionOnly(longValue(row.get("moduleId")), text(row.get("actionCode"))));
+        if (Boolean.TRUE.equals(row.get("approvalPermissionOnly")))
+            row.put("approvalPermissionHint", approvalPermissionHint(longValue(row.get("moduleId"))));
         ActionDefinition definition = MODULE_ACTIONS.getOrDefault(longValue(row.get("moduleId")), List.of()).stream()
                 .filter(item -> item.code().equals(text(row.get("actionCode"))))
                 .filter(item -> item.handlerKey() != null && !item.handlerKey().isBlank()).findFirst().orElse(null);
@@ -880,6 +961,7 @@ public class ModuleActionService {
     }
 
     public void requireWorkflowExecution(long moduleId, String actionCode) {
+        requireWorkflowInitiator(moduleId, actionCode);
         Map<String, Object> action = action(moduleId, actionCode);
         if (text(action.get("handlerKey")).isBlank()) {
             throw new ApiException(400, "该按钮尚未接入业务执行器，可先保存流程草稿，接入后再发布启用审批");

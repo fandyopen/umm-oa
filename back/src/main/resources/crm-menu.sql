@@ -55,3 +55,4 @@ WHERE source.module_id = 340644
       SELECT 1 FROM sys_role_module existing
       WHERE existing.role_id = source.role_id AND existing.module_id = 341101
   );
+

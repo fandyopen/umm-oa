@@ -55,6 +55,58 @@ const record = overrides => component(base + 'modules/FinanceRecords.vue', { rec
 const proof = () => ({ name: 'receipt.pdf', status: 'done', fileName: '/profile/receipt.pdf' })
 const textOf = node => node ? (node.text || '') + (node.children || []).map(textOf).join('') : ''
 
+test('blocked receipt never submits or automatically voids its draft', async () => {
+  const { vm, requests, messages } = record()
+  let submissions = 0
+  vm.submitConfiguredAction = async () => { submissions++ }
+  await vm.submitWorkflow({ id: 3, recordType: 'receipt', status: 'draft', revision: 3, submissionBlockedReason: '该节点已收齐，当前草稿无法提交' })
+  assert.equal(submissions, 0)
+  assert.equal(requests.length, 0)
+  assert.match(messages[0].text, /已收齐/)
+  vm.$destroy()
+})
+
+test('receipt refreshes balance before submission and stops when another receipt consumed it', async () => {
+  const latest = { id: 3, recordType: 'receipt', status: 'draft', revision: 3, submissionBlockedReason: '待审申请已占用余额' }
+  const { vm, messages } = record({
+    getFinanceRecord: async () => ({ data: latest }),
+    listFinanceRecords: async () => ({ data: { rows: [latest], total: 1 } })
+  })
+  let submissions = 0
+  vm.submitConfiguredAction = async () => { submissions++ }
+  await vm.submitWorkflow({ id: 3, recordType: 'receipt', status: 'draft', revision: 3 })
+  assert.equal(submissions, 0)
+  assert.equal(vm.rows[0].submissionBlockedReason, latest.submissionBlockedReason)
+  assert.match(messages[0].text, /待审申请/)
+  vm.$destroy()
+})
+
+test('receipt submits after balance is released while stale revisions require another review', async () => {
+  for (const revision of [3, 4]) {
+    const { vm, messages } = record({ getFinanceRecord: async () => ({ data: { id: 3, status: 'draft', revision, submissionBlockedReason: '' } }) })
+    const submissions = []
+    vm.submitConfiguredAction = async (...args) => { submissions.push(args); return { data: { status: 'confirmed' } } }
+    await vm.submitWorkflow({ id: 3, recordType: 'receipt', status: 'draft', revision: 3 })
+    assert.equal(submissions.length, revision === 3 ? 1 : 0)
+    if (revision === 3) assert.deepEqual(submissions[0].slice(0, 2), ['receipt_confirm', { recordId: 3, revision: 3 }])
+    else assert.match(messages[0].text, /记录已变更/)
+    vm.$destroy()
+  }
+})
+
+test('paid receipt source shows its balance without replacing the existing draft amount with zero', async () => {
+  const { vm } = component(base + 'modules/FinanceRecords.vue', { recordType: 'receipt' }, {
+    listFinanceOptions: async () => ({ data: { sources: [{ sourceKey: 'contract:1:fee-main', contractId: 1, termKey: 'fee-main', outstandingAmount: 0, receiptAvailable: 0 }] } })
+  })
+  await vm.openForm({ id: 3, contractId: 1, termKey: 'fee-main', amount: 5, status: 'draft' })
+  assert.equal(vm.available, 0)
+  assert.equal(vm.form.amount, 5)
+  vm.sourceChanged('contract:1:fee-main')
+  assert.equal(vm.form.amount, 5)
+  assert.match(textOf(vm._render()), /未收余额/)
+  vm.$destroy()
+})
+
 test('financial history shows business fields without exposing internal snapshots or stale status', () => {
   const { vm } = component(base + 'modules/FinanceHistoryTimeline.vue', { history: [{
     id: 2, action: '财务确认', createBy: '13610316814', createTime: '2026-11-05T08:40:53.734Z',

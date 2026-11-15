@@ -26,6 +26,11 @@ public class WorkflowManagementController {
         return ApiResult.ok(workflows.list(system.requireCurrentUser(), query));
     }
 
+    @GetMapping("/todo-messages")
+    public Map<String, Object> todoMessages() {
+        return ApiResult.ok(workflows.todoMessages(system.requireCurrentUser()));
+    }
+
     @GetMapping("/detail")
     public Map<String, Object> detail(@RequestParam Map<String, String> query) {
         return ApiResult.ok(workflows.detail(system.requireCurrentUser(), query));

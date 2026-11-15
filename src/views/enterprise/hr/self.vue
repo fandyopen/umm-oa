@@ -6,7 +6,7 @@
         ><a-tab-pane key="salary" tab="我的工资条"
           ><a-alert type="info" show-icon message="工资条发布与实际付款分别记录；已查看工资条不代表已到账。" class="tw-mb-4" /><a-button icon="download" @click="download">下载我的工资条</a-button
           ><a-button icon="reload" @click="load">刷新</a-button
-          ><a-table :data-source="rows" row-key="id" :scroll="{ x: 1300 }" class="tw-mt-4"
+          ><a-table :data-source="rows" row-key="id" class="tw-mt-4"
             ><a-table-column title="所属月份" data-index="period" /><a-table-column v-for="field in fields" :key="field.key" :title="field.label" :data-index="field.key"
               ><template slot-scope="v">{{ money(v) }}</template></a-table-column
             ><a-table-column title="操作"
@@ -16,7 +16,7 @@
         ><a-tab-pane key="commission" tab="我的提成">
           <a-alert type="info" show-icon message="仅展示本人已批准的提成及扣回。纳入工资后还需核税和实际发放，工资批次未结清时会显示待结清。" class="tw-mb-4" />
           <a-button icon="reload" @click="loadCommissions">刷新提成</a-button>
-          <a-table :data-source="commissions" row-key="id" class="tw-mt-4" :scroll="{ x: 1000 }">
+          <a-table :data-source="commissions" row-key="id" class="tw-mt-4">
             <a-table-column title="月份" data-index="period" /><a-table-column title="核算批次" data-index="batchId" />
             <a-table-column title="客户" data-index="snapshot.customerName" /><a-table-column title="职位" data-index="snapshot.jobTitle" /><a-table-column title="候选人" data-index="snapshot.talentName" />
             <a-table-column title="贡献"><template slot-scope="_, r">{{ r.side === 'development' ? '客户拓展' : '招聘交付' }}</template></a-table-column>

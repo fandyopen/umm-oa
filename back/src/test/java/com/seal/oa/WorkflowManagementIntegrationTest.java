@@ -81,6 +81,22 @@ class WorkflowManagementIntegrationTest {
     }
 
     @Test
+    void todoDirectoryIncludesBusinessRemindersAndOnlyEnabledPublishedApprovalFlows() throws Exception {
+        grantPage();
+        publish("overview_test", true, "已发布节点");
+        JsonNode rows = todoMessages();
+        JsonNode customer = findByKey(rows, "business:340352:add");
+        assertNotNull(customer);
+        assertEquals("新建客户档案", customer.path("entryName").asText());
+        assertEquals("客户负责人", customer.path("recipient").asText());
+        JsonNode approval = findByKey(rows, "approval:button:1:340352:overview_test");
+        assertNotNull(approval);
+        assertEquals("审批待办", approval.path("messageType").asText());
+        jdbc.update("UPDATE oa_module_action_flow SET approval_enabled=0 WHERE action_code='overview_test'");
+        assertNull(findByKey(todoMessages(), "approval:button:1:340352:overview_test"));
+    }
+
+    @Test
     void publishedVersionAndDraftRemainIndependentAndDisabledConfigurationsStayVisible() throws Exception {
         grantPage();
         publish("overview_test", true, "已发布节点");
@@ -159,5 +175,14 @@ class WorkflowManagementIntegrationTest {
         String body = mvc.perform(get("/system/workflows/detail").header("Authorization", token).param("key", key))
                 .andExpect(jsonPath("$.code").value(200)).andReturn().getResponse().getContentAsString(java.nio.charset.StandardCharsets.UTF_8);
         return json.readTree(body).path("data");
+    }
+    private JsonNode todoMessages() throws Exception {
+        String body = mvc.perform(get("/system/workflows/todo-messages").header("Authorization", token))
+                .andExpect(jsonPath("$.code").value(200)).andReturn().getResponse().getContentAsString(java.nio.charset.StandardCharsets.UTF_8);
+        return json.readTree(body).path("data").path("rows");
+    }
+    private JsonNode findByKey(JsonNode rows, String key) {
+        for (JsonNode row : rows) if (key.equals(row.path("key").asText())) return row;
+        return null;
     }
 }

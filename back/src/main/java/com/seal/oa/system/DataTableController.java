@@ -14,6 +14,8 @@ public class DataTableController {
     private final DataTableService service;
     public DataTableController(DataTableService service) { this.service = service; }
     @GetMapping public Map<String,Object> list() { return ApiResult.ok(service.list()); }
+    @GetMapping("/pages") public Map<String,Object> pages() { return ApiResult.ok(service.pages()); }
+    @PostMapping("/{table}/related") public Map<String,Object> related(@PathVariable String table,@RequestBody Map<String,Object> body) { return ApiResult.ok(service.related(table,body)); }
     @GetMapping("/{table}/structure") public Map<String,Object> structure(@PathVariable String table) { return ApiResult.ok(service.detail(table)); }
     @GetMapping("/{table}/rows") public Map<String,Object> rows(@PathVariable String table,@RequestParam Map<String,String> query) { return ApiResult.ok(service.rows(table,query)); }
     @GetMapping("/{table}/history") public Map<String,Object> history(@PathVariable String table,@RequestParam(defaultValue="1") int page,@RequestParam(defaultValue="20") int size) { return ApiResult.ok(service.history(table,page,size)); }

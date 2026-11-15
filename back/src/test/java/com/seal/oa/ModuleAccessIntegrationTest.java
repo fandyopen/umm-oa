@@ -163,6 +163,43 @@ class ModuleAccessIntegrationTest {
         assertTrue(system.hasModuleAction(1L, 340597, "access"));
     }
 
+    @Test
+    void membersWithoutGrantedModulesOnlyReceiveThePersonalTodoRouterTree() throws Exception {
+        var response = mvc.perform(get("/getRouters").header("Authorization", authorization))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.code").value(200)).andReturn();
+        var roots = new com.fasterxml.jackson.databind.ObjectMapper().readTree(response.getResponse().getContentAsString()).path("data");
+        var allowed = java.util.Set.of(340340L,340341L,340342L,340527L,340785L);
+        assertRouterIdsAllowed(roots,allowed);
+        assertTrue(roots.toString().contains("我的待办"));
+    }
+
+    @Test
+    void organizationManagerCanReplaceOneOrManyMemberRolesAndSearchByPhoneNameOrEmployeeNumber() throws Exception {
+        jdbc.update("INSERT INTO sys_role(role_id,tenant_id,role_name,role_key,data_scope) VALUES (9902,1,'新成员角色','member_test_role','5')");
+        jdbc.update("INSERT INTO sys_role_module(role_id,module_id) VALUES (?,340597)",ROLE);
+        jdbc.update("INSERT INTO sys_role_module_action(role_id,module_id,action_code) VALUES (?,340597,'manage')",ROLE);
+        jdbc.update("UPDATE sys_user SET phonenumber='13800138001',nick_name='查询测试成员' WHERE user_id=?",USER);
+        jdbc.update("UPDATE oa_hr_employee SET employee_no='SEARCH-9901' WHERE user_id=?",USER);
+        mvc.perform(put("/system/user/roles").header("Authorization",authorization).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"userIds\":[9901],\"roleIds\":[9902]}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.code").value(200));
+        assertEquals(1,jdbc.queryForObject("SELECT COUNT(*) FROM sys_user_role WHERE user_id=? AND role_id=9902",Integer.class,USER));
+        for(String keyword:new String[]{"13800138","查询测试","SEARCH-9901"})
+            mvc.perform(get("/system/user/list").param("keyword",keyword).header("Authorization",authorization))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.code").value(200)).andExpect(jsonPath("$.rows[0].userId").value(USER));
+        mvc.perform(put("/system/user/roles").header("Authorization",authorization).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"userIds\":[9901],\"roleIds\":[]}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.code").value(200));
+        assertEquals(0,jdbc.queryForObject("SELECT COUNT(*) FROM sys_user_role WHERE user_id=? AND role_id<>1",Integer.class,USER));
+    }
+
+    private void assertRouterIdsAllowed(com.fasterxml.jackson.databind.JsonNode nodes,java.util.Set<Long> allowed) {
+        for(var node:nodes) {
+            assertTrue(allowed.contains(node.path("moduleId").asLong()),"unexpected router module "+node.path("moduleId"));
+            assertRouterIdsAllowed(node.path("children"),allowed);
+        }
+    }
+
     private void grant(long module) {
         jdbc.update("INSERT INTO sys_role_module (role_id,module_id) VALUES (?,?)", ROLE, module);
     }

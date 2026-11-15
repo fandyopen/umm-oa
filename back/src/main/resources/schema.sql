@@ -15,26 +15,6 @@ DROP TABLE IF EXISTS oa_process_instance;
 DROP TABLE IF EXISTS oa_process_definition;
 DROP TABLE IF EXISTS oa_todo;
 DROP TABLE IF EXISTS oa_business_opportunity;
-DROP TABLE IF EXISTS oa_invoice;
-DROP TABLE IF EXISTS oa_warehouse_out;
-DROP TABLE IF EXISTS oa_warehouse_in;
-DROP TABLE IF EXISTS oa_warehouse;
-DROP TABLE IF EXISTS oa_fund_plan;
-DROP TABLE IF EXISTS oa_budget_item;
-DROP TABLE IF EXISTS oa_budget;
-DROP TABLE IF EXISTS oa_repayment;
-DROP TABLE IF EXISTS oa_loan_detail;
-DROP TABLE IF EXISTS oa_loan;
-DROP TABLE IF EXISTS oa_expense_invoice;
-DROP TABLE IF EXISTS oa_expense_item;
-DROP TABLE IF EXISTS oa_expense;
-DROP TABLE IF EXISTS oa_purchase_payment;
-DROP TABLE IF EXISTS oa_purchase_apply_item;
-DROP TABLE IF EXISTS oa_purchase_apply;
-DROP TABLE IF EXISTS oa_contract_item;
-DROP TABLE IF EXISTS oa_contract;
-DROP TABLE IF EXISTS oa_project_member;
-DROP TABLE IF EXISTS oa_project;
 DROP TABLE IF EXISTS sys_admin_group_role;
 DROP TABLE IF EXISTS sys_admin_group_dept;
 DROP TABLE IF EXISTS sys_admin_group_app;
@@ -351,281 +331,25 @@ CREATE TABLE sys_admin_identity (
     sort INT NOT NULL DEFAULT 0
 );
 
-CREATE TABLE oa_project (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    tenant_id BIGINT NOT NULL DEFAULT 1,
-    code VARCHAR(64) NOT NULL,
-    name VARCHAR(200) NOT NULL,
-    nick_name VARCHAR(64),
-    dept_id BIGINT,
-    type VARCHAR(64),
-    owner_unit VARCHAR(200),
-    cons_unit VARCHAR(200),
-    sketch TEXT,
-    status VARCHAR(32) NOT NULL DEFAULT '在建',
-    process_status VARCHAR(32) NOT NULL DEFAULT 'draft',
-    attachment TEXT,
-    create_by VARCHAR(64),
-    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    update_time DATETIME
-);
 
-CREATE TABLE oa_project_member (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    project_id BIGINT NOT NULL,
-    user_id BIGINT,
-    user_name VARCHAR(64),
-    nick_name VARCHAR(64),
-    role_name VARCHAR(64),
-    phone VARCHAR(32),
-    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
 
-CREATE TABLE oa_contract (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    tenant_id BIGINT NOT NULL DEFAULT 1,
-    project_id BIGINT,
-    code VARCHAR(64),
-    name VARCHAR(200) NOT NULL,
-    type VARCHAR(64),
-    party_a VARCHAR(200),
-    party_b VARCHAR(200),
-    money DECIMAL(18, 2) NOT NULL DEFAULT 0,
-    tax_rate DECIMAL(8, 4),
-    start_date DATE,
-    end_date DATE,
-    efficacy VARCHAR(32) NOT NULL DEFAULT '有效',
-    process_status VARCHAR(32) NOT NULL DEFAULT 'draft',
-    attachment TEXT,
-    remark VARCHAR(1000),
-    create_by VARCHAR(64),
-    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    update_time DATETIME
-);
 
-CREATE TABLE oa_contract_item (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    contract_id BIGINT NOT NULL,
-    sn INT NOT NULL DEFAULT 0,
-    name VARCHAR(200) NOT NULL,
-    content TEXT,
-    money DECIMAL(18, 2) NOT NULL DEFAULT 0,
-    percent DECIMAL(8, 4),
-    end_date DATETIME
-);
 
-CREATE TABLE oa_purchase_apply (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    tenant_id BIGINT NOT NULL DEFAULT 1,
-    project_id BIGINT,
-    code VARCHAR(64),
-    apply_user_id BIGINT,
-    apply_user_name VARCHAR(64),
-    dept_id BIGINT,
-    purpose VARCHAR(500),
-    total_amount DECIMAL(18, 2) NOT NULL DEFAULT 0,
-    process_status VARCHAR(32) NOT NULL DEFAULT 'draft',
-    attachment TEXT,
-    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    update_time DATETIME
-);
 
-CREATE TABLE oa_purchase_apply_item (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    apply_id BIGINT NOT NULL,
-    name VARCHAR(200) NOT NULL,
-    spec VARCHAR(200),
-    unit VARCHAR(32),
-    amount DECIMAL(18, 4) NOT NULL DEFAULT 0,
-    price DECIMAL(18, 4) NOT NULL DEFAULT 0,
-    total_price DECIMAL(18, 2) NOT NULL DEFAULT 0,
-    description VARCHAR(500)
-);
 
-CREATE TABLE oa_purchase_payment (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    tenant_id BIGINT NOT NULL DEFAULT 1,
-    apply_id BIGINT,
-    project_id BIGINT,
-    contract_id BIGINT,
-    code VARCHAR(64),
-    payee VARCHAR(200),
-    pay_amount DECIMAL(18, 2) NOT NULL DEFAULT 0,
-    pay_date DATE,
-    process_status VARCHAR(32) NOT NULL DEFAULT 'draft',
-    remark VARCHAR(1000),
-    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
 
-CREATE TABLE oa_expense (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    tenant_id BIGINT NOT NULL DEFAULT 1,
-    project_id BIGINT,
-    code VARCHAR(64),
-    apply_user_id BIGINT,
-    apply_user_name VARCHAR(64),
-    dept_id BIGINT,
-    expense_type VARCHAR(64),
-    total_amount DECIMAL(18, 2) NOT NULL DEFAULT 0,
-    process_status VARCHAR(32) NOT NULL DEFAULT 'draft',
-    remark VARCHAR(1000),
-    attachment TEXT,
-    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    update_time DATETIME
-);
 
-CREATE TABLE oa_expense_item (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    expense_id BIGINT NOT NULL,
-    budget_id BIGINT,
-    detail VARCHAR(500),
-    sum DECIMAL(18, 2) NOT NULL DEFAULT 0,
-    replaced VARCHAR(1) NOT NULL DEFAULT 'N',
-    remark VARCHAR(500)
-);
 
-CREATE TABLE oa_expense_invoice (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    expense_id BIGINT NOT NULL,
-    invoice_code VARCHAR(64),
-    invoice_num VARCHAR(64),
-    invoice_date DATE,
-    check_code VARCHAR(64),
-    machine_code VARCHAR(64),
-    purchaser_name VARCHAR(200),
-    purchaser_register_num VARCHAR(100),
-    purchaser_bank VARCHAR(200),
-    purchaser_address VARCHAR(300),
-    amount DECIMAL(18, 2) NOT NULL DEFAULT 0,
-    attachment TEXT
-);
 
-CREATE TABLE oa_loan (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    tenant_id BIGINT NOT NULL DEFAULT 1,
-    code VARCHAR(64),
-    apply_user_id BIGINT,
-    apply_user_name VARCHAR(64),
-    project_id BIGINT,
-    loan_type VARCHAR(64),
-    amount DECIMAL(18, 2) NOT NULL DEFAULT 0,
-    loan_date DATE,
-    expected_repay_date DATE,
-    actual_repay_amount DECIMAL(18, 2) NOT NULL DEFAULT 0,
-    process_status VARCHAR(32) NOT NULL DEFAULT 'draft',
-    remark VARCHAR(1000),
-    attachment TEXT,
-    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
 
-CREATE TABLE oa_loan_detail (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    loan_id BIGINT NOT NULL,
-    loan_name VARCHAR(200) NOT NULL,
-    sum DECIMAL(18, 2) NOT NULL DEFAULT 0,
-    remark VARCHAR(500)
-);
 
-CREATE TABLE oa_repayment (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    loan_id BIGINT NOT NULL,
-    user_id BIGINT,
-    amount DECIMAL(18, 2) NOT NULL DEFAULT 0,
-    repay_date DATE,
-    status VARCHAR(32) NOT NULL DEFAULT 'pending',
-    remark VARCHAR(500),
-    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
 
-CREATE TABLE oa_budget (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    tenant_id BIGINT NOT NULL DEFAULT 1,
-    project_id BIGINT,
-    code VARCHAR(64),
-    name VARCHAR(200) NOT NULL,
-    budget_year INT,
-    total_amount DECIMAL(18, 2) NOT NULL DEFAULT 0,
-    used_amount DECIMAL(18, 2) NOT NULL DEFAULT 0,
-    status VARCHAR(32) NOT NULL DEFAULT 'draft',
-    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
 
-CREATE TABLE oa_budget_item (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    budget_id BIGINT NOT NULL,
-    subject_name VARCHAR(200) NOT NULL,
-    subject_code VARCHAR(64),
-    amount DECIMAL(18, 2) NOT NULL DEFAULT 0,
-    used_amount DECIMAL(18, 2) NOT NULL DEFAULT 0,
-    remark VARCHAR(500)
-);
 
-CREATE TABLE oa_fund_plan (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    tenant_id BIGINT NOT NULL DEFAULT 1,
-    project_id BIGINT,
-    contract_id BIGINT,
-    plan_type VARCHAR(32) NOT NULL DEFAULT 'out',
-    plan_date DATE,
-    amount DECIMAL(18, 2) NOT NULL DEFAULT 0,
-    status VARCHAR(32) NOT NULL DEFAULT 'draft',
-    remark VARCHAR(500),
-    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
 
-CREATE TABLE oa_warehouse (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    tenant_id BIGINT NOT NULL DEFAULT 1,
-    code VARCHAR(64),
-    name VARCHAR(200) NOT NULL,
-    address VARCHAR(300),
-    manager_id BIGINT,
-    manager_name VARCHAR(64),
-    status VARCHAR(1) NOT NULL DEFAULT '0',
-    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
 
-CREATE TABLE oa_warehouse_in (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    warehouse_id BIGINT,
-    project_id BIGINT,
-    code VARCHAR(64),
-    in_date DATE,
-    material_name VARCHAR(200),
-    amount DECIMAL(18, 4),
-    unit VARCHAR(32),
-    process_status VARCHAR(32) NOT NULL DEFAULT 'draft',
-    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
 
-CREATE TABLE oa_warehouse_out (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    warehouse_id BIGINT,
-    project_id BIGINT,
-    code VARCHAR(64),
-    out_date DATE,
-    material_name VARCHAR(200),
-    amount DECIMAL(18, 4),
-    unit VARCHAR(32),
-    process_status VARCHAR(32) NOT NULL DEFAULT 'draft',
-    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
 
-CREATE TABLE oa_invoice (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    tenant_id BIGINT NOT NULL DEFAULT 1,
-    project_id BIGINT,
-    contract_id BIGINT,
-    invoice_code VARCHAR(64),
-    invoice_num VARCHAR(64),
-    invoice_type VARCHAR(32),
-    invoice_date DATE,
-    amount DECIMAL(18, 2) NOT NULL DEFAULT 0,
-    tax_amount DECIMAL(18, 2) NOT NULL DEFAULT 0,
-    status VARCHAR(32) NOT NULL DEFAULT 'draft',
-    attachment TEXT,
-    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
 
 CREATE TABLE oa_business_opportunity (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -863,10 +587,6 @@ CREATE TABLE oa_workflow_request (
     complete_time DATETIME
 );
 
-CREATE INDEX idx_oa_project_tenant ON oa_project (tenant_id, status);
-CREATE INDEX idx_oa_contract_project ON oa_contract (project_id);
-CREATE INDEX idx_oa_purchase_project ON oa_purchase_apply (project_id);
-CREATE INDEX idx_oa_expense_project ON oa_expense (project_id);
 CREATE INDEX idx_oa_todo_user ON oa_todo (user_id, status);
 CREATE INDEX idx_biz_record_module ON biz_record (module, business_key);
 CREATE INDEX idx_oa_workflow_request_instance ON oa_workflow_request (process_instance_id);

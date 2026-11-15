@@ -35,7 +35,7 @@ final class RecruitmentPipelineRules {
                 if("draft".equals(offer)){out.add("offer");out.add("issueOffer");out.add("withdrawOffer");}
                 if("issued".equals(offer)){out.add("acceptOffer");out.add("rejectOffer");out.add("withdrawOffer");}
             }
-            case "entry" -> {if(jobReady)out.add("entry");out.add("expectedEntry");out.add("entryDelay");}
+            case "entry" -> {if(jobReady||"deleted".equals(r.get("jobStatus"))&&"approved".equals(r.get("demandStatus"))&&num(r.get("jobHired"))<num(r.get("jobHeadcount")))out.add("entry");out.add("expectedEntry");out.add("entryDelay");}
             case "guarantee" -> {
                 if("active".equals(r.get("guaranteeStatus"))) {
                     out.add("correctEntry");out.add("guarantee");

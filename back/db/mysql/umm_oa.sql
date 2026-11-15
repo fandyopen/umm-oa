@@ -27,26 +27,6 @@ DROP TABLE IF EXISTS oa_process_instance;
 DROP TABLE IF EXISTS oa_process_definition;
 DROP TABLE IF EXISTS oa_todo;
 DROP TABLE IF EXISTS oa_business_opportunity;
-DROP TABLE IF EXISTS oa_invoice;
-DROP TABLE IF EXISTS oa_warehouse_out;
-DROP TABLE IF EXISTS oa_warehouse_in;
-DROP TABLE IF EXISTS oa_warehouse;
-DROP TABLE IF EXISTS oa_fund_plan;
-DROP TABLE IF EXISTS oa_budget_item;
-DROP TABLE IF EXISTS oa_budget;
-DROP TABLE IF EXISTS oa_repayment;
-DROP TABLE IF EXISTS oa_loan_detail;
-DROP TABLE IF EXISTS oa_loan;
-DROP TABLE IF EXISTS oa_expense_invoice;
-DROP TABLE IF EXISTS oa_expense_item;
-DROP TABLE IF EXISTS oa_expense;
-DROP TABLE IF EXISTS oa_purchase_payment;
-DROP TABLE IF EXISTS oa_purchase_apply_item;
-DROP TABLE IF EXISTS oa_purchase_apply;
-DROP TABLE IF EXISTS oa_contract_item;
-DROP TABLE IF EXISTS oa_contract;
-DROP TABLE IF EXISTS oa_project_member;
-DROP TABLE IF EXISTS oa_project;
 DROP TABLE IF EXISTS sys_admin_group_role;
 DROP TABLE IF EXISTS sys_admin_group_dept;
 DROP TABLE IF EXISTS sys_admin_group_app;
@@ -363,281 +343,25 @@ CREATE TABLE sys_admin_identity (
     sort INT NOT NULL DEFAULT 0
 );
 
-CREATE TABLE oa_project (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    tenant_id BIGINT NOT NULL DEFAULT 1,
-    code VARCHAR(64) NOT NULL,
-    name VARCHAR(200) NOT NULL,
-    nick_name VARCHAR(64),
-    dept_id BIGINT,
-    type VARCHAR(64),
-    owner_unit VARCHAR(200),
-    cons_unit VARCHAR(200),
-    sketch TEXT,
-    status VARCHAR(32) NOT NULL DEFAULT '在建',
-    process_status VARCHAR(32) NOT NULL DEFAULT 'draft',
-    attachment TEXT,
-    create_by VARCHAR(64),
-    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    update_time DATETIME
-);
 
-CREATE TABLE oa_project_member (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    project_id BIGINT NOT NULL,
-    user_id BIGINT,
-    user_name VARCHAR(64),
-    nick_name VARCHAR(64),
-    role_name VARCHAR(64),
-    phone VARCHAR(32),
-    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
 
-CREATE TABLE oa_contract (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    tenant_id BIGINT NOT NULL DEFAULT 1,
-    project_id BIGINT,
-    code VARCHAR(64),
-    name VARCHAR(200) NOT NULL,
-    type VARCHAR(64),
-    party_a VARCHAR(200),
-    party_b VARCHAR(200),
-    money DECIMAL(18, 2) NOT NULL DEFAULT 0,
-    tax_rate DECIMAL(8, 4),
-    start_date DATE,
-    end_date DATE,
-    efficacy VARCHAR(32) NOT NULL DEFAULT '有效',
-    process_status VARCHAR(32) NOT NULL DEFAULT 'draft',
-    attachment TEXT,
-    remark VARCHAR(1000),
-    create_by VARCHAR(64),
-    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    update_time DATETIME
-);
 
-CREATE TABLE oa_contract_item (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    contract_id BIGINT NOT NULL,
-    sn INT NOT NULL DEFAULT 0,
-    name VARCHAR(200) NOT NULL,
-    content TEXT,
-    money DECIMAL(18, 2) NOT NULL DEFAULT 0,
-    percent DECIMAL(8, 4),
-    end_date DATETIME
-);
 
-CREATE TABLE oa_purchase_apply (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    tenant_id BIGINT NOT NULL DEFAULT 1,
-    project_id BIGINT,
-    code VARCHAR(64),
-    apply_user_id BIGINT,
-    apply_user_name VARCHAR(64),
-    dept_id BIGINT,
-    purpose VARCHAR(500),
-    total_amount DECIMAL(18, 2) NOT NULL DEFAULT 0,
-    process_status VARCHAR(32) NOT NULL DEFAULT 'draft',
-    attachment TEXT,
-    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    update_time DATETIME
-);
 
-CREATE TABLE oa_purchase_apply_item (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    apply_id BIGINT NOT NULL,
-    name VARCHAR(200) NOT NULL,
-    spec VARCHAR(200),
-    unit VARCHAR(32),
-    amount DECIMAL(18, 4) NOT NULL DEFAULT 0,
-    price DECIMAL(18, 4) NOT NULL DEFAULT 0,
-    total_price DECIMAL(18, 2) NOT NULL DEFAULT 0,
-    description VARCHAR(500)
-);
 
-CREATE TABLE oa_purchase_payment (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    tenant_id BIGINT NOT NULL DEFAULT 1,
-    apply_id BIGINT,
-    project_id BIGINT,
-    contract_id BIGINT,
-    code VARCHAR(64),
-    payee VARCHAR(200),
-    pay_amount DECIMAL(18, 2) NOT NULL DEFAULT 0,
-    pay_date DATE,
-    process_status VARCHAR(32) NOT NULL DEFAULT 'draft',
-    remark VARCHAR(1000),
-    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
 
-CREATE TABLE oa_expense (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    tenant_id BIGINT NOT NULL DEFAULT 1,
-    project_id BIGINT,
-    code VARCHAR(64),
-    apply_user_id BIGINT,
-    apply_user_name VARCHAR(64),
-    dept_id BIGINT,
-    expense_type VARCHAR(64),
-    total_amount DECIMAL(18, 2) NOT NULL DEFAULT 0,
-    process_status VARCHAR(32) NOT NULL DEFAULT 'draft',
-    remark VARCHAR(1000),
-    attachment TEXT,
-    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    update_time DATETIME
-);
 
-CREATE TABLE oa_expense_item (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    expense_id BIGINT NOT NULL,
-    budget_id BIGINT,
-    detail VARCHAR(500),
-    sum DECIMAL(18, 2) NOT NULL DEFAULT 0,
-    replaced VARCHAR(1) NOT NULL DEFAULT 'N',
-    remark VARCHAR(500)
-);
 
-CREATE TABLE oa_expense_invoice (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    expense_id BIGINT NOT NULL,
-    invoice_code VARCHAR(64),
-    invoice_num VARCHAR(64),
-    invoice_date DATE,
-    check_code VARCHAR(64),
-    machine_code VARCHAR(64),
-    purchaser_name VARCHAR(200),
-    purchaser_register_num VARCHAR(100),
-    purchaser_bank VARCHAR(200),
-    purchaser_address VARCHAR(300),
-    amount DECIMAL(18, 2) NOT NULL DEFAULT 0,
-    attachment TEXT
-);
 
-CREATE TABLE oa_loan (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    tenant_id BIGINT NOT NULL DEFAULT 1,
-    code VARCHAR(64),
-    apply_user_id BIGINT,
-    apply_user_name VARCHAR(64),
-    project_id BIGINT,
-    loan_type VARCHAR(64),
-    amount DECIMAL(18, 2) NOT NULL DEFAULT 0,
-    loan_date DATE,
-    expected_repay_date DATE,
-    actual_repay_amount DECIMAL(18, 2) NOT NULL DEFAULT 0,
-    process_status VARCHAR(32) NOT NULL DEFAULT 'draft',
-    remark VARCHAR(1000),
-    attachment TEXT,
-    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
 
-CREATE TABLE oa_loan_detail (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    loan_id BIGINT NOT NULL,
-    loan_name VARCHAR(200) NOT NULL,
-    sum DECIMAL(18, 2) NOT NULL DEFAULT 0,
-    remark VARCHAR(500)
-);
 
-CREATE TABLE oa_repayment (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    loan_id BIGINT NOT NULL,
-    user_id BIGINT,
-    amount DECIMAL(18, 2) NOT NULL DEFAULT 0,
-    repay_date DATE,
-    status VARCHAR(32) NOT NULL DEFAULT 'pending',
-    remark VARCHAR(500),
-    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
 
-CREATE TABLE oa_budget (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    tenant_id BIGINT NOT NULL DEFAULT 1,
-    project_id BIGINT,
-    code VARCHAR(64),
-    name VARCHAR(200) NOT NULL,
-    budget_year INT,
-    total_amount DECIMAL(18, 2) NOT NULL DEFAULT 0,
-    used_amount DECIMAL(18, 2) NOT NULL DEFAULT 0,
-    status VARCHAR(32) NOT NULL DEFAULT 'draft',
-    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
 
-CREATE TABLE oa_budget_item (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    budget_id BIGINT NOT NULL,
-    subject_name VARCHAR(200) NOT NULL,
-    subject_code VARCHAR(64),
-    amount DECIMAL(18, 2) NOT NULL DEFAULT 0,
-    used_amount DECIMAL(18, 2) NOT NULL DEFAULT 0,
-    remark VARCHAR(500)
-);
 
-CREATE TABLE oa_fund_plan (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    tenant_id BIGINT NOT NULL DEFAULT 1,
-    project_id BIGINT,
-    contract_id BIGINT,
-    plan_type VARCHAR(32) NOT NULL DEFAULT 'out',
-    plan_date DATE,
-    amount DECIMAL(18, 2) NOT NULL DEFAULT 0,
-    status VARCHAR(32) NOT NULL DEFAULT 'draft',
-    remark VARCHAR(500),
-    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
 
-CREATE TABLE oa_warehouse (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    tenant_id BIGINT NOT NULL DEFAULT 1,
-    code VARCHAR(64),
-    name VARCHAR(200) NOT NULL,
-    address VARCHAR(300),
-    manager_id BIGINT,
-    manager_name VARCHAR(64),
-    status VARCHAR(1) NOT NULL DEFAULT '0',
-    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
 
-CREATE TABLE oa_warehouse_in (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    warehouse_id BIGINT,
-    project_id BIGINT,
-    code VARCHAR(64),
-    in_date DATE,
-    material_name VARCHAR(200),
-    amount DECIMAL(18, 4),
-    unit VARCHAR(32),
-    process_status VARCHAR(32) NOT NULL DEFAULT 'draft',
-    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
 
-CREATE TABLE oa_warehouse_out (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    warehouse_id BIGINT,
-    project_id BIGINT,
-    code VARCHAR(64),
-    out_date DATE,
-    material_name VARCHAR(200),
-    amount DECIMAL(18, 4),
-    unit VARCHAR(32),
-    process_status VARCHAR(32) NOT NULL DEFAULT 'draft',
-    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
 
-CREATE TABLE oa_invoice (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    tenant_id BIGINT NOT NULL DEFAULT 1,
-    project_id BIGINT,
-    contract_id BIGINT,
-    invoice_code VARCHAR(64),
-    invoice_num VARCHAR(64),
-    invoice_type VARCHAR(32),
-    invoice_date DATE,
-    amount DECIMAL(18, 2) NOT NULL DEFAULT 0,
-    tax_amount DECIMAL(18, 2) NOT NULL DEFAULT 0,
-    status VARCHAR(32) NOT NULL DEFAULT 'draft',
-    attachment TEXT,
-    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
 
 CREATE TABLE oa_business_opportunity (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -875,10 +599,6 @@ CREATE TABLE oa_workflow_request (
     complete_time DATETIME
 );
 
-CREATE INDEX idx_oa_project_tenant ON oa_project (tenant_id, status);
-CREATE INDEX idx_oa_contract_project ON oa_contract (project_id);
-CREATE INDEX idx_oa_purchase_project ON oa_purchase_apply (project_id);
-CREATE INDEX idx_oa_expense_project ON oa_expense (project_id);
 CREATE INDEX idx_oa_todo_user ON oa_todo (user_id, status);
 CREATE INDEX idx_biz_record_module ON biz_record (module, business_key);
 CREATE INDEX idx_oa_workflow_request_instance ON oa_workflow_request (process_instance_id);
@@ -1038,67 +758,6 @@ INSERT INTO sys_app_module (tenant_app_id, module_name, module_path, component, 
 
 INSERT INTO sys_admin_identity (user_id, user_name, nick_name, email, phonenumber, sex, status, sort) VALUES
     (1, '13610316814', '欧志锋', '13610316814@seals.com', '13610316814', '0', '0', 0);
-
-INSERT INTO oa_project (
-    id, tenant_id, code, name, nick_name, dept_id, type, owner_unit, sketch, status, process_status, create_by
-) VALUES (
-    1, 1, 'QS-DEMO-001', '企业数字化办公平台', '方铭渴', 103, '1',
-    '示例客户', '用于验证项目管理、合同、采购和报销流程的演示项目。', '在建', 'approved', '17630135660'
-);
-
-INSERT INTO oa_project_member (project_id, user_id, user_name, nick_name, role_name, phone)
-VALUES (1, 1, '17630135660', '方铭渴', '项目经理', '17630135660');
-
-INSERT INTO oa_contract (
-    id, tenant_id, project_id, code, name, type, party_a, party_b, money, tax_rate,
-    start_date, end_date, efficacy, process_status, create_by
-) VALUES (
-    1, 1, 1, 'HT-DEMO-001', '办公平台实施合同', 'service', '示例客户', '示例供应商',
-    128000.00, 6.0000, CURRENT_DATE, DATE_ADD(CURRENT_DATE, INTERVAL 365 DAY), '有效', 'approved', '17630135660'
-);
-
-INSERT INTO oa_contract_item (contract_id, sn, name, content, money, percent)
-VALUES (1, 1, '一期实施款', '完成基础模块上线', 76800.00, 60.0000);
-INSERT INTO oa_contract_item (contract_id, sn, name, content, money, percent)
-VALUES (1, 2, '验收尾款', '验收通过后支付', 51200.00, 40.0000);
-
-INSERT INTO oa_purchase_apply (
-    id, tenant_id, project_id, code, apply_user_id, apply_user_name, dept_id,
-    purpose, total_amount, process_status
-) VALUES (1, 1, 1, 'CG-DEMO-001', 1, '方铭渴', 103, '采购办公设备', 6800.00, 'approved');
-
-INSERT INTO oa_purchase_apply_item (apply_id, name, spec, unit, amount, price, total_price, description)
-VALUES (1, '笔记本电脑', '14 英寸/32G/1T', '台', 2, 3400.00, 6800.00, '研发办公使用');
-
-INSERT INTO oa_expense (
-    id, tenant_id, project_id, code, apply_user_id, apply_user_name, dept_id,
-    expense_type, total_amount, process_status, remark
-) VALUES (1, 1, 1, 'BX-DEMO-001', 1, '方铭渴', 103, 'travel', 1260.00, 'running', '项目现场差旅');
-
-INSERT INTO oa_expense_item (expense_id, budget_id, detail, sum, replaced, remark)
-VALUES (1, NULL, '高铁及住宿', 1260.00, 'N', '项目现场支持');
-
-INSERT INTO oa_loan (
-    id, tenant_id, code, apply_user_id, apply_user_name, project_id, loan_type, amount,
-    loan_date, expected_repay_date, actual_repay_amount, process_status, remark
-) VALUES (
-    1, 1, 'JK-DEMO-001', 1, '方铭渴', 1, 'cash', 5000.00,
-    CURRENT_DATE, DATEADD('DAY', 30, CURRENT_DATE), 0.00, 'approved', '项目备用金'
-);
-INSERT INTO oa_loan_detail (loan_id, loan_name, sum, remark) VALUES
-    (1, '现场交通', 1200.00, '项目现场往返'),
-    (1, '临时采购', 3800.00, '办公耗材');
-
-INSERT INTO oa_budget (id, tenant_id, project_id, code, name, budget_year, total_amount, used_amount, status)
-VALUES (1, 1, 1, 'YS-DEMO-001', '数字化平台年度预算', 2026, 500000.00, 1260.00, 'approved');
-
-INSERT INTO oa_budget_item (budget_id, subject_name, subject_code, amount, used_amount, remark)
-VALUES (1, '差旅费', 'TRAVEL', 50000.00, 1260.00, '项目现场支持');
-INSERT INTO oa_budget_item (budget_id, subject_name, subject_code, amount, used_amount, remark)
-VALUES (1, '设备采购', 'DEVICE', 180000.00, 6800.00, '研发设备');
-
-INSERT INTO oa_warehouse (id, tenant_id, code, name, address, manager_id, manager_name, status)
-VALUES (1, 1, 'CK-DEMO-001', '项目现场仓', '项目现场 A 区', 1, '方铭渴', '0');
 
 INSERT INTO oa_business_opportunity (
     id, tenant_id, name, customer_name, owner_user_id, owner_user_name,
@@ -1873,7 +1532,7 @@ INSERT IGNORE INTO sys_role_group_member (group_id, role_id) VALUES (53, 13);
 INSERT IGNORE INTO sys_role_group_member (group_id, role_id) VALUES (53, 16);
 INSERT IGNORE INTO sys_role_group_member (group_id, role_id) VALUES (53, 17);
 INSERT IGNORE INTO sys_role_group_member (group_id, role_id) VALUES (53, 18);
-INSERT INTO sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, status, del_flag) VALUES (322, 1, 0, '0', '海豹科技有限公司', 0, '0', '0') ON DUPLICATE KEY UPDATE parent_id = VALUES(parent_id), ancestors = VALUES(ancestors), dept_name = VALUES(dept_name), order_num = VALUES(order_num), del_flag = VALUES(del_flag);
+INSERT INTO sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, status, del_flag) VALUES (322, 1, 0, '0', 'UMM加木企服', 0, '0', '0') ON DUPLICATE KEY UPDATE parent_id = VALUES(parent_id), ancestors = VALUES(ancestors), dept_name = VALUES(dept_name), order_num = VALUES(order_num), del_flag = VALUES(del_flag);
 INSERT INTO sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, status, del_flag) VALUES (323, 1, 322, '0,322', '总经办', 0, '0', '0') ON DUPLICATE KEY UPDATE parent_id = VALUES(parent_id), ancestors = VALUES(ancestors), dept_name = VALUES(dept_name), order_num = VALUES(order_num), del_flag = VALUES(del_flag);
 INSERT INTO sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, status, del_flag) VALUES (324, 1, 322, '0,322', '综合部', 1, '0', '0') ON DUPLICATE KEY UPDATE parent_id = VALUES(parent_id), ancestors = VALUES(ancestors), dept_name = VALUES(dept_name), order_num = VALUES(order_num), del_flag = VALUES(del_flag);
 INSERT INTO sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, status, del_flag) VALUES (325, 1, 322, '0,322', '财务部', 2, '0', '0') ON DUPLICATE KEY UPDATE parent_id = VALUES(parent_id), ancestors = VALUES(ancestors), dept_name = VALUES(dept_name), order_num = VALUES(order_num), del_flag = VALUES(del_flag);
@@ -1955,7 +1614,7 @@ INSERT IGNORE INTO sys_user_role (user_id, role_id) VALUES (32, 2);
 INSERT IGNORE INTO sys_user_role (user_id, role_id) VALUES (33, 2);
 INSERT IGNORE INTO sys_user_role (user_id, role_id) VALUES (34, 2);
 DELETE FROM sys_dept WHERE dept_id BETWEEN 100 AND 104;
-UPDATE sys_tenant SET tenant_name = '海豹科技有限公司' WHERE tenant_id = 1;
+UPDATE sys_tenant SET tenant_name = 'UMM加木企服' WHERE tenant_id = 1;
 DELETE FROM sys_dept_module;
 INSERT INTO sys_dept_module (dept_id, module_id)
 SELECT DISTINCT u.dept_id, rm.module_id
@@ -2643,26 +2302,26 @@ WHERE module LIKE 'workflow:%'
    OR payload_json LIKE '%340780%'
    OR payload_json LIKE '%340792%');
 
-DELETE FROM oa_project_member;
-DELETE FROM oa_project;
-DELETE FROM oa_contract_item;
-DELETE FROM oa_contract;
-DELETE FROM oa_purchase_apply_item;
-DELETE FROM oa_purchase_apply;
-DELETE FROM oa_purchase_payment;
-DELETE FROM oa_expense_item;
-DELETE FROM oa_expense_invoice;
-DELETE FROM oa_expense;
-DELETE FROM oa_loan_detail;
-DELETE FROM oa_loan;
-DELETE FROM oa_repayment;
-DELETE FROM oa_budget_item;
-DELETE FROM oa_budget;
-DELETE FROM oa_fund_plan;
-DELETE FROM oa_warehouse_in;
-DELETE FROM oa_warehouse_out;
-DELETE FROM oa_warehouse;
-DELETE FROM oa_invoice;
+DROP TABLE IF EXISTS oa_project_member;
+DROP TABLE IF EXISTS oa_project;
+DROP TABLE IF EXISTS oa_contract_item;
+DROP TABLE IF EXISTS oa_contract;
+DROP TABLE IF EXISTS oa_purchase_apply_item;
+DROP TABLE IF EXISTS oa_purchase_apply;
+DROP TABLE IF EXISTS oa_purchase_payment;
+DROP TABLE IF EXISTS oa_expense_item;
+DROP TABLE IF EXISTS oa_expense_invoice;
+DROP TABLE IF EXISTS oa_expense;
+DROP TABLE IF EXISTS oa_loan_detail;
+DROP TABLE IF EXISTS oa_loan;
+DROP TABLE IF EXISTS oa_repayment;
+DROP TABLE IF EXISTS oa_budget_item;
+DROP TABLE IF EXISTS oa_budget;
+DROP TABLE IF EXISTS oa_fund_plan;
+DROP TABLE IF EXISTS oa_warehouse_in;
+DROP TABLE IF EXISTS oa_warehouse_out;
+DROP TABLE IF EXISTS oa_warehouse;
+DROP TABLE IF EXISTS oa_invoice;
 
 DELETE FROM sys_module WHERE module_id IN (77777,340343,340350,340351,340359,340360,340367,340369,340382,340389,340396,340403,340410,340417,340431,340445,340459,340466,340474,340475,340480,340481,340483,340492,340494,340496,340503,340504,340516,340517,340531,340539,340548,340549,340556,340563,340567,340568,340569,340570,340598,340605,340606,340613,340620,340627,340634,340635,340636,340687,340695,340703,340710,340711,340746,340748,340762,340774,340775,340776,340777,340778,340780,340792);
 
@@ -3181,6 +2840,8 @@ CREATE TABLE IF NOT EXISTS oa_hr_employee (
     exit_date DATE,
     employment_status VARCHAR(32) NOT NULL DEFAULT 'active',
     employment_type VARCHAR(64),
+    work_province VARCHAR(64) NOT NULL DEFAULT '广东省',
+    work_city VARCHAR(64) NOT NULL DEFAULT '广州市',
     emergency_contact VARCHAR(100),
     emergency_phone VARCHAR(32),
     contract_start DATE,
@@ -3193,7 +2854,8 @@ CREATE TABLE IF NOT EXISTS oa_hr_employee (
 );
 INSERT INTO oa_hr_employee (user_id, employee_no, employment_status)
 SELECT user_id, CONCAT('EMP', user_id), CASE WHEN del_flag = '2' THEN 'departed' ELSE 'active' END
-FROM sys_user u WHERE del_flag IN ('0','2')
+FROM sys_user u WHERE del_flag IN ('0','2') AND u.user_id<>1
+AND NOT EXISTS (SELECT 1 FROM sys_admin_identity a WHERE a.user_name=u.user_name)
 AND NOT EXISTS (SELECT 1 FROM oa_hr_employee e WHERE e.user_id = u.user_id);
 
 CREATE TABLE IF NOT EXISTS oa_hr_employment_period (
@@ -3236,6 +2898,11 @@ CREATE TABLE IF NOT EXISTS oa_hr_salary (
     create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (user_id, effective_date)
 );
+-- Keep the approved salary available while a correction is drafted, reviewed or rejected.
+CREATE TABLE IF NOT EXISTS oa_hr_salary_effective (
+    salary_id BIGINT PRIMARY KEY,
+    snapshot_json TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS oa_hr_attachment (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT,
@@ -3265,6 +2932,20 @@ CREATE TABLE IF NOT EXISTS oa_hr_attendance_row (
     work_date DATE,
     data_json TEXT NOT NULL
 );
+-- Immutable company calculation rules; batches keep independent snapshots in rules_json.
+CREATE TABLE IF NOT EXISTS oa_hr_payroll_rule (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    tenant_id BIGINT NOT NULL,
+    version_no INT NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    effective_month VARCHAR(7) NOT NULL,
+    rules_json TEXT NOT NULL,
+    reason VARCHAR(1000) NOT NULL,
+    create_by BIGINT NOT NULL,
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (tenant_id, version_no)
+);
+
 CREATE TABLE IF NOT EXISTS oa_hr_payroll (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     period VARCHAR(7) NOT NULL,
@@ -3294,6 +2975,10 @@ CREATE TABLE IF NOT EXISTS oa_hr_payroll_item (
     adjustment DECIMAL(18,2) NOT NULL DEFAULT 0,
     deduction DECIMAL(18,2) NOT NULL DEFAULT 0,
     tax DECIMAL(18,2) NOT NULL DEFAULT 0,
+    tax_entered INT NOT NULL DEFAULT 0,
+    tax_reason VARCHAR(1000),
+    tax_operator_id BIGINT,
+    tax_update_time DATETIME,
     contribution DECIMAL(18,2) NOT NULL DEFAULT 0,
     gross_amount DECIMAL(18,2) NOT NULL,
     net_amount DECIMAL(18,2) NOT NULL,
@@ -3351,6 +3036,50 @@ INSERT INTO sys_module (module_id,tenant_id,parent_id,module_name,route_name,pat
 INSERT INTO sys_role_module (role_id,module_id) SELECT grants.role_id,341409 FROM (SELECT role_id FROM sys_role_module WHERE module_id=341400) grants WHERE NOT EXISTS (SELECT 1 FROM sys_module WHERE module_id=341409) AND NOT EXISTS (SELECT 1 FROM sys_role_module current_grant WHERE current_grant.role_id=grants.role_id AND current_grant.module_id=341409);
 INSERT INTO sys_module (module_id,tenant_id,parent_id,module_name,route_name,path,component,icon,module_sort,hidden,perms,has_flow,no_cache,status) SELECT 341409,1,341400,'工资发放','FinancePayroll','payroll','eos/crm/finance/payroll','iconfont-tuandui4',9,0,'finance:payroll:list',0,0,'0' WHERE NOT EXISTS (SELECT 1 FROM sys_module WHERE module_id=341409);
 
+
+
+CREATE TABLE IF NOT EXISTS sys_customer_cleanup_history (
+    id VARCHAR(64) PRIMARY KEY,
+    tenant_id BIGINT NOT NULL,
+    customer_id BIGINT NOT NULL,
+    customer_name VARCHAR(200) NOT NULL,
+    operation VARCHAR(24) NOT NULL,
+    reason VARCHAR(1000) NOT NULL,
+    operator_id BIGINT NOT NULL,
+    operator_name VARCHAR(64) NOT NULL,
+    backup_name VARCHAR(100) NOT NULL,
+    result_json MEDIUMTEXT NOT NULL,
+    create_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+INSERT INTO sys_module(module_id,tenant_id,parent_id,module_name,route_name,path,component,icon,module_sort,hidden,perms,has_flow,no_cache,status)
+SELECT 341510,1,340309,'特殊功能','SystemSpecialFunctions','specialFunctions','system/specialFunctions/index','iconfont-mokuai',100,0,'system:specialFunctions:list',0,1,'0'
+WHERE NOT EXISTS(SELECT 1 FROM sys_module WHERE module_id=341510);
+INSERT INTO sys_module_action(module_id,action_code,action_name,builtin,status)
+SELECT 341510,'cleanup','清理关联数据',0,'0'
+WHERE NOT EXISTS(SELECT 1 FROM sys_module_action WHERE module_id=341510 AND action_code='cleanup');
+INSERT INTO sys_module_action(module_id,action_code,action_name,builtin,status)
+SELECT 341510,'remove','彻底删除客户',0,'0'
+WHERE NOT EXISTS(SELECT 1 FROM sys_module_action WHERE module_id=341510 AND action_code='remove');
+
+SET @contract_sql = (SELECT IF(COUNT(*)=0,'ALTER TABLE oa_crm_contract ADD COLUMN deleted INT NOT NULL DEFAULT 0','SELECT 1') FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='oa_crm_contract' AND column_name='deleted');
+PREPARE contract_stmt FROM @contract_sql;
+EXECUTE contract_stmt;
+DEALLOCATE PREPARE contract_stmt;
+SET @contract_sql = (SELECT IF(COUNT(*)=0,'ALTER TABLE oa_crm_contract ADD COLUMN lifecycle_request_id BIGINT','SELECT 1') FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='oa_crm_contract' AND column_name='lifecycle_request_id');
+PREPARE contract_stmt FROM @contract_sql;
+EXECUTE contract_stmt;
+DEALLOCATE PREPARE contract_stmt;
+
+CREATE TABLE IF NOT EXISTS oa_crm_contract_history (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    customer_id BIGINT NOT NULL,
+    contract_id BIGINT NOT NULL,
+    action VARCHAR(32) NOT NULL,
+    reason VARCHAR(2000) NOT NULL,
+    payload_json TEXT,
+    operator_name VARCHAR(64),
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
 
 
 SET FOREIGN_KEY_CHECKS = 1;

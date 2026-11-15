@@ -3,6 +3,8 @@ data/recruit-private/
 data/*.trace.db
 data/*.lock.db
 data/uploads/
+data/backups/
+data/customer-cleanup-backups/
 .idea/
 *.iml
 *.log

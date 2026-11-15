@@ -10,6 +10,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.LocalDate;
 import java.util.*;
 
@@ -18,34 +21,78 @@ public class HrPayrollService {
     private final HrData d;
     private final HrAttendanceService attendance;
     private final HrEmployeeService employees;
+    private final HrPayrollRuleService ruleService;
     private static final List<String> ADJUSTABLE =
             List.of("bonus", "commission", "adjustment", "deduction", "tax", "contribution");
+    private static final List<String> ACCOUNT_FIELDS = List.of("accountName", "bankName", "bankAccount");
+
+    List<Map<String, Object>> accountChanges(long payroll) {
+        var changes = new ArrayList<Map<String, Object>>();
+        for (var item : d.rows("SELECT id,user_id,snapshot_json FROM oa_hr_payroll_item WHERE payroll_id=? ORDER BY id", payroll)) {
+            var employee = d.employee(id(item.get("userId")));
+            var snapshot = d.object(item.get("snapshotJson"));
+            var before = new LinkedHashMap<String, Object>();
+            var after = new LinkedHashMap<String, Object>();
+            for (String field : ACCOUNT_FIELDS) {
+                before.put(field, text(snapshot.get(field)));
+                after.put(field, text(employee.get(field)));
+            }
+            if (before.equals(after)) continue;
+            var change = new LinkedHashMap<String, Object>();
+            change.put("itemId", item.get("id"));
+            change.put("userId", item.get("userId"));
+            change.put("employeeNo", employee.get("employeeNo"));
+            change.put("employeeName", employee.get("nickName"));
+            change.put("employeeRevision", employee.get("revision"));
+            change.put("before", before);
+            change.put("after", after);
+            changes.add(change);
+        }
+        return changes;
+    }
+
+    String accountChangesToken(List<Map<String, Object>> changes) {
+        try {
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
+                    .digest(d.json(changes).getBytes(StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException ex) {
+            throw new IllegalStateException(ex);
+        }
+    }
 
     @Transactional
-    public void refreshAccounts(long payroll, Map<String, Object> body) {
+    public Map<String, Object> refreshAccounts(long payroll, Map<String, Object> body) {
         d.require(PAYROLL, "edit");
         var b = batch(payroll, true);
         d.revision(b, body);
         d.expect(b, "draft", "rejected");
         access(payroll);
-        for (var item : items(payroll)) {
-            var employee = d.employee(id(item.get("userId")));
-            var snapshot = d.object(item.get("snapshot"));
-            for (String key : List.of("accountName", "bankName", "bankAccount"))
-                snapshot.put(key, employee.get(key));
+        // Keep the confirmed preview stable while employee account updates are committed.
+        d.jdbc.queryForList("SELECT e.user_id FROM oa_hr_employee e JOIN oa_hr_payroll_item i"
+                + " ON i.user_id=e.user_id WHERE i.payroll_id=? ORDER BY e.user_id FOR UPDATE", Long.class, payroll);
+        var changes = accountChanges(payroll);
+        if (changes.isEmpty()) return Map.of("updatedCount", 0);
+        if (!accountChangesToken(changes).equals(text(body.get("changesToken"))))
+            throw new ApiException(409, "收款账户预览缺失或已变化，请重新打开同步窗口确认");
+        for (var change : changes) {
+            var item = d.one("SELECT snapshot_json FROM oa_hr_payroll_item WHERE id=?", change.get("itemId"));
+            var snapshot = d.object(item.get("snapshotJson"));
+            snapshot.putAll(d.object(change.get("after")));
             d.jdbc.update(
                     "UPDATE oa_hr_payroll_item SET snapshot_json=?,verified=0 WHERE id=?",
                     d.json(snapshot),
-                    item.get("id"));
+                    change.get("itemId"));
         }
         d.jdbc.update("UPDATE oa_hr_payroll SET revision=revision+1 WHERE id=?", payroll);
-        d.history("payroll", payroll, null, "更新发薪账户快照", Map.of());
+        d.history("payroll", payroll, null, "同步最新收款账户", Map.of("changes", changes));
+        return Map.of("updatedCount", changes.size());
     }
 
-    public HrPayrollService(HrData d, HrAttendanceService attendance, HrEmployeeService employees) {
+    public HrPayrollService(HrData d, HrAttendanceService attendance, HrEmployeeService employees, HrPayrollRuleService ruleService) {
         this.d = d;
         this.attendance = attendance;
         this.employees = employees;
+        this.ruleService = ruleService;
     }
 
     @Transactional
@@ -95,12 +142,9 @@ public class HrPayrollService {
                 .filter(
                         row -> {
                             try {
-                                d.jdbc.queryForList(
-                                                "SELECT user_id FROM oa_hr_attendance_row WHERE"
-                                                        + " batch_id=?",
-                                                Long.class,
-                                                row.get("id"))
-                                        .forEach(d::employee);
+                                var members = attendance.memberUserIds(id(row.get("id")));
+                                if (members.isEmpty()) return false;
+                                members.forEach(d::employee);
                                 return true;
                             } catch (ApiException error) {
                                 return false;
@@ -140,13 +184,22 @@ public class HrPayrollService {
             throw new ApiException(403, "仅批准的工资可以进入财务发放");
         var items = items(id);
         b.put("rows", items);
+        if (!finance && Set.of("draft", "rejected").contains(text(b.get("status"))) && d.allowed(PAYROLL, "edit")) {
+            var changes = accountChanges(id);
+            b.put("accountChanges", changes);
+            b.put("accountChangesToken", accountChangesToken(changes));
+        }
         b.put("rules", d.object(b.remove("rulesJson")));
+        b.put("rulesChanged", "regular".equals(b.get("batchType")) && ruleService.changed(text(b.get("period")), d.object(b.get("rules"))));
         b.put(
                 "history",
                 d.rows(
                         "SELECT action,operator_id,create_time,detail_json FROM oa_hr_history WHERE"
                                 + " entity_type='payroll' AND entity_id=? ORDER BY id DESC",
-                        id));
+                        id).stream().map(h -> {
+                            h.put("detail", d.object(h.remove("detailJson")));
+                            return h;
+                        }).toList());
         b.put("attendanceChanged", attendanceChanged(b));
         b.put("sourcesChanged", sourcesChanged(b, items));
         b.put(
@@ -209,13 +262,13 @@ public class HrPayrollService {
     String sourceSignature(long user, String period) {
         return d.json(
                 Map.of(
+                        "salaryBasis", "monthly_latest_v1",
                         "salary",
-                                d.rows(
-                                        "SELECT id,revision FROM oa_hr_salary WHERE user_id=? AND"
-                                            + " status='confirmed' AND effective_date<=? ORDER BY"
-                                            + " effective_date,id",
-                                        user,
-                                        java.time.YearMonth.parse(period).atEndOfMonth()),
+                                d.effectiveSalaries(user).stream()
+                                        .filter(s -> !date(s.get("effectiveDate")).isAfter(
+                                                java.time.YearMonth.parse(period).atEndOfMonth()))
+                                        .map(s -> Map.of("id", id(s.get("id")), "revision", id(s.get("revision"))))
+                                        .toList(),
                         "daily",
                                 d.rows(
                                         "SELECT DISTINCT b.id,b.revision FROM"
@@ -259,13 +312,10 @@ public class HrPayrollService {
         d.expect(a, "confirmed");
         if (!period.equals(a.get("period")) || !"monthly".equals(a.get("kind")))
             throw new ApiException(400, "请选择本月已确认的月度考勤");
-        var rules = d.object(b.get("rules"));
+        var rules = ruleService.resolve(period, b);
         var rows = attendance.visibleRows(source, false);
-        if (rows.size()
-                != d.jdbc.queryForObject(
-                        "SELECT COUNT(*) FROM oa_hr_attendance_row WHERE batch_id=?",
-                        Integer.class,
-                        source)) throw new ApiException(403, "工资批次包含超出权限的员工");
+        if (rows.size() != attendance.memberUserIds(source).size()) throw new ApiException(403, "工资批次包含超出权限的员工");
+        if (rows.isEmpty()) throw new ApiException(400, "当前考勤没有可核算的员工");
         if (d.jdbc.queryForObject(
                         "SELECT COUNT(*) FROM oa_hr_payroll WHERE regular_key=?",
                         Long.class,
@@ -292,11 +342,7 @@ public class HrPayrollService {
             long user = id(a.get("userId"));
             var e = d.employee(user);
             e.put("employmentPeriods", employmentPeriods(user, period));
-            var salaries =
-                    d.rows(
-                            "SELECT * FROM oa_hr_salary WHERE user_id=? AND status='confirmed'"
-                                    + " ORDER BY effective_date",
-                            user);
+            var salaries = d.effectiveSalaries(user);
             var daily =
                     d
                             .rows(
@@ -335,6 +381,7 @@ public class HrPayrollService {
                             "bankAccount")) snapshot.put(key, e.get(key));
             snapshot.put("attendance", a);
             snapshot.put("salaryVersions", salaries);
+            snapshot.put("salaryBasis", "monthly_latest_v1");
             snapshot.put("segments", amounts.get("segments"));
             snapshot.put("sourceSignature", sourceSignature(user, period));
             snapshot.put("employmentPeriods", e.get("employmentPeriods"));
@@ -373,6 +420,7 @@ public class HrPayrollService {
                         .anyMatch(
                                 i ->
                                         !text(i.get("reason")).isEmpty()
+                                                || optionalId(i.get("taxEntered")) != 0
                                                 || optionalId(i.get("verified")) != 0
                                                 || ADJUSTABLE.stream()
                                                         .anyMatch(
@@ -389,15 +437,9 @@ public class HrPayrollService {
         if (!a.get("period").equals(b.get("period")) || !"monthly".equals(a.get("kind")))
             throw new ApiException(400, "考勤月份或类型不一致");
         var rows = attendance.visibleRows(source, false);
-        if (rows.size()
-                != d.jdbc.queryForObject(
-                        "SELECT COUNT(*) FROM oa_hr_attendance_row WHERE batch_id=?",
-                        Integer.class,
-                        source)) throw new ApiException(403, "考勤包含越权员工");
-        var rules =
-                body.containsKey("rules")
-                        ? d.object(body.get("rules"))
-                        : d.object(b.get("rulesJson"));
+        if (rows.size() != attendance.memberUserIds(source).size()) throw new ApiException(403, "考勤包含越权员工");
+        if (rows.isEmpty()) throw new ApiException(400, "当前考勤没有可核算的员工");
+        var rules = ruleService.forRecalculation(text(b.get("period")), body, d.object(b.get("rulesJson")));
         d.history(
                 "payroll",
                 batch,
@@ -408,6 +450,8 @@ public class HrPayrollService {
                         b.get("revision"),
                         "rows",
                         previousItems,
+                        "rules",
+                        d.object(b.get("rulesJson")),
                         "reason",
                         recalcReason));
         d.jdbc.update("DELETE FROM oa_hr_payroll_item WHERE payroll_id=?", batch);
@@ -487,7 +531,8 @@ public class HrPayrollService {
                             batch,
                             user);
             var row = new LinkedHashMap<>(old);
-            for (String key : ADJUSTABLE) row.put(key, currency(input.get(key), key));
+            for (String key : ADJUSTABLE) row.put(key, currency(
+                    "tax".equals(key) && text(input.get(key)).isEmpty() ? 0 : input.get(key), key));
             if ("commission".equals(b.get("batchType")))
                 for (String key : List.of("commission", "adjustment", "bonus"))
                     if (number(row.get(key), key).compareTo(number(old.get(key), key)) != 0)
@@ -501,10 +546,11 @@ public class HrPayrollService {
                     throw new ApiException(400, "基础核算项不能回传覆盖，请通过本期调整或重新核算处理");
             String reason = required(input.get("reason"), "本期核对或调整说明", 1000);
             row.put("reason", reason);
+            row.put("taxEntered", 1);
             totals(row);
             if (number(row.get("netAmount"), "实发").signum() < 0
-                    && "regular".equals(b.get("batchType")))
-                throw new ApiException(400, "常规工资实发不能为负");
+                    && ("regular".equals(b.get("batchType")) || number(row.get("tax"), "个税").signum() != 0))
+                throw new ApiException(400, "个税不能导致实发金额为负，扣回批次仅可填写0元个税");
             var diff = new LinkedHashMap<String, Object>();
             for (String key : ADJUSTABLE)
                 if (number(old.get(key), key).compareTo(number(row.get(key), key)) != 0)
@@ -525,7 +571,7 @@ public class HrPayrollService {
         for (var r : (List<Map<String, Object>>) preview.get("rows"))
             d.jdbc.update(
                     "UPDATE oa_hr_payroll_item SET"
-                        + " bonus=?,commission=?,adjustment=?,deduction=?,tax=?,contribution=?,gross_amount=?,net_amount=?,reason=?,verified=1"
+                        + " bonus=?,commission=?,adjustment=?,deduction=?,tax=?,contribution=?,gross_amount=?,net_amount=?,reason=?,verified=1,tax_entered=1,tax_reason=?,tax_operator_id=?,tax_update_time=CURRENT_TIMESTAMP"
                         + " WHERE id=?",
                     r.get("bonus"),
                     r.get("commission"),
@@ -536,6 +582,8 @@ public class HrPayrollService {
                     r.get("grossAmount"),
                     r.get("netAmount"),
                     r.get("reason"),
+                    r.get("reason"),
+                    AuthContext.userId(),
                     r.get("id"));
         d.jdbc.update("UPDATE oa_hr_payroll SET revision=revision+1 WHERE id=?", batch);
         d.history("payroll", batch, null, "回传工资调整", preview);
@@ -551,6 +599,35 @@ public class HrPayrollService {
             net = net.subtract(optionalMoney(row.get(key)));
         row.put("grossAmount", money(gross));
         row.put("netAmount", money(net));
+    }
+
+    @Transactional
+    public Map<String, Object> saveTax(long payroll, long item, Map<String, Object> body) {
+        d.require(PAYROLL, "edit");
+        var b = batch(payroll, true);
+        d.revision(b, body);
+        d.expect(b, "draft", "rejected");
+        access(payroll);
+        var row = d.one("SELECT * FROM oa_hr_payroll_item WHERE payroll_id=? AND id=? FOR UPDATE", payroll, item);
+        BigDecimal tax = currency(text(body.get("tax")).isEmpty() ? 0 : body.get("tax"), "个税");
+        if (tax.signum() < 0) throw new ApiException(400, "个税不能为负数");
+        String reason = limited(body.get("reason"), 1000);
+        var before = new LinkedHashMap<>(row);
+        row.put("tax", tax);
+        totals(row);
+        BigDecimal net = number(row.get("netAmount"), "实发");
+        if (net.signum() < 0 && ("regular".equals(b.get("batchType")) || tax.signum() != 0))
+            throw new ApiException(400, "个税不能导致实发金额为负，扣回批次仅可填写0元个税");
+        d.jdbc.update("""
+                UPDATE oa_hr_payroll_item SET tax=?,tax_entered=1,tax_reason=?,tax_operator_id=?,
+                tax_update_time=CURRENT_TIMESTAMP,net_amount=?,verified=0 WHERE id=?
+                """, tax, reason, AuthContext.userId(), row.get("netAmount"), item);
+        d.jdbc.update("UPDATE oa_hr_payroll SET revision=revision+1 WHERE id=?", payroll);
+        d.history("payroll", payroll, id(row.get("userId")), "填写或修改个税",
+                Map.of("itemId", item, "beforeTax", before.get("tax"),
+                        "beforeEntered", before.get("taxEntered"), "tax", tax,
+                        "beforeNetAmount", before.get("netAmount"), "netAmount", row.get("netAmount"), "reason", reason));
+        return detail(payroll, false);
     }
 
     @Transactional
@@ -575,6 +652,8 @@ public class HrPayrollService {
         if (ctx.requestId() == 0) {
             d.revision(b, ctx.payload());
             d.expect(b, "draft", "rejected");
+            if (!accountChanges(batch).isEmpty())
+                throw new ApiException(409, "员工收款账户已变更，请先同步最新收款账户并重新核对");
         } else if (optionalId(b.get("workflowRequestId")) != ctx.requestId()
                 || !"approving".equals(b.get("status"))) throw new ApiException(409, "工资审批版本已变化");
         if (attendanceChanged(b)) throw new ApiException(409, "考勤已有新版本，请重新核算工资后提交");
@@ -684,9 +763,10 @@ public class HrPayrollService {
     public void publish(long batch, Map<String, Object> body) {
         d.require(PAYROLL, "publish");
         var b = batch(batch, true);
-        d.revision(b, body);
         d.expect(b, "approved");
         access(batch);
+        if (optionalId(b.get("published")) == 1) return;
+        d.revision(b, body);
         d.jdbc.update("UPDATE oa_hr_payroll SET published=1,revision=revision+1 WHERE id=?", batch);
         d.history("payroll", batch, null, "发布工资条", Map.of());
         for (var item : items(batch))
@@ -700,8 +780,47 @@ public class HrPayrollService {
 
     @Transactional
     public Map<String, Object> pay(long item, Map<String, Object> body) {
+        return recordPayment(item, body, null);
+    }
+
+    @Transactional
+    public Map<String, Object> payBatch(long payroll, Map<String, Object> body) {
+        requirePaymentPermission();
+        var batch = batch(payroll, true);
+        d.expect(batch, "approved");
+        d.revision(batch, body);
+        access(payroll);
+        var rows = d.records(body.get("rows"));
+        if (rows.isEmpty() || rows.size() > 500) throw new ApiException(400, "每次请选择1至500名员工登记发放");
+        Set<Long> seen = new HashSet<>();
+        Set<String> tokens = new HashSet<>();
+        // Validate membership before recording any payment, including idempotent retries.
+        for (var row : rows) {
+            long item = id(row.get("itemId"));
+            if (!seen.add(item)) throw new ApiException(400, "同一员工工资明细不能重复选择");
+            if (!tokens.add(required(row.get("requestToken"), "付款幂等标识", 64)))
+                throw new ApiException(400, "每条发放记录必须使用不同的付款幂等标识");
+            if (id(d.one("SELECT payroll_id FROM oa_hr_payroll_item WHERE id=?", item).get("payrollId")) != payroll)
+                throw new ApiException(400, "所选员工不属于当前工资批次");
+        }
+        Long[] sharedAttachment = new Long[1];
+        List<Map<String, Object>> payments = new ArrayList<>();
+        for (var row : rows) {
+            var payment = new LinkedHashMap<String, Object>(body);
+            payment.remove("rows");
+            payment.putAll(row);
+            payments.add(recordPayment(id(row.get("itemId")), payment, sharedAttachment));
+        }
+        return Map.of("count", payments.size(), "payments", payments);
+    }
+
+    private void requirePaymentPermission() {
         if (!d.allowed(FINANCE, "pay") && !d.allowed(PAYROLL, "pay"))
             throw new ApiException(403, "没有工资发放权限");
+    }
+
+    private Map<String, Object> recordPayment(long item, Map<String, Object> body, Long[] sharedAttachment) {
+        requirePaymentPermission();
         var initial = d.one("SELECT payroll_id FROM oa_hr_payroll_item WHERE id=?", item);
         long payroll = id(initial.get("payrollId"));
         var b = batch(payroll, true);
@@ -737,7 +856,13 @@ public class HrPayrollService {
                         reference)
                 > 0) throw new ApiException(409, "该付款流水已登记，不能重复发放");
         Long file = null;
-        if ("paid".equals(status)) file = attendance.saveFile(null, payroll, body);
+        if ("paid".equals(status)) {
+            if (sharedAttachment == null) file = attendance.saveFile(null, payroll, body);
+            else {
+                if (sharedAttachment[0] == null) sharedAttachment[0] = attendance.saveFile(null, payroll, body);
+                file = sharedAttachment[0];
+            }
+        }
         else required(body.get("reason"), "失败原因", 1000);
         long payment =
                 d.insert(
@@ -771,6 +896,7 @@ public class HrPayrollService {
 
     public List<Map<String, Object>> self() {
         d.require(SELF, "access");
+        if (AuthContext.userId() == 1L || d.system.isSuperAdminIdentity(AuthContext.userId())) return List.of();
         return d
                 .rows(
                         "SELECT i.*,p.period,p.batch_type,p.published FROM oa_hr_payroll_item i"

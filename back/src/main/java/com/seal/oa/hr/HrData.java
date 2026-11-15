@@ -70,6 +70,8 @@ public class HrData {
     }
 
     Map<String, Object> employee(long user) {
+        if (user == 1L || system.isSuperAdminIdentity(user))
+            throw new ApiException(400, "超级管理员是系统账号，不属于员工");
         var row =
                 one(
                         "SELECT"
@@ -80,6 +82,27 @@ public class HrData {
         if (!scope.canAccess(AuthContext.userId(), row.get("deptId"), user))
             throw new ApiException(403, "员工不在数据范围内");
         return row;
+    }
+
+    String memberCondition(String alias) {
+        return com.seal.oa.system.MemberIdentity.condition(alias);
+    }
+
+    List<Map<String, Object>> effectiveSalaries(long user) {
+        return rows(
+                        "SELECT s.*,e.snapshot_json AS confirmed_snapshot FROM oa_hr_salary s"
+                            + " LEFT JOIN oa_hr_salary_effective e ON e.salary_id=s.id"
+                            + " WHERE s.user_id=? AND (s.status='confirmed' OR e.salary_id IS NOT NULL)",
+                        user)
+                .stream()
+                .map(row -> {
+                    if (!"confirmed".equals(row.get("status")))
+                        return object(row.get("confirmedSnapshot"));
+                    row.remove("confirmedSnapshot");
+                    return row;
+                })
+                .sorted(Comparator.comparing(row -> date(row.get("effectiveDate"))))
+                .toList();
     }
 
     void revision(Map<String, Object> row, Map<String, Object> body) {

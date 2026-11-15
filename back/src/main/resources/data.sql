@@ -152,67 +152,6 @@ INSERT INTO sys_app_module (tenant_app_id, module_name, module_path, component, 
 INSERT INTO sys_admin_identity (user_id, user_name, nick_name, email, phonenumber, sex, status, sort) VALUES
     (1, '13610316814', '欧志锋', '13610316814@seals.com', '13610316814', '0', '0', 0);
 
-INSERT INTO oa_project (
-    id, tenant_id, code, name, nick_name, dept_id, type, owner_unit, sketch, status, process_status, create_by
-) VALUES (
-    1, 1, 'QS-DEMO-001', '企业数字化办公平台', '方铭渴', 103, '1',
-    '示例客户', '用于验证项目管理、合同、采购和报销流程的演示项目。', '在建', 'approved', '17630135660'
-);
-
-INSERT INTO oa_project_member (project_id, user_id, user_name, nick_name, role_name, phone)
-VALUES (1, 1, '17630135660', '方铭渴', '项目经理', '17630135660');
-
-INSERT INTO oa_contract (
-    id, tenant_id, project_id, code, name, type, party_a, party_b, money, tax_rate,
-    start_date, end_date, efficacy, process_status, create_by
-) VALUES (
-    1, 1, 1, 'HT-DEMO-001', '办公平台实施合同', 'service', '示例客户', '示例供应商',
-    128000.00, 6.0000, CURRENT_DATE, DATEADD('DAY', 365, CURRENT_DATE), '有效', 'approved', '17630135660'
-);
-
-INSERT INTO oa_contract_item (contract_id, sn, name, content, money, percent)
-VALUES (1, 1, '一期实施款', '完成基础模块上线', 76800.00, 60.0000);
-INSERT INTO oa_contract_item (contract_id, sn, name, content, money, percent)
-VALUES (1, 2, '验收尾款', '验收通过后支付', 51200.00, 40.0000);
-
-INSERT INTO oa_purchase_apply (
-    id, tenant_id, project_id, code, apply_user_id, apply_user_name, dept_id,
-    purpose, total_amount, process_status
-) VALUES (1, 1, 1, 'CG-DEMO-001', 1, '方铭渴', 103, '采购办公设备', 6800.00, 'approved');
-
-INSERT INTO oa_purchase_apply_item (apply_id, name, spec, unit, amount, price, total_price, description)
-VALUES (1, '笔记本电脑', '14 英寸/32G/1T', '台', 2, 3400.00, 6800.00, '研发办公使用');
-
-INSERT INTO oa_expense (
-    id, tenant_id, project_id, code, apply_user_id, apply_user_name, dept_id,
-    expense_type, total_amount, process_status, remark
-) VALUES (1, 1, 1, 'BX-DEMO-001', 1, '方铭渴', 103, 'travel', 1260.00, 'running', '项目现场差旅');
-
-INSERT INTO oa_expense_item (expense_id, budget_id, detail, sum, replaced, remark)
-VALUES (1, NULL, '高铁及住宿', 1260.00, 'N', '项目现场支持');
-
-INSERT INTO oa_loan (
-    id, tenant_id, code, apply_user_id, apply_user_name, project_id, loan_type, amount,
-    loan_date, expected_repay_date, actual_repay_amount, process_status, remark
-) VALUES (
-    1, 1, 'JK-DEMO-001', 1, '方铭渴', 1, 'cash', 5000.00,
-    CURRENT_DATE, DATEADD('DAY', 30, CURRENT_DATE), 0.00, 'approved', '项目备用金'
-);
-INSERT INTO oa_loan_detail (loan_id, loan_name, sum, remark) VALUES
-    (1, '现场交通', 1200.00, '项目现场往返'),
-    (1, '临时采购', 3800.00, '办公耗材');
-
-INSERT INTO oa_budget (id, tenant_id, project_id, code, name, budget_year, total_amount, used_amount, status)
-VALUES (1, 1, 1, 'YS-DEMO-001', '数字化平台年度预算', 2026, 500000.00, 1260.00, 'approved');
-
-INSERT INTO oa_budget_item (budget_id, subject_name, subject_code, amount, used_amount, remark)
-VALUES (1, '差旅费', 'TRAVEL', 50000.00, 1260.00, '项目现场支持');
-INSERT INTO oa_budget_item (budget_id, subject_name, subject_code, amount, used_amount, remark)
-VALUES (1, '设备采购', 'DEVICE', 180000.00, 6800.00, '研发设备');
-
-INSERT INTO oa_warehouse (id, tenant_id, code, name, address, manager_id, manager_name, status)
-VALUES (1, 1, 'CK-DEMO-001', '项目现场仓', '项目现场 A 区', 1, '方铭渴', '0');
-
 INSERT INTO oa_business_opportunity (
     id, tenant_id, name, customer_name, owner_user_id, owner_user_name,
     stage, expected_amount, expected_close_date, status

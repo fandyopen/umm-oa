@@ -16,6 +16,8 @@ export function payrollRecords(batch) {
   return (batch.rows || []).map(row => ({
     ...row,
     ...row.snapshot,
+    tax: row.tax ?? 0,
+    taxStatus: Number(row.taxEntered) === 0 ? '默认0' : '已填写',
     employeeName: row.snapshot.nickName,
     batchId: batch.id,
     period: batch.period,

@@ -21,7 +21,7 @@ MERGE INTO sys_role_group_member (group_id, role_id) KEY (group_id, role_id) VAL
 MERGE INTO sys_role_group_member (group_id, role_id) KEY (group_id, role_id) VALUES (53, 16);
 MERGE INTO sys_role_group_member (group_id, role_id) KEY (group_id, role_id) VALUES (53, 17);
 MERGE INTO sys_role_group_member (group_id, role_id) KEY (group_id, role_id) VALUES (53, 18);
-MERGE INTO sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, status, del_flag) KEY (dept_id) VALUES (322, 1, 0, '0', '海豹科技有限公司', 0, '0', '0');
+MERGE INTO sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, status, del_flag) KEY (dept_id) VALUES (322, 1, 0, '0', 'UMM加木企服', 0, '0', '0');
 MERGE INTO sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, status, del_flag) KEY (dept_id) VALUES (323, 1, 322, '0,322', '总经办', 0, '0', '0');
 MERGE INTO sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, status, del_flag) KEY (dept_id) VALUES (324, 1, 322, '0,322', '综合部', 1, '0', '0');
 MERGE INTO sys_dept (dept_id, tenant_id, parent_id, ancestors, dept_name, order_num, status, del_flag) KEY (dept_id) VALUES (325, 1, 322, '0,322', '财务部', 2, '0', '0');
@@ -103,7 +103,7 @@ MERGE INTO sys_user_role (user_id, role_id) KEY (user_id, role_id) VALUES (32, 2
 MERGE INTO sys_user_role (user_id, role_id) KEY (user_id, role_id) VALUES (33, 2);
 MERGE INTO sys_user_role (user_id, role_id) KEY (user_id, role_id) VALUES (34, 2);
 DELETE FROM sys_dept WHERE dept_id BETWEEN 100 AND 104;
-UPDATE sys_tenant SET tenant_name = '海豹科技有限公司' WHERE tenant_id = 1;
+UPDATE sys_tenant SET tenant_name = 'UMM加木企服' WHERE tenant_id = 1;
 DELETE FROM sys_dept_module;
 INSERT INTO sys_dept_module (dept_id, module_id)
 SELECT DISTINCT u.dept_id, rm.module_id

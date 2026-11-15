@@ -16,11 +16,14 @@
       </div>
     </div>
     <a-alert
-      v-if="contract.effectiveVersion && !['active', 'completed'].includes(contract.status)"
+      v-if="contract.effectiveVersion && !['active', 'completed', 'terminated'].includes(contract.status)"
       type="info"
       show-icon
       :message="`V${contract.effectiveVersion} 继续生效，应收与风险按原签署版本计算。当前 V${contract.versionNo}：${statuses[contract.status]}。`"
     />
+    <a-alert v-if="contract.deleted" type="info" show-icon message="合同已删除，当前仅查看历史；回款、招聘与提成记录仍保留。" class="tw-mt-3" />
+    <a-alert v-if="contract.lifecyclePending" type="info" show-icon message="合同作废或终止正在审批，通过后生效；可在审批记录查看，或撤回当前审批。" class="tw-mt-3" />
+    <a-alert v-if="contract.status === 'terminated'" type="warning" show-icon message="合同已终止。请处理剩余应收、退款和招聘保证期，全部处理后点击“合同结案”，结案后可删除。" class="tw-mt-3" />
     <a-alert v-if="contract.approvalComment" :type="contract.status === 'rejected' ? 'warning' : 'info'" :message="`审批意见：${contract.approvalComment}`" class="tw-mt-3" />
     <a-alert
       v-if="contract.signingPending"
@@ -37,7 +40,7 @@
         ><a-button type="primary" @click="startAction('submit')" v-hasModuleAction="moduleActionBinding('contract', 'submit')" :loading="!!moduleActionBusy.startAction">提交审批</a-button></a-tooltip
       >
       <a-button
-        v-if="contract.canEditCustomer && contract.status === 'approved' && !contract.signingPending && showModuleAction('contract', 'sign')"
+        v-if="canMutate && contract.status === 'approved' && !contract.signingPending && showModuleAction('contract', 'sign')"
         type="primary"
         @click="startAction('sign')"
         v-hasModuleAction="moduleActionBinding('contract', 'sign')"
@@ -45,18 +48,22 @@
         >{{ contract.signApprovalEnabled ? '提交签署审批' : '登记签署并生效' }}</a-button
       >
       <a-button
-        v-if="contract.canEditCustomer && !contract.signingPending && ['active', 'approved'].includes(contract.status) && showModuleAction('version', 'edit')"
+        v-if="canMutate && !contract.signingPending && ['active', 'approved'].includes(contract.status) && showModuleAction('version', 'edit')"
         @click="confirmAction('revision', '创建新版本', '新版本需要重新审批和签署，原生效版本继续履约。')"
         :loading="!!moduleActionBusy.confirmAction"
         >创建新版本</a-button
       >
-      <a-button v-if="contract.canEditCustomer && contract.effectiveVersion && showModuleAction('contract', 'add')" icon="reload" @click="renew" :loading="!!moduleActionBusy.openForm">发起续约</a-button>
+      <a-button v-if="canMutate && contract.effectiveVersion && showModuleAction('contract', 'add')" icon="reload" @click="renew" :loading="!!moduleActionBusy.openForm">发起续约</a-button>
       <a-button
-        v-if="contract.canEditCustomer && contract.status === 'active' && showModuleAction('contract', 'edit')"
+        v-if="canMutate && ['active', 'terminated'].includes(contract.status) && showModuleAction('contract', 'edit')"
         @click="confirmAction('finish', '合同结案', '收费全部结清后可结案，结案后停止履约提醒。')"
         :loading="!!moduleActionBusy.confirmAction"
         >合同结案</a-button
       >
+      <a-button v-if="contract.canVoid && showModuleAction('contract', 'void')" type="danger" @click="openLifecycle('void')">作废合同</a-button>
+      <a-button v-if="contract.canTerminate && showModuleAction('contract', 'terminate')" type="danger" @click="openLifecycle('terminate')">终止合同</a-button>
+      <a-button v-if="contract.canWithdraw && showModuleAction('contract', 'withdraw')" @click="openLifecycle('withdraw')">撤回审批</a-button>
+      <a-button v-if="contract.canDelete && showModuleAction('contract', 'remove')" type="danger" @click="openLifecycle('remove')">删除合同</a-button>
     </div>
     <a-tabs v-model="activeTab" class="tw-mt-4">
       <a-tab-pane key="overview" tab="基本信息">
@@ -64,7 +71,7 @@
           <a-descriptions-item label="服务类型">{{ contract.serviceType }}</a-descriptions-item
           ><a-descriptions-item label="审批人">{{ contract.approvalUserName || '未提交' }}</a-descriptions-item>
           <a-descriptions-item v-if="contract.workflow && contract.workflow.instanceId" label="审批节点">{{
-            contract.workflow.status === 'approved' ? '审批完成' : contract.workflow.status === 'rejected' ? '已退回' : contract.workflow.taskName || '审批中'
+            contract.workflow.status === 'approved' ? '审批完成' : contract.workflow.status === 'rejected' ? '已退回' : contract.workflow.status === 'withdrawn' ? '已撤回' : contract.workflow.taskName || '审批中'
           }}</a-descriptions-item>
           <a-descriptions-item label="服务期限">{{ contract.startDate }} 至 {{ contract.endDate }}</a-descriptions-item
           ><a-descriptions-item label="当前 / 生效版本">V{{ contract.versionNo }} / {{ contract.effectiveVersion ? `V${contract.effectiveVersion}` : '尚未生效' }}</a-descriptions-item>
@@ -81,10 +88,10 @@
       </a-tab-pane>
       <a-tab-pane key="terms" tab="收费与回款">
         <h3>{{ contract.effectiveVersion ? `生效收费条款 · V${contract.effectiveVersion}` : '草稿收费条款' }}</h3>
-        <a-table :columns="feeColumns" :data-source="displayTerms" :pagination="false" row-key="key" size="small" :scroll="{ x: 900 }">
+        <a-table :columns="feeColumns" :data-source="displayTerms" :pagination="false" row-key="key" size="small">
           <span slot="money" slot-scope="value">{{ money(value) }}</span>
           <span slot="feeAction" slot-scope="_, record"
-            ><a-button v-if="contract.canEditCustomer && contract.effectiveVersion && contract.status !== 'completed' && record.outstandingAmount > 0 && showModuleAction('fee', 'receive')" type="link" @click="startReceipt(record)"
+            ><a-button v-if="canMutate && contract.effectiveVersion && contract.status !== 'completed' && record.outstandingAmount > 0 && showModuleAction('fee', 'receive')" type="link" @click="startReceipt(record)"
               >登记回款</a-button
             ></span
           >
@@ -110,8 +117,15 @@
         >
         <h3 class="tw-mt-[22px]">签署审批记录</h3>
         <a-table :columns="signingColumns" :data-source="signingHistory" :pagination="false" row-key="requestId" size="small">
-          <span slot="signingStatus" slot-scope="value">{{ { running: '审批中', approved: '已通过', rejected: '已退回' }[value] || value }}</span>
+          <span slot="signingStatus" slot-scope="value">{{ { running: '审批中', approved: '已通过', rejected: '已退回', withdrawn: '已撤回' }[value] || value }}</span>
           <span slot="workflow" slot-scope="_, record"><a @click="workflowPreview = record">查看流程记录</a></span>
+        </a-table>
+        <h3 class="tw-mt-[22px]">作废与终止审批记录</h3>
+        <a-table :data-source="contract.lifecycleHistory || []" :pagination="false" row-key="requestId" size="small">
+          <a-table-column title="操作" data-index="actionCode"><template slot-scope="value">{{ value === 'void' ? '作废合同' : '终止合同' }}</template></a-table-column>
+          <a-table-column title="状态" data-index="status"><template slot-scope="value">{{ { running: '审批中', approved: '已通过', rejected: '已退回', withdrawn: '已撤回' }[value] || value }}</template></a-table-column>
+          <a-table-column title="当前节点" data-index="taskName" />
+          <a-table-column title="审批流程"><template slot-scope="record"><a @click="workflowPreview = record">查看流程记录</a></template></a-table-column>
         </a-table>
       </a-tab-pane>
       <a-tab-pane key="versions" tab="版本记录">
@@ -135,6 +149,14 @@
           ><span slot="compare" slot-scope="value" style="white-space: pre-wrap; word-break: break-word">{{ value }}</span></a-table
         >
       </a-tab-pane>
+      <a-tab-pane key="operations" tab="操作记录">
+        <a-table :data-source="contract.operationHistory || []" :pagination="{ pageSize: 8 }" row-key="id" size="small">
+          <a-table-column title="操作" data-index="action"><template slot-scope="value">{{ operationLabels[value] || value }}</template></a-table-column>
+          <a-table-column title="原因" data-index="reason" />
+          <a-table-column title="操作人" data-index="operatorName" />
+          <a-table-column title="时间" data-index="createTime" />
+        </a-table>
+      </a-tab-pane>
       <a-tab-pane key="reminders" tab="提醒记录">
         <a-alert type="info" message="风险统一在客户风险提醒跟进；完成回款、签署续约或结案后，依据业务条件解除提醒。" class="tw-mb-4" />
         <a-button v-if="showModuleAction('risk')" type="link" @click="openRisks">前往风险提醒处理</a-button>
@@ -144,6 +166,7 @@
         <a-table :columns="logColumns" :data-source="contract.reminderLogs || []" :pagination="{ pageSize: 8 }" row-key="id" size="small" />
       </a-tab-pane>
     </a-tabs>
+    <contract-lifecycle-dialog :record="contract" :action="lifecycleAction" @close="lifecycleAction = ''" @success="lifecycleChanged" />
     <a-modal :visible="!!operation" :title="operationTitle" :confirm-loading="saving || !!moduleActionBusy.runAction" @cancel="operation = ''" @ok="runAction">
       <template v-if="operation === 'submit'"
         ><a-alert type="info" show-icon message="按已发布的审批流程发起" description="审批人及节点由流程设计决定。提交后冻结合同、收费条款和本次流程配置，全部节点通过后才能登记签署。" />
@@ -165,7 +188,7 @@
       <p>流程实例：{{ workflowPreview && workflowPreview.instanceId }}</p>
       <a-table :columns="workflowColumns" :data-source="workflowPreview ? workflowPreview.history || [] : []" :pagination="false" row-key="taskId" size="small"
         ><span slot="taskStatus" slot-scope="value"
-          ><a-tag :color="value === 'done' ? 'green' : 'blue'">{{ value === 'done' ? '已办理' : '待审批' }}</a-tag></span
+          ><a-tag :color="value === 'done' ? 'green' : 'blue'">{{ { done: '已办理', cancelled: '已撤回', todo: '待审批' }[value] || value }}</a-tag></span
         ></a-table
       >
     </a-modal>
@@ -179,6 +202,7 @@ import moment from 'moment'
 import { getContract, contractAction, normalizeContractId } from '/src/api/eos/crm/contracts.js'
 import { statuses, statusColors, money, today } from '../shared.js'
 import ContractForm from './ContractForm.vue'
+import ContractLifecycleDialog from './ContractLifecycleDialog.vue'
 
 export default {
   mixins: [
@@ -199,11 +223,13 @@ export default {
           return { module: this.operation === 'receipts' ? 'fee' : 'contract', action: this.operation === 'receipts' ? 'receive' : this.operation, label: this.operationTitle || '提交合同操作' }
         },
         openCustomer: { module: 'customer', action: 'view', label: '查看客户详情' },
-        openRisks: { module: 'risk', action: 'view', label: '查看风险提醒' }
+        openRisks: { module: 'risk', action: 'view', label: '查看风险提醒' },
+        openLifecycle: function (action) { return { module: 'contract', action, label: '合同操作' } }
       }
     )
   ],
   name: 'CrmContractDetail',
+  components: { ContractLifecycleDialog },
   props: { contractId: { type: Number, required: true }, initialTab: { type: String, default: 'overview' }, initialTermKey: { type: String, default: '' } },
   data() {
     return {
@@ -214,6 +240,8 @@ export default {
       operation: '',
       actionForm: {},
       workflowPreview: null,
+      lifecycleAction: '',
+      operationLabels: { void: '作废合同', terminate: '终止合同', withdraw: '撤回审批', archive: '删除合同（保留历史）', delete: '彻底删除草稿', void_submit: '提交作废审批', terminate_submit: '提交终止审批', void_rejected: '作废审批退回', terminate_rejected: '终止审批退回' },
       compareBefore: undefined,
       compareAfter: undefined,
       statuses,
@@ -287,8 +315,9 @@ export default {
       return (this.contract.versions || []).flatMap(version => (version.signingHistory || []).map(workflow => ({ ...workflow, versionNo: version.versionNo })))
     },
     editable() {
-      return this.contract.canEditCustomer && ['draft', 'rejected'].includes(this.contract.status)
+      return this.canMutate && ['draft', 'rejected'].includes(this.contract.status)
     },
+    canMutate() { return this.contract.canEditCustomer && !this.contract.deleted && !this.contract.lifecyclePending },
     displayTerms() {
       return this.contract.effectiveVersion ? this.contract.effectiveFeeTerms || [] : this.contract.feeTerms || []
     },
@@ -334,6 +363,12 @@ export default {
   },
   methods: {
     money,
+    openLifecycle(action) { this.lifecycleAction = action },
+    async lifecycleChanged({ deleted }) {
+      this.$emit('changed')
+      if (deleted) this.$emit('close')
+      else await this.load()
+    },
     async load() {
       if (!normalizeContractId(this.contractId)) return this.$message.error('合同编号无效，请关闭详情并刷新列表后重试')
       this.loading = true

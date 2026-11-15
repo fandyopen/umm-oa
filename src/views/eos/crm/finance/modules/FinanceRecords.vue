@@ -12,7 +12,7 @@
         ><a-menu slot="overlay"><a-menu-item key="writeoff" @click="openForm(null, 'writeoff')">应收核销</a-menu-item><a-menu-item key="reversal" @click="openForm(null, 'reversal')">到账冲销</a-menu-item></a-menu></a-dropdown
       >
     </div>
-    <a-table :loading="loading" :data-source="rows" :pagination="pagination" row-key="id" :scroll="{ x: 1350 }" size="small" @change="changePage">
+    <a-table :loading="loading" :data-source="rows" :pagination="pagination" row-key="id" size="small" @change="changePage">
       <a-table-column title="编号" data-index="id" width="75" /><a-table-column title="客户" data-index="customerName" width="160" /><a-table-column title="业务关联" width="230"
         ><template slot-scope="r"
           >{{ r.contractName || r.jobTitle || r.projectName || '—' }}<small class="subline">{{ r.contractCode || r.category || r.referenceNo }}</small></template
@@ -57,6 +57,8 @@
             v-if="['draft', 'rejected'].includes(r.status) && type !== 'adjustment' && type !== 'receivable' && showModuleAction('finance', submitAction(r))"
             type="link"
             size="small"
+            :disabled="!!r.submissionBlockedReason"
+            :title="r.submissionBlockedReason"
             @click="submitWorkflow(r)"
             v-hasModuleAction="moduleActionBinding('finance', submitAction(r))"
             >提交{{ needsApproval(r) ? '审批' : '确认' }}</a-button
@@ -82,6 +84,10 @@
           >
           <a-button type="link" size="small" @click="showDetail(r)">历史</a-button>
           <a-button v-if="recordType === 'receipt' && r.contractId && r.status === 'confirmed' && showModuleAction('commission')" type="link" size="small" @click="openCommission(r)">提成分摊</a-button>
+          <div v-if="r.submissionBlockedReason" class="submission-guidance">
+            <small class="submission-warning" :title="r.submissionBlockedReason">{{ r.submissionBlockedReason.split('；')[0] }}</small>
+            <a v-if="(r.confirmedReceipts || []).length" @click="relatedReceipt = r">查看已确认回款</a>
+          </div>
         </template></a-table-column
       >
     </a-table>
@@ -92,6 +98,11 @@
             ><a-select-option v-for="s in sources" :key="s.sourceKey" :value="s.sourceKey">{{ sourceLabel(s) }}</a-select-option></a-select
           ></a-form-model-item
         >
+        <a-alert
+          v-if="selectedSource && ['receipt', 'writeoff'].includes(type)" class="source-balance" show-icon :type="available <= 0 ? 'warning' : 'info'"
+          :message="Number(selectedSource.outstandingAmount) <= 0 ? '该节点已收齐，当前草稿无法提交' : '请核对节点余额后提交'">
+          <template slot="description">未收余额 {{ money(selectedSource.outstandingAmount) }} 元，可提交 {{ money(Math.max(0, available)) }} 元，待审占用 {{ money(Number(selectedSource.outstandingAmount) - available) }} 元。保存草稿不会确认回款；无需保留的草稿可在列表作废。</template>
+        </a-alert>
         <template v-if="type === 'refund' || type === 'reversal'"
           ><a-form-model-item label="原到账" prop="originalKey"
             ><a-select v-model="form.originalKey" show-search option-filter-prop="children" placeholder="选择原到账记录" @change="originalChanged"
@@ -125,7 +136,7 @@
         >
         <a-form-model-item v-if="type === 'cost'" label="收款对象"><a-input v-model="form.payee" maxlength="200" /></a-form-model-item>
         <a-form-model-item label="金额" prop="amount"
-          ><a-input-number v-model="form.amount" :min="0.01" :precision="2" :max="selectedSource && ['receipt', 'invoice', 'writeoff'].includes(type) ? available : undefined" class="tw-w-full"
+          ><a-input-number v-model="form.amount" :min="0.01" :precision="2" :max="selectedSource && ['receipt', 'invoice', 'writeoff'].includes(type) && available > 0 ? available : undefined" class="tw-w-full"
         /></a-form-model-item>
         <a-form-model-item label="日期" prop="businessDate"><a-date-picker v-model="form.businessDate" value-format="YYYY-MM-DD" class="tw-w-full" /></a-form-model-item>
         <a-form-model-item v-if="type === 'receipt'" label="付款渠道"><a-input v-model="form.channel" maxlength="100" /></a-form-model-item>
@@ -146,6 +157,17 @@
           ><a-upload :action="uploadUrl" :headers="uploadHeaders" :file-list="settleFiles" @change="onSettleUpload"><a-button icon="upload">上传凭证</a-button></a-upload></a-form-model-item
         >
       </a-form-model>
+    </a-modal>
+    <a-modal :visible="!!relatedReceipt" title="同一应收节点的已确认回款" :footer="null" width="650px" @cancel="relatedReceipt = null">
+      <template v-if="relatedReceipt">
+        <a-alert type="info" show-icon :message="'未收余额 ' + money(relatedReceipt.outstandingAmount) + ' 元；以下回款已计入该节点，请核对后决定是否作废当前草稿。'" />
+        <a-table :data-source="relatedReceipt.confirmedReceipts" :pagination="false" row-key="id" size="small">
+          <a-table-column title="回款编号" data-index="id" />
+          <a-table-column title="金额（元）" data-index="amount"><template slot-scope="v">{{ money(v) }}</template></a-table-column>
+          <a-table-column title="回款日期" data-index="businessDate" />
+          <a-table-column title="操作"><template slot-scope="r"><a @click="showDetail(r)">查看详情</a></template></a-table-column>
+        </a-table>
+      </template>
     </a-modal>
     <a-modal :visible="!!detail" title="财务记录历史" :footer="null" width="860px" :body-style="{ maxHeight: '72vh', overflowY: 'auto' }" @cancel="detail = null">
       <finance-record-history v-if="detail" :record="detail" />
@@ -212,6 +234,7 @@ export default {
     settleForm: {},
     settleFiles: [],
     detail: null,
+    relatedReceipt: null,
     previewFile: null,
     sources: [],
     originals: [],
@@ -343,7 +366,7 @@ export default {
         this.form.contractId = s.contractId
         this.form.termKey = s.termKey
         this.form.receivableId = s.receivableId
-        if (['receipt', 'invoice', 'writeoff'].includes(this.type)) this.form.amount = Math.min(Number(this.form.amount || 0) || this.available, this.available)
+        if (['receipt', 'invoice', 'writeoff'].includes(this.type) && this.available > 0) this.form.amount = Math.min(Number(this.form.amount || 0) || this.available, this.available)
       }
     },
     originalChanged(key) {
@@ -410,6 +433,18 @@ export default {
       return ['invoice', 'refund'].includes(r.recordType)
     },
     async submitWorkflow(r) {
+      if (r.submissionBlockedReason) return this.$message.warning(r.submissionBlockedReason)
+      if (['receipt', 'writeoff'].includes(r.recordType)) {
+        const latest = (await getFinanceRecord(r.id)).data
+        if (latest.submissionBlockedReason) {
+          await this.load()
+          return this.$message.warning(latest.submissionBlockedReason)
+        }
+        if (latest.revision !== r.revision || latest.status !== r.status) {
+          await this.load()
+          return this.$message.warning('记录已变更，请核对最新状态后重新操作')
+        }
+      }
       const action = this.submitAction(r)
       const response = await this.submitConfiguredAction(action, { recordId: r.id, revision: r.revision }, '提交财务单据')
       if (!response) return
@@ -461,6 +496,18 @@ export default {
 }
 </script>
 <style scoped>
+.submission-guidance {
+  padding: 4px 8px;
+}
+.submission-warning {
+  display: block;
+  color: #ad6800;
+  white-space: normal;
+  line-height: 1.5;
+}
+.source-balance {
+  margin-bottom: 16px;
+}
 .toolbar {
   display: flex;
   gap: 8px;

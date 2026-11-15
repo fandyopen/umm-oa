@@ -12,8 +12,11 @@
     "test:module-context": "node --test back/tools/module-context.test.mjs",
     "test:business-stage": "node --test back/tools/business-stage.test.mjs",
     "test:contract-conversion": "node --test back/tools/contract-conversion.test.mjs",
+    "test:contract-lifecycle": "node --test back/tools/contract-lifecycle.test.mjs",
     "test:customer-reminder": "node --test back/tools/customer-reminder.test.mjs",
-    "test:customer-finance": "node --test back/tools/customer-finance.test.mjs"
+    "test:customer-finance": "node --test back/tools/customer-finance.test.mjs",
+    "test:customer-cleanup": "node --test back/tools/customer-cleanup.test.mjs",
+    "test:data-pages": "node --test back/tools/data-pages.test.mjs"
   },
   "devDependencies": {
     "@ljharb/eslint-config": "^21.0.0",

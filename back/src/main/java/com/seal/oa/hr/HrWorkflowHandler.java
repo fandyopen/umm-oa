@@ -102,12 +102,13 @@ public class HrWorkflowHandler implements WorkflowActionHandler {
             d.jdbc.update(
                     "UPDATE oa_hr_salary SET status='confirmed',revision=revision+1 WHERE id=?",
                     record(c));
+            d.jdbc.update("DELETE FROM oa_hr_salary_effective WHERE salary_id=?", record(c));
             d.history(
                     "salary",
                     record(c),
                     id(row.get("userId")),
                     "薪资标准审批通过",
-                    Map.of("requestId", c.requestId()));
+                    Map.of("requestId", c.requestId(), "approvedSalary", row));
         } else {
             var b = d.object(row.get("afterJson"));
             var employee = d.employee(id(row.get("userId")));

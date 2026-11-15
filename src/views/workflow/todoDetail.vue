@@ -2,7 +2,7 @@
   <div>
     <template v-if="row.memberImport">
       <a-alert type="info" show-icon :message="'批量邀请 ' + (row.rows || []).length + ' 名成员。以下为申请时校验通过的名单与部门，审批通过后整批创建。'" class="tw-mb-4" />
-      <a-table :data-source="row.rows || []" row-key="rowNumber" :pagination="{ pageSize: 8 }" :scroll="{ x: 950 }" size="small">
+      <a-table :data-source="row.rows || []" row-key="rowNumber" :pagination="{ pageSize: 8 }" size="small">
         <a-table-column title="文件行号" data-index="rowNumber" />
         <a-table-column title="姓名" data-index="nickName" />
         <a-table-column title="手机号码" data-index="phonenumber" />
@@ -22,7 +22,7 @@
     </a-descriptions>
     <template v-if="row.commissionBatch">
       <a-alert type="info" show-icon :message="'提成核算 #' + row.batchId + ' · ' + row.period + '：以下为提交时冻结的差额，审批通过后仍需纳入工资并实际发放。'" />
-      <a-table :data-source="row.lines || []" row-key="id" :pagination="false" size="small" :scroll="{ x: 1000 }">
+      <a-table :data-source="row.lines || []" row-key="id" :pagination="false" size="small">
         <a-table-column title="人员" data-index="employeeName" />
         <a-table-column title="贡献"
           ><template slot-scope="_, r">{{ r.side === 'development' ? '客户拓展' : '招聘交付' }}</template></a-table-column

@@ -16,8 +16,16 @@
   margin: 0;
   max-width: 650px;
 }
+.hr-heading > :first-child {
+  flex: 1 1 240px;
+  min-width: 0;
+}
 .hr-heading .ant-space {
   flex-wrap: wrap;
+  justify-content: flex-end;
+  max-width: 100%;
+  margin-left: auto;
+  row-gap: 8px;
 }
 .hr-toolbar {
   display: flex;

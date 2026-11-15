@@ -94,9 +94,9 @@ class CrmIntegrationTest {
                         .content("""
                                 {
                                   "rows": [
-                                    {"name":"CRM 批量导入客户","serial":"CRM-IMPORT-001","industry":"教育","companyScale":"51-100人"},
-                                    {"name":"CRM 批量导入客户","serial":"CRM-IMPORT-002","industry":"金融"},
-                                    {"name":"CRM 缺少行业客户","serial":"CRM-IMPORT-003","industry":""}
+                                    {"ownerUserId":4,"name":"CRM 批量导入客户","serial":"CRM-IMPORT-001","industry":"教育","companyScale":"51-100人"},
+                                    {"ownerUserId":4,"name":"CRM 批量导入客户","serial":"CRM-IMPORT-002","industry":"金融"},
+                                    {"ownerUserId":4,"name":"CRM 缺少行业客户","serial":"CRM-IMPORT-003","industry":""}
                                   ]
                                 }
                                 """))
@@ -300,7 +300,7 @@ class CrmIntegrationTest {
     void customerCanBeUpdatedWithItsExistingTaxNumber() throws Exception {
         String admin = login("13610316814");
         long customerId = createCustomer(admin, """
-                {"name":"CRM UPDATE DUPLICATE CHECK","taxNumber":"CRM-TAX-UPDATE-001"}
+                {"ownerUserId":4,"name":"CRM UPDATE DUPLICATE CHECK","taxNumber":"CRM-TAX-UPDATE-001"}
                 """);
 
         mockMvc.perform(put("/project/merchant")
@@ -322,7 +322,7 @@ class CrmIntegrationTest {
     void unreferencedCustomerCanBeDeleted() throws Exception {
         String admin = login("13610316814");
         long customerId = createCustomer(admin, """
-                {"name":"CRM 未引用草稿","serial":"CRM-DELETE-001","industry":"教育"}
+                {"ownerUserId":4,"name":"CRM 未引用草稿","serial":"CRM-DELETE-001","industry":"教育"}
                 """);
 
         mockMvc.perform(delete("/project/merchant/" + customerId)
@@ -335,7 +335,7 @@ class CrmIntegrationTest {
                 "SELECT COUNT(*) FROM oa_merchant WHERE id = ?", Integer.class, customerId));
 
         long activeCustomerId = createCustomer(admin, """
-                {"name":"CRM 已建档客户","serial":"CRM-DELETE-002","industry":"制造业","cooperationStatus":"合作中"}
+                {"ownerUserId":4,"name":"CRM 已建档客户","serial":"CRM-DELETE-002","industry":"制造业","cooperationStatus":"合作中"}
                 """);
         mockMvc.perform(delete("/project/merchant/" + activeCustomerId)
                         .header("Authorization", admin))
@@ -366,7 +366,7 @@ class CrmIntegrationTest {
                   "serial": "CRM-SCOPE-OTHER",
                   "taxNumber": "91310000CRM000003",
                   "industry": "金融",
-                  "ownerUserId": 1
+                  "ownerUserId": 4
                 }
                 """);
 
@@ -427,7 +427,7 @@ class CrmIntegrationTest {
                   "enterpriseNature": "民营企业",
                   "customerSource": "渠道合作",
                   "cooperationStatus": "合作中",
-                  "ownerUserId": 1,
+                  "ownerUserId": 4,
                   "lastFollowupTime": "2026-01-01 09:00:00",
                   "contractExpireDate": "%s",
                   "lastPaymentDate": "%s",
@@ -552,6 +552,9 @@ class CrmIntegrationTest {
     }
 
     private long createCustomer(String authorization, String body) throws Exception {
+        var customer = (com.fasterxml.jackson.databind.node.ObjectNode) objectMapper.readTree(body);
+        if (!customer.has("ownerUserId")) customer.put("ownerUserId", 4);
+        body = objectMapper.writeValueAsString(customer);
         MvcResult result = mockMvc.perform(post("/project/merchant")
                         .header("Authorization", authorization)
                         .contentType(MediaType.APPLICATION_JSON)

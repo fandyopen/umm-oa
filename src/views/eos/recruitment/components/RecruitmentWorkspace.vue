@@ -78,6 +78,7 @@
         <span slot="name" slot-scope="text, row"
           ><a @click="openDetail(row.id)">{{ text }}</a
           ><small class="subline">{{ row.code || (kind === 'applications' ? row.jobTitle : row.skills) }}</small
+          ><small v-if="kind === 'applications' && row.jobStatus === 'deleted'" class="subline">职位已删除</small
           ><small v-if="row.duplicateIds && row.duplicateIds.length" class="subline">重复记录 #{{ row.duplicateIds.join(' / #') }}</small></span
         >
         <span slot="state" slot-scope="value"
@@ -132,6 +133,8 @@
     <a-drawer :visible="detailVisible" :title="detail.title || detail.name || (detail.talentName ? detail.talentName + ' · ' + detail.jobTitle : '业务详情')" :width="drawerWidth" @close="detailVisible = false">
       <a-spin :spinning="detailLoading">
         <template v-if="detail.id">
+          <a-alert v-if="kind === 'jobs' && detail.status === 'deleted'" type="info" show-icon message="职位已删除，当前仅供查阅历史资料。招聘流程和财务历史仍保留。" class="tw-mb-4" />
+          <a-alert v-if="kind === 'applications' && detail.jobStatus === 'deleted'" type="info" show-icon message="原职位已删除，本条招聘流程仍可继续办理入职、保证期及历史事项，不能向原职位新增推荐。" class="tw-mb-4" />
           <div v-if="detailActions.length" class="detail-actions">
             <a-dropdown :trigger="['click']">
               <a-button>更多操作<a-icon type="down" /></a-button>
@@ -267,7 +270,7 @@
               ></a-tab-pane
             >
             <a-tab-pane v-if="kind !== 'applications' && showModuleAction('applications')" key="related" tab="关联招聘流程"
-              ><a-button type="primary" @click="createRecommendation">为当前{{ kind === 'jobs' ? '职位' : '人才' }}创建推荐</a-button
+              ><a-button v-if="kind !== 'jobs' || detail.status !== 'deleted'" type="primary" @click="createRecommendation">为当前{{ kind === 'jobs' ? '职位' : '人才' }}创建推荐</a-button
               ><a-table :columns="relatedColumns" :data-source="related" row-key="id" :pagination="false" size="small" class="tw-mt-4"
                 ><span slot="relatedAction" slot-scope="_, row"><a @click="goPipeline(row.id)">进入招聘流程</a></span></a-table
               ></a-tab-pane
@@ -446,7 +449,7 @@ export default {
       ]
     },
     tableWidth() {
-      return this.columns.reduce((width, column) => width + column.width, 0)
+      return this.columns.reduce((width, column) => width + column.width + 32, 0)
     },
     columns() {
       if (this.kind === 'jobs')
@@ -647,6 +650,7 @@ export default {
         if (this.showModuleAction(this.kind, permission || key)) actions.push({ key, label: name, permission: permission || key, primary, detailsOnly })
       }
       if (this.kind === 'jobs') {
+        if (d.status === 'deleted') return actions
         if (['draft', 'rejected', 'withdrawn'].includes(d.demandStatus)) {
           add('edit', '修改职位')
           add('demand', '提交需求确认', 'demand', true)
@@ -672,7 +676,8 @@ export default {
         })
       }
       if ((d.approvals || []).some(a => a.status === 'pending')) add('withdraw', '撤回审批申请')
-      if (this.kind !== 'applications' && (this.kind === 'jobs' ? d.demandStatus : d.status) === 'draft') add('remove', '删除未引用草稿')
+      if (this.kind === 'jobs' && d.status === 'closed') add('remove', '删除职位')
+      else if (this.kind !== 'applications' && d.status === 'draft' && (this.kind !== 'jobs' || d.demandStatus === 'draft')) add('remove', '删除未引用草稿')
       return actions
     },
     label,
@@ -680,6 +685,7 @@ export default {
       return String(option.componentOptions.children[0].text).toLowerCase().includes(input.toLowerCase())
     },
     stateLabel(value) {
+      if (value === 'deleted') return '已删除'
       return this.stateMap[value] || value
     },
     stageSubstatus(row) {
@@ -688,7 +694,7 @@ export default {
     displayValue(key, value) {
       if (value === undefined || value === null || value === '') return '—'
       if (Array.isArray(value)) return value.join('、') || '—'
-      if (key === 'status') return this.stateMap[value] || value
+      if (key === 'status') return this.stateLabel(value)
       if (key === 'demandStatus') return approvalStates[value] || value
       if (key === 'stage') return stages[value] || value
       if (key === 'feedbackStatus') return feedbackStates[value] || value
@@ -825,7 +831,7 @@ export default {
     async create() {
       if (!(await this.allowedAction('add'))) return
       await this.loadOptions()
-      const userId = Number(this.options.currentUserId) || undefined
+      const userId = (this.options.users || []).some(user => Number(user.id) === Number(this.options.currentUserId)) ? Number(this.options.currentUserId) : undefined
       if (this.kind === 'applications') {
         this.form(
           '创建候选人推荐',
@@ -1167,8 +1173,11 @@ export default {
     async remove(id = this.detail.id) {
       if (!(await this.allowedAction('remove'))) return
       this.$antdconfirm({
-        title: '删除未引用草稿',
-        content: '仅未提交、未引用的草稿可删除，正式业务档案请使用关闭或归档。',
+        title: this.kind === 'jobs' ? '确认删除职位？' : '删除未引用草稿',
+        content: this.kind === 'jobs' ? '已关闭职位删除后不再出现在职位列表，历史招聘、审批、回款及提成记录仍保留，已有招聘流程可继续办理。未提交且未引用的草稿可直接删除。' : '仅未提交、未引用的草稿可删除，正式业务档案请使用关闭或归档。',
+        okText: '确认删除',
+        okType: 'danger',
+        cancelText: '取消',
         onOk: async () => {
           await api(recordPath(this.kind, id), 'delete')
           if (this.detail.id === id) this.detailVisible = false

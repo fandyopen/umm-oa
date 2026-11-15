@@ -181,7 +181,7 @@ import NewApp from '/src/views/appCenter/newApp/index.vue'
 import { createdNewApp, updateApp, deleteAppItem } from '/src/api/enterprise/index.js'
 import { getTaskListCount } from '/src/api/processDesign/index.js'
 
-import webLogo from '/src/assets/img/logo.png'
+import webLogo from '/src/assets/img/umm-mark.svg'
 
 const req = import.meta.globEager('/src/assets/img/lowCode/approverIcon/*.png')
 const iconList = Object.keys(req).map((t, idx) => ({ src: req[t].default, id: idx }))
