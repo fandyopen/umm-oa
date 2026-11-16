@@ -1,4 +1,5 @@
 package com.seal.oa.oa;
+import com.seal.oa.workflow.WorkflowApprovalContext;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -353,11 +354,11 @@ public class CustomerFinanceService {
 
     public void validateDecision(WorkflowActionContext ctx, boolean pass, String comment, Long operator) {
         validateWorkflow(ctx);
-        if (operator == null || !system.hasModuleAction(operator, MODULE, "approve")) throw new ApiException(403, "审批人需要财务审批权限");
+        if (operator == null || (!WorkflowApprovalContext.active(operator) && !system.hasModuleAction(operator, MODULE, "approve"))) throw new ApiException(403, "审批人需要财务审批权限");
         Map<String, Object> row = record(positiveId(ctx.payload().get("recordId")), false);
-        if (operator == id(row.get("createUserId"))) throw new ApiException(403, "不能审批本人提交的财务申请");
+        if (operator == id(row.get("createUserId")) && !WorkflowApprovalContext.allowsSelfApproval(operator)) throw new ApiException(403, "不能审批本人提交的财务申请");
         Map<String, Object> customer = one("SELECT owner_user_id FROM oa_merchant WHERE id=?", row.get("customerId"));
-        if (!access.canAccessOwner(operator, customer.get("ownerUserId"))) throw new ApiException(403, "无权审批该客户的财务申请");
+        if (!WorkflowApprovalContext.active(operator) && !access.canAccessOwner(operator, customer.get("ownerUserId"))) throw new ApiException(403, "无权审批该客户的财务申请");
         if (!pass && blank(comment)) throw new ApiException(400, "驳回时必须填写意见");
     }
 
@@ -630,7 +631,9 @@ public class CustomerFinanceService {
         if (!visible(c)) throw new ApiException(403, "无权访问该客户的财务数据");
         return c;
     }
-    private boolean visible(Map<String, Object> row) { return access.canAccessOwner(AuthContext.userId(), row.get("ownerUserId")); }
+    private boolean visible(Map<String, Object> row) {
+        return WorkflowApprovalContext.active(AuthContext.userId()) || access.canAccessOwner(AuthContext.userId(), row.get("ownerUserId"));
+    }
     private Map<String, Object> manual(long id, boolean lock) { return one("SELECT * FROM oa_finance_receivable WHERE id=?" + (lock ? " FOR UPDATE" : ""), id); }
     private Map<String, Object> record(long id, boolean lock) { return one("SELECT * FROM oa_finance_record WHERE id=?" + (lock ? " FOR UPDATE" : ""), id); }
     private Map<String, Object> one(String sql, Object... args) {

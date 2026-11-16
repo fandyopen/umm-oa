@@ -108,7 +108,6 @@
       <a-menu v-model="current" mode="horizontal">
         <a-menu-item key="手动添加成员">手动添加成员 </a-menu-item>
         <a-menu-item key="批量导入成员">批量导入成员 </a-menu-item>
-        <a-menu-item key="公开链接邀请">公开链接邀请 </a-menu-item>
       </a-menu>
       <div class="modelContent">
         <div v-if="current[0] === '手动添加成员'">
@@ -154,24 +153,6 @@
               <a-button :loading="!!moduleActionBusy.readMemberImport">选择文件并校验</a-button>
             </a-upload>
             <a-alert v-if="importError" type="error" show-icon message="导入校验失败，整批未导入" :description="importError" class="tw-mt-3" style="white-space: pre-wrap" />
-          </div>
-        </div>
-        <div v-if="current[0] === '公开链接邀请'">
-          <div class="public-link-panel">
-            <div class="public-link-operate">
-              <p class="link-msg">邀请链接开启邀请链接后，只需访问此链接，即可加入您的企业</p>
-              <div class="switch">
-                <a-switch v-model="checked" checked-children="开" un-checked-children="关" />
-              </div>
-            </div>
-            <div class="public-link-address" v-if="checked">
-              <p class="link-msg">链接地址</p>
-              <div class="input-wallperpar">
-                <a-input v-model="defaultValue" ref="inputRef" :read-only="true">
-                  <div class="copy" slot="addonAfter" @click="copyInputVal">复制</div>
-                </a-input>
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -422,10 +403,6 @@ export default {
         { title: '性别', dataIndex: 'sex', width: 80, customRender: value => ({ 0: '男', 1: '女', 2: '未知' }[value] || value) },
         { title: '备注', dataIndex: 'remark', width: 180 }
       ],
-      /* 是否开启链接 */
-      checked: false,
-      /* 链接地址 */
-      defaultValue: 'aaaaaaaaaaaaaaaaaaa',
       /* 区号 */
       countryCode: 86,
       /* 部门树返回的数据 */
@@ -786,12 +763,6 @@ export default {
     // 查看图片
     async handlePreview(file) {
       previewDoc(file.name, file.url)
-    },
-    /* 复制链接 */
-    copyInputVal() {
-      this.$refs.inputRef.select()
-      document.execCommand('Copy') // 执行浏览器复制命令
-      return this.$message.success('复制成功')
     },
     /* 部门树选中返回的数据 */
     returnData(d) {

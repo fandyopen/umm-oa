@@ -7,6 +7,7 @@ import com.seal.oa.common.ApiException;
 import com.seal.oa.common.JdbcMaps;
 import com.seal.oa.system.DataScopeService;
 import com.seal.oa.system.SystemService;
+import com.seal.oa.workflow.WorkflowApprovalContext;
 
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
@@ -79,7 +80,7 @@ public class HrData {
                             + " FROM sys_user u JOIN oa_hr_employee e ON e.user_id=u.user_id LEFT"
                             + " JOIN sys_dept d ON d.dept_id=u.dept_id WHERE u.user_id=?",
                         user);
-        if (!scope.canAccess(AuthContext.userId(), row.get("deptId"), user))
+        if (!WorkflowApprovalContext.active(AuthContext.userId()) && !scope.canAccess(AuthContext.userId(), row.get("deptId"), user))
             throw new ApiException(403, "员工不在数据范围内");
         return row;
     }

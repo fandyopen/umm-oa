@@ -415,14 +415,20 @@ class RecruitmentIntegrationTest {
         JsonNode exception=app.path("exceptions").get(0);assertEquals("open",exception.path("status").asText());app=act(app,"exception",Map.of("operation","resolve","exceptionId",exception.path("id").asLong()));assertEquals("closed",app.path("exceptions").get(0).path("status").asText());
     }
 
-    @Test void onlyPublishedAndEnabledButtonFlowApprovesFrozenDemand()throws Exception{
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(booleans = {false, true})
+    void onlyPublishedAndEnabledButtonFlowApprovesFrozenDemand(boolean superAdmin)throws Exception{
         call(admin,put("/system/module/341301/actions/demand"),Map.of("flowDesignEnabled",true),200);
         JsonNode direct=job();assertEquals("approved",direct.path("demandStatus").asText());
         publish("demand");JsonNode draft=createJob();long id=draft.path("id").asLong();
         JsonNode workflow=call(admin,post(base+"/jobs/"+id+"/requests/demand"),Map.of("revision",0,"reason","确认招聘需求"),200).path("data");
         assertEquals("pendingApproval",workflow.path("status").asText());assertEquals("pending",getJob(id).path("demandStatus").asText());assertEquals("draft",getJob(id).path("status").asText());
         Map<String,Object>edit=jobBody();edit.put("revision",0);call(admin,put(base+"/jobs/"+id),edit,409);
-        complete(admin,workflow,true,403);complete(reviewer,workflow,true,200);
+        complete(admin,workflow,true,403);
+        if (superAdmin) call(admin,post("/project/approvals/decision"),Map.of("taskId",workflow.path("taskId").asText(),"pass",true,"comment","超管代审本人招聘申请"),200);
+        else complete(reviewer,workflow,true,200);
+        assertEquals(superAdmin ? 1L : 901L,jdbc.queryForObject("SELECT operator_id FROM oa_approval_decision WHERE task_id=?",Long.class,workflow.path("taskId").asText()));
+        assertFalse(com.seal.oa.workflow.WorkflowApprovalContext.allowsSelfApproval(1L));
         JsonNode approved=getJob(id);assertEquals("recruiting",approved.path("status").asText());assertEquals(2,approved.path("versions").size());
         call(admin,post(base+"/jobs/"+id+"/requests/change"),Map.of("revision",approved.path("revision").asInt(),"reason","增加名额","fields",Map.of("headcount",2)),200);
         assertEquals(2,getJob(id).path("headcount").asInt());

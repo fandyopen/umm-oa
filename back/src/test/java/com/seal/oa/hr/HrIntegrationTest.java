@@ -36,6 +36,7 @@ class HrIntegrationTest {
     @Autowired HrController controller;
     @Autowired ModuleActionService moduleActions;
     @Autowired HrPayrollRuleService payrollRules;
+    @Autowired com.seal.oa.workflow.ApprovalInboxService approvalInbox;
     long user, dept;
 
     @Test
@@ -795,7 +796,7 @@ class HrIntegrationTest {
         var approved=approve(draft());long batch=id(approved.get("id"));
         payroll.publish(batch,Map.of("revision",approved.get("revision")));
         var published=payroll.detail(batch,false);
-        assertEquals(true,published.get("published"));
+        assertEquals(1, ((Number) published.get("published")).intValue());
         long history=jdbc.queryForObject("SELECT COUNT(*) FROM oa_hr_history WHERE entity_type='payroll' AND entity_id=? AND action='发布工资条'",Long.class,batch);
         long todos=jdbc.queryForObject("SELECT COUNT(*) FROM oa_todo WHERE business_type='hrPayslip' AND business_id IN (SELECT id FROM oa_hr_payroll_item WHERE payroll_id=?)",Long.class,batch);
         payroll.publish(batch,Map.of("revision",-1));
@@ -1021,6 +1022,39 @@ class HrIntegrationTest {
         requests.updateWorkflowState("payroll-retry", retry, "审批通过", "task", "完成");
         requests.updateWorkflowState("payroll-retry", retry, "审批通过", "task", "完成");
         assertEquals("approved", payroll.detail(batch, false).get("status"));
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(booleans = {false, true})
+    void inboxDelegateAndSuperAdminCanApprovePayroll(boolean superAdmin) throws Exception {
+        var b = enterZeroTax(draft());
+        long batch = id(b.get("id"));
+        payroll.verify(batch, Map.of("revision", b.get("revision"), "reason", "代审前核对"));
+        b = payroll.detail(batch, false);
+        long request = requests.create(PAYROLL, "submit", "hr.payroll.submit", Map.of(), "工资代审",
+                Map.of("payrollId", batch, "revision", b.get("revision")), 1L, "13610316814");
+        var payload = requests.payload(request);
+        payload.put("_workflowDefinition", Map.of("menuName", "工资代审", "processData", Map.of("nodes",
+                List.of(Map.of("id", "review", "name", "工资审批", "type", "approval")))));
+        jdbc.update("UPDATE oa_workflow_request SET payload_json=? WHERE id=?", new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(payload), request);
+        String instance = "biz-inbox-payroll", task = "task::biz-inbox-payroll::review::test";
+        jdbc.update("INSERT INTO oa_process_instance(id,tenant_id,process_key,business_type,business_id,starter_id,starter_name) VALUES(?,1,'business:341005:submit','workflowAction',?,1,'系统管理员')", instance, request);
+        jdbc.update("INSERT INTO oa_process_task(id,instance_id,task_name,assignee_id,assignee_name) VALUES(?,?,'工资审批',4,'原工资审批人')", task, instance);
+        jdbc.update("UPDATE oa_workflow_request SET process_instance_id=?,process_task_id=? WHERE id=?", instance, task, request);
+        jdbc.update("INSERT INTO sys_user(user_id,tenant_id,dept_id,user_name,nick_name,password) SELECT 99191,1,dept_id,'hr-inbox-delegate','工资代审员',password FROM sys_user WHERE user_id=4");
+        jdbc.update("INSERT INTO sys_role(role_id,role_name,role_key,data_scope) VALUES(99191,'工资代审测试','payroll_inbox_only','5')");
+        jdbc.update("INSERT INTO sys_user_role(user_id,role_id) VALUES(99191,99191)");
+        jdbc.update("INSERT INTO sys_role_module(role_id,module_id) VALUES(99191,341600)");
+        jdbc.update("INSERT INTO sys_role_module_action(role_id,module_id,action_code) VALUES(99191,341600,'approve')");
+        long operator = superAdmin ? 1L : 99191L;
+        AuthContext.set(new AuthContext.CurrentUser(operator, superAdmin ? "13610316814" : "hr-inbox-delegate"));
+        if (!superAdmin) assertThrows(ApiException.class, () -> employees.detail(user));
+        approvalInbox.decide(Map.of("taskId", task, "pass", true, "comment", "工资代审通过"));
+        assertEquals("approved", jdbc.queryForObject("SELECT status FROM oa_hr_payroll WHERE id=?", String.class, batch));
+        assertEquals(operator, jdbc.queryForObject("SELECT operator_id FROM oa_approval_decision WHERE task_id=?", Long.class, task));
+        assertFalse(com.seal.oa.workflow.WorkflowApprovalContext.active(operator));
+        assertFalse(com.seal.oa.workflow.WorkflowApprovalContext.allowsSelfApproval(operator));
+        if (!superAdmin) assertThrows(ApiException.class, () -> employees.detail(user));
     }
 
     @Test

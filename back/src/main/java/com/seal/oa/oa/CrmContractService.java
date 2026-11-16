@@ -8,6 +8,7 @@ import com.seal.oa.common.JdbcMaps;
 import com.seal.oa.system.DataScopeService;
 import com.seal.oa.system.SystemService;
 import com.seal.oa.lowcode.ModuleFlowBindingService;
+import com.seal.oa.workflow.WorkflowApprovalContext;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.stereotype.Service;
@@ -259,9 +260,15 @@ public class CrmContractService {
         long requestId = number(snapshot.get(requestKey));
         if (requestId <= 0L) return Map.of();
         List<Map<String, Object>> rows = JdbcMaps.camelCase(jdbc.queryForList("""
-                SELECT id AS request_id, process_instance_id AS instance_id,
-                       process_task_id AS task_id, process_task_name AS task_name, status
-                FROM oa_workflow_request WHERE id = ? AND module_id = 341201 AND action_code = ?
+                SELECT r.id AS request_id, r.process_instance_id AS instance_id,
+                       r.process_task_id AS task_id, r.process_task_name AS task_name, r.status,
+                       r.create_time AS submit_time, r.create_by AS submit_user_account,
+                       COALESCE(i.starter_id, u.user_id) AS submit_user_id,
+                       COALESCE(NULLIF(i.starter_name, ''), NULLIF(u.nick_name, ''), r.create_by) AS submit_user_name
+                FROM oa_workflow_request r
+                LEFT JOIN oa_process_instance i ON i.id = r.process_instance_id
+                LEFT JOIN sys_user u ON u.user_name = r.create_by AND u.tenant_id = r.tenant_id
+                WHERE r.id = ? AND r.module_id = 341201 AND r.action_code = ?
                 """, requestId, actionCode));
         if (rows.isEmpty()) return Map.of();
         Map<String, Object> result = rows.get(0);
@@ -272,6 +279,11 @@ public class CrmContractService {
                     """, result.get("instanceId")));
             tasks.forEach(task -> task.put("comment", workflowComment(String.valueOf(task.get("taskId")))));
             result.put("history", tasks);
+            tasks.stream().filter(task -> String.valueOf(result.get("taskId")).equals(String.valueOf(task.get("taskId"))))
+                    .findFirst().ifPresent(task -> {
+                        result.put("approvalUserId", task.get("assigneeId"));
+                        result.put("approvalUserName", task.get("assigneeName"));
+                    });
         }
         return result;
     }
@@ -340,9 +352,10 @@ public class CrmContractService {
                 || !taskId.equals(requests.get(0).get("process_task_id"))) {
             throw new ApiException(409, "当前审批节点已变更，请刷新待办后重试");
         }
-        if (operatorId == null || operatorId != number(row.get("approvalUserId"))
-                || operatorId == number(row.get("submitUserId"))
-                || !system.hasModuleAction(operatorId, 341202L, "approve")) {
+        boolean delegated = WorkflowApprovalContext.permits(instanceId, taskId, operatorId, number(row.get("approvalUserId")));
+        if (operatorId == null || (operatorId == number(row.get("submitUserId")) && !WorkflowApprovalContext.allowsSelfApproval(operatorId))
+                || (!delegated && (operatorId != number(row.get("approvalUserId"))
+                || !system.hasModuleAction(operatorId, 341202L, "approve")))) {
             throw new ApiException(403, "仅当前节点的合同审批人可以办理审批，提交人不能审批自己的合同");
         }
         limited(comment, 2000, "审批意见");
@@ -442,7 +455,9 @@ public class CrmContractService {
                 || !system.hasModuleAction(users.get(0), 341202L, "approve")) {
             throw new ApiException(400, "签署审批人须为具有合同审批权限的在职成员，且不能是签署申请人");
         }
-        if (operatorId != null && !operatorId.equals(users.get(0))) throw new ApiException(403, "仅当前节点的签署审批人可以办理");
+        if (operatorId != null && ((operatorId == number(payload.get("signSubmitUserId")) && !WorkflowApprovalContext.allowsSelfApproval(operatorId))
+                || (!operatorId.equals(users.get(0)) && !WorkflowApprovalContext.permits(instanceId, taskId, operatorId, users.get(0)))))
+            throw new ApiException(403, "仅当前节点的签署审批人或授权代审批人可以办理，不能审批本人申请");
     }
 
     @Transactional
@@ -660,6 +675,40 @@ public class CrmContractService {
         return row;
     }
 
+    public Map<String, Object> approvalTask(long id) {
+        return currentApprovalTask(require(id, false));
+    }
+
+    private Map<String, Object> currentApprovalTask(Map<String, Object> row) {
+        long userId = AuthContext.userId();
+        if (number(row.get("deleted")) != 0 || !system.hasModuleAction(userId, 341202L, "approve")) return Map.of();
+        Set<Long> requests = new HashSet<>();
+        jdbc.queryForList("SELECT snapshot_json FROM oa_crm_contract_version WHERE contract_id=? AND version_no=?",
+                String.class, row.get("id"), row.get("versionNo")).stream().map(this::readMap).forEach(snapshot -> {
+            requests.add(number(snapshot.get("workflowRequestId")));
+            requests.add(number(snapshot.get("signWorkflowRequestId")));
+        });
+        requests.add(number(row.get("lifecycleRequestId")));
+        requests.remove(0L);
+        if (requests.isEmpty()) return Map.of();
+        List<Object> args = new ArrayList<>(requests);
+        args.add(userId);
+        args.add(userId);
+        var tasks = JdbcMaps.camelCase(jdbc.queryForList("""
+                SELECT r.id AS request_id, r.action_code, t.id AS task_id, t.instance_id, t.task_name
+                FROM oa_workflow_request r
+                JOIN oa_process_instance i ON i.id=r.process_instance_id AND i.business_id=r.id AND i.business_type='workflowAction'
+                JOIN oa_process_task t ON t.id=r.process_task_id AND t.instance_id=i.id
+                JOIN oa_todo td ON td.task_id=t.id AND td.process_instance_id=i.id AND td.user_id=t.assignee_id
+                JOIN sys_user u ON u.user_id=t.assignee_id AND u.status='0' AND u.del_flag='0'
+                WHERE r.id IN (""" + String.join(",", java.util.Collections.nCopies(requests.size(), "?")) + """
+                ) AND r.module_id=341201 AND r.status='running' AND i.status='running'
+                  AND t.status='todo' AND td.status='todo' AND t.assignee_id=? AND i.starter_id<>?
+                ORDER BY r.id DESC
+                """, args.toArray()));
+        return tasks.isEmpty() ? Map.of() : tasks.get(0);
+    }
+
     private Map<String, Object> decorate(Map<String, Object> row) {
         row.put("feeTerms", readTerms(row.get("termsJson")));
         row.remove("termsJson");
@@ -673,6 +722,7 @@ public class CrmContractService {
         row.put("signingPending", "running".equals(signingWorkflow(number(row.get("id")), false).get("status")));
         boolean retiring=jdbc.queryForObject("SELECT COUNT(*) FROM oa_workflow_request WHERE id=? AND status='running'",Long.class,row.get("lifecycleRequestId"))>0;
         row.put("lifecyclePending",retiring);
+        row.put("approvalTask", currentApprovalTask(row));
         boolean idle=!retiring && !Boolean.TRUE.equals(row.get("signingPending")) && !"pending".equals(row.get("status"));
         boolean owned=Boolean.TRUE.equals(row.get("canEditCustomer"));
         row.put("canVoid",owned && idle && number(row.get("effectiveVersion"))==0 && Set.of("draft","rejected","approved").contains(text(row.get("status"))));

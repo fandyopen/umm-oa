@@ -15,6 +15,7 @@ const requestContract = async (id, config, suffix = '') => {
 export const listContracts = params => request({ url: base, method: 'get', params })
 export const listContractCustomers = params => request({ url: `${base}/customers`, method: 'get', params })
 export const getContract = id => requestContract(id, { method: 'get' })
+export const getContractApprovalTask = id => requestContract(id, { method: 'get', silentError: true }, '/approval-task')
 export const createContract = data => request({ url: base, method: 'post', data })
 export const updateContract = (id, data) => requestContract(id, { method: 'put', data })
 export const deleteContract = (id, data) => requestContract(id, { method: 'delete', data })

@@ -4,7 +4,7 @@
       <div>
         <h2>{{ contract.name || '合同详情' }}</h2>
         <div class="detail-meta">
-          <a-tag :color="statusColors[contract.status]">{{ statuses[contract.status] }}</a-tag
+          <a-tag :color="displayContractStatus(contract).color">{{ displayContractStatus(contract).label }}</a-tag
           ><span>{{ contract.code }}</span
           ><a v-if="showModuleAction('customer')" @click="openCustomer">{{ contract.customerName }}</a
           ><span v-else>{{ contract.customerName }}</span
@@ -24,7 +24,7 @@
     <a-alert v-if="contract.deleted" type="info" show-icon message="合同已删除，当前仅查看历史；回款、招聘与提成记录仍保留。" class="tw-mt-3" />
     <a-alert v-if="contract.lifecyclePending" type="info" show-icon message="合同作废或终止正在审批，通过后生效；可在审批记录查看，或撤回当前审批。" class="tw-mt-3" />
     <a-alert v-if="contract.status === 'terminated'" type="warning" show-icon message="合同已终止。请处理剩余应收、退款和招聘保证期，全部处理后点击“合同结案”，结案后可删除。" class="tw-mt-3" />
-    <a-alert v-if="contract.approvalComment" :type="contract.status === 'rejected' ? 'warning' : 'info'" :message="`审批意见：${contract.approvalComment}`" class="tw-mt-3" />
+    <a-alert v-if="contract.approvalComment" :type="contract.status === 'rejected' ? 'warning' : 'info'" :message="`合同审批意见：${contract.approvalComment}`" class="tw-mt-3" />
     <a-alert
       v-if="contract.signingPending"
       type="info"
@@ -35,6 +35,7 @@
     />
     <a-alert v-else-if="contract.signingWorkflow && contract.signingWorkflow.status === 'rejected'" type="warning" show-icon message="签署申请已退回，合同尚未生效。请在审批记录查看意见，处理后重新提交签署申请。" class="tw-mt-3" />
     <div class="detail-actions">
+      <contract-approval-button :record="contract" type="primary" size="default" @changed="approvalChanged" />
       <a-button v-if="editable && showModuleAction('contract', 'edit')" icon="edit" @click="openForm({ contractId })" :loading="!!moduleActionBusy.openForm">编辑草稿</a-button>
       <a-tooltip v-if="editable && showModuleAction('contract', 'submit')" title="流程配置：合同列表 / 提交审批，动作编码 submit"
         ><a-button type="primary" @click="startAction('submit')" v-hasModuleAction="moduleActionBinding('contract', 'submit')" :loading="!!moduleActionBusy.startAction">提交审批</a-button></a-tooltip
@@ -68,11 +69,7 @@
     <a-tabs v-model="activeTab" class="tw-mt-4">
       <a-tab-pane key="overview" tab="基本信息">
         <a-descriptions bordered size="small" :column="2">
-          <a-descriptions-item label="服务类型">{{ contract.serviceType }}</a-descriptions-item
-          ><a-descriptions-item label="审批人">{{ contract.approvalUserName || '未提交' }}</a-descriptions-item>
-          <a-descriptions-item v-if="contract.workflow && contract.workflow.instanceId" label="审批节点">{{
-            contract.workflow.status === 'approved' ? '审批完成' : contract.workflow.status === 'rejected' ? '已退回' : contract.workflow.status === 'withdrawn' ? '已撤回' : contract.workflow.taskName || '审批中'
-          }}</a-descriptions-item>
+          <a-descriptions-item label="服务类型">{{ contract.serviceType }}</a-descriptions-item>
           <a-descriptions-item label="服务期限">{{ contract.startDate }} 至 {{ contract.endDate }}</a-descriptions-item
           ><a-descriptions-item label="当前 / 生效版本">V{{ contract.versionNo }} / {{ contract.effectiveVersion ? `V${contract.effectiveVersion}` : '尚未生效' }}</a-descriptions-item>
           <a-descriptions-item label="生效合同额 / 已收">{{ money(contract.effectiveAmount) }} / {{ money(contract.receivedAmount) }}</a-descriptions-item
@@ -84,6 +81,13 @@
             ><a v-for="(file, index) in attachments" :key="index" :href="file.url" target="_blank" rel="noopener noreferrer" class="tw-mr-4">{{ file.name || '合同附件' }}</a
             ><span v-if="!attachments.length">暂无附件</span></a-descriptions-item
           >
+        </a-descriptions>
+        <a-descriptions v-for="stage in approvalStages" :key="stage.key" :title="stage.title" bordered size="small" :column="2" class="tw-mt-4">
+          <a-descriptions-item label="审批状态">{{ workflowStatus(stage.flow.status) }}</a-descriptions-item>
+          <a-descriptions-item label="发起人">{{ stage.flow.submitUserName || stage.flow.submitUserAccount || '—' }}</a-descriptions-item>
+          <a-descriptions-item label="发起时间">{{ formatTime(stage.flow.submitTime) }}</a-descriptions-item>
+          <a-descriptions-item :label="stage.flow.status === 'running' ? '当前审批人' : '最终审批人'">{{ stage.flow.approvalUserName || '—' }}</a-descriptions-item>
+          <a-descriptions-item label="当前节点" :span="2">{{ stage.flow.status === 'running' ? stage.flow.taskName || '等待审批' : workflowStatus(stage.flow.status) }}</a-descriptions-item>
         </a-descriptions>
       </a-tab-pane>
       <a-tab-pane key="terms" tab="收费与回款">
@@ -108,16 +112,16 @@
         >
       </a-tab-pane>
       <a-tab-pane key="approvals" tab="审批记录">
-        <a-alert type="info" show-icon message="审批任务统一在待办办理，此处按提交版本追溯审批进度与意见。" class="tw-mb-4" />
+        <a-alert type="info" show-icon message="当前节点审批人可点击“去审批”办理，也可进入统一待办；此处按提交版本追溯审批进度与意见。" class="tw-mb-4" />
         <a-table :columns="versionColumns" :data-source="contract.versions || []" :pagination="false" row-key="id" size="small"
           ><span slot="version" slot-scope="value">V{{ value }} <a-tag v-if="value === contract.effectiveVersion" color="green">当前生效</a-tag></span
-          ><span slot="status" slot-scope="value"
-            ><a-tag :color="statusColors[value]">{{ statuses[value] }}</a-tag></span
+          ><span slot="approvalStatus" slot-scope="_, record">{{ workflowStatus(approvalFlow(record).status) }}</span
           ><span slot="workflow" slot-scope="value"><a v-if="value && value.instanceId" @click="workflowPreview = value">查看流程记录</a><span v-else>—</span></span></a-table
         >
         <h3 class="tw-mt-[22px]">签署审批记录</h3>
         <a-table :columns="signingColumns" :data-source="signingHistory" :pagination="false" row-key="requestId" size="small">
-          <span slot="signingStatus" slot-scope="value">{{ { running: '审批中', approved: '已通过', rejected: '已退回', withdrawn: '已撤回' }[value] || value }}</span>
+          <span slot="signingStatus" slot-scope="value">{{ workflowStatus(value) }}</span>
+          <span slot="time" slot-scope="value">{{ formatTime(value) }}</span>
           <span slot="workflow" slot-scope="_, record"><a @click="workflowPreview = record">查看流程记录</a></span>
         </a-table>
         <h3 class="tw-mt-[22px]">作废与终止审批记录</h3>
@@ -185,6 +189,7 @@
       ></template>
     </a-modal>
     <a-modal :visible="!!workflowPreview" title="审批流程记录" :footer="null" width="850px" @cancel="workflowPreview = null">
+      <p>发起人：{{ workflowPreview && (workflowPreview.submitUserName || workflowPreview.submitUserAccount) || '—' }}　发起时间：{{ formatTime(workflowPreview && workflowPreview.submitTime) }}</p>
       <p>流程实例：{{ workflowPreview && workflowPreview.instanceId }}</p>
       <a-table :columns="workflowColumns" :data-source="workflowPreview ? workflowPreview.history || [] : []" :pagination="false" row-key="taskId" size="small"
         ><span slot="taskStatus" slot-scope="value"
@@ -200,9 +205,10 @@ import { withModuleContexts } from '/src/utils/moduleContext.js'
 import { crmModules } from '/src/views/eos/crm/moduleContexts.js'
 import moment from 'moment'
 import { getContract, contractAction, normalizeContractId } from '/src/api/eos/crm/contracts.js'
-import { statuses, statusColors, money, today } from '../shared.js'
+import { statuses, statusColors, displayContractStatus, workflowStatus, money, today } from '../shared.js'
 import ContractForm from './ContractForm.vue'
 import ContractLifecycleDialog from './ContractLifecycleDialog.vue'
+import ContractApprovalButton from './ContractApprovalButton.vue'
 
 export default {
   mixins: [
@@ -229,7 +235,7 @@ export default {
     )
   ],
   name: 'CrmContractDetail',
-  components: { ContractLifecycleDialog },
+  components: { ContractLifecycleDialog, ContractApprovalButton },
   props: { contractId: { type: Number, required: true }, initialTab: { type: String, default: 'overview' }, initialTermKey: { type: String, default: '' } },
   data() {
     return {
@@ -271,7 +277,7 @@ export default {
       ],
       versionColumns: [
         { title: '版本', dataIndex: 'versionNo', scopedSlots: { customRender: 'version' } },
-        { title: '审批结果', dataIndex: 'status', scopedSlots: { customRender: 'status' } },
+        { title: '审批结果', dataIndex: 'status', scopedSlots: { customRender: 'approvalStatus' } },
         { title: '提交人', dataIndex: 'submitUserName' },
         { title: '提交时间', dataIndex: 'submitTime' },
         { title: '当前 / 最终审批人', dataIndex: 'approvalUserName' },
@@ -295,6 +301,9 @@ export default {
       signingColumns: [
         { title: '版本', dataIndex: 'versionNo' },
         { title: '审批状态', dataIndex: 'status', scopedSlots: { customRender: 'signingStatus' } },
+        { title: '发起人', dataIndex: 'submitUserName' },
+        { title: '发起时间', dataIndex: 'submitTime', scopedSlots: { customRender: 'time' } },
+        { title: '当前 / 最终审批人', dataIndex: 'approvalUserName' },
         { title: '当前节点', dataIndex: 'taskName' },
         { title: '审批流程', scopedSlots: { customRender: 'workflow' } }
       ],
@@ -311,6 +320,13 @@ export default {
     }
   },
   computed: {
+    approvalStages() {
+      const version = (this.contract.versions || []).find(item => item.versionNo === this.contract.versionNo) || {}
+      return [
+        { key: 'contract', title: '合同审批', flow: this.approvalFlow(version) },
+        { key: 'sign', title: '签署审批', flow: this.contract.signingWorkflow || {} }
+      ]
+    },
     signingHistory() {
       return (this.contract.versions || []).flatMap(version => (version.signingHistory || []).map(workflow => ({ ...workflow, versionNo: version.versionNo })))
     },
@@ -363,6 +379,25 @@ export default {
   },
   methods: {
     money,
+    async approvalChanged() {
+      await this.load()
+      this.$emit('changed')
+    },
+    displayContractStatus,
+    workflowStatus,
+    formatTime(value) {
+      return value ? moment(value).format('YYYY-MM-DD HH:mm:ss') : '—'
+    },
+    approvalFlow(version) {
+      const workflow = version.workflow || {}
+      return {
+        ...workflow,
+        status: workflow.status || (version.submitTime ? (['pending', 'rejected', 'withdrawn'].includes(version.status) ? version.status : 'approved') : ''),
+        submitUserName: workflow.submitUserName || version.submitUserName,
+        submitTime: workflow.submitTime || version.submitTime,
+        approvalUserName: workflow.approvalUserName || version.approvalUserName
+      }
+    },
     openLifecycle(action) { this.lifecycleAction = action },
     async lifecycleChanged({ deleted }) {
       this.$emit('changed')

@@ -19,7 +19,7 @@
       <a-table row-key="key" :loading="loading" :columns="columns" :data-source="filteredTree" :expanded-row-keys="expandedRowKeys" :pagination="false" @expand="handleExpand">
         <span slot="name" slot-scope="text, record">
           <icon-font v-if="record.nodeType === 'module' && record.icon" :type="record.icon" class="module-icon" />
-            <a-tag v-if="record.nodeType === 'action'" :color="record.approvalPermissionOnly ? undefined : 'green'">{{ record.approvalPermissionOnly ? '审批授权' : '按钮' }}</a-tag>
+          <a-tag v-if="record.nodeType === 'action'" :color="record.approvalPermissionOnly ? undefined : 'green'">{{ record.approvalPermissionOnly ? '审批授权' : '按钮' }}</a-tag>
           <span>{{ record.nodeType === 'action' ? record.actionName : record.moduleName }}</span>
           <span v-if="record.nodeType === 'action'" class="module-code">{{ record.actionCode }}</span>
         </span>
@@ -62,7 +62,7 @@
           <template v-else-if="record.nodeType === 'action'">
             <template>
               <a v-if="canManageStructure || canManageWorkflow" @click="openActionForm(record)">修改</a>
-                <template v-if="!record.approvalPermissionOnly && canManageWorkflow && record.flowDesignEnabled && String(record.status) === '0'">
+              <template v-if="!record.approvalPermissionOnly && canManageWorkflow && record.flowDesignEnabled && String(record.status) === '0'">
                 <a-divider type="vertical" />
                 <a @click="openFlowDesign(record)">流程设计</a>
               </template>
@@ -98,13 +98,13 @@ export default {
       canManageStructure: false,
       canManageWorkflow: false,
       columns: [
-        { title: '模块 / 按钮', dataIndex: 'moduleName', scopedSlots: { customRender: 'name' }, width: 260 },
+        { title: '模块 / 按钮', dataIndex: 'moduleName', scopedSlots: { customRender: 'name' }, width: 220 },
         { title: '类型', scopedSlots: { customRender: 'type' }, width: 90 },
-        { title: '路径 / 动作编码', scopedSlots: { customRender: 'identity' }, width: 220 },
+        { title: '路径 / 动作编码', scopedSlots: { customRender: 'identity' } },
         { title: '权限标识', scopedSlots: { customRender: 'permissionCode' }, ellipsis: true },
         { title: '状态', scopedSlots: { customRender: 'status' }, width: 90 },
-        { title: '流程状态', scopedSlots: { customRender: 'workflow' }, width: 120 },
-        { title: '操作', scopedSlots: { customRender: 'operation' }, width: 300, align: 'center' }
+        { title: '流程状态', scopedSlots: { customRender: 'workflow' } },
+        { title: '操作', scopedSlots: { customRender: 'operation' }, width: 240, align: 'center' }
       ]
     }
   },

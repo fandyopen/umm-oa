@@ -15,6 +15,9 @@ const salesPerformanceMenu = fs.readFileSync(path.join(projectDir, 'src/main/res
 const hrSchema = fs.readFileSync(path.join(projectDir, 'src/main/resources/hr-schema.sql'), 'utf8')
 const hrMenu = fs.readFileSync(path.join(projectDir, 'src/main/resources/hr-menu.sql'), 'utf8')
 const customerCleanup = fs.readFileSync(path.join(projectDir, 'src/main/resources/customer-cleanup.sql'), 'utf8')
+const approvalInbox = fs.readFileSync(path.join(projectDir, 'src/main/resources/approval-inbox.sql'), 'utf8')
+  .replace(',\n    complete_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP\n);', ',\n    complete_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,\n    INDEX idx_approval_decision_instance (instance_id)\n);')
+  .replace(/CREATE INDEX IF NOT EXISTS idx_approval_decision_instance[^;]+;\s*/g, '')
 const contractLifecycle = fs.readFileSync(path.join(projectDir, 'src/main/resources/contract-lifecycle.sql'), 'utf8')
 const mysqlContractLifecycle = contractLifecycle.replace(/ALTER TABLE (\w+) ADD COLUMN IF NOT EXISTS (\w+) ([^;]+);/g, (_, table, column, definition) => `SET @contract_sql = (SELECT IF(COUNT(*)=0,'ALTER TABLE ${table} ADD COLUMN ${column} ${definition.replaceAll("'", "''")}','SELECT 1') FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='${table}' AND column_name='${column}');
 PREPARE contract_stmt FROM @contract_sql;
@@ -126,11 +129,14 @@ ${customerCleanup}
 
 ${mysqlContractLifecycle}
 
+${approvalInbox}
+
 SET FOREIGN_KEY_CHECKS = 1;
 `
 
 const outputDir = path.join(projectDir, 'db/mysql')
 fs.mkdirSync(outputDir, { recursive: true })
+fs.writeFileSync(path.join(outputDir, 'upgrade-approval-inbox.sql'), '-- Approval inbox and actual decision actors; preserves business data and existing grants.\n' + approvalInbox)
 fs.writeFileSync(path.join(outputDir, 'contract-lifecycle-upgrade.sql'), '-- Contract retirement upgrade; preserves existing business data.\n' + mysqlContractLifecycle)
 fs.writeFileSync(path.join(outputDir, 'customer-cleanup-upgrade.sql'), '-- Customer cleanup menu and audit table; does not delete business data.\n' + customerCleanup)
 fs.writeFileSync(path.join(outputDir, 'umm_oa.sql'), output)

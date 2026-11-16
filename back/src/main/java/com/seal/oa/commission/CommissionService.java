@@ -9,6 +9,7 @@ import com.seal.oa.hr.HrPayrollService;
 import com.seal.oa.system.DataScopeService;
 import com.seal.oa.system.SystemService;
 import com.seal.oa.workflow.WorkflowActionContext;
+import com.seal.oa.workflow.WorkflowApprovalContext;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.stereotype.Service;
@@ -74,6 +75,7 @@ public class CommissionService {
         if(!canAccessOwner(c.get("ownerUserId"))) throw new ApiException(403,"客户不在数据范围内");
     }
     boolean canAccessOwner(Object owner) {
+        if (WorkflowApprovalContext.active(actor())) return true;
         var users=rows("SELECT dept_id FROM sys_user WHERE user_id=? AND tenant_id=?",number(owner),tenant());
         return scope.canAccess(actor(),users.isEmpty()?null:users.get(0).get("deptId"),owner);
     }
@@ -406,8 +408,8 @@ public class CommissionService {
         history("batch",id,"批准提成核算",Map.of("requestId",c.requestId()));return Map.of("batchId",id);
     }
     public void decision(WorkflowActionContext c,boolean pass,String comment,Long operator) {
-        mutex();if(!system.hasModuleAction(operator,MODULE,"approve"))throw new ApiException(403,"审批人缺少提成审批权限");long id=number(c.payload().get("batchId"));batchAccess(id);
-        if(number(batch(id).get("createBy"))==operator) throw new ApiException(403,"不能审批本人提交的提成核算");
+        mutex();if(!WorkflowApprovalContext.active(operator)&&!system.hasModuleAction(operator,MODULE,"approve"))throw new ApiException(403,"审批人缺少提成审批权限");long id=number(c.payload().get("batchId"));batchAccess(id);
+        if(number(batch(id).get("createBy"))==operator&&!WorkflowApprovalContext.allowsSelfApproval(operator)) throw new ApiException(403,"不能审批本人提交的提成核算");
         if(!pass && text(comment).isBlank()) throw new ApiException(400,"退回须填写原因");
         // A stale application must still be rejectable so it can be recalculated.
         if(pass) validateWorkflow(c);

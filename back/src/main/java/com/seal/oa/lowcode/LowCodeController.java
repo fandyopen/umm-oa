@@ -472,7 +472,7 @@ public class LowCodeController {
                 || jdbc.queryForObject("""
                     SELECT COUNT(*) FROM oa_process_task WHERE instance_id = ? AND assignee_id = ?
                     """, Long.class, id, user.userId()) > 0;
-        if (!participant && !systemService.isUnrestricted(user.userId())) {
+        if (!participant && !systemService.hasModuleAccess(user.userId(), com.seal.oa.workflow.ApprovalInboxService.MODULE)) {
             throw new ApiException(403, "无权查看该流程");
         }
         return id;

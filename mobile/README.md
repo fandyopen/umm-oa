@@ -7,8 +7,15 @@
 使用 Node 18 或以上版本、Java 17。先启动现有 `back/start-local.bat` 后端，再执行：
 
 ```powershell
-cd E:\www\umm-oa\mobile
-npm ci
+cd C:\fandy\project\umm-oa\mobile
+npm ci --include=dev
+npm run dev:h5
+```
+
+首次启动前，须等待依赖安装成功后再运行。若提示 `cross-env` 或 `vue-cli-service` 不是内部或外部命令，说明开发依赖未完整安装；请重新执行 `npm ci --include=dev`，无需全局安装这些工具。若安装日志出现 `ECONNRESET` 或 `ETIMEDOUT`，可临时使用镜像源重试（不修改全局 npm 配置）：
+
+```powershell
+npm ci --include=dev --registry=https://registry.npmmirror.com --no-audit --no-fund
 npm run dev:h5
 ```
 

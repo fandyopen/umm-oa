@@ -1,6 +1,6 @@
 <template>
   <div>
-    <template v-if="isApplication">
+    <template v-if="isApplication && !todoItem.approvalInbox">
       <a-descriptions title="申请信息" bordered :column="{ xs: 1, sm: 2 }" size="small" class="approval-summary">
         <a-descriptions-item label="申请事项" :span="2">{{ detailRow.title || todoItem.processName || '—' }}</a-descriptions-item>
         <a-descriptions-item label="发起人">{{ todoItem.applyUserName || '—' }}</a-descriptions-item>

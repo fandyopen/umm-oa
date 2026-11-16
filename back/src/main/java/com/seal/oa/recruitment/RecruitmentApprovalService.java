@@ -3,6 +3,7 @@ package com.seal.oa.recruitment;
 import com.seal.oa.auth.AuthContext;
 import com.seal.oa.common.ApiException;
 import com.seal.oa.workflow.WorkflowActionContext;
+import com.seal.oa.workflow.WorkflowApprovalContext;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.*;
@@ -42,7 +43,7 @@ public class RecruitmentApprovalService {
         s.event(type(c),num(r.get("id")),"submit",text(c.payload().get("reason")),Map.of("requestId",c.requestId(),"action",c.actionCode()));
     }
     Map<String,Object> pending(WorkflowActionContext c){Map<String,Object>a=s.one("SELECT * FROM oa_recruit_approval WHERE workflow_request_id=? FOR UPDATE",c.requestId());if(!"pending".equals(a.get("status")))throw new ApiException(409,"申请已结束或撤回");return a;}
-    @Transactional public void decision(WorkflowActionContext c,boolean pass,String comment,Long operator){Map<String,Object>a=pending(c);if(num(a.get("createBy"))==num(operator))throw new ApiException(403,"不能审批本人提交的招聘申请");if(!pass)required(comment,2000,"退回原因");}
+    @Transactional public void decision(WorkflowActionContext c,boolean pass,String comment,Long operator){Map<String,Object>a=pending(c);if(num(a.get("createBy"))==num(operator)&&!WorkflowApprovalContext.allowsSelfApproval(operator))throw new ApiException(403,"不能审批本人提交的招聘申请");if(!pass)required(comment,2000,"退回原因");}
     @Transactional public void state(WorkflowActionContext c,String instance,String status){
         if(!"审批未通过".equals(status)){s.jdbc().update("UPDATE oa_recruit_approval SET instance_id=? WHERE workflow_request_id=?",instance,c.requestId());return;}
         Map<String,Object>a=pending(c);s.jdbc().update("UPDATE oa_recruit_approval SET status='rejected',instance_id=?,update_time=CURRENT_TIMESTAMP WHERE workflow_request_id=?",instance,c.requestId());

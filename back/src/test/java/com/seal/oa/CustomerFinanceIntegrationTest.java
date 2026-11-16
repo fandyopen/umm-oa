@@ -47,6 +47,7 @@ class CustomerFinanceIntegrationTest {
     @Autowired private ModuleService modules;
     @Autowired private MockMvc mvc;
     @Autowired private ObjectMapper mapper;
+    @Autowired private com.seal.oa.workflow.ApprovalInboxService approvalInbox;
     private long customerId;
 
     @BeforeEach void prepare() {
@@ -283,6 +284,37 @@ class CustomerFinanceIntegrationTest {
         requests.updateWorkflowState("test-approved", request, "审批通过", "test-task", "完成");
         assertEquals(new BigDecimal("60.00"), ledger(source).get("netReceivedAmount"));
         assertEquals(new BigDecimal("40.00"), ledger(source).get("outstandingAmount"));
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(booleans = {false, true})
+    void inboxDelegateAndSuperAdminCanConfirmReceipt(boolean superAdmin) throws Exception {
+        long source = confirmedReceivable("100.00");
+        var receipt = draft("receipt", source, "60.00");
+        long request = submit(receipt, "receipt_confirm");
+        var payload = requests.payload(request);
+        payload.put("_workflowDefinition", Map.of("menuName", "回款代审", "processData", Map.of("nodes",
+                List.of(Map.of("id", "review", "name", "财务审批", "type", "approval")))));
+        jdbc.update("UPDATE oa_workflow_request SET payload_json=? WHERE id=?", mapper.writeValueAsString(payload), request);
+        String instance = "biz-inbox-finance", task = "task::biz-inbox-finance::review::test";
+        jdbc.update("INSERT INTO oa_process_instance(id,tenant_id,process_key,business_type,business_id,starter_id,starter_name) VALUES(?,1,'business:341400:receipt_confirm','workflowAction',?,1,'系统管理员')", instance, request);
+        jdbc.update("INSERT INTO oa_process_task(id,instance_id,task_name,assignee_id,assignee_name) VALUES(?,?,'财务审批',4,'指定财务审批人')", task, instance);
+        jdbc.update("UPDATE oa_workflow_request SET process_instance_id=?,process_task_id=? WHERE id=?", instance, task, request);
+        jdbc.update("INSERT INTO sys_user(user_id,tenant_id,dept_id,user_name,nick_name,password) SELECT 99192,1,dept_id,'finance-inbox-delegate','财务代审员',password FROM sys_user WHERE user_id=4");
+        jdbc.update("INSERT INTO sys_role(role_id,role_name,role_key,data_scope) VALUES(99192,'财务代审测试','finance_inbox_only','5')");
+        jdbc.update("INSERT INTO sys_user_role(user_id,role_id) VALUES(99192,99192)");
+        jdbc.update("INSERT INTO sys_role_module(role_id,module_id) VALUES(99192,341600)");
+        jdbc.update("INSERT INTO sys_role_module_action(role_id,module_id,action_code) VALUES(99192,341600,'approve')");
+        long operator = superAdmin ? 1L : 99192L;
+        AuthContext.set(new AuthContext.CurrentUser(operator, superAdmin ? "13610316814" : "finance-inbox-delegate"));
+        if (!superAdmin) assertTrue(((List<?>) finance.ledger(Map.of()).get("rows")).isEmpty());
+        approvalInbox.decide(Map.of("taskId", task, "pass", true, "comment", "代审核对回款"));
+        assertEquals("confirmed", jdbc.queryForObject("SELECT status FROM oa_finance_record WHERE id=?", String.class, receipt.get("id")));
+        assertEquals(operator, jdbc.queryForObject("SELECT operator_id FROM oa_approval_decision WHERE task_id=?", Long.class, task));
+        assertFalse(com.seal.oa.workflow.WorkflowApprovalContext.allowsSelfApproval(operator));
+        if (!superAdmin) assertTrue(((List<?>) finance.ledger(Map.of()).get("rows")).isEmpty());
+        AuthContext.set(new AuthContext.CurrentUser(1L, "13610316814"));
+        assertEquals(new BigDecimal("60.00"), ledger(source).get("netReceivedAmount"));
     }
 
     @Test

@@ -2830,6 +2830,21 @@ UPDATE sys_module SET redirect = '/finance/ledger'
 WHERE module_id = 341400 AND (redirect IS NULL OR redirect = '');
 
 
+INSERT INTO sys_module (
+    module_id, tenant_id, parent_id, module_name, route_name, path, component,
+    icon, module_sort, hidden, perms, has_flow, no_cache, status
+)
+SELECT 341112, 1, 340310, '拓展经营', 'CrmSalesPerformance', 'sales-performance',
+       'eos/crm/salesPerformance/index', 'iconfont-chengbenfenxi-', 6, 0,
+       'project:salesPerformance:list', 0, 0, '0'
+WHERE NOT EXISTS (SELECT 1 FROM sys_module WHERE module_id=341112);
+
+INSERT INTO sys_role_module(role_id,module_id)
+SELECT source.role_id,341112 FROM sys_role_module source
+WHERE source.module_id=340590
+AND NOT EXISTS(SELECT 1 FROM sys_role_module granted WHERE granted.role_id=source.role_id AND granted.module_id=341112);
+
+
 -- Personnel extension: additive and restart-safe; never infer employment dates from account creation.
 CREATE TABLE IF NOT EXISTS oa_hr_employee (
     user_id BIGINT PRIMARY KEY,
@@ -3061,6 +3076,7 @@ INSERT INTO sys_module_action(module_id,action_code,action_name,builtin,status)
 SELECT 341510,'remove','彻底删除客户',0,'0'
 WHERE NOT EXISTS(SELECT 1 FROM sys_module_action WHERE module_id=341510 AND action_code='remove');
 
+
 SET @contract_sql = (SELECT IF(COUNT(*)=0,'ALTER TABLE oa_crm_contract ADD COLUMN deleted INT NOT NULL DEFAULT 0','SELECT 1') FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='oa_crm_contract' AND column_name='deleted');
 PREPARE contract_stmt FROM @contract_sql;
 EXECUTE contract_stmt;
@@ -3080,6 +3096,34 @@ CREATE TABLE IF NOT EXISTS oa_crm_contract_history (
     operator_name VARCHAR(64),
     create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+
+CREATE TABLE IF NOT EXISTS oa_approval_decision (
+    task_id VARCHAR(128) PRIMARY KEY,
+    tenant_id BIGINT NOT NULL,
+    instance_id VARCHAR(128) NOT NULL,
+    assignee_id BIGINT,
+    assignee_name VARCHAR(64),
+    assignee_dept_id BIGINT,
+    assignee_dept_name VARCHAR(64),
+    operator_id BIGINT NOT NULL,
+    operator_name VARCHAR(64),
+    operator_dept_name VARCHAR(64),
+    decision VARCHAR(16) NOT NULL,
+    comment VARCHAR(2000),
+    delegated INT NOT NULL DEFAULT 0,
+    complete_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_approval_decision_instance (instance_id)
+);
+INSERT INTO sys_module (
+    module_id, tenant_id, parent_id, module_name, route_name, path, component,
+    icon, module_sort, hidden, perms, has_flow, flow_conditions, no_cache,
+    is_app, is_frame, query, redirect, status
+) SELECT
+    341600, 1, 340340, '待审批', 'ApprovalInbox', 'approvals',
+    'eos/todoItem/approvals/index', 'iconfont-daibanshixiang7', 0, 0, 'todoItem:approval:list', 0, '',
+    1, '', '', '', '', '0'
+WHERE NOT EXISTS (SELECT 1 FROM sys_module WHERE module_id = 341600);
 
 
 SET FOREIGN_KEY_CHECKS = 1;

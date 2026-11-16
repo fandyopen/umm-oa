@@ -5,6 +5,7 @@ import static com.seal.oa.hr.HrData.*;
 import com.seal.oa.common.ApiException;
 import com.seal.oa.workflow.WorkflowActionContext;
 import com.seal.oa.workflow.WorkflowActionHandler;
+import com.seal.oa.workflow.WorkflowApprovalContext;
 
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -153,9 +154,9 @@ public class HrWorkflowHandler implements WorkflowActionHandler {
                 text(
                         d.one("SELECT user_name FROM sys_user WHERE user_id=?", operator)
                                 .get("userName"));
-        if (Objects.equals(operator, c.operatorId()) || applicant.equals(approver))
+        if ((Objects.equals(operator, c.operatorId()) || applicant.equals(approver)) && !WorkflowApprovalContext.allowsSelfApproval(operator))
             throw new ApiException(403, "不能审批本人提交的人事或工资申请");
-        if (!d.system.hasModuleAction(operator, module, "approve"))
+        if (!WorkflowApprovalContext.active(operator) && !d.system.hasModuleAction(operator, module, "approve"))
             throw new ApiException(403, "审批人缺少此业务的审批权限");
         if (!pass && text(comment).isEmpty()) throw new ApiException(400, "退回需填写原因");
         validate(c);

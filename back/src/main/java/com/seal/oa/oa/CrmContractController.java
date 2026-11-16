@@ -1,6 +1,9 @@
 package com.seal.oa.oa;
 
 import com.seal.oa.common.ApiResult;
+import com.seal.oa.common.ApiException;
+import com.seal.oa.auth.AuthContext;
+import com.seal.oa.lowcode.LowCodeWorkflowService;
 import com.seal.oa.web.ModuleActionRequirement;
 import com.seal.oa.web.RequiresAnyModuleAction;
 import com.seal.oa.web.RequiresModuleAction;
@@ -16,11 +19,13 @@ public class CrmContractController {
     private final CrmContractWorkflowService workflow;
     private final CustomerFinanceService finance;
     private final ContractLifecycleService lifecycle;
-    public CrmContractController(CrmContractService contracts, CrmContractWorkflowService workflow, CustomerFinanceService finance, ContractLifecycleService lifecycle) {
+    private final LowCodeWorkflowService approvals;
+    public CrmContractController(CrmContractService contracts, CrmContractWorkflowService workflow, CustomerFinanceService finance, ContractLifecycleService lifecycle, LowCodeWorkflowService approvals) {
         this.contracts = contracts;
         this.workflow = workflow;
         this.finance = finance;
         this.lifecycle = lifecycle;
+        this.approvals = approvals;
     }
 
     @GetMapping
@@ -60,6 +65,14 @@ public class CrmContractController {
             @ModuleActionRequirement(moduleId = 341101, action = "access")
     })
     public Map<String, Object> detail(@PathVariable long id) { return ApiResult.ok(contracts.detail(id)); }
+
+    @GetMapping("/{id}/approval-task")
+    @RequiresModuleAction(moduleId = 341202, action = "approve")
+    public Map<String, Object> approvalTask(@PathVariable long id) {
+        var task = contracts.approvalTask(id);
+        if (task.isEmpty()) throw new ApiException(409, "该合同当前没有待您审批的任务，请刷新列表");
+        return ApiResult.ok(approvals.pendingTask(String.valueOf(task.get("taskId")), AuthContext.userId()));
+    }
 
     @PostMapping
     @RequiresModuleAction(moduleId = 341201, action = "add")

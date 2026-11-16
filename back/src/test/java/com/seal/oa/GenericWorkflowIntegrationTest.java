@@ -38,7 +38,9 @@ class GenericWorkflowIntegrationTest {
         jdbc.update("INSERT INTO sys_user(user_id,tenant_id,dept_id,user_name,nick_name,phonenumber,password,status,del_flag) SELECT 9921,1,dept_id,'17600000001','审批人','17600000001',password,'0','0' FROM sys_user WHERE user_id=4 AND NOT EXISTS(SELECT 1 FROM sys_user WHERE user_name='17600000001')");
         token = login("13610316814");
         applicantId = jdbc.queryForObject("SELECT user_id FROM sys_user WHERE user_name='13610316814'", Long.class);
-        jdbc.update("INSERT INTO oa_merchant(id,tenant_id,name,industry,owner_user_id,status,public_pool) VALUES (?,1,'通用流程客户','软件',?,'0','0')", CUSTOMER, applicantId);
+        // Customer owners must be real members; the fixed super administrator is a system account.
+        long owner = jdbc.queryForObject("SELECT user_id FROM sys_user WHERE user_name='17600000001'", Long.class);
+        jdbc.update("INSERT INTO oa_merchant(id,tenant_id,name,industry,owner_user_id,status,public_pool) VALUES (?,1,'通用流程客户','软件',?,'0','0')", CUSTOMER, owner);
         configure("track", followupConfig());
     }
 
@@ -85,6 +87,26 @@ class GenericWorkflowIntegrationTest {
         // A repeated task completion must not execute the business write twice.
         complete(submitted, true, 200);
         assertFollowups(1);
+    }
+
+    @Test void inboxDelegateUsesFrozenBusinessConfigurationAndExecutesAsApplicant() throws Exception {
+        long delegate = 9922;
+        jdbc.update("INSERT INTO sys_role(role_id,role_name,role_key,data_scope) VALUES(9922,'全员代审批','generic_inbox_delegate','5')");
+        jdbc.update("INSERT INTO sys_user(user_id,tenant_id,dept_id,user_name,nick_name,password) SELECT ?,1,dept_id,'17690009922','代审批测试',password FROM sys_user WHERE user_id=4", delegate);
+        jdbc.update("INSERT INTO sys_user_role(user_id,role_id) VALUES(9922,9922)");
+        jdbc.update("INSERT INTO sys_role_module(role_id,module_id) VALUES(9922,341600)");
+        jdbc.update("INSERT INTO sys_role_module_action(role_id,module_id,action_code) VALUES(9922,341600,'approve')");
+        publish("track", true);
+        JsonNode submitted = submit("track", followupPayload("全员代审跟进"), "inbox_generic_0001", 200);
+        String delegateToken = login("17690009922");
+        mvc.perform(post("/project/approvals/decision").header("Authorization", "Bearer " + delegateToken)
+                        .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(Map.of(
+                                "taskId", submitted.path("taskId").asText(), "pass", true, "comment", "代审通过"))))
+                .andExpect(jsonPath("$.code").value(200));
+        assertFollowups(1);
+        assertEquals(applicantId, jdbc.queryForObject("SELECT owner_user_id FROM oa_customer_followup WHERE merchant_id=?", Long.class, CUSTOMER));
+        assertEquals(delegate, jdbc.queryForObject("SELECT operator_id FROM oa_approval_decision WHERE task_id=?", Long.class, submitted.path("taskId").asText()));
+        assertFalse(com.seal.oa.workflow.WorkflowApprovalContext.active(delegate));
     }
 
     @Test void approvalListsKeepFrozenTitlesAndDisplayFieldsAfterConfigurationChanges() throws Exception {
@@ -205,9 +227,10 @@ class GenericWorkflowIntegrationTest {
     @Test void anotherBusinessInterfaceUsesNestedParameterMappingsWithoutANewExecutor() throws Exception {
         actions.createAction(340352, Map.of("actionCode", "new_customer_review", "actionName", "客户建档审批",
                 "handlerKey", WorkflowApiRegistry.HANDLER, "configJson", Map.of("endpoint", endpoint("create"), "pathMapping", Map.of(),
-                        "bodyMapping", Map.of("name", "form.company", "industry", "form.industry"), "titleTemplate", "客户建档：{form.company}")));
+                        "bodyMapping", Map.of("name", "form.company", "industry", "form.industry", "ownerUserId", "form.ownerUserId"), "titleTemplate", "客户建档：{form.company}")));
         publish("new_customer_review", true);
-        JsonNode submitted = submit("new_customer_review", Map.of("form", Map.of("company", "通用配置新客户", "industry", "软件")), "another_api_0001", 200);
+        long owner = jdbc.queryForObject("SELECT user_id FROM sys_user WHERE user_name='17600000001'", Long.class);
+        JsonNode submitted = submit("new_customer_review", Map.of("form", Map.of("company", "通用配置新客户", "industry", "软件", "ownerUserId", owner)), "another_api_0001", 200);
         assertEquals("客户建档：通用配置新客户", submitted.path("title").asText());
         assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM oa_merchant WHERE name='通用配置新客户'", Integer.class));
         complete(submitted, true, 200);

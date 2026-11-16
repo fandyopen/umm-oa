@@ -16,6 +16,7 @@ final class DataTableRegistry {
     static {
         String definitions = """
             sys_tenant|企业|系统|企业信息
+            oa_approval_decision|审批实际办理记录|流程审批|待审批
             sys_user|成员账号|系统|组织架构
             sys_dept|部门|系统|组织架构
             sys_dept_principal|部门负责人|系统

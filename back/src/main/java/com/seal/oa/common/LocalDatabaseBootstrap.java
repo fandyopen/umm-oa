@@ -44,6 +44,7 @@ public class LocalDatabaseBootstrap implements ApplicationRunner {
             "organization-permission.sql",
             "workflow-action.sql",
             "workflow-management.sql",
+            "approval-inbox.sql",
             "module-management.sql",
             "docs-config.sql",
             "crm-upgrade.sql",

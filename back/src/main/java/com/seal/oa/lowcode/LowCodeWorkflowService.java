@@ -4,6 +4,8 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.seal.oa.common.ApiException;
 import com.seal.oa.workflow.WorkflowActionRequestService;
+import com.seal.oa.workflow.WorkflowApprovalContext;
+import com.seal.oa.workflow.ApprovalDecisionService;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,17 +31,20 @@ public class LowCodeWorkflowService {
     private final ObjectMapper objectMapper;
     private final ModuleFlowBindingService flowBindingService;
     private final WorkflowActionRequestService actionRequestService;
+    private final ApprovalDecisionService decisions;
 
     public LowCodeWorkflowService(
             JdbcTemplate jdbc,
             ObjectMapper objectMapper,
             ModuleFlowBindingService flowBindingService,
-            WorkflowActionRequestService actionRequestService
+            WorkflowActionRequestService actionRequestService,
+            ApprovalDecisionService decisions
     ) {
         this.jdbc = jdbc;
         this.objectMapper = objectMapper;
         this.flowBindingService = flowBindingService;
         this.actionRequestService = actionRequestService;
+        this.decisions = decisions;
     }
 
     @Transactional
@@ -276,6 +281,31 @@ public class LowCodeWorkflowService {
         return rows;
     }
 
+    public Map<String, Object> pendingTask(String taskId, Long userId) {
+        List<Map<String, Object>> tasks = jdbc.queryForList("""
+                SELECT t.* FROM oa_todo td
+                JOIN oa_process_task t ON t.id=td.task_id AND t.instance_id=td.process_instance_id
+                JOIN oa_process_instance i ON i.id=t.instance_id
+                WHERE t.id=? AND td.user_id=? AND t.assignee_id=?
+                  AND td.status='todo' AND t.status='todo' AND i.status='running'
+                """, taskId, userId, userId);
+        if (tasks.isEmpty()) throw new ApiException(409, "当前任务已处理或不属于您，请刷新后重试");
+        var task = tasks.get(0);
+        return view(instance(task), task, "todo");
+    }
+
+    public Map<String, Object> approvalDetail(String taskId, long tenantId) {
+        var tasks = jdbc.queryForList("""
+                SELECT t.* FROM oa_process_task t JOIN oa_process_instance i ON i.id=t.instance_id
+                WHERE t.id=? AND i.tenant_id=?
+                  AND (i.process_key LIKE 'form:%' OR i.process_key LIKE 'business:%')
+                """, taskId, tenantId);
+        if (tasks.isEmpty()) throw new ApiException(404, "审批任务不存在");
+        var task = tasks.get(0);
+        var instance = instance(task);
+        return view(instance, task, "todo".equals(task.get("status")) && "running".equals(instance.get("status")) ? "todo" : "done");
+    }
+
     @Transactional
     public Map<String, Object> complete(Map<String, Object> body, Long operatorId) {
         String taskId = value(body.get("taskId"), "");
@@ -294,14 +324,17 @@ public class LowCodeWorkflowService {
             return existingResult(row("SELECT * FROM oa_process_instance WHERE id = ?", instanceId));
         }
         if(!"todo".equals(value(task.get("status"),"")))throw new ApiException(409,"该审批任务已撤回或停止，不能继续办理");
-        if (number(task.get("assignee_id"), 0L) != operatorId) {
+        if (number(task.get("assignee_id"), 0L) != operatorId
+                && !WorkflowApprovalContext.permits(instanceId, taskId, operatorId, number(task.get("assignee_id"), 0L))) {
             throw new ApiException(403, "当前账号不是该任务审批人");
         }
 
         Map<String, Object> variables = object(body.get("variables"));
         String comment = value(variables.get("comment"), value(body.get("comment"), "同意"));
+        if (comment.length() > 2000) throw new ApiException(400, "审批意见最多2000字");
         boolean pass = !"false".equalsIgnoreCase(value(variables.get("pass"), "true"));
         actionRequestService.validateCompletion(instanceId, taskId, pass, comment, operatorId);
+        decisions.record(instance(task), task, operatorId, pass, comment);
         Timestamp now = Timestamp.valueOf(LocalDateTime.now());
 
         jdbc.update("""
@@ -410,7 +443,7 @@ public class LowCodeWorkflowService {
                     value(task.get("task_name"), "审批"),
                     "userTask",
                     number(task.get("assignee_id"), 0L),
-                    value(task.get("assignee_name"), ""),
+                    historyAssignee(task),
                     comment(value(task.get("id"), "")),
                     (Timestamp) task.get("create_time"),
                     (Timestamp) task.get("complete_time")
@@ -607,7 +640,17 @@ public class LowCodeWorkflowService {
         lastActivity.put("comment", "发起申请");
         lastActivity.put("assigneeName", value(instance.get("starter_name"), ""));
         row.put("lastHistoricActivity", lastActivity);
+        row.put("approvalAudit", task == null ? Map.of() : decisions.find(value(task.get("id"), "")));
         return row;
+    }
+
+    private String historyAssignee(Map<String, Object> task) {
+        Map<String, Object> audit = decisions.find(value(task.get("id"), ""));
+        String actual = value(audit.get("operatorName"), "");
+        String assigned = value(task.get("assignee_name"), "");
+        if (actual.isBlank()) return assigned;
+        return number(audit.get("operatorId"), 0L) == number(task.get("assignee_id"), 0L)
+                ? actual : actual + "（代 " + assigned + " 审批）";
     }
 
     private Map<String, Object> existingResult(Map<String, Object> instance) {

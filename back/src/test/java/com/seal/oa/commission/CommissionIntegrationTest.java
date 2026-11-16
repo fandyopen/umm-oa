@@ -193,7 +193,9 @@ class CommissionIntegrationTest {
         assertTrue(submit.path("ready").asBoolean(),submit.toString());
         assertEquals("commission.batch.submit",actions.action(341410,"submit").get("handlerKey"));
     }
-    @Test void roleAssignedApproverReceivesTodoAndCompletesFrozenCommission() throws Exception {
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(booleans = {false, true})
+    void roleAssignedApproverOrSuperAdminCompletesFrozenCommission(boolean superAdmin) throws Exception {
         ready();var b=generate();String name=jdbc.queryForObject("SELECT user_name FROM sys_user WHERE user_id=?",String.class,user);
         jdbc.update("INSERT INTO sys_role(role_id,role_name,role_key,data_scope) VALUES(99602,'提成审批测试','commission_review_test','1')");
         jdbc.update("INSERT INTO sys_user_role(user_id,role_id) VALUES(?,99602)",user);jdbc.update("INSERT INTO sys_role_module(role_id,module_id) VALUES(99602,341410)");
@@ -206,10 +208,16 @@ class CommissionIntegrationTest {
         var result=json.readTree(response.getResponse().getContentAsString(java.nio.charset.StandardCharsets.UTF_8));assertEquals(200,result.path("code").asInt(),result.toString());var submission=result.path("data");assertEquals("pendingApproval",submission.path("status").asText());
         var taskResponse=mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/project/activity/taskWaitList").header("Authorization","Bearer "+reviewer)).andReturn();
         assertTrue(taskResponse.getResponse().getContentAsString(java.nio.charset.StandardCharsets.UTF_8).contains(submission.path("instanceId").asText()));
-        response=mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/activiti/process/complete").header("Authorization","Bearer "+reviewer).contentType(org.springframework.http.MediaType.APPLICATION_JSON).content(json.writeValueAsString(Map.of("taskId",submission.path("taskId").asText(),"instanceId",submission.path("instanceId").asText(),"variables",Map.of("pass",true,"comment","核对同意"))))).andReturn();
+        String endpoint = superAdmin ? "/project/approvals/decision" : "/activiti/process/complete";
+        Map<String,Object> decision = superAdmin
+                ? Map.of("taskId",submission.path("taskId").asText(),"pass",true,"comment","超管代审本人提成申请")
+                : Map.of("taskId",submission.path("taskId").asText(),"instanceId",submission.path("instanceId").asText(),"variables",Map.of("pass",true,"comment","核对同意"));
+        response=mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(endpoint).header("Authorization","Bearer "+(superAdmin ? admin : reviewer)).contentType(org.springframework.http.MediaType.APPLICATION_JSON).content(json.writeValueAsString(decision))).andReturn();
         result=json.readTree(response.getResponse().getContentAsString(java.nio.charset.StandardCharsets.UTF_8));assertEquals(200,result.path("code").asInt(),result.toString());
         assertEquals("approved",jdbc.queryForObject("SELECT status FROM oa_commission_batch WHERE id=?",String.class,b.get("id")));
         assertEquals("approved",jdbc.queryForObject("SELECT status FROM oa_workflow_request WHERE id=?",String.class,submission.path("requestId").asLong()));
+        assertEquals(superAdmin ? 1L : user, jdbc.queryForObject("SELECT operator_id FROM oa_approval_decision WHERE task_id=?", Long.class, submission.path("taskId").asText()));
+        assertFalse(com.seal.oa.workflow.WorkflowApprovalContext.allowsSelfApproval(1L));
     }
 
     @Test void freeReplacementReusesDisabledOriginalRuleAndOnlyTransfersExistingCash(){

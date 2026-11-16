@@ -12,9 +12,9 @@
       <a-textarea class="s-mb-16" placeholder="填写审批意见" v-model="comment" :auto-size="{ minRows: 8 }" />
       <!-- class="bottom-control" -->
       <a-space>
-        <a-button class="tw-bg-[#52c41a] tw-text-white tw-border-[#52c41a]" @click="complete(true)">同 意</a-button>
-        <a-button v-if="allowDelegate" type="primary" @click="handleDelegateTaskClick">转 办</a-button>
-        <a-button class="tw-bg-[#fa541c] tw-text-white tw-border-[#fa541c]" @click="handleRejectTask()">驳 回</a-button>
+        <a-button :loading="submitting" :disabled="submitting" class="tw-bg-[#52c41a] tw-text-white tw-border-[#52c41a]" @click="complete(true)">{{ todoItem.approvalInbox ? '代审批同意' : '同 意' }}</a-button>
+        <a-button v-if="allowDelegate && !todoItem.approvalInbox" type="primary" :disabled="submitting" @click="handleDelegateTaskClick">转 办</a-button>
+        <a-button :disabled="submitting" class="tw-bg-[#fa541c] tw-text-white tw-border-[#fa541c]" @click="handleRejectTask()">{{ todoItem.approvalInbox ? '代审批驳回' : '驳 回' }}</a-button>
         <a-button v-if="!pass" class="tw-bg-[#fa541c] tw-text-white tw-border-[#fa541c]" @click="handleFinishTask()">结束流程</a-button>
         <a-button @click="close">取 消</a-button>
       </a-space>
@@ -24,6 +24,7 @@
 
 <script>
 import { completeTask, rejectTask, finishTask } from '/src/api/activiti/process.js'
+import { decideApproval } from '/src/api/activiti/approvals.js'
 import { busFlowState } from '../flow.js'
 import ProcessHistory from '../HistoryG6Pro.vue'
 
@@ -74,11 +75,20 @@ export default {
   data() {
     return {
       busFlowState,
+      submitting: false,
       pass: true,
       comment: null
     }
   },
   methods: {
+    submitDecision(data, pass, operation) {
+      if (this.submitting) return Promise.reject(new Error('审批正在提交'))
+      this.submitting = true
+      const request = this.todoItem.approvalInbox
+        ? decideApproval({ taskId: this.todoItem.taskId, pass, comment: data.comment || JSON.parse(data.variablesStr || '{}').comment })
+        : operation(data)
+      return request.finally(() => { this.submitting = false })
+    },
     close() {
       this.$emit('close')
     },
@@ -106,7 +116,7 @@ export default {
         type: this.todoItem.businessType,
         dataId: this.todoItem.formId
       }
-      return completeTask(data).then(() => {
+      return this.submitDecision(data, isPass, completeTask).then(() => {
         // 刷新待办事项列表
         this.$emit('getList')
         this.$emit('ok')
@@ -126,7 +136,7 @@ export default {
         type: this.todoItem.businessType,
         dataId: this.todoItem.formId
       }
-      return rejectTask(data).then(() => {
+      return this.submitDecision(data, false, rejectTask).then(() => {
         // 刷新待办事项列表
         this.$emit('getList')
         this.$emit('ok')

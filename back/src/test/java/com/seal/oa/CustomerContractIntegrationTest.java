@@ -508,6 +508,133 @@ class CustomerContractIntegrationTest {
     }
 
     @Test
+    void contractAndSigningApprovalsExposeTheirOwnInitiatorsAndCurrentApprovers() throws Exception {
+        long customer = createCustomer("审批发起人分阶段展示客户");
+        JsonNode approved = approveDraft(createDraft(customer));
+        long id = approved.path("id").asLong();
+        jdbc.update("UPDATE oa_merchant SET owner_user_id=902,owner_user_name='合同审批员902' WHERE id=?", customer);
+        jdbc.update("INSERT INTO sys_role_module(role_id,module_id) VALUES (991,341201)");
+        jdbc.update("INSERT INTO sys_role_module_action(role_id,module_id,action_code) VALUES (991,341201,'sign')");
+        publishSignFlow("17690000901");
+
+        JsonNode pending = action(outsider, id, "sign", Map.of("revision", approved.path("revision").asInt(), "signedDate", today.toString()));
+        JsonNode contractApproval = pending.path("workflow");
+        JsonNode signing = pending.path("signingWorkflow");
+        assertEquals(1, contractApproval.path("submitUserId").asLong());
+        assertEquals("13610316814", contractApproval.path("submitUserAccount").asText());
+        assertEquals("approved", contractApproval.path("status").asText());
+        assertEquals(902, signing.path("submitUserId").asLong());
+        assertEquals("17690000902", signing.path("submitUserAccount").asText());
+        assertEquals("合同审批员902", signing.path("submitUserName").asText());
+        assertFalse(signing.path("submitTime").asText().isBlank());
+        assertEquals("running", signing.path("status").asText());
+        assertEquals(901, signing.path("approvalUserId").asLong());
+        assertEquals("合同审批员901", signing.path("approvalUserName").asText());
+
+        jdbc.update("UPDATE sys_user SET nick_name='改名后的902' WHERE user_id=902");
+        completeSigning(reviewer, signing, true, "签署确认", 200);
+        JsonNode active = call(admin, get(base + "/" + id), null, 200).path("data");
+        assertEquals("active", active.path("status").asText());
+        JsonNode history = active.path("versions").get(0).path("signingHistory").get(0);
+        assertEquals("合同审批员902", history.path("submitUserName").asText());
+        assertEquals(signing.path("submitTime"), history.path("submitTime"));
+        assertEquals("approved", history.path("status").asText());
+        assertEquals("合同审批员901", history.path("approvalUserName").asText());
+    }
+
+    @Test
+    void approvalEntryReturnsTheCurrentTodoAndMovesToTheNextReviewer() throws Exception {
+        long id = createDraft(createCustomer("合同就地审批入口客户")).path("id").asLong();
+        JsonNode draft = call(admin, get(base + "/" + id), null, 200).path("data");
+        assertFalse(draft.path("approvalTask").has("taskId"));
+        JsonNode pending = action(admin, id, "submit", Map.of("revision", draft.path("revision").asInt()));
+        assertFalse(pending.path("approvalTask").has("taskId"));
+        JsonNode assigned = call(reviewer, get(base + "/" + id), null, 200).path("data");
+        assertEquals(assigned.path("workflow").path("taskId"), assigned.path("approvalTask").path("taskId"));
+        JsonNode entry = call(reviewer, get(base + "/" + id + "/approval-task"), null, 200).path("data");
+        JsonNode todo = call(reviewer, get("/project/activity/taskWaitList").param("businessCategory", "contract"), null, 200)
+                .path("rows").findValues("taskId").stream().filter(value -> value.equals(entry.path("taskId"))).findFirst().orElseThrow();
+        assertEquals(todo, entry.path("taskId"));
+        assertEquals("workflowAction", entry.path("businessType").asText());
+        assertEquals("todo", entry.path("type").asText());
+        assertEquals(id, entry.path("data").path("contractId").asLong());
+        call(admin, get(base + "/" + id + "/approval-task"), null, 409);
+        call(outsider, get(base + "/" + id + "/approval-task"), null, 403);
+
+        completeContract(reviewer, id, Map.of("decision", "approved"));
+        assertFalse(call(reviewer, get(base + "/" + id), null, 200).path("data").path("approvalTask").has("taskId"));
+        call(reviewer, get(base + "/" + id + "/approval-task"), null, 409);
+        JsonNode approved = call(admin, get(base + "/" + id), null, 200).path("data");
+        publishSignFlow("17690000901", "17690000902");
+        JsonNode signing = action(admin, id, "sign", Map.of("revision", approved.path("revision").asInt(), "signedDate", today.toString()));
+        call(outsider, get(base + "/" + id + "/approval-task"), null, 403);
+        JsonNode first = call(reviewer, get(base + "/" + id + "/approval-task"), null, 200).path("data");
+        completeSigning(reviewer, signing.path("signingWorkflow"), true, "第一节点通过", 200);
+        call(reviewer, get(base + "/" + id + "/approval-task"), null, 409);
+        JsonNode second = call(outsider, get(base + "/" + id + "/approval-task"), null, 200).path("data");
+        assertNotEquals(first.path("taskId"), second.path("taskId"));
+        assertTrue(call(outsider, get(base), null, 200).path("rows").findValues("approvalTask").stream()
+                .anyMatch(task -> second.path("taskId").equals(task.path("taskId"))));
+        jdbc.update("DELETE FROM sys_role_module_action WHERE role_id=991 AND module_id=341202 AND action_code='approve'");
+        assertFalse(call(outsider, get(base + "/" + id), null, 200).path("data").path("approvalTask").has("taskId"));
+        call(outsider, get(base + "/" + id + "/approval-task"), null, 403);
+    }
+
+    @Test
+    void inboxOnlyDelegateCanApproveContractAndSigningWithoutImpersonatingReviewer() throws Exception {
+        long id = createDraft(createCustomer("全员代审批合同客户")).path("id").asLong();
+        JsonNode pending = action(admin, id, "submit", Map.of("revision", 0));
+        jdbc.update("INSERT INTO sys_role(role_id,role_name,role_key,data_scope) VALUES(992,'全员代审测试','inbox_delegate_test','5')");
+        jdbc.update("DELETE FROM sys_user_role WHERE user_id=902");
+        jdbc.update("INSERT INTO sys_user_role(user_id,role_id) VALUES(902,992)");
+        jdbc.update("INSERT INTO sys_role_module(role_id,module_id) VALUES(992,341600)");
+        jdbc.update("INSERT INTO sys_role_module_action(role_id,module_id,action_code) VALUES(992,341600,'approve')");
+        JsonNode task = call(outsider, get("/project/approvals/detail").param("taskId", pending.path("workflow").path("taskId").asText()), null, 200).path("data");
+        assertTrue(task.path("canApprove").asBoolean());
+        call(outsider, post("/project/activity/complete"), Map.of("instanceId", task.path("instanceId").asText(), "taskId", task.path("taskId").asText(), "variables", Map.of("pass", true)), 403);
+        call(outsider, post("/project/approvals/decision"), Map.of("taskId", task.path("taskId").asText(), "pass", true, "comment", "代审核对合同"), 200);
+        JsonNode approved = call(admin, get(base + "/" + id), null, 200).path("data");
+        assertEquals("approved", approved.path("status").asText());
+        assertEquals(901, jdbc.queryForObject("SELECT assignee_id FROM oa_process_task WHERE id=?", Long.class, task.path("taskId").asText()));
+        assertEquals(902, jdbc.queryForObject("SELECT operator_id FROM oa_approval_decision WHERE task_id=?", Long.class, task.path("taskId").asText()));
+        publishSignFlow("17690000901");
+        JsonNode signing = action(admin, id, "sign", Map.of("revision", approved.path("revision").asInt(), "signedDate", today.toString()));
+        String signingTask = signing.path("signingWorkflow").path("taskId").asText();
+        call(outsider, post("/project/approvals/decision"), Map.of("taskId", signingTask, "pass", true, "comment", "代审核对签署"), 200);
+        assertEquals("active", call(admin, get(base + "/" + id), null, 200).path("data").path("status").asText());
+        assertEquals(902, jdbc.queryForObject("SELECT operator_id FROM oa_approval_decision WHERE task_id=?", Long.class, signingTask));
+        assertFalse(com.seal.oa.workflow.WorkflowApprovalContext.active(902L));
+    }
+
+    @Test
+    void superAdminCanDelegateOwnContractSigningAndLifecycleApplications() throws Exception {
+        long adminId = jdbc.queryForObject("SELECT user_id FROM sys_user WHERE user_name='13610316814'", Long.class);
+        long id = createDraft(createCustomer("超管自发申请代审客户")).path("id").asLong();
+        JsonNode pending = action(admin, id, "submit", Map.of("revision", 0));
+        String taskId = pending.path("workflow").path("taskId").asText();
+        call(admin, post("/project/approvals/decision"), Map.of("taskId", taskId, "pass", true, "comment", "超管代审合同"), 200);
+        JsonNode approved = call(admin, get(base + "/" + id), null, 200).path("data");
+        assertEquals("approved", approved.path("status").asText());
+        assertEquals(adminId, jdbc.queryForObject("SELECT operator_id FROM oa_approval_decision WHERE task_id=?", Long.class, taskId));
+        assertEquals(901L, jdbc.queryForObject("SELECT assignee_id FROM oa_approval_decision WHERE task_id=?", Long.class, taskId));
+        publishSignFlow("17690000901");
+        JsonNode signing = action(admin, id, "sign", Map.of("revision", approved.path("revision").asInt(), "signedDate", today.toString()));
+        String signingTask = signing.path("signingWorkflow").path("taskId").asText();
+        call(admin, post("/project/approvals/decision"), Map.of("taskId", signingTask, "pass", true, "comment", "超管代审签署"), 200);
+        JsonNode active = call(admin, get(base + "/" + id), null, 200).path("data");
+        assertEquals("active", active.path("status").asText());
+        assertEquals(adminId, jdbc.queryForObject("SELECT operator_id FROM oa_approval_decision WHERE task_id=?", Long.class, signingTask));
+        call(admin, put("/system/module/341201/actions/terminate"), Map.of("flowDesignEnabled", true), 200);
+        publishContractButtonFlow("terminate", "17690000901");
+        JsonNode termination = call(admin, post(base + "/" + id + "/terminate"), Map.of("revision", active.path("revision").asInt(), "reason", "测试终止流程"), 200).path("data");
+        String terminationTask = termination.path("taskId").asText();
+        call(admin, post("/project/approvals/decision"), Map.of("taskId", terminationTask, "pass", true, "comment", "超管代审终止"), 200);
+        assertEquals("terminated", call(admin, get(base + "/" + id), null, 200).path("data").path("status").asText());
+        assertEquals(adminId, jdbc.queryForObject("SELECT operator_id FROM oa_approval_decision WHERE task_id=?", Long.class, terminationTask));
+        assertFalse(com.seal.oa.workflow.WorkflowApprovalContext.allowsSelfApproval(adminId));
+    }
+
+    @Test
     void signingCannotBypassApprovalOrChangeVersionWhilePending() throws Exception {
         JsonNode approved = approveDraft(createDraft(createCustomer("签署防绕过客户")));
         long id = approved.path("id").asLong();

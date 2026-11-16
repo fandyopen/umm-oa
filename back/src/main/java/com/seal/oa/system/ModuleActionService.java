@@ -63,6 +63,7 @@ public class ModuleActionService {
     );
 
     private static final Map<Long, List<ActionDefinition>> MODULE_ACTIONS = Map.ofEntries(
+            Map.entry(341600L, List.of(new ActionDefinition("approve", "代审批"))),
             Map.entry(340773L, List.of(new ActionDefinition("design", "流程设计"))),
             Map.entry(341002L, List.of(EDIT, EXPORT, new ActionDefinition("salary_view", "查看薪资与发薪账户"), new ActionDefinition("salary_manage", "维护薪资与发薪账户"), new ActionDefinition("salary_submit", "提交薪资审批", "hr.salary.submit"), new ActionDefinition("approve", "薪资审批权限"))),
             Map.entry(341003L, List.of(EDIT, EXPORT, new ActionDefinition("submit", "提交人事异动", "hr.change.submit"), new ActionDefinition("approve", "人事异动审批权限"), new ActionDefinition("handover", "办理离职交接"))),

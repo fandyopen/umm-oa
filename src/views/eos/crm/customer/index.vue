@@ -192,21 +192,19 @@ export default {
             </div>
           )
         },
-        { title: '行业', dataIndex: 'industry', width: 120 },
-        { title: '规模', dataIndex: 'companyScale', width: 110 },
+        { title: '行业', dataIndex: 'industry' },
+        { title: '规模', dataIndex: 'companyScale' },
         { title: '地区', dataIndex: 'region', width: 90 },
         { title: '合作状态', dataIndex: 'cooperationStatus', width: 120, scopedSlots: { customRender: 'status' } },
         {
           title: '负责人',
           dataIndex: 'ownerUserName',
-          width: 145,
           scopedSlots: { customRender: 'owner' }
         },
         { title: '联系人', dataIndex: 'contactCount', width: 80, align: 'center' },
         {
           title: '最近跟进',
           dataIndex: 'lastFollowupTime',
-          width: 165,
           scopedSlots: { customRender: 'activity' }
         },
         {

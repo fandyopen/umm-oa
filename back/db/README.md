@@ -2,6 +2,8 @@
 
 ## 运行时
 
+- `mysql/upgrade-approval-inbox.sql`：存量 MySQL 库新增“待审批”菜单和实际审批人记录表；不自动授予普通角色权限。执行后重启后端，在角色管理中勾选页面和“代审批”按钮。
+
 - `mysql/upgrade-retired-business-tables.sql`：已有 MySQL 库备份后执行，物理删除已退役的 20 张项目、采购、报销、借还款、预算和仓库表；不会删除当前客户合同、财务、招聘、人事或提成表。详细范围见 [历史业务清理记录](../docs/retired-business-cleanup.md)。
 
 - mysql/recruitment-upgrade.sql：已有 MySQL 数据库新增招聘管理表及三项菜单后执行，随后重启后端初始化可编辑按钮。招聘使用流程见 docs/recruitment-lifecycle.md。

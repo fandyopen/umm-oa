@@ -1,4 +1,5 @@
 package com.seal.oa.oa;
+import com.seal.oa.workflow.WorkflowApprovalContext;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.seal.oa.auth.AuthContext;
@@ -96,7 +97,9 @@ public class ContractLifecycleService {
         var users=jdbc.queryForList("SELECT t.assignee_id FROM oa_process_task t JOIN sys_user u ON u.user_id=t.assignee_id WHERE t.instance_id=? AND t.id=? AND u.status='0' AND u.del_flag='0'",Long.class,instance,task);
         if(users.isEmpty()||users.get(0)==num(body.get("lifecycleSubmitUserId"))||!system.hasModuleAction(users.get(0),341202L,"approve"))
             throw new ApiException(400,"审批人须具有合同审批权限，且不能为申请人本人");
-        if(operator!=null&&!operator.equals(users.get(0)))throw new ApiException(403,"仅当前节点审批人可办理");
+        if(operator!=null&&((operator==num(body.get("lifecycleSubmitUserId"))&&!WorkflowApprovalContext.allowsSelfApproval(operator))
+                ||(!operator.equals(users.get(0))&&!WorkflowApprovalContext.permits(instance,task,operator,users.get(0)))))
+            throw new ApiException(403,"仅当前节点审批人或授权代审批人可办理，不能审批本人申请");
     }
     @Transactional
     public void state(long id,String action,Map<String,Object> body,long requestId,String instance,String status,String task) {

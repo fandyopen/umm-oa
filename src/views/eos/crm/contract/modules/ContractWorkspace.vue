@@ -11,7 +11,7 @@
       <div class="lifecycle">
         <span>客户建档</span><a-icon type="right" /><span>合同起草</span><a-icon type="right" /><span>审批签署</span><a-icon type="right" /><span>收费回款</span><a-icon type="right" /><span>到期续约</span>
       </div>
-      <a-alert class="workspace-guide" type="info" show-icon message="合同审批在统一待办办理；收费、回款和版本在合同详情查看；到期与逾期风险统一进入风险提醒。" />
+      <a-alert class="workspace-guide" type="info" show-icon message="当前节点审批人可点击“去审批”或进入统一待办办理；收费、回款和版本在合同详情查看；到期与逾期风险统一进入风险提醒。" />
       <div class="workspace-metrics">
         <div v-for="item in metrics" :key="item.label" class="workspace-metric">
           <span>{{ item.label }}</span
@@ -40,14 +40,17 @@
         >
         <span slot="money" slot-scope="value">{{ money(value) }}</span>
         <span slot="status" slot-scope="value, record"
-          ><a-tag :color="statusColors[value]">{{ statuses[value] }}</a-tag
-          ><a-tag v-if="record.deleted">已删除</a-tag><a-tag v-if="record.lifecyclePending" color="orange">作废 / 终止审批中</a-tag><a-tag v-if="record.signingPending" color="blue">签署审批中</a-tag><small v-if="record.effectiveVersion && !['active', 'completed', 'terminated'].includes(value)" class="subline">V{{ record.effectiveVersion }} 继续生效</small></span
+          ><a-tag :color="displayContractStatus(record).color">{{ displayContractStatus(record).label }}</a-tag
+          ><small v-if="record.effectiveVersion && !['active', 'completed', 'terminated'].includes(value)" class="subline">V{{ record.effectiveVersion }} 继续生效</small></span
         >
         <span slot="action" slot-scope="_, record">
+          <contract-approval-button :record="record" @changed="load" />
           <a-button type="link" size="small" @click="openDetail(record.id, detailTab)">查看详情</a-button>
           <a-dropdown v-if="availableActions(record).length">
             <a-button type="link" size="small">更多<a-icon type="down" /></a-button>
-            <a-menu slot="overlay"><a-menu-item v-for="item in availableActions(record)" :key="item.action" @click="openLifecycle(record, item.action)">{{ item.label }}</a-menu-item></a-menu>
+            <a-menu slot="overlay"
+              ><a-menu-item v-for="item in availableActions(record)" :key="item.action" @click="openLifecycle(record, item.action)">{{ item.label }}</a-menu-item></a-menu
+            >
           </a-dropdown>
         </span>
       </a-table>
@@ -60,11 +63,12 @@
 import { withModuleContexts } from '/src/utils/moduleContext.js'
 import { crmModules } from '/src/views/eos/crm/moduleContexts.js'
 import { listContracts, listContractCustomers, normalizeContractId } from '/src/api/eos/crm/contracts.js'
-import { contractStatuses, statusColors, money } from '../shared.js'
+import { contractStatuses, statusColors, displayContractStatus, money } from '../shared.js'
 import ContractLifecycleDialog from './ContractLifecycleDialog.vue'
 import { contractDetailTabs } from '../navigation.js'
 import ContractForm from './ContractForm.vue'
 import ContractDetail from './ContractDetail.vue'
+import ContractApprovalButton from './ContractApprovalButton.vue'
 import CustomerDetail from '../../customer/modules/CustomerDetail.vue'
 
 const col = (title, dataIndex, slot, width) => ({ title, dataIndex, width, ...(slot ? { scopedSlots: { customRender: slot } } : {}) })
@@ -76,12 +80,14 @@ export default {
         openForm: { module: 'contract', action: 'add', label: '新建合同' },
         openDetail: { module: 'contract', action: 'view', label: '查看合同详情' },
         openCustomer: { module: 'customer', action: 'view', label: '查看客户详情' },
-        openLifecycle: function (record, action) { return { module: 'contract', action, label: '合同操作' } }
+        openLifecycle: function (record, action) {
+          return { module: 'contract', action, label: '合同操作' }
+        }
       }
     )
   ],
   name: 'CrmContractWorkspace',
-  components: { ContractLifecycleDialog },
+  components: { ContractLifecycleDialog, ContractApprovalButton },
   data() {
     return {
       loading: false,
@@ -116,14 +122,14 @@ export default {
     },
     columns() {
       return [
-        col('合同名称 / 编号', 'name', 'contract', 240),
-        col('客户', 'customerName', 'customer', 180),
-        col('状态', 'status', 'status', 130),
-        col('合同金额', 'amount', 'money', 125),
-        col('负责人', 'ownerUserName', null, 110),
-        col('服务结束', 'endDate', null, 115),
-        col('生效已收', 'receivedAmount', 'money', 125),
-        col('操作', 'action', 'action', 180)
+        col('合同名称 / 编号', 'name', 'contract'),
+        col('客户', 'customerName', 'customer'),
+        col('状态', 'status', 'status'),
+        col('合同金额', 'amount', 'money'),
+        col('负责人', 'ownerUserName', null),
+        col('服务结束', 'endDate', null),
+        col('生效已收', 'receivedAmount', 'money'),
+        col('操作', 'action', 'action')
       ]
     }
   },
@@ -140,6 +146,7 @@ export default {
   },
   methods: {
     money,
+    displayContractStatus,
     async searchCustomers(name = '') {
       const res = await listContractCustomers({ name })
       this.customers = res.data || []
@@ -230,9 +237,17 @@ export default {
       })
     },
     availableActions(record) {
-      return [{ flag: 'canVoid', action: 'void', label: '作废合同' }, { flag: 'canTerminate', action: 'terminate', label: '终止合同' }, { flag: 'canWithdraw', action: 'withdraw', label: '撤回审批' }, { flag: 'canDelete', action: 'remove', label: '删除合同' }].filter(item => record[item.flag] && this.showModuleAction('contract', item.action))
+      return [
+        { flag: 'canVoid', action: 'void', label: '作废合同' },
+        { flag: 'canTerminate', action: 'terminate', label: '终止合同' },
+        { flag: 'canWithdraw', action: 'withdraw', label: '撤回审批' },
+        { flag: 'canDelete', action: 'remove', label: '删除合同' }
+      ].filter(item => record[item.flag] && this.showModuleAction('contract', item.action))
     },
-    openLifecycle(record, action) { this.lifecycleRecord = record; this.lifecycleAction = action }
+    openLifecycle(record, action) {
+      this.lifecycleRecord = record
+      this.lifecycleAction = action
+    }
   }
 }
 </script>
