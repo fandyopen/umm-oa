@@ -201,7 +201,7 @@ public class LowCodeController {
         List<Map<String, Object>> rows = JdbcMaps.camelCase(jdbc.queryForList("""
                 SELECT id, form_key, data_json, create_by, create_time
                 FROM oa_form_submission WHERE form_key = ?
-                ORDER BY id DESC LIMIT ? OFFSET ?
+                ORDER BY create_time DESC,id DESC LIMIT ? OFFSET ?
                 """, formKey, pageSize, (pageNum - 1) * pageSize));
         List<Map<String, Object>> data = new ArrayList<>();
         for (Map<String, Object> row : rows) {

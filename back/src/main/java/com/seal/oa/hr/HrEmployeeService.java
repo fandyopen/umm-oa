@@ -133,7 +133,7 @@ public class HrEmployeeService {
                             + " JOIN sys_dept d ON d.dept_id=u.dept_id WHERE u.del_flag IN"
                             + " ('0','2') AND " + d.memberCondition("u")
                                 + filter
-                                + " ORDER BY u.user_id",
+                                + " ORDER BY CASE WHEN e.entry_date IS NULL THEN 1 ELSE 0 END, e.entry_date DESC, u.user_id DESC",
                         args.toArray())
                 .stream()
                 .filter(
@@ -168,7 +168,7 @@ public class HrEmployeeService {
                                 "SELECT s.*,e.snapshot_json AS confirmed_snapshot FROM oa_hr_salary s"
                                         + " LEFT JOIN oa_hr_salary_effective e ON e.salary_id=s.id"
                                         + " WHERE s.user_id=? ORDER BY s.effective_date"
-                                        + " DESC",
+                                        + " DESC,s.id DESC",
                                 user)
                         : List.of());
         if (sensitive) {
@@ -190,7 +190,7 @@ public class HrEmployeeService {
                 "employmentPeriods",
                 d.rows(
                         "SELECT entry_date,exit_date FROM oa_hr_employment_period WHERE user_id=?"
-                                + " ORDER BY entry_date",
+                                + " ORDER BY entry_date DESC,id DESC",
                         user));
         row.put(
                 "attachments",
@@ -480,7 +480,7 @@ public class HrEmployeeService {
                         "SELECT e.*,u.nick_name,p.employee_no,o.nick_name AS operator_name FROM"
                                 + " oa_hr_event e JOIN sys_user u ON u.user_id=e.user_id JOIN"
                                 + " oa_hr_employee p ON p.user_id=e.user_id LEFT JOIN sys_user o ON"
-                                + " o.user_id=e.operator_id WHERE " + d.memberCondition("u") + " ORDER BY e.id DESC")
+                                + " o.user_id=e.operator_id WHERE " + d.memberCondition("u") + " ORDER BY e.effective_date DESC,e.id DESC")
                 .stream()
                 .filter(
                         r ->

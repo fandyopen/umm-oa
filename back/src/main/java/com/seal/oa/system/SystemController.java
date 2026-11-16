@@ -649,7 +649,7 @@ public class SystemController {
         List<Map<String, Object>> rows = JdbcMaps.camelCase(jdbc.queryForList("""
                 SELECT role_id, tenant_id, role_name, role_key, role_sort, data_scope,
                        status, del_flag, create_time, remark
-                FROM sys_role %s ORDER BY role_sort, role_id LIMIT ? OFFSET ?
+                FROM sys_role %s ORDER BY create_time DESC, role_id DESC LIMIT ? OFFSET ?
                 """.formatted(where), pageArgs.toArray()));
         rows.forEach(row -> row.put("createTime", formattedTime(row.get("createTime"))));
         return ApiResult.page(rows, total == null ? 0 : total);

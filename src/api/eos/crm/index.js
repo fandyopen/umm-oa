@@ -133,6 +133,10 @@ export function getSalesPerformance(params) {
   return request({ url: '/project/crm/sales-performance', method: 'get', params })
 }
 
+export function saveSalesPerformanceRules(data) {
+  return request({ url: '/project/crm/sales-performance/rules', method: 'put', data })
+}
+
 export function listCustomerRisks(params) {
   return request({
     url: '/project/crm/risk/list',

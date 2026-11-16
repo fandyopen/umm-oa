@@ -39,6 +39,13 @@
           ><span v-else>{{ text }}</span></span
         >
         <span slot="money" slot-scope="value">{{ money(value) }}</span>
+        <div slot="feeDueDates" slot-scope="text, record">
+          <div v-for="term in feeTerms(record)" :key="term.key" class="fee-date">
+            <a @click="openDetail(record.id, 'terms')">{{ term.dueDate || '未设置' }}</a>
+            <small class="subline">{{ term.title }}</small>
+          </div>
+          <span v-if="!feeTerms(record).length">—</span>
+        </div>
         <span slot="status" slot-scope="value, record"
           ><a-tag :color="displayContractStatus(record).color">{{ displayContractStatus(record).label }}</a-tag
           ><small v-if="record.effectiveVersion && !['active', 'completed', 'terminated'].includes(value)" class="subline">V{{ record.effectiveVersion }} 继续生效</small></span
@@ -128,6 +135,7 @@ export default {
         col('合同金额', 'amount', 'money'),
         col('负责人', 'ownerUserName', null),
         col('服务结束', 'endDate', null),
+        col('收费到期日', 'feeTerms', 'feeDueDates'),
         col('生效已收', 'receivedAmount', 'money'),
         col('操作', 'action', 'action')
       ]
@@ -147,6 +155,9 @@ export default {
   methods: {
     money,
     displayContractStatus,
+    feeTerms(record) {
+      return record.effectiveVersion ? record.effectiveFeeTerms || [] : record.feeTerms || []
+    },
     async searchCustomers(name = '') {
       const res = await listContractCustomers({ name })
       this.customers = res.data || []
@@ -330,6 +341,7 @@ export default {
   font-size: 12px;
   margin-top: 4px;
 }
+.fee-date + .fee-date { margin-top: 8px; }
 @media (max-width: 900px) {
   .workspace-metrics {
     grid-template-columns: repeat(2, minmax(0, 1fr));

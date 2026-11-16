@@ -266,8 +266,8 @@ public class WorkflowManagementService {
             finish(row);
             result.add(row);
         }
-        result.sort(Comparator.comparing((Map<String, Object> row) -> text(row.get("modulePath")))
-                .thenComparing(row -> text(row.get("actionName"))).thenComparing(row -> text(row.get("key"))));
+        result.sort(com.seal.oa.common.ListOrder.newestFirst("updateTime", "createTime")
+                .thenComparing(row -> text(row.get("key"))));
         return result;
     }
 

@@ -113,7 +113,7 @@ public class ModuleActionService {
                     new ActionDefinition("reconcile", "查看对账报表"))),
             Map.entry(340590L, List.of(ADD, EDIT, REMOVE, TRACK)),
             Map.entry(340644L, ADD_EDIT_REMOVE),
-            Map.entry(341112L, List.of()),
+            Map.entry(341112L, List.of(new ActionDefinition("rule_manage", "维护监管规则"))),
             Map.entry(340352L, List.of(ADD, EDIT, REMOVE, EXPORT, TRACK)),
             Map.entry(340314L, CRUD_ACTIONS),
             Map.entry(340315L, CRUD_ACTIONS),
@@ -196,6 +196,10 @@ public class ModuleActionService {
         }
         migrateGenericFollowup();
         migrateOpportunitySubmission();
+        if(!migrationApplied("sales_supervision_rules_v1")) {
+            insertAction(341112L,new ActionDefinition("rule_manage","维护监管规则"),"module:341112:rule_manage");
+            jdbc.update("INSERT INTO sys_permission_migration(migration_key) VALUES ('sales_supervision_rules_v1')");
+        }
     }
 
     private void migrateSalaryActionLabels() {

@@ -233,7 +233,7 @@ public class LowCodeWorkflowService {
                     SELECT * FROM oa_process_instance
                     WHERE starter_id = ?
                       AND (process_key LIKE 'form:%' OR process_key LIKE 'business:%')
-                    ORDER BY start_time DESC
+                    ORDER BY start_time DESC,id DESC
                     """, userId);
             List<Map<String, Object>> rows = new ArrayList<>();
             for (Map<String, Object> instance : instances) {
@@ -249,7 +249,7 @@ public class LowCodeWorkflowService {
                     JOIN oa_process_instance i ON i.id = t.instance_id
                     WHERE t.assignee_id = ? AND t.status = 'done'
                       AND (i.process_key LIKE 'form:%' OR i.process_key LIKE 'business:%')
-                    ORDER BY t.complete_time DESC
+                    ORDER BY t.complete_time DESC,t.id DESC
                     """, userId);
             List<Map<String, Object>> rows = new ArrayList<>();
             for (Map<String, Object> task : tasks) {
@@ -269,7 +269,7 @@ public class LowCodeWorkflowService {
                 JOIN oa_process_instance i ON i.id = td.process_instance_id
                 WHERE td.user_id = ? AND td.status = 'todo'
                   AND (i.process_key LIKE 'form:%' OR i.process_key LIKE 'business:%')
-                ORDER BY td.create_time DESC
+                ORDER BY td.create_time DESC,td.id DESC
                 """;
         List<Map<String, Object>> tasks = limit > 0
                 ? jdbc.queryForList(todoSql + " LIMIT ?", userId, limit)

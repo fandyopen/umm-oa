@@ -40,7 +40,7 @@ public class CommissionService {
         if (!system.hasModuleAction(actor(), MODULE, action)) throw new ApiException(403,"没有提成核算操作权限");
     }
     void mutex() { jdbc.queryForObject("SELECT tenant_id FROM sys_tenant WHERE tenant_id=? FOR UPDATE",Long.class,tenant()); }
-    public List<Map<String,Object>> rules() { require("access"); return rows("SELECT * FROM oa_commission_rule WHERE tenant_id=? ORDER BY id DESC",tenant()); }
+    public List<Map<String,Object>> rules() { require("access"); return rows("SELECT * FROM oa_commission_rule WHERE tenant_id=? ORDER BY effective_date DESC,id DESC",tenant()); }
 
     @Transactional public Map<String,Object> saveRule(Map<String,Object> b) {
         require("rule"); mutex();
@@ -92,7 +92,7 @@ public class CommissionService {
                 FROM oa_recruit_application a JOIN oa_recruit_job j ON j.id=a.job_id
                 JOIN oa_merchant m ON m.id=j.customer_id JOIN oa_recruit_talent t ON t.id=a.talent_id
                 LEFT JOIN oa_commission_attribution c ON c.application_id=a.id
-                WHERE a.tenant_id=? AND m.tenant_id=? ORDER BY a.id DESC
+                WHERE a.tenant_id=? AND m.tenant_id=? ORDER BY a.create_time DESC,a.id DESC
                 """,tenant(),tenant()).stream().filter(r->canAccessOwner(r.get("ownerUserId"))).toList();
         var people=rows("""
                 SELECT u.user_id AS id,u.nick_name AS name,d.dept_name FROM sys_user u
@@ -191,7 +191,7 @@ public class CommissionService {
                 SELECT r.*,c.customer_id,c.name AS contract_name,m.name AS customer_name,m.owner_user_id,
                 COALESCE((SELECT SUM(x.amount) FROM oa_commission_allocation x WHERE x.receipt_id=r.id),0) AS allocated_amount
                 FROM oa_crm_contract_receipt r JOIN oa_crm_contract c ON c.id=r.contract_id
-                JOIN oa_merchant m ON m.id=c.customer_id WHERE r.amount>0 AND c.tenant_id=? AND m.tenant_id=? ORDER BY r.id DESC
+                JOIN oa_merchant m ON m.id=c.customer_id WHERE r.amount>0 AND c.tenant_id=? AND m.tenant_id=? ORDER BY r.receipt_date DESC,r.id DESC
                 """,tenant(),tenant()).stream().filter(r->canAccessOwner(r.get("ownerUserId"))).toList();
     }
     Map<String,Object> receipt(long id) {
@@ -323,7 +323,7 @@ public class CommissionService {
         require("access");
         return rows("""
                 SELECT b.*,COALESCE(SUM(l.amount),0) AS amount,COUNT(l.id) AS line_count FROM oa_commission_batch b
-                LEFT JOIN oa_commission_line l ON l.batch_id=b.id WHERE b.tenant_id=? GROUP BY b.id ORDER BY b.id DESC
+                LEFT JOIN oa_commission_line l ON l.batch_id=b.id WHERE b.tenant_id=? GROUP BY b.id ORDER BY b.period DESC,b.create_time DESC,b.id DESC
                 """,tenant()).stream().filter(b->{try {batchAccess(number(b.get("id")));return true;}catch(ApiException e){if(e.code()==403)return false;throw e;}}).toList();
     }
     Map<String,Object> batch(long id) { return one("SELECT * FROM oa_commission_batch WHERE id=? AND tenant_id=?",id,tenant()); }

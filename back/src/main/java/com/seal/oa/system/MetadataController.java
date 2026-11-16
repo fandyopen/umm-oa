@@ -159,7 +159,7 @@ public class MetadataController {
         pageArgs.add((pageNum - 1L) * pageSize);
         List<Map<String, Object>> rows = JdbcMaps.camelCase(jdbc.queryForList(
                 "SELECT dict_id, dict_name, dict_type, status, create_time, remark " +
-                        "FROM sys_dict_type " + where + " ORDER BY dict_id LIMIT ? OFFSET ?",
+                        "FROM sys_dict_type " + where + " ORDER BY create_time DESC,dict_id DESC LIMIT ? OFFSET ?",
                 pageArgs.toArray()
         ));
         return ApiResult.page(rows, total == null ? 0 : total);
@@ -234,7 +234,7 @@ public class MetadataController {
         List<Map<String, Object>> rows = JdbcMaps.camelCase(jdbc.queryForList(
                 "SELECT config_id, config_name, config_key, config_value, config_type, " +
                         "create_time, remark FROM sys_config " + where +
-                        " ORDER BY config_id LIMIT ? OFFSET ?",
+                        " ORDER BY create_time DESC,config_id DESC LIMIT ? OFFSET ?",
                 pageArgs.toArray()
         ));
         return ApiResult.page(rows, total == null ? 0 : total);
@@ -293,7 +293,7 @@ public class MetadataController {
     public Map<String, Object> notices() {
         List<Map<String, Object>> rows = JdbcMaps.camelCase(jdbc.queryForList("""
                 SELECT notice_id, notice_title, notice_type, notice_content, status, create_by, create_time
-                FROM sys_notice ORDER BY notice_id DESC
+                FROM sys_notice ORDER BY create_time DESC,notice_id DESC
                 """));
         return ApiResult.page(rows, rows.size());
     }
@@ -387,7 +387,7 @@ public class MetadataController {
         args.add((page - 1L) * size);
         List<Map<String, Object>> rows = JdbcMaps.camelCase(jdbc.queryForList(
                 "SELECT info_id, user_name, ipaddr, browser, os, status, msg, login_time FROM sys_logininfor"
-                        + where + " ORDER BY info_id DESC LIMIT ? OFFSET ?", args.toArray()));
+                        + where + " ORDER BY login_time DESC,info_id DESC LIMIT ? OFFSET ?", args.toArray()));
         rows.forEach(row -> row.put("loginLocation", loginLocation(string(row.get("ipaddr")))));
         return ApiResult.page(rows, total == null ? 0 : total);
     }
@@ -430,7 +430,7 @@ public class MetadataController {
         List<Map<String, Object>> rows = JdbcMaps.camelCase(jdbc.queryForList("""
                 SELECT oper_id, title, business_type, method, request_method, oper_name,
                        oper_url, oper_ip, status, error_msg, oper_time
-                FROM sys_oper_log ORDER BY oper_id DESC
+                FROM sys_oper_log ORDER BY oper_time DESC,oper_id DESC
                 """));
         return ApiResult.page(rows, rows.size());
     }

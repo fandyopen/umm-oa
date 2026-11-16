@@ -224,7 +224,7 @@ export default {
         if (Number.isSafeInteger(customerId) && customerId > 0) {
           this.activePool = 'mine'
           this.queryParam = { customerId }
-          if (this.$route.query.source !== 'followupReminder') this.$nextTick(() => this.handleDetail({ id: customerId }))
+          if (this.$route.query.source !== 'followupReminder') this.$nextTick(() => this.handleDetail({ id: customerId }, this.$route.query.tab === 'followups' ? 'followups' : 'overview'))
         } else {
           const { customerId: ignored, ...filters } = this.queryParam
           this.queryParam = filters
@@ -378,7 +378,7 @@ export default {
         }
       })
     },
-    handleDetail(record) {
+    handleDetail(record, initialTab = 'overview') {
       this.$createAntdDrawer({
         stopPropagation: true,
         drawerProps: {
@@ -388,7 +388,7 @@ export default {
         },
         content: {
           template: CustomerDetail,
-          props: { moduleMeta: this.moduleContexts.customer, formId: record.id }
+          props: { moduleMeta: this.moduleContexts.customer, formId: record.id, initialTab }
         }
       })
     },

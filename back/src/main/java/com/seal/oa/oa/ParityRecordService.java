@@ -26,7 +26,7 @@ public class ParityRecordService {
     public List<Map<String, Object>> rows(String module) {
         List<Map<String, Object>> records = jdbc.queryForList("""
                 SELECT id, payload_json, status, create_by, create_time
-                FROM biz_record WHERE module = ? ORDER BY id
+                FROM biz_record WHERE module = ? ORDER BY create_time DESC,id DESC
                 """, module);
         List<Map<String, Object>> rows = new ArrayList<>();
         for (Map<String, Object> record : records) {
@@ -46,6 +46,7 @@ public class ParityRecordService {
                 // Invalid compatibility payloads are skipped instead of breaking the page.
             }
         }
+        rows.sort(com.seal.oa.common.ListOrder.newestFirst("createTime"));
         return rows;
     }
 }

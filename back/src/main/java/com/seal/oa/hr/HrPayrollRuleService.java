@@ -30,7 +30,7 @@ public class HrPayrollRuleService {
         d.require(PAYROLL, "access");
         String selected = period(month);
         var versions = d.rows("SELECT r.*,u.nick_name AS creator_name FROM oa_hr_payroll_rule r "
-                + "LEFT JOIN sys_user u ON u.user_id=r.create_by WHERE r.tenant_id=? ORDER BY r.version_no DESC", tenant())
+                + "LEFT JOIN sys_user u ON u.user_id=r.create_by WHERE r.tenant_id=? ORDER BY r.effective_month DESC,r.version_no DESC", tenant())
                 .stream().map(this::decorate).toList();
         var result = new LinkedHashMap<String, Object>();
         result.put("versions", versions);

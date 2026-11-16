@@ -70,6 +70,7 @@ public class BusinessQueryController {
                 .filter(row -> contains(row, "stage", query.get("stage")))
                 .filter(row -> contains(row, "ownerUserName", query.get("ownerUserName")))
                 .filter(row -> searchAll(row, query.get("queryAll")))
+                .sorted(com.seal.oa.common.ListOrder.newestFirst("expectedCloseDate", "createTime"))
                 .toList();
         applyOwnerDepartments(rows);
         rows = dataScopeService.filterRows(

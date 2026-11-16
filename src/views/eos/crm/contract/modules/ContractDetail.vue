@@ -74,6 +74,11 @@
           ><a-descriptions-item label="当前 / 生效版本">V{{ contract.versionNo }} / {{ contract.effectiveVersion ? `V${contract.effectiveVersion}` : '尚未生效' }}</a-descriptions-item>
           <a-descriptions-item label="生效合同额 / 已收">{{ money(contract.effectiveAmount) }} / {{ money(contract.receivedAmount) }}</a-descriptions-item
           ><a-descriptions-item label="待回款">{{ money(contract.outstandingAmount) }}</a-descriptions-item>
+          <a-descriptions-item label="收费到期日" :span="2">
+            <div v-for="term in displayTerms" :key="term.key">{{ term.title }}：{{ term.dueDate || '未设置' }}</div>
+            <span v-if="!displayTerms.length">未设置收费节点</span>
+            <a v-if="displayTerms.length" @click="activeTab = 'terms'">查看收费与回款</a>
+          </a-descriptions-item>
           <a-descriptions-item v-if="contract.parentContractId" label="续约来源">原合同 #{{ contract.parentContractId }}</a-descriptions-item
           ><a-descriptions-item v-if="contract.opportunityId" label="关联商机">#{{ contract.opportunityId }}</a-descriptions-item>
           <a-descriptions-item label="备注" :span="2">{{ contract.remark || '无' }}</a-descriptions-item>
@@ -256,7 +261,7 @@ export default {
         { title: '收费名称', dataIndex: 'title' },
         { title: '触发条件', dataIndex: 'trigger' },
         { title: '收费金额', dataIndex: 'amount', scopedSlots: { customRender: 'money' } },
-        { title: '收费到期', dataIndex: 'dueDate' },
+        { title: '收费到期日', dataIndex: 'dueDate' },
         { title: '保证期（天）', dataIndex: 'guaranteeDays' },
         { title: '已收', dataIndex: 'receivedAmount', scopedSlots: { customRender: 'money' } },
         { title: '待收', dataIndex: 'outstandingAmount', scopedSlots: { customRender: 'money' } },

@@ -332,14 +332,35 @@ public class DataTableService {
                 }
             }
         }
-        String sort = query.getOrDefault("sort", t.keys.isEmpty() ? t.columns.keySet().iterator().next() : t.keys.get(0));
+        String sort = query.getOrDefault("sort", defaultSort(t));
         visibleColumn(t,sort); String direction = query.getOrDefault("direction","desc");
         if (!Set.of("asc","desc").contains(direction)) throw new ApiException(400,"排序方向无效");
         int page = integer(query.getOrDefault("page","1"),1,1000000), size = integer(query.getOrDefault("size","20"),1,100);
         Long count = jdbc.queryForObject("SELECT COUNT(*) FROM " + q(name) + " d WHERE " + where,Long.class,args.toArray());
         args.add(size); args.add((page-1)*size);
-        List<Map<String,Object>> rows = jdbc.queryForList("SELECT " + select(t) + " FROM " + q(name) + " d WHERE " + where + " ORDER BY d." + q(sort) + " " + direction + " LIMIT ? OFFSET ?",args.toArray());
+        String order = "CASE WHEN d." + q(sort) + " IS NULL THEN 1 ELSE 0 END,d." + q(sort) + " " + direction;
+        for (String key : t.keys) if (!key.equals(sort)) order += ",d." + q(key) + " " + direction;
+        List<Map<String,Object>> rows = jdbc.queryForList("SELECT " + select(t) + " FROM " + q(name) + " d WHERE " + where + " ORDER BY " + order + " LIMIT ? OFFSET ?",args.toArray());
         return Map.of("rows",rows.stream().map(r -> pack(t,r)).toList(),"total",count);
+    }
+    private String defaultSort(Table table) {
+        String businessDate = switch (table.name) {
+            case "oa_hr_employee", "oa_hr_employment_period" -> "entry_date";
+            case "oa_hr_salary", "oa_hr_event", "oa_commission_rule" -> "effective_date";
+            case "oa_hr_attendance_batch", "oa_hr_payroll", "oa_commission_batch" -> "period";
+            case "oa_hr_attendance_row" -> "work_date";
+            case "oa_finance_record" -> "business_date";
+            case "oa_finance_receivable" -> "due_date";
+            case "oa_finance_collection" -> "next_date";
+            case "oa_crm_contract_receipt" -> "receipt_date";
+            case "oa_customer_followup" -> "followup_time";
+            case "oa_recruit_application" -> "submitted_date";
+            default -> "";
+        };
+        for (String field : List.of(businessDate, "create_time", "login_time", "oper_time", "start_time", "update_time")) {
+            if (table.columns.containsKey(field) && !hidden(table, table.columns.get(field))) return field;
+        }
+        return table.keys.isEmpty() ? table.columns.keySet().iterator().next() : table.keys.get(0);
     }
     private static int integer(String value, int min, int max) {
         try { int n = Integer.parseInt(value); if (n >= min && n <= max) return n; } catch (Exception ignored) {}

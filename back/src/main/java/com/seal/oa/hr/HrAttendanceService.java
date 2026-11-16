@@ -307,7 +307,7 @@ public class HrAttendanceService {
                         "SELECT"
                             + " b.id,b.period,b.kind,b.status,b.revision,b.file_id,f.file_name,b.create_time"
                             + " FROM oa_hr_attendance_batch b JOIN oa_hr_attachment f ON"
-                            + " f.id=b.file_id ORDER BY b.id DESC")
+                            + " f.id=b.file_id ORDER BY b.period DESC,b.create_time DESC,b.id DESC")
                 .stream()
                 .filter(
                         b ->
@@ -323,7 +323,7 @@ public class HrAttendanceService {
                 .rows(
                         "SELECT r.user_id,r.data_json,u.dept_id FROM oa_hr_attendance_row r JOIN"
                                 + " sys_user u ON u.user_id=r.user_id WHERE r.batch_id=? AND " + d.memberCondition("u") + " ORDER BY"
-                                + " r.user_id,r.work_date,r.id",
+                                + " r.work_date DESC,r.user_id DESC,r.id DESC",
                         batch)
                 .stream()
                 .filter(
@@ -400,8 +400,7 @@ public class HrAttendanceService {
         return d.rows(
                 "SELECT DISTINCT b.id,b.period,b.kind,b.status,b.revision FROM"
                     + " oa_hr_attendance_batch b JOIN oa_hr_attendance_row r ON r.batch_id=b.id"
-                    + " WHERE r.user_id=? AND b.status IN ('confirmed','superseded') ORDER BY b.id"
-                    + " DESC",
+                    + " WHERE r.user_id=? AND b.status IN ('confirmed','superseded') ORDER BY b.period DESC,b.id DESC",
                 AuthContext.userId());
     }
 

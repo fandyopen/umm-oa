@@ -17,8 +17,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.sql.Timestamp;
-import java.util.Comparator;
 import java.util.Locale;
 
 @RestController
@@ -74,6 +72,7 @@ public class ActivityController {
                 ORDER BY id DESC
                 """, AuthContext.userId())));
         rows.addAll(workflowService.tasks("start", AuthContext.userId()));
+        rows.sort(com.seal.oa.common.ListOrder.newestFirst("createTime"));
         return ApiResult.page(rows, rows.size());
     }
 
@@ -161,6 +160,7 @@ public class ActivityController {
         if (rows.isEmpty() && "todo".equals(status)) {
             rows = parityRecords.rows("todo:wait:" + AuthContext.username());
         }
+        rows.sort(com.seal.oa.common.ListOrder.newestFirst("createTime"));
         int total = rows.size();
         int safePage = Math.max(1, pageNum);
         int safeSize = Math.min(100, Math.max(1, pageSize));
@@ -195,7 +195,7 @@ public class ActivityController {
                 LIMIT ?
                 """, AuthContext.userId(), candidateLimit)));
         rows.addAll(workflowService.tasks("todo", AuthContext.userId(), candidateLimit));
-        rows.sort(Comparator.comparing(this::createTime, Comparator.nullsLast(Comparator.reverseOrder())));
+        rows.sort(com.seal.oa.common.ListOrder.newestFirst("createTime"));
 
         long total = (legacyCount == null ? 0L : legacyCount)
                 + workflowService.waitingCount(AuthContext.userId());
@@ -222,7 +222,7 @@ public class ActivityController {
                 """, AuthContext.userId())));
         rows.addAll(workflowService.tasks("todo", AuthContext.userId()));
         if (rows.isEmpty()) rows = new ArrayList<>(parityRecords.rows("todo:wait:" + AuthContext.username()));
-        rows.sort(Comparator.comparing(this::createTime, Comparator.nullsLast(Comparator.reverseOrder())));
+        rows.sort(com.seal.oa.common.ListOrder.newestFirst("createTime"));
         decorateCrmTasks(rows);
         int unfilteredTotal = rows.size();
         String keyword = value(query.get("queryAll"), "").trim().toLowerCase(Locale.ROOT);
@@ -314,11 +314,6 @@ public class ActivityController {
         if (name.isBlank()) return "客户与合同管理";
         List<String> names = jdbc.queryForList("SELECT nick_name FROM sys_user WHERE user_name = ?", String.class, name);
         return names.isEmpty() || names.get(0) == null ? name : names.get(0);
-    }
-
-    private Timestamp createTime(Map<String, Object> row) {
-        Object value = row.get("createTime");
-        return value instanceof Timestamp timestamp ? timestamp : null;
     }
 
     private long number(Object value, long defaultValue) {

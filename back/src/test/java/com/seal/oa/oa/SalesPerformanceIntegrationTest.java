@@ -10,6 +10,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Map;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.sql.Timestamp;
+import java.util.List;
+import com.seal.oa.common.ApiException;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -21,6 +25,96 @@ class SalesPerformanceIntegrationTest {
     @Autowired JdbcTemplate jdbc;
 
     @AfterEach void clear(){AuthContext.clear();}
+
+    @Test void freshlyAssignedAndReassignedCustomersAreNotOverdueButExpiredFirstFollowupsHaveCompleteDetails(){
+        long owner=salesperson();
+        long fresh=customer(owner,LocalDateTime.now().minusHours(1));
+        long overdue=customer(owner,LocalDateTime.now().minusDays(4));
+        // A past owner's overdue plan must not follow a customer into a new assignment.
+        followup(fresh,4,LocalDateTime.now().minusDays(8),LocalDateTime.now().minusDays(3));
+        var data=data();
+        var row=staff(data,owner);
+        assertEquals(1L,row.get("overdueCustomers"));
+        var attention=attention(data);
+        assertFalse(attention.stream().anyMatch(r->Long.valueOf(fresh).equals(r.get("customerId"))));
+        var detail=attention.stream().filter(r->Long.valueOf(overdue).equals(r.get("customerId"))).findFirst().orElseThrow();
+        assertEquals("监管测试客户",detail.get("customerName"));
+        assertEquals("监管测试销售",detail.get("ownerName"));
+        assertEquals("潜在客户",detail.get("stage"));
+        assertEquals("首次跟进已超期",detail.get("name"));
+        assertNotNull(detail.get("dueTime"));
+    }
+
+    @Test void explicitPlansOverrideIntervalAndMissingPlansUseConfiguredInterval(){
+        long owner=salesperson();
+        long planned=customer(owner,LocalDateTime.now().minusDays(30));
+        long unplanned=customer(owner,LocalDateTime.now().minusDays(30));
+        followup(planned,owner,LocalDateTime.now().minusDays(10),LocalDateTime.now().plusDays(2));
+        followup(unplanned,owner,LocalDateTime.now().minusDays(10),null);
+        assertEquals(1L,staff(data(),owner).get("overdueCustomers"));
+        controller.saveRules(Map.of("firstFollowupDays",20,"followupIntervalDays",20,"stagnantOpportunityDays",30));
+        assertEquals(0L,((Number)staff(data(),owner).get("overdueCustomers")).longValue());
+    }
+
+    @Test void administratorFollowupResolvesCustomerOverdueWithoutCountingAdministratorAsSales(){
+        long owner=salesperson();
+        long customer=customer(owner,LocalDateTime.now().minusDays(20));
+        assertEquals(1L,((Number)staff(data(),owner).get("overdueCustomers")).longValue());
+        followup(customer,1,LocalDateTime.now().minusHours(1),LocalDateTime.now().plusDays(2));
+        var result=data();
+        assertEquals(0L,((Number)staff(result,owner).get("overdueCustomers")).longValue());
+        assertEquals(0L,((Number)staff(result,owner).get("followups")).longValue());
+        assertFalse(attention(result).stream().anyMatch(r->Long.valueOf(customer).equals(r.get("customerId"))));
+        followup(customer,1,LocalDateTime.now(),LocalDateTime.now().minusHours(1));
+        var overdue=attention(data()).stream().filter(r->Long.valueOf(customer).equals(r.get("customerId"))).findFirst().orElseThrow();
+        assertEquals(owner,overdue.get("ownerUserId"));
+        assertEquals("Follow-up overdue",overdue.get("type"));
+        assertEquals("已超过最近一次跟进约定的下次跟进时间",overdue.get("reason"));
+    }
+
+    @Test void changingRulesRecomputesBothCountsAndDetailsAndCannotReadOtherTenantsRules(){
+        long owner=salesperson();customer(owner,LocalDateTime.now().minusDays(4));
+        assertEquals(1L,staff(data(),owner).get("overdueCustomers"));
+        controller.saveRules(Map.of("firstFollowupDays",5,"followupIntervalDays",8,"stagnantOpportunityDays",20));
+        var data=data();
+        assertEquals(0L,((Number)staff(data,owner).get("overdueCustomers")).longValue());
+        assertTrue(attention(data).stream().noneMatch(r->Long.valueOf(owner).equals(r.get("ownerUserId"))));
+        jdbc.update("INSERT INTO sys_config(config_name,config_key,config_value) VALUES('外企业规则','crm.sales.rules.2','{\"firstFollowupDays\":1}')");
+        assertEquals(5L,((Number)((Map<?,?>)data().get("rules")).get("firstFollowupDays")).longValue());
+        assertThrows(ApiException.class,()->controller.saveRules(Map.of("firstFollowupDays",0,"followupIntervalDays",8,"stagnantOpportunityDays",20)));
+        AuthContext.set(new AuthContext.CurrentUser(owner,"test"));
+        assertThrows(ApiException.class,()->controller.saveRules(Map.of("firstFollowupDays",1,"followupIntervalDays",8,"stagnantOpportunityDays",20)));
+    }
+
+    @Test void configuredOpportunityStagnationUsesSameThresholdForRankingAndAttention(){
+        long owner=salesperson();
+        String payload="{\"ownerUserId\":"+owner+",\"name\":\"停滞监管商机\",\"stage\":\"需求确认\",\"expectedAmount\":1000}";
+        jdbc.update("INSERT INTO biz_record(tenant_id,module,business_key,payload_json,create_time,update_time) VALUES(1,'/project/business/list',?,?,?,?)",UUID.randomUUID().toString(),payload,Timestamp.valueOf(LocalDateTime.now().minusDays(30)),Timestamp.valueOf(LocalDateTime.now().minusDays(15)));
+        assertEquals(1L,((Number)staff(data(),owner).get("stagnantOpportunities")).longValue());
+        assertTrue(attention(data()).stream().anyMatch(r->"停滞监管商机".equals(r.get("name"))));
+        assertTrue(attention(data()).stream().filter(r->"停滞监管商机".equals(r.get("name"))).allMatch(r->Long.valueOf(owner).equals(r.get("ownerUserId"))));
+        controller.saveRules(Map.of("firstFollowupDays",3,"followupIntervalDays",7,"stagnantOpportunityDays",20));
+        assertEquals(0L,((Number)staff(data(),owner).get("stagnantOpportunities")).longValue());
+        assertFalse(attention(data()).stream().anyMatch(r->"停滞监管商机".equals(r.get("name"))));
+    }
+
+    long salesperson(){
+        AuthContext.set(new AuthContext.CurrentUser(1L,"13610316814"));
+        String login="supervision_"+UUID.randomUUID();
+        jdbc.update("INSERT INTO sys_user(tenant_id,dept_id,user_name,nick_name,password,status,del_flag) VALUES(1,326,?,'监管测试销售','x','0','0')",login);
+        return jdbc.queryForObject("SELECT user_id FROM sys_user WHERE user_name=?",Long.class,login);
+    }
+    long customer(long owner,LocalDateTime assigned){
+        String serial="SV-"+UUID.randomUUID();
+        jdbc.update("INSERT INTO oa_merchant(tenant_id,serial,name,owner_user_id,owner_user_name,public_pool,assigned_at,cooperation_status) VALUES(1,?,'监管测试客户',?,'监管测试销售','0',?,'潜在客户')",serial,owner,Timestamp.valueOf(assigned));
+        return jdbc.queryForObject("SELECT id FROM oa_merchant WHERE serial=?",Long.class,serial);
+    }
+    void followup(long customer,long owner,LocalDateTime time,LocalDateTime next){
+        jdbc.update("INSERT INTO oa_customer_followup(tenant_id,merchant_id,followup_time,next_followup_time,content,owner_user_id) VALUES(1,?,?,?,'测试跟进',?)",customer,Timestamp.valueOf(time),next==null?null:Timestamp.valueOf(next),owner);
+    }
+    @SuppressWarnings("unchecked") Map<String,Object> data(){return (Map<String,Object>)controller.report(null,null).get("data");}
+    @SuppressWarnings("unchecked") Map<String,Object> staff(Map<String,Object> data,long owner){return ((List<Map<String,Object>>)data.get("staff")).stream().filter(r->Long.valueOf(owner).equals(r.get("userId"))).findFirst().orElseThrow();}
+    @SuppressWarnings("unchecked") List<Map<String,Object>> attention(Map<String,Object> data){return (List<Map<String,Object>>)data.get("attention");}
 
     @Test void reportExecutesAgainstBusinessTablesAndRespectsAdminTenantScope(){
         AuthContext.set(new AuthContext.CurrentUser(1L,"13610316814"));

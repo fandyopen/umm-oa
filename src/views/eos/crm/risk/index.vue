@@ -57,6 +57,11 @@
           ><span v-else>{{ text }}</span>
         </span>
         <span slot="owner" slot-scope="text">{{ text || '未分配' }}</span>
+        <span slot="feeDueDate" slot-scope="text, record">{{ ['payment_due', 'payment_overdue'].includes(record.riskType) ? text || '—' : '—' }}</span>
+        <div slot="reason" slot-scope="text, record">
+          <div>{{ text }}</div>
+          <div v-if="riskRule(record)" class="risk-rule">规则：{{ riskRule(record) }}</div>
+        </div>
         <span slot="action" slot-scope="text, record">
           <a-button v-if="record.contractId" type="link" @click="openContract(record)">处理合同</a-button>
           <a-button v-if="record.contractId && showModuleAction('reminder', 'handle')" type="link" @click="startHandle(record)" :loading="!!moduleActionBusy.startHandle">记录处理</a-button>
@@ -112,7 +117,8 @@ export default {
         { title: '客户', dataIndex: 'customerName', width: 220, scopedSlots: { customRender: 'customer' } },
         { title: '风险类型', dataIndex: 'title', width: 150 },
         { title: '关联合同', dataIndex: 'contractName', width: 190 },
-        { title: '风险原因', dataIndex: 'reason' },
+        { title: '收费到期日', dataIndex: 'dueDate', width: 130, scopedSlots: { customRender: 'feeDueDate' } },
+        { title: '风险原因', dataIndex: 'reason', scopedSlots: { customRender: 'reason' } },
         { title: '负责人', dataIndex: 'ownerUserName', width: 120, scopedSlots: { customRender: 'owner' } },
         { title: '操作', width: 260, scopedSlots: { customRender: 'action' } }
       ]
@@ -161,6 +167,16 @@ export default {
     this.loadData()
   },
   methods: {
+    riskRule(record) {
+      const rules = {
+        payment_overdue: '有待收款且逾期满1天即为高风险，与金额无关。',
+        payment_due: '有待收款且距到期0–7天为中风险。',
+        contract_expiry: record.contractId ? '距到期8–30天为中风险，7天内或已到期为高风险。' : '距到期8–30天为中风险，0–7天为高风险。',
+        no_followup: '未跟进30–59天为中风险，满60天为高风险。',
+        no_payment: '有未收款且60–89天未回款为中风险，满90天为高风险。'
+      }
+      return rules[record.riskType] || ''
+    },
     readRoute() {
       this.customerId = normalizeContractId(this.$route.query.customerId) || undefined
       this.contractId = normalizeContractId(this.$route.query.contractId) || undefined
@@ -310,6 +326,13 @@ export default {
 .customer-link {
   color: #1769aa;
   font-weight: 600;
+}
+
+.risk-rule {
+  margin-top: 4px;
+  color: #8c8c8c;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 @media (max-width: 800px) {

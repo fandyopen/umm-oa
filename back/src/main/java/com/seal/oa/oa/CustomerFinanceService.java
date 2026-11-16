@@ -89,7 +89,7 @@ public class CustomerFinanceService {
         }
         for (Map<String, Object> r : JdbcMaps.camelCase(jdbc.queryForList("""
                 SELECT r.*,m.name AS customer_name,m.owner_user_id,m.owner_user_name
-                FROM oa_finance_receivable r JOIN oa_merchant m ON m.id=r.customer_id ORDER BY r.id DESC
+                FROM oa_finance_receivable r JOIN oa_merchant m ON m.id=r.customer_id ORDER BY r.due_date DESC,r.create_time DESC,r.id DESC
                 """))) {
             if (!visible(r)) continue;
             r.put("manual", true); r.put("receivableId", r.get("id")); r.put("sourceKey", "manual:" + r.get("id"));
@@ -104,6 +104,8 @@ public class CustomerFinanceService {
         result.removeIf(r -> !matches(r, query, "dueDate") || (!blank(query.get("paymentStatus"))
                 && !query.get("paymentStatus").equals(r.get("paymentStatus")))
                 || (!blank(query.get("overdue")) && !"overdue".equals(r.get("paymentStatus"))));
+        result.sort(com.seal.oa.common.ListOrder.newestFirst("dueDate")
+                .thenComparing(r -> text(r.get("sourceKey")), Comparator.reverseOrder()));
         return result;
     }
 
@@ -141,7 +143,7 @@ public class CustomerFinanceService {
     private List<Map<String, Object>> manualRows(Map<String, String> query) {
         List<Map<String,Object>> rows = JdbcMaps.camelCase(jdbc.queryForList("""
                 SELECT r.*,m.name AS customer_name,m.owner_user_id,m.owner_user_name
-                FROM oa_finance_receivable r JOIN oa_merchant m ON m.id=r.customer_id ORDER BY r.id DESC
+                FROM oa_finance_receivable r JOIN oa_merchant m ON m.id=r.customer_id ORDER BY r.due_date DESC,r.create_time DESC,r.id DESC
                 """));
         return rows.stream().filter(this::visible).filter(r -> matches(r, query, "dueDate")).toList();
     }
@@ -160,7 +162,7 @@ public class CustomerFinanceService {
                        w.process_task_name AS task_name
                 FROM oa_finance_record r JOIN oa_merchant m ON m.id=r.customer_id
                 LEFT JOIN oa_crm_contract c ON c.id=r.contract_id LEFT JOIN oa_recruit_job j ON j.id=r.job_id
-                LEFT JOIN oa_workflow_request w ON w.id=r.workflow_request_id ORDER BY r.id DESC
+                LEFT JOIN oa_workflow_request w ON w.id=r.workflow_request_id ORDER BY r.business_date DESC,r.create_time DESC,r.id DESC
                 """));
     }
 
@@ -438,13 +440,14 @@ public class CustomerFinanceService {
         List<Map<String, Object>> rows = new ArrayList<>(JdbcMaps.camelCase(jdbc.queryForList("""
                 SELECT r.id AS original_receipt_id,r.contract_id,r.term_key,r.amount,r.receipt_date AS business_date,
                        c.customer_id,c.name AS contract_name,m.name AS customer_name FROM oa_crm_contract_receipt r
-                JOIN oa_crm_contract c ON c.id=r.contract_id JOIN oa_merchant m ON m.id=c.customer_id WHERE r.amount>0 ORDER BY r.id DESC
+                JOIN oa_crm_contract c ON c.id=r.contract_id JOIN oa_merchant m ON m.id=c.customer_id WHERE r.amount>0 ORDER BY r.receipt_date DESC,r.id DESC
                 """)));
         for (Map<String, Object> doc : rawRecords()) if ("receipt".equals(doc.get("recordType")) && "confirmed".equals(doc.get("status")) && id(doc.get("contractId")) == 0) {
             Map<String, Object> r = new LinkedHashMap<>(doc); r.put("originalRecordId", r.get("id")); rows.add(r);
         }
         return rows.stream().filter(r -> customers.contains(id(r.get("customerId"))))
-                .filter(r -> matches(r, query, "businessDate")).toList();
+                .filter(r -> matches(r, query, "businessDate"))
+                .sorted(com.seal.oa.common.ListOrder.newestFirst("businessDate", "createTime")).toList();
     }
 
     private Map<String, Object> original(Map<String, Object> row) {
@@ -555,7 +558,7 @@ public class CustomerFinanceService {
         List<Map<String,Object>> rows = JdbcMaps.camelCase(jdbc.queryForList("""
                 SELECT l.*,m.name AS customer_name,m.owner_user_id AS customer_owner_user_id,u.nick_name AS owner_name
                 FROM oa_finance_collection l JOIN oa_merchant m ON m.id=l.customer_id
-                LEFT JOIN sys_user u ON u.user_id=l.owner_user_id ORDER BY l.id DESC
+                LEFT JOIN sys_user u ON u.user_id=l.owner_user_id ORDER BY l.next_date DESC,l.create_time DESC,l.id DESC
                 """)).stream().filter(r -> access.canAccessOwner(AuthContext.userId(), r.get("customerOwnerUserId")))
                 .filter(r -> matches(r, query, "nextDate")).toList();
         for (Map<String,Object> row : rows) {

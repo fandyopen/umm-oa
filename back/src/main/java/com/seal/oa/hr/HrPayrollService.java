@@ -160,7 +160,7 @@ public class HrPayrollService {
                 d.rows(
                         "SELECT p.*,COALESCE(SUM(i.net_amount),0) AS net_amount,COUNT(i.id) AS"
                             + " employee_count FROM oa_hr_payroll p LEFT JOIN oa_hr_payroll_item i"
-                            + " ON i.payroll_id=p.id GROUP BY p.id ORDER BY p.id DESC")) {
+                            + " ON i.payroll_id=p.id GROUP BY p.id ORDER BY p.period DESC,p.create_time DESC,p.id DESC")) {
             if (!text(q.get("period")).isEmpty() && !q.get("period").equals(b.get("period")))
                 continue;
             if (finance && !"approved".equals(b.get("status"))) continue;
@@ -901,7 +901,7 @@ public class HrPayrollService {
                 .rows(
                         "SELECT i.*,p.period,p.batch_type,p.published FROM oa_hr_payroll_item i"
                                 + " JOIN oa_hr_payroll p ON p.id=i.payroll_id WHERE i.user_id=? AND"
-                                + " p.published=1 AND p.status='approved' ORDER BY p.id DESC",
+                                + " p.published=1 AND p.status='approved' ORDER BY p.period DESC,p.create_time DESC,p.id DESC",
                         AuthContext.userId())
                 .stream()
                 .map(

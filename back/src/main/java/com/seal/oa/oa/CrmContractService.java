@@ -621,7 +621,7 @@ public class CrmContractService {
     }
 
     private List<Map<String, Object>> rows() {
-        return JdbcMaps.camelCase(jdbc.queryForList(SELECT + " ORDER BY c.id DESC"));
+        return JdbcMaps.camelCase(jdbc.queryForList(SELECT + " ORDER BY c.create_time DESC,c.id DESC"));
     }
 
     private Map<String, Object> require(long id, boolean lock) {
