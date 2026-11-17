@@ -48,7 +48,7 @@ public class ApprovalInboxService {
     private SystemService.UserAccount requireAccess() {
         var user = system.requireCurrentUser();
         if (!"0".equals(user.status()) || !system.hasModuleAccess(user.userId(), MODULE))
-            throw new ApiException(403, "没有待审批页面访问权限");
+            throw new ApiException(403, "没有代审批页面访问权限");
         return user;
     }
 

@@ -116,6 +116,7 @@
           ><span slot="money" slot-scope="value">{{ money(value) }}</span></a-table
         >
       </a-tab-pane>
+      <a-tab-pane key="commission" tab="提成与业绩"><contract-commission v-if="activeTab === 'commission'" :contract-id="contractId" /></a-tab-pane>
       <a-tab-pane key="approvals" tab="审批记录">
         <a-alert type="info" show-icon message="当前节点审批人可点击“去审批”办理，也可进入统一待办；此处按提交版本追溯审批进度与意见。" class="tw-mb-4" />
         <a-table :columns="versionColumns" :data-source="contract.versions || []" :pagination="false" row-key="id" size="small"
@@ -214,6 +215,7 @@ import { statuses, statusColors, displayContractStatus, workflowStatus, money, t
 import ContractForm from './ContractForm.vue'
 import ContractLifecycleDialog from './ContractLifecycleDialog.vue'
 import ContractApprovalButton from './ContractApprovalButton.vue'
+import ContractCommission from '../../finance/ContractCommission.vue'
 
 export default {
   mixins: [
@@ -240,7 +242,7 @@ export default {
     )
   ],
   name: 'CrmContractDetail',
-  components: { ContractLifecycleDialog, ContractApprovalButton },
+  components: { ContractLifecycleDialog, ContractApprovalButton, ContractCommission },
   props: { contractId: { type: Number, required: true }, initialTab: { type: String, default: 'overview' }, initialTermKey: { type: String, default: '' } },
   data() {
     return {

@@ -18,7 +18,7 @@
           >{{ r.contractName || r.jobTitle || r.projectName || '—' }}<small class="subline">{{ r.contractCode || r.category || r.referenceNo }}</small></template
         ></a-table-column
       >
-      <a-table-column title="类别 / 内容" width="170"
+      <a-table-column title="类别 / 内容"
         ><template slot-scope="r"
           >{{ r.invoiceTitle || r.reason || r.category || typeName }}<small class="subline">{{ r.termKey ? '收费节点 ' + r.termKey : r.sourceEvent }}</small></template
         ></a-table-column
@@ -37,15 +37,16 @@
           ><a-tag :color="statusColor[v]">{{ statusLabel[v] || v }}</a-tag></template
         ></a-table-column
       >
-      <a-table-column title="审批进度" width="130"
+      <a-table-column title="审批进度"
         ><template slot-scope="r"
           ><span v-if="r.status === 'approving'">{{ r.taskName || '审批处理中' }}</span
           ><a v-else-if="r.instanceId" @click="processHistory(r.instanceId)">查看审批记录</a><span v-else>—</span></template
         ></a-table-column
       >
-      <a-table-column title="操作" fixed="right" width="250"
+      <a-table-column title="操作" fixed="right"
         ><template slot-scope="r">
           <a-button
+            key="edit"
             v-if="['draft', 'rejected'].includes(r.status) && type !== 'adjustment' && type !== 'receivable' && showModuleAction('finance', 'edit')"
             type="link"
             size="small"
@@ -54,6 +55,7 @@
             >修改</a-button
           >
           <a-button
+            key="submit"
             v-if="['draft', 'rejected'].includes(r.status) && type !== 'adjustment' && type !== 'receivable' && showModuleAction('finance', submitAction(r))"
             type="link"
             size="small"
@@ -64,6 +66,7 @@
             >提交{{ needsApproval(r) ? '审批' : '确认' }}</a-button
           >
           <a-button
+            key="invoice-issue"
             v-if="r.status === 'approved' && r.recordType === 'invoice' && showModuleAction('finance', 'invoice_issue')"
             type="link"
             size="small"
@@ -72,6 +75,7 @@
             >登记开票结果</a-button
           >
           <a-button
+            key="refund-pay"
             v-if="r.status === 'approved' && r.recordType === 'refund' && showModuleAction('finance', 'refund_pay')"
             type="link"
             size="small"
@@ -79,11 +83,11 @@
             v-hasModuleAction="moduleActionBinding('finance', 'refund_pay')"
             >登记实际退款</a-button
           >
-          <a-button v-if="['draft', 'rejected', 'approved'].includes(r.status) && showModuleAction('finance', 'void')" type="link" size="small" @click="voidRow(r)" v-hasModuleAction="moduleActionBinding('finance', 'void')"
+          <a-button key="void" v-if="['draft', 'rejected', 'approved'].includes(r.status) && showModuleAction('finance', 'void')" type="link" size="small" @click="voidRow(r)" v-hasModuleAction="moduleActionBinding('finance', 'void')"
             >作废</a-button
           >
-          <a-button type="link" size="small" @click="showDetail(r)">历史</a-button>
-          <a-button v-if="recordType === 'receipt' && r.contractId && r.status === 'confirmed' && showModuleAction('commission')" type="link" size="small" @click="openCommission(r)">提成分摊</a-button>
+          <a-button key="history" type="link" size="small" @click="showDetail(r)">历史</a-button>
+          <a-button key="commission" v-if="recordType === 'receipt' && r.contractId && r.status === 'confirmed' && showModuleAction('commission')" type="link" size="small" @click="openCommission(r)">提成分摊</a-button>
           <div v-if="r.submissionBlockedReason" class="submission-guidance">
             <small class="submission-warning" :title="r.submissionBlockedReason">{{ r.submissionBlockedReason.split('；')[0] }}</small>
             <a v-if="(r.confirmedReceipts || []).length" @click="relatedReceipt = r">查看已确认回款</a>
@@ -99,9 +103,16 @@
           ></a-form-model-item
         >
         <a-alert
-          v-if="selectedSource && ['receipt', 'writeoff'].includes(type)" class="source-balance" show-icon :type="available <= 0 ? 'warning' : 'info'"
-          :message="Number(selectedSource.outstandingAmount) <= 0 ? '该节点已收齐，当前草稿无法提交' : '请核对节点余额后提交'">
-          <template slot="description">未收余额 {{ money(selectedSource.outstandingAmount) }} 元，可提交 {{ money(Math.max(0, available)) }} 元，待审占用 {{ money(Number(selectedSource.outstandingAmount) - available) }} 元。保存草稿不会确认回款；无需保留的草稿可在列表作废。</template>
+          v-if="selectedSource && ['receipt', 'writeoff'].includes(type)"
+          class="source-balance"
+          show-icon
+          :type="available <= 0 ? 'warning' : 'info'"
+          :message="Number(selectedSource.outstandingAmount) <= 0 ? '该节点已收齐，当前草稿无法提交' : '请核对节点余额后提交'"
+        >
+          <template slot="description"
+            >未收余额 {{ money(selectedSource.outstandingAmount) }} 元，可提交 {{ money(Math.max(0, available)) }} 元，待审占用
+            {{ money(Number(selectedSource.outstandingAmount) - available) }} 元。保存草稿不会确认回款；无需保留的草稿可在列表作废。</template
+          >
         </a-alert>
         <template v-if="type === 'refund' || type === 'reversal'"
           ><a-form-model-item label="原到账" prop="originalKey"
@@ -163,9 +174,13 @@
         <a-alert type="info" show-icon :message="'未收余额 ' + money(relatedReceipt.outstandingAmount) + ' 元；以下回款已计入该节点，请核对后决定是否作废当前草稿。'" />
         <a-table :data-source="relatedReceipt.confirmedReceipts" :pagination="false" row-key="id" size="small">
           <a-table-column title="回款编号" data-index="id" />
-          <a-table-column title="金额（元）" data-index="amount"><template slot-scope="v">{{ money(v) }}</template></a-table-column>
+          <a-table-column title="金额（元）" data-index="amount"
+            ><template slot-scope="v">{{ money(v) }}</template></a-table-column
+          >
           <a-table-column title="回款日期" data-index="businessDate" />
-          <a-table-column title="操作"><template slot-scope="r"><a @click="showDetail(r)">查看详情</a></template></a-table-column>
+          <a-table-column title="操作"
+            ><template slot-scope="r"><a @click="showDetail(r)">查看详情</a></template></a-table-column
+          >
         </a-table>
       </template>
     </a-modal>
@@ -227,6 +242,7 @@ export default {
     pageSize: 20,
     query: { keyword: '', status: undefined },
     visible: false,
+    openingFromRoute: false,
     form: {},
     editingType: '',
     files: [],
@@ -282,11 +298,18 @@ export default {
   },
   mounted() {
     this.load()
-    this.loadOptions()
+    if (this.recordType === 'receipt' && this.$route?.query.create === '1') this.openReceiptFromRoute()
+    else this.loadOptions()
+  },
+  watch: {
+    '$route.query'() {
+      this.openReceiptFromRoute()
+    }
   },
   methods: {
     async openCommission(row) {
-      if (await this.checkModuleAction({ module: 'commission', label: '回款提成分摊' })) this.$router.push({ path: '/finance/commission', query: { customerId: String(row.customerId), receiptId: String(row.originalReceiptId || row.receiptId || row.id) } })
+      if (await this.checkModuleAction({ module: 'commission', label: '回款提成分摊' }))
+        this.$router.push({ path: '/finance/commission', query: { customerId: String(row.customerId), receiptId: String(row.originalReceiptId || row.receiptId || row.id) } })
     },
     processHistory: handleProcessHistory,
     money(v) {
@@ -338,16 +361,55 @@ export default {
     originalLabel(r) {
       return r.customerName + ' · ' + (r.contractName || r.projectName || '手工应收') + ' · ' + r.businessDate + ' · ' + this.money(r.amount)
     },
-    async openForm(row, kind) {
+    async openReceiptFromRoute() {
+      const sourceKey = this.$route?.query.sourceKey
+      if (this.recordType !== 'receipt' || this.$route?.query.create !== '1' || typeof sourceKey !== 'string' || this.openingFromRoute) return
+      this.openingFromRoute = true
+      try {
+        const opened = await this.openForm(null, 'receipt', sourceKey)
+        if (opened && this.$route.query.sourceKey === sourceKey && this.$route.query.create === '1') {
+          const query = { ...this.$route.query }
+          delete query.create
+          delete query.sourceKey
+          await this.$router.replace({ path: this.$route.path, query })
+        }
+      } finally {
+        this.openingFromRoute = false
+      }
+    },
+    async openForm(row, kind, sourceKey) {
       await this.loadOptions()
+      if (sourceKey) {
+        const source = this.sources.find(s => s.sourceKey === sourceKey)
+        if (!source || source.status !== 'confirmed' || Number(source.contractDeleted) || source.contractStatus === 'completed') {
+          this.$message.warning('应收节点不存在、不可收款或不在数据范围内，请返回应收台账刷新')
+          return false
+        }
+        if (Number(source.receiptAvailable) <= 0) {
+          this.$message.warning('该节点已收齐或待审申请已占用待收金额，请核对已有回款')
+          return false
+        }
+      }
       this.editingType = row?.recordType || kind || this.type
-      this.form = row ? { ...row } : { createToken: window.crypto?.randomUUID ? window.crypto.randomUUID() : Date.now() + '-' + Math.random(), amount: undefined, businessDate: today() }
+      this.form = {
+        sourceKey: undefined,
+        customerId: undefined,
+        contractId: undefined,
+        termKey: undefined,
+        receivableId: undefined,
+        ...(row ? { ...row } : { createToken: window.crypto?.randomUUID ? window.crypto.randomUUID() : Date.now() + '-' + Math.random(), amount: undefined, businessDate: today() })
+      }
       if (row) {
         this.form.sourceKey = this.sourceKey(row)
         if (row.originalReceiptId || row.originalRecordId) this.form.originalKey = this.originalKey(row)
       }
+      if (sourceKey) {
+        this.form.sourceKey = sourceKey
+        this.sourceChanged(sourceKey)
+      }
       this.files = this.parseFiles(row?.attachment)
       this.visible = true
+      return true
     },
     parseFiles(v) {
       try {

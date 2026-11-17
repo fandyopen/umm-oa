@@ -35,8 +35,11 @@
           ><a-tag :color="colors[v]">{{ labels[v] || v }}</a-tag></template
         ></a-table-column
       >
-      <a-table-column title="操作" fixed="right" width="190"
+      <a-table-column title="操作" fixed="right" width="120"
         ><template slot-scope="r">
+          <a-tooltip v-if="canRegisterReceipt(r) && showModuleAction('finance', 'add') && showModuleAction('receipt')" :title="Number(r.receiptAvailable) <= 0 ? '待审申请已占用全部待收金额，请先处理已有申请' : '登记本次实际到账，可分次收款'">
+            <a-button type="link" size="small" :disabled="Number(r.receiptAvailable) <= 0" @click="openReceipt(r)">登记回款</a-button>
+          </a-tooltip>
           <a-button v-if="r.manual && r.status === 'draft' && showModuleAction('finance', 'confirm')" type="link" size="small" @click="confirmReceivable(r)" v-hasModuleAction="moduleActionBinding('finance', 'confirm')"
             >确认应收</a-button
           >
@@ -76,7 +79,7 @@ export default {
   name: 'FinanceLedger',
   mixins: [
     withModuleContexts(
-      { finance: context },
+      { finance: context, receipt: { component: 'eos/crm/finance/receipt', label: '回款登记' } },
       {
         openReceivable: function (row) {
           return { module: 'finance', action: row?.id ? 'edit' : 'add', label: '编辑手工应收' }
@@ -84,6 +87,7 @@ export default {
         saveReceivable: function () {
           return { module: 'finance', action: this.form.id ? 'edit' : 'add', label: '保存手工应收' }
         },
+        openReceipt: { module: 'finance', action: 'add', label: '登记回款' },
         confirmReceivable: { module: 'finance', action: 'confirm', label: '确认应收' },
         revokeReceivable: { module: 'finance', action: 'confirm', label: '撤销应收确认' }
       }
@@ -126,6 +130,13 @@ export default {
     this.loadOptions()
   },
   methods: {
+    canRegisterReceipt(row) {
+      return row.status === 'confirmed' && Number(row.outstandingAmount) > 0 && !Number(row.contractDeleted) && row.contractStatus !== 'completed'
+    },
+    async openReceipt(row) {
+      if (!this.canRegisterReceipt(row)) return this.$message.warning('此应收当前不能登记回款，请刷新后核对余额和状态')
+      if (await this.checkModuleAction({ module: 'receipt', label: '登记回款' })) this.$router.push({ path: '/finance/receipt', query: { create: '1', sourceKey: row.sourceKey } })
+    },
     money(v) {
       return Number(v || 0).toLocaleString('zh-CN', { minimumFractionDigits: 2 })
     },

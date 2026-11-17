@@ -41,8 +41,13 @@
         <span slot="money" slot-scope="value">{{ money(value) }}</span>
         <div slot="feeDueDates" slot-scope="text, record">
           <div v-for="term in feeTerms(record)" :key="term.key" class="fee-date">
-            <a @click="openDetail(record.id, 'terms')">{{ term.dueDate || '未设置' }}</a>
-            <small class="subline">{{ term.title }}</small>
+            <a-tooltip>
+              <template slot="title">
+                <div>收费名称：{{ term.title || '未命名收费项' }}</div>
+                <div>应收金额：{{ money(term.amount) }}</div>
+              </template>
+              <a @click="openDetail(record.id, 'terms')">{{ term.dueDate || '未设置' }}</a>
+            </a-tooltip>
           </div>
           <span v-if="!feeTerms(record).length">—</span>
         </div>
@@ -341,6 +346,7 @@ export default {
   font-size: 12px;
   margin-top: 4px;
 }
+.fee-date { white-space: nowrap; }
 .fee-date + .fee-date { margin-top: 8px; }
 @media (max-width: 900px) {
   .workspace-metrics {

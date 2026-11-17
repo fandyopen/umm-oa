@@ -59,6 +59,112 @@ class CommissionIntegrationTest {
     BigDecimal total(Map<String,Object>b){return ((List<Map<String,Object>>)b.get("lines")).stream().map(r->CommissionService.money(r.get("amount"))).reduce(BigDecimal.ZERO,BigDecimal::add);}
     void refund(String amount){long negative=service.insert("INSERT INTO oa_crm_contract_receipt(contract_id,term_key,amount,receipt_date) VALUES(?,'fee-main',?,?)",contract,new BigDecimal(amount).negate(),date);jdbc.update("INSERT INTO oa_finance_record(record_type,customer_id,contract_id,term_key,amount,business_date,status,original_receipt_id,receipt_id,create_token) VALUES('refund',?,?,'fee-main',?,?,'confirmed',?,?,?)",customer,contract,new BigDecimal(amount),date,receipt,negative,UUID.randomUUID().toString());}
 
+    Map<String,Object> contractPlan(String mode) {
+        if(jdbc.queryForObject("SELECT COUNT(*) FROM oa_crm_contract_version WHERE contract_id=?",Long.class,contract)==0)
+            jdbc.update("INSERT INTO oa_crm_contract_version(contract_id,version_no,snapshot_json,status,signed_date,submit_user_id,approval_user_id) VALUES(?,1,?,'active',?,1,1)",contract,service.json(Map.of("amount",jdbc.queryForObject("SELECT amount FROM oa_crm_contract WHERE id=?",BigDecimal.class,contract),"feeTerms",List.of(Map.of("key","fee-main","title","服务费")))),date);
+        var b=service.saveContractCommission(contract,Map.of("ruleId",rule,"settlementMode",mode,"reason","确认合同销售归属","participants",List.of(Map.of("userId",user,"side","development","share",100))));
+        var p=(Map<String,Object>)b.get("plan");return service.confirmContractCommission(contract,Map.of("revision",p.get("revision"),"reason","核对合同预算"));
+    }
+    long deliveryAttribution() {
+        var data=service.saveAttribution(application,Map.of("businessKind","first","ruleId",rule,"reason","确认招聘交付","participants",List.of(Map.of("userId",user,"side","delivery","share",100))));
+        var a=(Map<String,Object>)data.get("attribution");long id=CommissionService.number(a.get("id"));service.confirmAttribution(id,Map.of("revision",a.get("revision"),"reason","入职确认"),true);return id;
+    }
+    @Test void contractSalesCanSettleCashWithoutAnyRecruitmentAndThenEnterPayroll() {
+        jdbc.update("DELETE FROM oa_recruit_application WHERE id=?",application);
+        jdbc.update("DELETE FROM oa_crm_contract_receipt WHERE id=?",receipt);
+        var plan=contractPlan("entry");assertEquals(new BigDecimal("300.00"),plan.get("estimatedDevelopment"));
+        assertEquals(new BigDecimal("0.00"),plan.get("developmentEarned"));assertThrows(ApiException.class,this::generate);
+        receipt=service.insert("INSERT INTO oa_crm_contract_receipt(contract_id,term_key,amount,receipt_date) VALUES(?,'fee-main',10000,?)",contract,date);
+        var b=generate();assertEquals(new BigDecimal("300.00"),total(b));
+        assertTrue(((List<Map<String,Object>>)b.get("lines")).stream().allMatch(l->"development".equals(l.get("side"))));
+        direct(b);assertThrows(ApiException.class,this::generate);
+        var approved=service.detail(CommissionService.number(b.get("id")));
+        long payrollId=CommissionService.number(service.toPayroll(CommissionService.number(b.get("id")),Map.of("revision",approved.get("revision"))).get("payrollId"));
+        assertEquals(new BigDecimal("300.00"),jdbc.queryForObject("SELECT commission FROM oa_hr_payroll_item WHERE payroll_id=?",BigDecimal.class,payrollId));
+    }
+    @Test void contractSalesFollowPartialCashAndRefundsWithoutWaitingForEntry() {
+        jdbc.update("UPDATE oa_recruit_application SET actual_entry_date=NULL,guarantee_status=NULL WHERE id=?",application);
+        jdbc.update("UPDATE oa_crm_contract_receipt SET amount=5000 WHERE id=?",receipt);contractPlan("entry");
+        var first=generate();assertEquals(new BigDecimal("150.00"),total(first));direct(first);
+        long secondReceipt=service.insert("INSERT INTO oa_crm_contract_receipt(contract_id,term_key,amount,receipt_date) VALUES(?,'fee-main',5000,?)",contract,date);
+        var second=generate();assertEquals(new BigDecimal("150.00"),total(second));direct(second);
+        refund("1000");var reduction=generate();assertEquals(new BigDecimal("-30.00"),total(reduction));direct(reduction);
+        refund("4000");receipt=secondReceipt;refund("5000");
+        AuthContext.set(new AuthContext.CurrentUser(user,"CM"));
+        jdbc.update("INSERT INTO sys_role(role_id,role_name,role_key,data_scope) VALUES(99603,'自助进度测试','commission_progress_test','5')");
+        jdbc.update("INSERT INTO sys_user_role(user_id,role_id) VALUES(?,99603)",user);jdbc.update("INSERT INTO sys_role_module(role_id,module_id) VALUES(99603,341006)");
+        var progress=service.selfOverview();assertEquals("待核算",progress.get(0).get("state"));
+        assertEquals(new BigDecimal("-270.00"),progress.get(0).get("pendingAmount"));
+        AuthContext.set(new AuthContext.CurrentUser(1L,"13610316814"));assertEquals(new BigDecimal("-270.00"),total(generate()));
+    }
+    @Test void contractDeliveryUsesOnlyItsBudgetAndReleasesGuaranteeWithoutRepeatingSales() {
+        contractPlan("entry");var sales=generate();assertEquals(new BigDecimal("300.00"),total(sales));direct(sales);
+        long a=deliveryAttribution();allocate(a,"10000");var initial=generate();assertEquals(new BigDecimal("350.00"),total(initial));
+        assertTrue(((List<Map<String,Object>>)initial.get("lines")).stream().allMatch(l->"delivery".equals(l.get("side"))));direct(initial);
+        jdbc.update("UPDATE oa_recruit_application SET guarantee_status='completed',guarantee_end=? WHERE id=?",date,application);
+        var rest=generate();assertEquals(new BigDecimal("350.00"),total(rest));direct(rest);assertThrows(ApiException.class,this::generate);
+        refund("2000");assertEquals(new BigDecimal("-200.00"),total(generate()));
+        assertEquals(new BigDecimal("700.00"),total(service.detail(CommissionService.number(initial.get("id")))).add(total(service.detail(CommissionService.number(rest.get("id"))))));
+    }
+    @Test void contractServiceAcceptanceRequiresEvidenceAndSharesTheSameCashBudget() {
+        contractPlan("acceptance");
+        assertThrows(ApiException.class,this::deliveryAttribution);
+        var acceptance=new LinkedHashMap<String,Object>(Map.of("acceptanceDate",date.toString(),"termKey","fee-main","acceptanceReference","客户验收单001","reason","客户确认兼职服务完成","participants",List.of(Map.of("userId",user,"side","delivery","share",100))));
+        var missing=new LinkedHashMap<>(acceptance);missing.remove("acceptanceReference");assertThrows(ApiException.class,()->service.acceptDelivery(contract,missing));
+        var future=new LinkedHashMap<>(acceptance);future.put("acceptanceDate",CommissionService.today().plusDays(1).toString());assertThrows(ApiException.class,()->service.acceptDelivery(contract,future));
+        var data=service.acceptDelivery(contract,acceptance);assertThrows(ApiException.class,()->service.acceptDelivery(contract,acceptance));
+        var accepted=((List<Map<String,Object>>)data.get("acceptances")).get(0);long id=CommissionService.number(accepted.get("id"));
+        allocate(id,"10000");assertEquals(new BigDecimal("1000.00"),total(generate()));
+        assertThrows(ApiException.class,()->allocate(id,"10000.01"));
+    }
+    @Test void contractRuleAndSalesAreFrozenAndLegacyBusinessCannotBeDoubleCounted() {
+        contractPlan("entry");assertThrows(ApiException.class,()->service.saveContractCommission(contract,Map.of("revision",1)));
+        assertThrows(ApiException.class,this::saveAttribution);
+        service.toggleRule(rule,Map.of("enabled",false));long a=deliveryAttribution();allocate(a,"10000");
+        assertEquals(new BigDecimal("650.00"),total(generate()));
+    }
+    @Test void legacyAttributionPreventsCreatingASecondContractSalesPool() {
+        ready();assertThrows(ApiException.class,()->contractPlan("entry"));assertEquals(new BigDecimal("500.00"),total(generate()));
+    }
+    @Test void tenRecruitmentsNeverMultiplyTheContractOrCreateRoundingMoney() {
+        jdbc.update("UPDATE oa_crm_contract SET amount=1999 WHERE id=?",contract);jdbc.update("UPDATE oa_crm_contract_receipt SET amount=1999 WHERE id=?",receipt);
+        rule=CommissionService.number(service.saveRule(Map.of("name","精度测试规则","businessKind","first","effectiveDate",date.toString(),"poolRate",50,"developmentShare",30,"initialRelease",100)).get("id"));
+        contractPlan("entry");var allocations=new ArrayList<Map<String,Object>>();long firstApplication=application;
+        for(int i=0;i<10;i++) {
+            if(i>0) {
+                long candidate=service.insert("INSERT INTO oa_recruit_talent(owner_user_id,name,create_by) VALUES(1,?,1)","精度测试候选人"+i);
+                application=service.insert("INSERT INTO oa_recruit_application(job_id,talent_id,consultant_id,stage,actual_entry_date,guarantee_term_key,guarantee_status) VALUES(?,?,?,'guarantee',?,'fee-main','active')",job,candidate,user,date);
+            }
+            allocations.add(Map.of("attributionId",deliveryAttribution(),"amount",new BigDecimal("199.90")));
+        }
+        service.allocate(receipt,Map.of("rows",allocations,"signature",service.allocationSignature(receipt),"allocationDate",date.toString(),"reason","整单1999按10个招聘成果分配"));
+        var b=generate();assertEquals(new BigDecimal("999.50"),total(b));
+        var lines=(List<Map<String,Object>>)b.get("lines");
+        assertEquals(new BigDecimal("299.85"),lines.stream().filter(l->"development".equals(l.get("side"))).map(l->CommissionService.money(l.get("amount"))).reduce(BigDecimal.ZERO,BigDecimal::add));
+        assertEquals(new BigDecimal("699.65"),lines.stream().filter(l->"delivery".equals(l.get("side"))).map(l->CommissionService.money(l.get("amount"))).reduce(BigDecimal.ZERO,BigDecimal::add));
+        application=firstApplication;direct(b);assertThrows(ApiException.class,this::generate);
+    }
+    @Test void salesSelfProgressWorksWithoutCustomerAccessAndOnlyShowsOwnAmounts() {
+        contractPlan("entry");jdbc.update("DELETE FROM oa_crm_contract_receipt WHERE id=?",receipt);
+        jdbc.update("INSERT INTO sys_role(role_id,role_name,role_key,data_scope) VALUES(99603,'自助进度测试','commission_progress_test','5')");
+        jdbc.update("INSERT INTO sys_user_role(user_id,role_id) VALUES(?,99603)",user);jdbc.update("INSERT INTO sys_role_module(role_id,module_id) VALUES(99603,341006)");
+        AuthContext.set(new AuthContext.CurrentUser(user,"CM"));var progress=service.selfOverview();assertEquals(1,progress.size());
+        assertEquals(new BigDecimal("300.00"),progress.get(0).get("expectedAmount"));assertEquals("待回款",progress.get(0).get("state"));
+        assertThrows(ApiException.class,()->service.contractCommission(contract));assertThrows(ApiException.class,service::options);
+        jdbc.update("DELETE FROM sys_role_module WHERE role_id=99603");assertThrows(ApiException.class,service::selfOverview);
+    }
+    @Test void contractPoolIsRoundedBeforeSplittingBothDepartments() {
+        jdbc.update("UPDATE oa_crm_contract_receipt SET amount=0.06 WHERE id=?",receipt);
+        rule=CommissionService.number(service.saveRule(Map.of("name","分级舍入测试","businessKind","first","effectiveDate",date.toString(),"poolRate",40,"developmentShare",22,"initialRelease",100)).get("id"));
+        contractPlan("entry");long a=deliveryAttribution();allocate(a,"0.06");
+        var batch=generate();assertEquals(new BigDecimal("0.02"),total(batch));
+        assertEquals(new BigDecimal("0.00"),service.contractCommission(contract).get("developmentEarned"));
+    }
+    @Test void newDeliveryDoesNotInvalidateSalesOnlyBatchButCashChangesDo() {
+        contractPlan("entry");var sales=generate();long a=deliveryAttribution();allocate(a,"10000");direct(sales);
+        var delivery=generate();refund("1000");assertThrows(ApiException.class,()->direct(delivery));
+    }
+
     @Test void deletingClosedJobPreservesCommissionAndReceiptAllocation(){
         long attribution=ready();
         jdbc.update("UPDATE oa_recruit_job SET status='closed' WHERE id=?",job);

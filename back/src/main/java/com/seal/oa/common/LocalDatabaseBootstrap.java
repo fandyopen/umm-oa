@@ -63,6 +63,7 @@ public class LocalDatabaseBootstrap implements ApplicationRunner {
             "hr-schema.sql",
             "hr-menu.sql",
             "commission.sql",
+            "commission-contract.sql",
             "data-table-management.sql",
             "customer-cleanup.sql",
             "mobile.sql"

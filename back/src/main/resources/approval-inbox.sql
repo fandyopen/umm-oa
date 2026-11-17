@@ -21,7 +21,10 @@ INSERT INTO sys_module (
     icon, module_sort, hidden, perms, has_flow, flow_conditions, no_cache,
     is_app, is_frame, query, redirect, status
 ) SELECT
-    341600, 1, 340340, '待审批', 'ApprovalInbox', 'approvals',
+    341600, 1, 340340, '代审批', 'ApprovalInbox', 'approvals',
     'eos/todoItem/approvals/index', 'iconfont-daibanshixiang7', 0, 0, 'todoItem:approval:list', 0, '',
     1, '', '', '', '', '0'
 WHERE NOT EXISTS (SELECT 1 FROM sys_module WHERE module_id = 341600);
+
+UPDATE sys_module SET module_name = '代审批'
+WHERE module_id = 341600 AND module_name = '待审批';

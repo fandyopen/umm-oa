@@ -19,6 +19,8 @@ function component(file, props = {}, overrides = {}) {
     today: () => '2026-11-04', window: { crypto: { randomUUID: () => 'finance-test-token' } },
     handleProcessHistory: () => {},
     listFinanceRecords: async () => ({ data: { rows: [], total: 0 } }),
+    listFinanceLedger: async () => ({ data: { rows: [], total: 0 } }),
+    createReceivable: async () => {}, updateReceivable: async () => {}, financeReceivableAction: async () => {},
     listFinanceOptions: async () => ({ data: { sources: [], customers: [], jobs: [], owners: [] } }),
     listFinanceReceipts: async () => ({ data: [] }), listCollections: async () => ({ data: [] }),
     getFinanceRecord: async () => ({ data: {} }), executeWorkflowAction: async () => ({ data: {} }),
@@ -54,6 +56,91 @@ function component(file, props = {}, overrides = {}) {
 const record = overrides => component(base + 'modules/FinanceRecords.vue', { recordType: 'invoice' }, overrides)
 const proof = () => ({ name: 'receipt.pdf', status: 'done', fileName: '/profile/receipt.pdf' })
 const textOf = node => node ? (node.text || '') + (node.children || []).map(textOf).join('') : ''
+
+test('reconciliation loads customer totals, aging and report basis on first entry', async () => {
+  const calls = []
+  const report = {
+    rows: [{ customerId: 7, customerName: '测试客户', receivableAmount: 1999 }],
+    aging: [{ bucket: '未到期', amount: 1999 }],
+    basis: '按合同应收及已确认回款统计',
+    summary: { receivableAmount: 1999 }
+  }
+  const source = component(base + 'modules/FinanceReconcile.vue', {}, {
+    getFinanceReport: async query => { calls.push({ ...query }); return { data: report } }
+  }).vm
+  const page = component(base + 'reconcile.vue', {}, { FinanceReconcile: source.$options }).vm
+  const summaries = []
+  page.$on('summary', summary => summaries.push(summary))
+  page.$mount()
+  await Vue.nextTick()
+  assert.deepEqual(calls, [{ startDate: undefined, endDate: undefined }])
+  assert.deepEqual(page.rows, report.rows)
+  assert.deepEqual(page.aging, report.aging)
+  assert.equal(page.basis, report.basis)
+  assert.equal(page.loading, false)
+  assert.deepEqual(summaries, [report.summary])
+  page.$destroy()
+  source.$destroy()
+})
+
+test('ledger permits overdue and partial receipts, excluding draft, paid and closed sources', async () => {
+  const { vm } = component(base + 'modules/FinanceLedger.vue')
+  const row = { sourceKey: 'contract:4:fee-main', status: 'confirmed', paymentStatus: 'overdue', contractStatus: 'active', outstandingAmount: 1999, receiptAvailable: 1999 }
+  assert.equal(vm.canRegisterReceipt(row), true)
+  assert.equal(vm.canRegisterReceipt({ ...row, manual: true, sourceKey: 'manual:4', outstandingAmount: 200 }), true)
+  for (const change of [{ status: 'draft' }, { outstandingAmount: 0 }, { contractStatus: 'completed' }, { contractDeleted: 1 }]) assert.equal(vm.canRegisterReceipt({ ...row, ...change }), false)
+  const routes = []
+  vm.$router = { push: route => routes.push(route) }
+  vm.checkModuleAction = async () => false
+  await vm.openReceipt(row)
+  assert.equal(routes.length, 0)
+  vm.checkModuleAction = async () => true
+  await vm.openReceipt(row)
+  assert.deepEqual(routes, [{ path: '/finance/receipt', query: { create: '1', sourceKey: row.sourceKey } }])
+  vm.$destroy()
+})
+
+test('receipt shortcut refreshes the source, prefills available cash and keeps partial amounts editable', async () => {
+  const source = { sourceKey: 'contract:4:fee-main', status: 'confirmed', paymentStatus: 'overdue', customerId: 7, contractId: 4, termKey: 'fee-main', outstandingAmount: 1999, receiptAvailable: 1700 }
+  const { vm, requests } = component(base + 'modules/FinanceRecords.vue', { recordType: 'receipt' }, {
+    listFinanceOptions: async () => ({ data: { sources: [source, { ...source, sourceKey: 'manual:8', contractId: undefined, termKey: undefined, receivableId: 8, receiptAvailable: 900 }] } })
+  })
+  vm.$route = { path: '/finance/receipt', query: { create: '1', sourceKey: source.sourceKey, keyword: '保留筛选' } }
+  vm.$router = { replace: route => { vm.$route = route } }
+  await vm.openReceiptFromRoute()
+  assert.equal(vm.visible, true)
+  assert.equal(vm.form.amount, 1700)
+  assert.equal(vm.form.customerId, 7)
+  assert.equal(vm.form.contractId, 4)
+  assert.equal(vm.form.termKey, 'fee-main')
+  assert.equal(vm.form.businessDate, '2026-11-04')
+  assert.deepEqual(vm.$route.query, { keyword: '保留筛选' })
+  vm.form.amount = 500
+  assert.equal(vm.form.amount, 500)
+  assert.equal(vm.available, 1700)
+  vm.form.sourceKey = 'manual:8'
+  vm.sourceChanged('manual:8')
+  assert.equal(vm.available, 900)
+  assert.equal(vm.form.amount, 500)
+  assert.equal(vm.form.receivableId, 8)
+  assert.equal(vm.form.contractId, undefined)
+  assert.equal(vm.form.termKey, undefined)
+  assert.equal(requests.length, 0)
+  vm.$destroy()
+})
+
+test('receipt shortcut refuses missing, settled or fully reserved sources without opening or saving', async () => {
+  for (const source of [null, { status: 'confirmed', receiptAvailable: 0 }, { status: 'draft', receiptAvailable: 100 }, { status: 'confirmed', receiptAvailable: 100, contractStatus: 'completed' }]) {
+    const { vm, requests, messages } = component(base + 'modules/FinanceRecords.vue', { recordType: 'receipt' }, {
+      listFinanceOptions: async () => ({ data: { sources: source ? [{ ...source, sourceKey: 'manual:8' }] : [] } })
+    })
+    assert.equal(await vm.openForm(null, 'receipt', 'manual:8'), false)
+    assert.equal(vm.visible, false)
+    assert.equal(requests.length, 0)
+    assert.equal(messages[0].type, 'warning')
+    vm.$destroy()
+  }
+})
 
 test('blocked receipt never submits or automatically voids its draft', async () => {
   const { vm, requests, messages } = record()

@@ -1,4 +1,4 @@
-export const contractDetailTabs = ['overview', 'terms', 'approvals', 'versions', 'reminders']
+export const contractDetailTabs = ['overview', 'terms', 'commission', 'approvals', 'versions', 'reminders']
 
 // Keep bookmarked links usable while moving each task to its business entry.
 export function contractEntryTarget(mode, query = {}) {

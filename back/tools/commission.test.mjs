@@ -10,7 +10,7 @@ function component(api = async () => ({ data: {} }), execute = async () => ({ da
   const parsed = compiler.parseComponent(read('src/views/eos/crm/finance/commission.vue'))
   const compiled = compiler.compile(parsed.template.content)
   assert.deepEqual(compiled.errors, [])
-  const options = new Function('withModuleContexts', 'commission', 'executeWorkflowAction', 'createWorkflowActionSubmitter', 'money', 'XLSX', parsed.script.content.replace(/^import .*$/gm, '').replace('export default', 'return'))(() => ({ methods: { async submitConfiguredAction(actionCode, payload, label) {
+  const options = new Function('ContractCommission', 'withModuleContexts', 'commission', 'executeWorkflowAction', 'createWorkflowActionSubmitter', 'money', 'XLSX', parsed.script.content.replace(/^import .*$/gm, '').replace('export default', 'return'))({}, () => ({ methods: { async submitConfiguredAction(actionCode, payload, label) {
     if (!(await this.checkModuleAction({ module: 'commission', action: actionCode, label }))) return null
     this._submitter ||= createWorkflowActionSubmitter(execute)
     return this._submitter.submit({ moduleId: this.moduleContexts.commission.moduleId, actionCode, payload })
@@ -79,8 +79,11 @@ test('allocation dropdown only offers confirmed outcomes under the same contract
     { attributionId: 2, attributionStatus: 'draft', contractId: 2, guaranteeTermKey: 'fee' },
     { attributionId: 3, attributionStatus: 'confirmed', contractId: 3, guaranteeTermKey: 'fee' },
     { attributionId: 4, attributionStatus: 'confirmed', contractId: 2, guaranteeTermKey: 'other' }
+  ], acceptances: [
+    { attributionId: 5, attributionStatus: 'confirmed', contractId: 2, guaranteeTermKey: 'fee' },
+    { attributionId: 6, attributionStatus: 'confirmed', contractId: 2, guaranteeTermKey: 'other' }
   ] }
-  assert.deepEqual(vm.allocationCandidates.map(row => row.attributionId), [1])
+  assert.deepEqual(vm.allocationCandidates.map(row => row.attributionId), [1, 5])
   vm.$destroy()
 })
 

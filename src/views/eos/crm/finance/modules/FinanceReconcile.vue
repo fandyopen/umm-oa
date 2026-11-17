@@ -48,6 +48,9 @@ import { getFinanceReport } from '/src/api/eos/crm/finance.js'
 export default {
   name: 'FinanceReconcile',
   data: () => ({ rows: [], aging: [], basis: '', loading: false, query: { startDate: undefined, endDate: undefined } }),
+  mounted() {
+    this.load()
+  },
   methods: {
     money(v) {
       return Number(v || 0).toLocaleString('zh-CN', { minimumFractionDigits: 2 })

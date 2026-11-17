@@ -61,7 +61,7 @@ export const jobFields = options => [
   field('contractId', '服务合同', 'contract', { options: options.contracts || [], hint: '须为所属客户的已签署合同；实际入职前必须关联，以生成合同保证期。' }),
   field('ownerUserId', '职位负责人', 'select', { required: true, options: optionRows(options.users) }),
   field('collaborators', '协作顾问', 'multiple', { options: optionRows(options.users) }),
-  field('city', '工作地点'), field('industry', '所属行业'), field('experience', '经验要求'),
+  field('city', '工作地点'), field('industry', '所属行业', 'industry'), field('experience', '经验要求'),
   field('salaryMin', '月薪下限（元）', 'number'), field('salaryMax', '月薪上限（元）', 'number'),
   field('headcount', '招聘人数', 'number', { required: true, min: 1, precision: 0 }),
   field('requirements', '岗位要求', 'textarea', { required: true, max: 16000 }),

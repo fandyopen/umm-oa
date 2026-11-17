@@ -14,11 +14,22 @@
             ></a-table
           ></a-tab-pane
         ><a-tab-pane key="commission" tab="我的提成">
-          <a-alert type="info" show-icon message="仅展示本人已批准的提成及扣回。纳入工资后还需核税和实际发放，工资批次未结清时会显示待结清。" class="tw-mb-4" />
+          <a-alert type="info" show-icon message="销售签约后查看预计业绩，实际回款后可结算；交付按入职或验收条件释放。预计、可核算与实际发放分别记录。" class="tw-mb-4" />
           <a-button icon="reload" @click="loadCommissions">刷新提成</a-button>
+          <h3 class="tw-mt-4">我的业绩进度</h3>
+          <a-alert v-if="commissionError" type="error" :message="commissionError" show-icon />
+          <a-table :data-source="commissionProgress" row-key="id" size="small" class="tw-mt-3">
+            <a-table-column title="客户" data-index="customerName" /><a-table-column title="合同" data-index="contractName" />
+            <a-table-column title="贡献"><template slot-scope="_, r">{{ r.side === 'development' ? '客户拓展' : '招聘交付' }}</template></a-table-column>
+            <a-table-column title="预计提成"><template slot-scope="_, r">{{ money(r.expectedAmount) }}</template></a-table-column>
+            <a-table-column title="累计满足条件"><template slot-scope="_, r">{{ money(r.earnedAmount) }}</template></a-table-column>
+            <a-table-column title="待核算 / 扣回"><template slot-scope="_, r">{{ money(r.pendingAmount) }}</template></a-table-column>
+            <a-table-column title="进度" data-index="state" /><a-table-column title="说明" data-index="reason" />
+          </a-table>
+          <h3 class="tw-mt-5">已批准提成与实际发放</h3>
           <a-table :data-source="commissions" row-key="id" class="tw-mt-4">
             <a-table-column title="月份" data-index="period" /><a-table-column title="核算批次" data-index="batchId" />
-            <a-table-column title="客户" data-index="snapshot.customerName" /><a-table-column title="职位" data-index="snapshot.jobTitle" /><a-table-column title="候选人" data-index="snapshot.talentName" />
+            <a-table-column title="客户" data-index="snapshot.customerName" /><a-table-column title="合同" data-index="snapshot.contractName" /><a-table-column title="职位" data-index="snapshot.jobTitle" /><a-table-column title="候选人" data-index="snapshot.talentName" />
             <a-table-column title="贡献"><template slot-scope="_, r">{{ r.side === 'development' ? '客户拓展' : '招聘交付' }}</template></a-table-column>
             <a-table-column title="本次提成 / 扣回"><template slot-scope="_, r">{{ money(r.amount) }}</template></a-table-column>
             <a-table-column title="工资批次" data-index="payrollId" /><a-table-column title="结清状态" data-index="paymentStatus" />
@@ -41,6 +52,8 @@ export default {
     tab: 'attendance',
     rows: [],
     commissions: [],
+    commissionProgress: [],
+    commissionError: '',
     fields: [
       { key: 'baseAmount', label: '基本工资' },
       { key: 'allowance', label: '补贴' },
@@ -63,7 +76,12 @@ export default {
   },
   methods: {
     money,
-    async loadCommissions() { this.commissions = (await commission('/self')).data || [] },
+    async loadCommissions() {
+      const results = await Promise.allSettled([commission('/self'), commission('/self/overview')])
+      if (results[0].status === 'fulfilled') this.commissions = results[0].value.data || []
+      this.commissionProgress = results[1].status === 'fulfilled' ? results[1].value.data || [] : []
+      this.commissionError = results[1].status === 'rejected' ? results[1].reason?.message || '业绩进度加载失败' : ''
+    },
     async download() {
       const rows = (await hr('/self/payslips')).data || []
       exportTemplate(

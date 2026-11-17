@@ -5,8 +5,9 @@
       <span slot="label"
         >{{ item.label }}<small v-if="item.labelHint" class="field-label-hint">{{ item.labelHint }}</small></span
       >
+      <industry-select v-if="item.type === 'industry'" v-model="form[item.key]" :disabled="item.disabled" :placeholder="'请选择' + item.label" />
       <a-select
-        v-if="['select', 'multiple', 'contract'].includes(item.type)"
+        v-else-if="['select', 'multiple', 'contract'].includes(item.type)"
         v-model="form[item.key]"
         :mode="item.type === 'multiple' ? 'multiple' : 'default'"
         show-search
@@ -38,8 +39,11 @@
   </a-form-model>
 </template>
 <script>
+import IndustrySelect from '/src/components/IndustrySelect/index.vue'
+
 export default {
   name: 'RecruitmentForm',
+  components: { IndustrySelect },
   props: { fields: { type: Array, default: () => [] }, initial: { type: Object, default: () => ({}) }, hint: { type: String, default: '' }, saving: Boolean, submitText: { type: String, default: '保存' } },
   data() {
     const form = { id: this.initial.id, revision: this.initial.revision }

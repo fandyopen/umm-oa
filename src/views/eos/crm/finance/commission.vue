@@ -1,11 +1,19 @@
 <template>
   <div class="commission-workspace">
     <div class="commission-heading">
-      <div><h2>提成核算</h2><p>实际净回款形成提成池，拓展与交付分别分配，入职和保证期分阶段释放。</p></div>
+      <div><h2>提成核算</h2><p>销售回款后可结算；招聘交付按入职或服务验收结算，共用合同预算。</p></div>
       <a-space><a-button icon="book" @click="$router.push('/system/docs?tab=commission-rules')">核算规则与流程</a-button><a-button icon="reload" :loading="loading" @click="load">刷新</a-button></a-space>
     </div>
-    <a-alert type="info" show-icon class="tw-mb-4" message="先配置公司规则，再确认业绩归属、分摊回款、生成月度核算。提成率及两部门比例由公司填写；系统不预设制度比例。" />
+    <a-alert type="info" show-icon class="tw-mb-4" message="先在合同业绩中绑定规则并确认销售归属。销售按合同净回款自动核算；交付确认入职或验收后分摊回款。比例由公司填写，历史原方式归属继续沿用。" />
     <a-tabs v-model="tab">
+      <a-tab-pane key="contracts" tab="合同业绩">
+        <a-input-search v-model="keyword" allow-clear placeholder="搜索客户或合同" class="tw-w-[280px]" />
+        <a-table :data-source="contractRows" row-key="id" :pagination="{ pageSize: 10 }" class="tw-mt-4">
+          <a-table-column title="客户" data-index="customerName" /><a-table-column title="合同" data-index="name" /><a-table-column title="合同编号" data-index="code" />
+          <a-table-column title="归属状态"><template slot-scope="_, r">{{ r.attributionStatus === 'confirmed' ? '已确认' : r.attributionId ? '待确认' : '待配置规则与归属' }}</template></a-table-column>
+          <a-table-column title="操作"><template slot-scope="_, r"><a @click="contractId = r.id">提成与业绩</a></template></a-table-column>
+        </a-table>
+      </a-tab-pane>
       <a-tab-pane key="rules" tab="提成规则">
         <a-button v-if="allowed('rule')" type="primary" icon="plus" @click="newRule">新增规则版本</a-button>
         <a-table :data-source="options.rules || []" row-key="id" :pagination="{ pageSize: 10 }" class="tw-mt-4">
@@ -14,7 +22,7 @@
           <a-table-column title="生效日" data-index="effectiveDate" />
           <a-table-column title="总提成率"><template slot-scope="_, r">{{ r.poolRate }}%</template></a-table-column>
           <a-table-column title="拓展 / 交付"><template slot-scope="_, r">{{ r.developmentShare }}% / {{ 100 - Number(r.developmentShare) }}%</template></a-table-column>
-          <a-table-column title="首期 / 保证期后"><template slot-scope="_, r">{{ r.initialRelease }}% / {{ 100 - Number(r.initialRelease) }}%</template></a-table-column>
+          <a-table-column title="交付入职首期 / 保证期后"><template slot-scope="_, r">{{ r.initialRelease }}% / {{ 100 - Number(r.initialRelease) }}%</template></a-table-column>
           <a-table-column title="状态"><template slot-scope="_, r">{{ r.enabled ? '可选用' : '已停用' }}</template></a-table-column>
           <a-table-column title="操作"><template slot-scope="_, r"><a-button v-if="allowed('rule')" type="link" @click="toggleRule(r)">{{ r.enabled ? '停用' : '启用' }}</a-button></template></a-table-column>
         </a-table>
@@ -23,7 +31,7 @@
       <a-tab-pane key="performance" tab="业绩明细">
         <div class="commission-toolbar">
           <a-input-search v-model="keyword" allow-clear placeholder="搜索客户、职位、候选人" class="tw-w-[280px]" />
-          <a-button v-if="$route.query.customerId || $route.query.applicationId" @click="clearLocation">查看全部</a-button>
+          <a-button v-if="$route.query.customerId || $route.query.applicationId || $route.query.contractId" @click="clearLocation">查看全部</a-button>
         </div>
         <h3>招聘成果与业绩归属</h3>
         <a-table :data-source="applicationRows" row-key="id" :pagination="{ pageSize: 10 }" size="small">
@@ -33,7 +41,7 @@
           <a-table-column title="操作"><template slot-scope="_, r"><a-button type="link" @click="editAttribution(r.id)">业绩归属</a-button></template></a-table-column>
         </a-table>
         <h3 class="tw-mt-6">实际回款分摊</h3>
-        <a-alert type="info" show-icon message="仅展示合同实际到账。必须分摊到相同合同、收费条款下已确认的招聘成果；退款和冲销按原到账分摊比例自动扣减。" />
+        <a-alert type="info" show-icon message="合同销售按净回款自动核算，无需分摊。这里将交付回款分摊到同一合同、收费条款下已确认的入职或验收成果；原方式归属仍按原规则计算。" />
         <a-table :data-source="receiptRows" row-key="id" :pagination="{ pageSize: 8 }" size="small" class="tw-mt-3">
           <a-table-column title="到账编号" data-index="id" /><a-table-column title="客户" data-index="customerName" /><a-table-column title="合同" data-index="contractName" />
           <a-table-column title="到账金额"><template slot-scope="_, r">{{ money(r.amount) }}</template></a-table-column>
@@ -43,7 +51,7 @@
         </a-table>
         <h3 class="tw-mt-6">累计提成与本次可核算差额</h3><a-alert v-if="calculationError" type="error" show-icon :message="calculationError" class="tw-mb-4" />
         <a-table :data-source="performanceRows" :row-key="r => r.attributionId + ':' + r.userId + ':' + r.side" :pagination="{ pageSize: 10 }" size="small">
-          <a-table-column title="客户 / 候选人" :width="200"><template slot-scope="_, r">{{ r.customerName }}<small>{{ r.jobTitle }} · {{ r.talentName }}</small></template></a-table-column>
+          <a-table-column title="客户 / 业务来源" :width="200"><template slot-scope="_, r">{{ r.customerName }}<small>{{ r.contractName }} · {{ r.jobTitle }} · {{ r.talentName }}</small></template></a-table-column>
           <a-table-column title="人员" data-index="name" /><a-table-column title="贡献"><template slot-scope="_, r">{{ sideName(r.side) }}</template></a-table-column>
           <a-table-column title="分摊净回款"><template slot-scope="_, r">{{ money(r.netAllocated) }}</template></a-table-column>
           <a-table-column title="累计提成"><template slot-scope="_, r">{{ money(r.totalCommission) }}</template></a-table-column>
@@ -71,18 +79,18 @@
         <a-form-model-item label="生效日期"><a-date-picker v-model="ruleForm.effectiveDate" value-format="YYYY-MM-DD" /></a-form-model-item>
         <a-form-model-item label="总提成率（占分摊净回款的百分比）"><a-input-number v-model="ruleForm.poolRate" :min="0" :max="100" :precision="4" /></a-form-model-item>
         <a-form-model-item label="拓展部门占提成池比例（%，交付部门为剩余比例）"><a-input-number v-model="ruleForm.developmentShare" :min="0" :max="100" :precision="4" /></a-form-model-item>
-        <a-form-model-item label="入职且到账后首期释放比例（%，剩余部分保证期完成后释放）"><a-input-number v-model="ruleForm.initialRelease" :min="0" :max="100" :precision="4" /></a-form-model-item>
+        <a-form-model-item label="交付入职首期释放比例（%，余款保证期完成后释放；销售回款后100%可结算）"><a-input-number v-model="ruleForm.initialRelease" :min="0" :max="100" :precision="4" /></a-form-model-item>
       </a-form-model>
     </a-modal>
     <a-modal v-model="attributionVisible" title="招聘成果业绩归属" width="900px" :footer="null">
       <template v-if="currentApplication">
         <a-descriptions :column="2"><a-descriptions-item label="客户">{{ currentApplication.customerName }}</a-descriptions-item><a-descriptions-item label="候选人">{{ currentApplication.talentName }}</a-descriptions-item><a-descriptions-item label="职位">{{ currentApplication.jobTitle }}</a-descriptions-item><a-descriptions-item label="入职日期">{{ currentApplication.actualEntryDate || '尚未确认' }}</a-descriptions-item></a-descriptions>
-        <a-alert type="info" show-icon class="tw-mb-4" message="默认人员仅供核对，请明确本次开发、维护及交付贡献。部门内比例分别合计100%；确认后冻结，不随负责人或规则变化。" />
+        <a-alert type="info" show-icon class="tw-mb-4" :message="currentApplication.contractPlan ? '此合同已独立确认销售归属，此处仅分配招聘交付份额，沿用合同冻结规则，不重复计提销售。交付部门内份额须合计100%。' : '此合同沿用原方式，各部门内比例分别合计100%；新业务建议先在合同业绩中确认销售归属。'" />
         <a-form-model layout="vertical">
-          <a-form-model-item label="业务类型"><a-select v-model="attributionForm.businessKind" :disabled="attributionLocked" @change="attributionForm.ruleId = undefined"><a-select-option value="first">新客首单</a-select-option><a-select-option value="repeat">老客续单</a-select-option></a-select></a-form-model-item>
-          <a-form-model-item label="提成规则"><a-select v-model="attributionForm.ruleId" :disabled="attributionLocked" show-search option-filter-prop="children"><a-select-option v-for="r in attributionRules" :key="r.id" :value="r.id">{{ r.name }} · 版本 #{{ r.id }} · {{ r.effectiveDate }}</a-select-option></a-select></a-form-model-item>
+          <a-form-model-item label="业务类型"><a-select v-model="attributionForm.businessKind" :disabled="attributionLocked || !!currentApplication.contractPlan" @change="attributionForm.ruleId = undefined"><a-select-option value="first">新客首单</a-select-option><a-select-option value="repeat">老客续单</a-select-option></a-select></a-form-model-item>
+          <a-form-model-item label="提成规则"><a-select v-model="attributionForm.ruleId" :disabled="attributionLocked || !!currentApplication.contractPlan" show-search option-filter-prop="children"><a-select-option v-for="r in attributionRules" :key="r.id" :value="r.id">{{ r.name }} · 版本 #{{ r.id }} · {{ r.effectiveDate }}</a-select-option></a-select></a-form-model-item>
           <div v-for="(p, index) in attributionForm.participants" :key="index" class="commission-participant">
-            <a-select v-model="p.side" :disabled="attributionLocked" class="tw-w-[150px]"><a-select-option value="development">客户拓展贡献</a-select-option><a-select-option value="delivery">招聘交付贡献</a-select-option></a-select>
+            <a-select v-model="p.side" :disabled="attributionLocked || !!currentApplication.contractPlan" class="tw-w-[150px]"><a-select-option v-if="!currentApplication.contractPlan" value="development">客户拓展贡献</a-select-option><a-select-option value="delivery">招聘交付贡献</a-select-option></a-select>
             <a-select v-model="p.userId" :disabled="attributionLocked" show-search option-filter-prop="children" class="tw-w-[260px]"><a-select-option v-for="u in options.people || []" :key="u.id" :value="u.id">{{ u.name }} · {{ u.deptName }}</a-select-option></a-select>
             <a-input-number v-model="p.share" :disabled="attributionLocked" :min="0" :max="100" :precision="4" /><span>%</span>
             <a-button v-if="!attributionLocked" type="link" @click="attributionForm.participants.splice(index, 1)">移除</a-button>
@@ -141,6 +149,7 @@
         <a-timeline><a-timeline-item v-for="h in detail.history" :key="h.id">{{ h.action }} · 操作人 #{{ h.operatorId }} · {{ h.createTime }}</a-timeline-item></a-timeline>
       </template>
     </a-drawer>
+    <a-drawer :visible="!!contractId" title="合同提成与业绩" width="min(1000px, 96vw)" @close="contractId = null"><contract-commission v-if="contractId" :contract-id="contractId" @changed="load" @performance="contractId = null; tab = 'performance'" /></a-drawer>
   </div>
 </template>
 <script>
@@ -148,39 +157,44 @@ import { withModuleContexts } from '/src/utils/moduleContext.js'
 import { commission } from '/src/api/eos/crm/commission.js'
 import { money } from '/src/views/enterprise/hr/hrShared.js'
 import * as XLSX from 'xlsx'
+import ContractCommission from './ContractCommission.vue'
 
 const today = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Shanghai' })
 const emptyAttribution = () => ({ participants: [], reason: '', businessKind: 'first' })
 export default {
   name: 'FinanceCommission',
+  components: { ContractCommission },
   mixins: [withModuleContexts({ commission: { component: 'eos/crm/finance/commission', label: '提成核算' } })],
   data: () => ({
-    calculationError: '', tab: 'performance', loading: false, busy: false, keyword: '', options: {}, overview: [], batches: [], detail: null,
+    calculationError: '', tab: 'contracts', contractId: null, loading: false, busy: false, keyword: '', options: {}, overview: [], batches: [], detail: null,
     ruleVisible: false, ruleForm: {}, attributionVisible: false, attributionForm: emptyAttribution(), currentApplication: null,
     allocationVisible: false, allocationForm: { rows: [] }, generateVisible: false, generateForm: {}
   }),
   computed: {
+    contractRows() { return (this.options.contracts || []).filter(c => (!this.$route.query.customerId || String(c.customerId) === String(this.$route.query.customerId)) && (!this.$route.query.contractId || String(c.id) === String(this.$route.query.contractId)) && (!this.keyword || [c.name, c.customerName, c.code].some(v => String(v || '').includes(this.keyword)))) },
     applicationRows() {
-      return (this.options.applications || []).filter(a => (!this.$route.query.applicationId || String(a.id) === String(this.$route.query.applicationId)) && (!this.$route.query.customerId || String(a.customerId) === String(this.$route.query.customerId)) && this.matches(a))
+      return (this.options.applications || []).filter(a => (!this.$route.query.applicationId || String(a.id) === String(this.$route.query.applicationId)) && (!this.$route.query.customerId || String(a.customerId) === String(this.$route.query.customerId)) && (!this.$route.query.contractId || String(a.contractId) === String(this.$route.query.contractId)) && this.matches(a))
     },
     receiptRows() {
-      return (this.options.receipts || []).filter(a => (!this.$route.query.customerId || String(a.customerId) === String(this.$route.query.customerId)) && this.matches(a))
+      return (this.options.receipts || []).filter(a => (!this.$route.query.customerId || String(a.customerId) === String(this.$route.query.customerId)) && (!this.$route.query.contractId || String(a.contractId) === String(this.$route.query.contractId)) && this.matches(a))
     },
     performanceRows() {
-      const ids = new Set(this.applicationRows.map(a => a.id))
-      return this.overview.filter(a => ids.has(a.applicationId)).flatMap(a => a.participants.map(p => ({ ...p, attributionId: a.id })))
+      return this.overview.filter(a => (!this.$route.query.customerId || String(a.customerId) === String(this.$route.query.customerId)) && (!this.$route.query.contractId || String(a.contractId) === String(this.$route.query.contractId)) && (!this.$route.query.applicationId || String(a.applicationId) === String(this.$route.query.applicationId)) && this.matches(a)).flatMap(a => a.participants.map(p => ({ ...p, attributionId: a.id })))
     },
     attributionLocked() { return this.attributionForm.status === 'confirmed' || !this.allowed('attribute') },
     attributionRules() {
       return (this.options.rules || []).filter(r => r.businessKind === this.attributionForm.businessKind && (r.enabled || r.id === this.attributionForm.ruleId || r.id === this.currentApplication?.originalRuleId))
     },
     allocationCandidates() {
-      return (this.options.applications || []).filter(a => a.attributionStatus === 'confirmed' && String(a.guaranteeTermKey || '') === String(this.allocationForm.receipt?.termKey || '') && Number(a.contractId) === Number(this.allocationForm.receipt?.contractId))
+      return [...(this.options.applications || []), ...(this.options.acceptances || [])].filter(a => a.attributionStatus === 'confirmed' && String(a.guaranteeTermKey || '') === String(this.allocationForm.receipt?.termKey || '') && Number(a.contractId) === Number(this.allocationForm.receipt?.contractId))
     },
     allocationTotal() { return this.allocationForm.rows.reduce((sum, r) => sum + Number(r.amount || 0), 0) }
   },
   async mounted() {
     await this.load()
+    if (this.$route.query.contractId && this.$route.query.tab !== 'performance') this.contractId = Number(this.$route.query.contractId)
+    if (this.$route.query.tab === 'performance') this.tab = 'performance'
+    if (this.$route.query.applicationId || this.$route.query.receiptId) this.tab = 'performance'
     if (this.$route.query.applicationId) await this.editAttribution(Number(this.$route.query.applicationId))
     if (this.$route.query.receiptId) {
       const receipt = (this.options.receipts || []).find(r => String(r.id) === String(this.$route.query.receiptId))
@@ -222,6 +236,11 @@ export default {
           { side: 'development', userId: data.application.developmentUserId || undefined, share: 100 },
           { side: 'delivery', userId: data.application.deliveryUserId || undefined, share: 100 }
         ]
+      }
+      if (!data.attribution && data.application.contractPlan) {
+        this.attributionForm.businessKind = data.application.contractPlan.businessKind
+        this.attributionForm.ruleId = data.application.contractPlan.ruleId
+        this.attributionForm.participants = this.attributionForm.participants.filter(p => p.side === 'delivery')
       }
       this.attributionVisible = true
     },

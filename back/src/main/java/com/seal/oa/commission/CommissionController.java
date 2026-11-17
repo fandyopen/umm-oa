@@ -13,6 +13,10 @@ public class CommissionController {
     @PostMapping("/rules") public Map<String,Object> saveRule(@RequestBody Map<String,Object>b){return ApiResult.ok(service.saveRule(b));}
     @PostMapping("/rules/{id}/enabled") public Map<String,Object> enable(@PathVariable long id,@RequestBody Map<String,Object>b){service.toggleRule(id,b);return ApiResult.ok();}
     @GetMapping("/options") public Map<String,Object> options(){return ApiResult.ok(service.options());}
+    @GetMapping("/contracts/{id}") public Map<String,Object> contract(@PathVariable long id){return ApiResult.ok(service.contractCommission(id));}
+    @PostMapping("/contracts/{id}") public Map<String,Object> saveContract(@PathVariable long id,@RequestBody Map<String,Object>b){return ApiResult.ok(service.saveContractCommission(id,b));}
+    @PostMapping("/contracts/{id}/confirm") public Map<String,Object> confirmContract(@PathVariable long id,@RequestBody Map<String,Object>b){return ApiResult.ok(service.confirmContractCommission(id,b));}
+    @PostMapping("/contracts/{id}/acceptances") public Map<String,Object> acceptance(@PathVariable long id,@RequestBody Map<String,Object>b){return ApiResult.ok(service.acceptDelivery(id,b));}
     @GetMapping("/applications/{id}") public Map<String,Object> attribution(@PathVariable long id){return ApiResult.ok(service.attributionForApplication(id));}
     @PostMapping("/applications/{id}") public Map<String,Object> saveAttribution(@PathVariable long id,@RequestBody Map<String,Object>b){return ApiResult.ok(service.saveAttribution(id,b));}
     @PostMapping("/attributions/{id}/confirm") public Map<String,Object> confirm(@PathVariable long id,@RequestBody Map<String,Object>b){service.confirmAttribution(id,b,true);return ApiResult.ok();}
@@ -29,4 +33,5 @@ public class CommissionController {
     @PostMapping("/batches/{id}/void") public Map<String,Object> voidBatch(@PathVariable long id,@RequestBody Map<String,Object>b){service.voidBatch(id,b);return ApiResult.ok();}
     @PostMapping("/batches/{id}/payroll") public Map<String,Object> payroll(@PathVariable long id,@RequestBody Map<String,Object>b){return ApiResult.ok(service.toPayroll(id,b));}
     @GetMapping("/self") public Map<String,Object> self(){return ApiResult.ok(service.self());}
+    @GetMapping("/self/overview") public Map<String,Object> selfOverview(){return ApiResult.ok(service.selfOverview());}
 }
