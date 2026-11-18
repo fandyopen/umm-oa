@@ -5,12 +5,14 @@
         ><a-tab-pane key="attendance" tab="我的考勤"><attendance-workspace self-mode /></a-tab-pane
         ><a-tab-pane key="salary" tab="我的工资条"
           ><a-alert type="info" show-icon message="工资条发布与实际付款分别记录；已查看工资条不代表已到账。" class="tw-mb-4" /><a-button icon="download" @click="download">下载我的工资条</a-button
-          ><a-button icon="reload" @click="load">刷新</a-button
-          ><a-table :data-source="rows" row-key="id" class="tw-mt-4"
-            ><a-table-column title="所属月份" data-index="period" /><a-table-column v-for="field in fields" :key="field.key" :title="field.label" :data-index="field.key"
+          ><a-button icon="reload" :loading="loading" @click="load">刷新</a-button
+          ><a-table :data-source="rows" :loading="loading" :scroll="{ x: 1745 }" row-key="id" class="tw-mt-4"
+            ><a-table-column title="所属月份" data-index="period" :width="110" /><a-table-column v-for="field in fields" :key="field.key" :title="field.label" :data-index="field.key" :width="110"
               ><template slot-scope="v">{{ money(v) }}</template></a-table-column
-            ><a-table-column title="操作"
-              ><template slot-scope="_, r"><a-button type="link" @click="read(r)">标记已查看</a-button></template></a-table-column
+            ><a-table-column title="查看状态" :width="185">
+              <template slot-scope="_, r"><a-tag :color="Number(r.viewed) === 1 ? 'green' : 'orange'">{{ Number(r.viewed) === 1 ? '已查看' : '未查看' }}</a-tag><div v-if="Number(r.viewed) === 1" class="payslip-viewed-time">{{ r.viewedAt ? formatTime(r.viewedAt) : '历史记录未保留查看时间' }}</div></template>
+            </a-table-column><a-table-column title="操作" :width="130" fixed="right"
+              ><template slot-scope="_, r"><span v-if="Number(r.viewed) === 1" class="payslip-viewed-label"><a-icon type="check-circle" /> 已查看</span><a-button v-else type="link" :loading="readingIds.includes(r.id)" @click="read(r)">标记已查看</a-button></template></a-table-column
             ></a-table
           ></a-tab-pane
         ><a-tab-pane key="commission" tab="我的提成">
@@ -51,6 +53,8 @@ export default {
   data: () => ({
     tab: 'attendance',
     rows: [],
+    loading: false,
+    readingIds: [],
     commissions: [],
     commissionProgress: [],
     commissionError: '',
@@ -76,6 +80,7 @@ export default {
   },
   methods: {
     money,
+    formatTime(value) { return String(value).replace('T', ' ').slice(0, 19) },
     async loadCommissions() {
       const results = await Promise.allSettled([commission('/self'), commission('/self/overview')])
       if (results[0].status === 'fulfilled') this.commissions = results[0].value.data || []
@@ -91,12 +96,29 @@ export default {
       )
     },
     async load() {
-      this.rows = (await hr('/self/payslips')).data || []
+      const requestId = this._payslipRequest = (this._payslipRequest || 0) + 1
+      this.loading = true
+      try {
+        const { data } = await hr('/self/payslips')
+        if (requestId === this._payslipRequest) this.rows = data || []
+      } finally { if (requestId === this._payslipRequest) this.loading = false }
     },
     async read(row) {
-      await hr('/self/payslips/' + row.id + '/read', 'post', {})
-      this.$message.success('已标记查看')
+      if (Number(row.viewed) === 1 || this.readingIds.includes(row.id)) return
+      this.readingIds.push(row.id)
+      try {
+        const { data } = await hr('/self/payslips/' + row.id + '/read', 'post', {})
+        this._payslipRequest = (this._payslipRequest || 0) + 1
+        this.loading = false
+        const current = this.rows.find(item => item.id === row.id)
+        if (current) { this.$set(current, 'viewed', data.viewed); this.$set(current, 'viewedAt', data.viewedAt) }
+        this.$message.success('已标记查看')
+      } finally { this.readingIds = this.readingIds.filter(id => id !== row.id) }
     }
   }
 }
 </script>
+<style scoped>
+.payslip-viewed-time { color: #84909e; font-size: 12px; margin-top: 5px; }
+.payslip-viewed-label { color: var(--umm-primary, #0eb3a2); white-space: nowrap; }
+</style>

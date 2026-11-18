@@ -910,6 +910,7 @@ public class HrPayrollService {
                             r.put("employeeNo", snapshot.get("employeeNo"));
                             r.put("employeeName", snapshot.get("nickName"));
                             r.put("deptName", snapshot.get("deptName"));
+                            r.putAll(payslipReadState(id(r.get("id")), AuthContext.userId()));
                             r.put("paidAmount", paid(id(r.get("id"))));
                             r.put("commissionSources", commissionSources(id(r.get("id"))));
                             return r;
@@ -918,15 +919,32 @@ public class HrPayrollService {
     }
 
     @Transactional
-    public void acknowledge(long item) {
+    public Map<String, Object> acknowledge(long item) {
         d.require(SELF, "access");
         var row =
                 d.one(
-                        "SELECT i.id FROM oa_hr_payroll_item i JOIN oa_hr_payroll p ON"
-                            + " p.id=i.payroll_id WHERE i.id=? AND i.user_id=? AND p.published=1",
+                        "SELECT i.id,i.payroll_id FROM oa_hr_payroll_item i JOIN oa_hr_payroll p ON"
+                            + " p.id=i.payroll_id WHERE i.id=? AND i.user_id=? AND p.published=1 AND p.status='approved' FOR UPDATE",
                         item,
                         AuthContext.userId());
-        d.closeTodos("hr-payslip-" + item);
+        var state = payslipReadState(item, AuthContext.userId());
+        if (optionalId(state.get("viewed")) == 0) {
+            d.history("payslip", item, AuthContext.userId(), "查看工资条", Map.of("payrollId", row.get("payrollId")));
+        }
+        d.jdbc.update("UPDATE oa_todo SET status='done' WHERE task_id=? AND user_id=? AND business_type='hrPayslip' AND business_id=? AND status='todo'",
+                "hr-payslip-" + item, AuthContext.userId(), item);
+        return payslipReadState(item, AuthContext.userId());
+    }
+
+    private Map<String, Object> payslipReadState(long item, long user) {
+        var state = d.one("SELECT MIN(create_time) AS viewed_at FROM oa_hr_history WHERE entity_type='payslip' AND entity_id=? AND user_id=? AND action='查看工资条'", item, user);
+        // Older versions only closed the employee's payslip notice; retain that state without inventing a timestamp.
+        boolean legacyRead = state.get("viewedAt") == null && d.jdbc.queryForObject(
+                "SELECT COUNT(*) FROM oa_todo WHERE task_id=? AND business_type='hrPayslip' AND business_id=? AND user_id=? AND status='done'",
+                Long.class, "hr-payslip-" + item, item, user) > 0;
+        state.put("id", item);
+        state.put("viewed", state.get("viewedAt") != null || legacyRead ? 1 : 0);
+        return state;
     }
 
     List<Map<String, Object>> commissionSources(long item) {

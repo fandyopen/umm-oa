@@ -133,6 +133,14 @@ export function getSalesPerformance(params) {
   return request({ url: '/project/crm/sales-performance', method: 'get', params })
 }
 
+export function getSalesMonitor(params) {
+  return request({ url: '/project/crm/sales-performance/monitor', method: 'get', params })
+}
+
+export function getSalesMonitorDetails(params) {
+  return request({ url: '/project/crm/sales-performance/monitor/details', method: 'get', params })
+}
+
 export function saveSalesPerformanceRules(data) {
   return request({ url: '/project/crm/sales-performance/rules', method: 'put', data })
 }

@@ -23,6 +23,10 @@
             <a-icon type="calculator" />
             提成核算规则
           </a-menu-item>
+          <a-menu-item key="recruitment-rules">
+            <a-icon type="team" />
+            招聘流程规则
+          </a-menu-item>
         </a-menu>
         <div class="docs-sidebar-note">
           <span>入口配置</span>
@@ -50,8 +54,9 @@ import RouteMap from './components/RouteMap.vue'
 import ApiDocs from './components/ApiDocs.vue'
 import ModuleDocs from './components/ModuleDocs.vue'
 import CommissionRules from './components/CommissionRules.vue'
+import RecruitmentRules from './components/RecruitmentRules.vue'
 
-const validSections = ['route-map', 'api-docs', 'module-docs', 'commission-rules']
+const validSections = ['route-map', 'api-docs', 'module-docs', 'commission-rules', 'recruitment-rules']
 
 export default {
   name: 'DocsCenter',
@@ -59,7 +64,8 @@ export default {
     RouteMap,
     ApiDocs,
     ModuleDocs,
-    CommissionRules
+    CommissionRules,
+    RecruitmentRules
   },
   data() {
     return {

@@ -359,8 +359,7 @@ public class HrController {
 
     @PostMapping("/self/payslips/{id}/read")
     public Map<String, Object> read(@PathVariable long id) {
-        payroll.acknowledge(id);
-        return ApiResult.ok();
+        return ApiResult.ok(payroll.acknowledge(id));
     }
 
     @GetMapping("/finance/payroll")

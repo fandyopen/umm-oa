@@ -56,6 +56,9 @@ import {
 import 'ant-design-vue/dist/antd.less'
 import SDrawer from '/src/components/Drawer/index.js'
 import themePluginConfig from '/src/config/themePluginConfig.js'
+import { installOverlayNavigation } from '/src/utils/overlayNavigation.js'
+
+installOverlayNavigation(Vue, [Modal, Drawer])
 
 Vue.use(Collapse)
 Vue.use(ConfigProvider)

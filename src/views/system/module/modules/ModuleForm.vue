@@ -159,10 +159,14 @@ export default {
         if (!valid) {
           return
         }
+        if (this.form.menuType === 'C' && ['Layout', 'ParentView'].includes(this.form.component.trim())) {
+          return this.$message.warning('页面类型须填写实际页面组件路径，不能使用Layout或ParentView')
+        }
         this.saving = true
         try {
           const data = {
             ...this.form,
+            menuName: this.form.moduleName,
             menuId: this.form.moduleId,
             component: this.form.menuType === 'M' ? (Number(this.form.parentId) === 0 ? 'Layout' : 'ParentView') : this.form.component,
             isFrame: this.form.isFrame || '1',
@@ -178,6 +182,11 @@ export default {
           }
           this.open = false
           this.$emit('ok')
+          try {
+            await this.$store.dispatch('RefreshNavigation')
+          } catch (error) {
+            this.$message.warning('模块已保存，导航刷新失败，请刷新页面后查看')
+          }
         } finally {
           this.saving = false
         }

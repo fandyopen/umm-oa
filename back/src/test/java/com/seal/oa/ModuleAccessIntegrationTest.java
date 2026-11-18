@@ -85,6 +85,7 @@ class ModuleAccessIntegrationTest {
             "341301, /project/recruitment/jobs",
             "341302, /project/recruitment/talents",
             "341303, /project/recruitment/applications",
+            "341304, /project/recruitment/monitor",
             "340352, /project/merchant/list",
             "340590, /project/business/list",
             "340644, /project/crm/analysis/overview",

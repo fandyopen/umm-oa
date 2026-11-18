@@ -11,6 +11,11 @@ WHERE NOT EXISTS (SELECT 1 FROM sys_module WHERE module_id = 341302);
 INSERT INTO sys_module (module_id, tenant_id, parent_id, module_name, route_name, path, component, icon, module_sort, hidden, perms, has_flow, no_cache, status)
 SELECT 341303, 1, 341300, '招聘流程', 'RecruitmentPipeline', 'pipeline', 'eos/recruitment/pipeline/index', 'iconfont-zixiangmukanban', 3, 0, 'recruit:pipeline:list', 0, 1, '0'
 WHERE NOT EXISTS (SELECT 1 FROM sys_module WHERE module_id = 341303);
+INSERT INTO sys_module (module_id, tenant_id, parent_id, module_name, route_name, path, component, icon, module_sort, hidden, perms, has_flow, no_cache, status)
+SELECT 341304, 1, 341300, '部门看板', 'RecruitmentMonitor', 'monitor', 'eos/recruitment/monitor/index', 'iconfont-chengbenfenxi-', 4, 0, 'recruit:monitor:list', 0, 1, '0'
+WHERE NOT EXISTS (SELECT 1 FROM sys_module WHERE module_id = 341304);
+
+UPDATE sys_module SET icon = 'iconfont-chengbenfenxi-' WHERE module_id = 341304 AND (icon = 'dashboard' OR icon IS NULL OR icon = '');
 
 -- Replace known default icons without overwriting administrator-customized icons.
 UPDATE sys_module SET icon = 'iconfont-zhiwei' WHERE module_id = 341300

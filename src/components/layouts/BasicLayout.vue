@@ -134,6 +134,12 @@ export default {
       }
     }
   },
+  watch: {
+    mainMenu(routes) {
+      const root = routes.find(item => item.path === '/')
+      this.menus = (root && root.children) || []
+    }
+  },
   created() {
     const routes = this.mainMenu.find(item => item.path === '/')
     this.menus = (routes && routes.children) || []

@@ -797,6 +797,150 @@ const recruitmentFields = await importSource(read('src/views/eos/recruitment/sha
 const recruitmentMethod = (name, dependencies = {}) => { const scope = { ...recruitmentFields, ...dependencies }; return componentMethod(recruitmentFile, 'methods', name, Object.keys(scope), Object.values(scope)) }
 const recruitmentPath = (kind, id) => '/' + kind + '/' + id
 
+function recruitmentActionsVm(kind, showModuleAction = () => true) {
+  const vm = { kind, showModuleAction }
+  for (const name of ['guidance', 'canRecommendRecord', 'actionsForRecord', 'visibleActions', 'actionGroups']) vm[name] = recruitmentMethod(name).bind(vm)
+  return vm
+}
+
+test('job guidance moves from demand approval to recommendation, followup and completion', () => {
+  const vm = recruitmentActionsVm('jobs')
+  const row = { id: 3, status: 'draft', demandStatus: 'draft', headcount: 10, hired: 0 }
+  for (const [changes, next] of [
+    [{}, 'demand'], [{ demandStatus: 'pending' }, 'approvalProgress'],
+    [{ status: 'recruiting', demandStatus: 'approved' }, 'recommendTalent'],
+    [{ status: 'recruiting', demandStatus: 'approved', recommendations: 2 }, 'pipeline'],
+    [{ status: 'paused', demandStatus: 'approved' }, 'resume'],
+    [{ status: 'recruiting', demandStatus: 'approved', hired: 10 }, 'completeJob']
+  ]) {
+    const record = { ...row, ...changes }
+    assert.equal(vm.guidance(record).action, next)
+    assert.equal(vm.visibleActions(record).find(action => action.primary).key, next)
+  }
+  for (const status of ['paused', 'closed', 'completed', 'deleted']) assert.equal(vm.canRecommendRecord({ ...row, status, demandStatus: 'approved' }), false)
+})
+
+test('cross-module recommendation needs page and add permissions and preserves the clicked job', async () => {
+  const row = { id: 3, status: 'recruiting', demandStatus: 'approved', headcount: 10, hired: 0 }
+  for (const permission of ['view', 'add']) {
+    const vm = recruitmentActionsVm('jobs', (module, action = 'view') => module !== 'applications' || action !== permission)
+    assert.ok(!vm.visibleActions(row).some(action => action.key === 'recommendTalent'))
+  }
+  const create = recruitmentMethod('createRecommendation')
+  const routes = []
+  const vm = { kind: 'jobs', detail: { id: 99 }, allowedAction: async () => true, $router: { push: route => routes.push(route) }, $message: { warning: () => {} } }
+  await create.call(vm, row)
+  assert.deepEqual(routes, [{ name: 'RecruitmentPipeline', query: { jobId: 3, create: '1' } }])
+  await create.call(vm, { ...row, hired: 10 })
+  assert.equal(routes.length, 1)
+})
+
+test('talent guidance respects recruitment locks, pending approvals and recommendable intent', () => {
+  const vm = recruitmentActionsVm('talents')
+  const locked = { status: 'available', canRecommend: false, recruitmentLocked: true, recommendationBlockReason: '已入职锁定' }
+  assert.equal(vm.guidance(locked).action, 'pipeline')
+  assert.ok(!vm.visibleActions(locked).some(action => action.key === 'recommendTalent'))
+  assert.equal(vm.guidance({ status: 'available', pendingApprovalCount: 1 }).action, 'approvalProgress')
+  assert.equal(vm.guidance({ status: 'uncontacted' }).action, 'contact')
+  assert.equal(vm.visibleActions({ status: 'available', canRecommend: true })[0].key, 'recommendTalent')
+})
+
+test('feedback, Offer and entry guidance follows actual substates and missing prerequisites', () => {
+  const vm = recruitmentActionsVm('applications')
+  const cases = [
+    [{ stage: 'recommended', feedbackStatus: 'pending', availableOperations: ['feedback'] }, 'feedback'],
+    [{ stage: 'feedback', feedbackStatus: 'interested', availableOperations: ['interview'] }, 'interview'],
+    [{ stage: 'feedback', feedbackStatus: 'rejected', availableOperations: ['finishRecommendation'] }, 'finishRecommendation'],
+    [{ stage: 'offer', offerStatus: 'draft', availableOperations: ['offer', 'issueOffer'] }, 'issueOffer'],
+    [{ stage: 'offer', offerStatus: 'issued', availableOperations: ['acceptOffer', 'rejectOffer'] }, 'acceptOffer'],
+    [{ stage: 'entry', jobId: 3, availableOperations: ['entry'] }, 'linkContract'],
+    [{ stage: 'entry', contractId: 4, attachments: [], availableOperations: ['entry'] }, 'evidence'],
+    [{ stage: 'entry', contractId: 4, attachments: [{ id: 1 }], availableOperations: ['entry'] }, 'entry'],
+    [{ stage: 'entry', contractId: 4, availableOperations: ['entryDelay'] }, 'job']
+  ]
+  for (const [row, expected] of cases) {
+    assert.equal(vm.guidance(row).action, expected)
+    assert.equal(vm.visibleActions(row).find(action => action.primary)?.key, expected)
+  }
+  assert.match(vm.visibleActions(cases[5][0]).find(action => action.key === 'entry').disabledReason, /合同/)
+  assert.match(vm.visibleActions(cases[6][0]).find(action => action.key === 'entry').disabledReason, /凭证/)
+})
+
+test('guarantee guidance uses the server completion gate and shows remaining days in China dates', () => {
+  const guide = recruitmentFields.recruitmentGuidance
+  const vm = recruitmentActionsVm('applications')
+  const row = { stage: 'guarantee', guaranteeStatus: 'active', guaranteeEnd: '2026-11-20', availableOperations: ['guarantee'] }
+  assert.match(guide('applications', row, '2026-11-17').description, /剩余 3 天/)
+  assert.ok(!vm.visibleActions(row).some(action => action.key === 'completeGuarantee'))
+  const due = { ...row, availableOperations: ['guarantee', 'completeGuarantee'] }
+  assert.equal(vm.visibleActions(due)[0].key, 'completeGuarantee')
+  vm.showModuleAction = (_, permission) => permission !== 'guarantee'
+  assert.ok(!vm.visibleActions(due).some(action => action.key === 'completeGuarantee'))
+})
+
+test('contract prerequisite opens the selected job change workflow and keeps pipeline context', async () => {
+  const row = { id: 7, jobId: 3, stage: 'entry', availableOperations: ['entry'] }
+  const job = { id: 3, demandStatus: 'approved', revision: 8, approvals: [] }
+  const paths = [], changes = [], modules = []
+  const run = recruitmentMethod('runRecordAction', { recordPath: recruitmentPath, api: async path => { paths.push(path); return { data: path === '/jobs/3' ? job : row } } })
+  const vm = Object.assign(recruitmentActionsVm('applications'), { actionLoadingId: null, detail: { id: 99 }, allowedAction: async (action, module) => { modules.push([action, module]); return true }, loadOptions: async () => {}, runAction: async (...args) => changes.push(args), $message: { warning: () => {} } })
+  await run.call(vm, 'linkContract', row)
+  assert.deepEqual(paths, ['/applications/7', '/jobs/3'])
+  assert.deepEqual(modules, [['view', 'jobs'], ['change', 'jobs']])
+  assert.equal(changes[0][1], job)
+  assert.equal(changes[0][2], 'jobs')
+  assert.equal(vm.detail.id, 99)
+  job.approvals = [{ status: 'pending' }]
+  await run.call(vm, 'linkContract', row)
+  assert.equal(changes.length, 1)
+})
+
+test('cached recruitment pages do not consume another pages recommendation shortcut', async () => {
+  const readRoute = recruitmentMethod('readRoute')
+  let loads = 0, forms = 0
+  const vm = { kind: 'jobs', query: {}, $route: { meta: { component: recruitmentFields.recruitmentModules.applications.component }, query: { create: '1', jobId: '3' } }, load: async () => { loads++ }, create: async () => { forms++ } }
+  await readRoute.call(vm)
+  assert.equal(loads, 0)
+  assert.equal(forms, 0)
+  let release
+  vm.$route.meta.component = recruitmentFields.recruitmentModules.jobs.component
+  vm.load = () => new Promise(resolve => { release = resolve })
+  const loading = readRoute.call(vm)
+  vm.$route.meta.component = recruitmentFields.recruitmentModules.applications.component
+  release()
+  await loading
+  assert.equal(forms, 0)
+})
+
+test('contract linking submits the job change configuration from a pipeline form', async () => {
+  const run = recruitmentMethod('runAction', { recordPath: recruitmentPath })
+  const checks = [], sent = []
+  let save
+  const vm = { kind: 'applications', options: {}, allowedAction: async (...args) => { checks.push(args); return true }, form: (title, fields, initial, callback) => { save = callback }, submitConfiguredAction: async (...args) => sent.push(args) }
+  await run.call(vm, { key: 'change', permission: 'change', label: '关联服务合同' }, { id: 3, revision: 8 }, 'jobs')
+  await save({ contractId: 4, reason: '关联已签署合同' })
+  assert.deepEqual(checks, [['change', 'jobs']])
+  assert.deepEqual(sent[0], ['change', { revision: 8, reason: '关联已签署合同', fields: { contractId: 4, reason: '关联已签署合同' }, entityId: 3, title: '招聘申请：change #3' }, '关联服务合同', 'jobs'])
+})
+
+test('direct lifecycle shortcuts preserve revision and require confirmation without automatic submission', async () => {
+  const posts = []
+  const run = recruitmentMethod('runAction', { recordPath: recruitmentPath, api: async (...args) => posts.push(args) })
+  let save
+  const vm = { kind: 'jobs', allowedAction: async () => true, form: (title, fields, initial, callback) => { assert.ok(fields.some(field => field.key === 'reason' && field.required)); save = callback } }
+  for (const [key, status] of [['resume', 'recruiting'], ['completeJob', 'completed']]) {
+    await run.call(vm, { key, permission: 'status' }, { id: 3, revision: 8 })
+    assert.equal(posts.length, key === 'resume' ? 0 : 1)
+    await save({ reason: '核实后办理' })
+    assert.deepEqual(posts.at(-1), ['/jobs/3/actions/status', 'post', { revision: 8, status, reason: '核实后办理' }])
+  }
+  vm.kind = 'applications'
+  await run.call(vm, { key: 'completeGuarantee', permission: 'guarantee' }, { id: 7, revision: 9 })
+  assert.equal(posts.length, 2)
+  await save({ reason: '保证期履约已核实' })
+  assert.deepEqual(posts.at(-1), ['/applications/7/actions/guarantee', 'post', { revision: 9, operation: 'complete', reason: '保证期履约已核实' }])
+})
+
 test('recommendation candidate selection only allows contacting and available with an inline label hint', async () => {
   const create = recruitmentMethod('create', recruitmentFields)
   let fields
@@ -911,7 +1055,7 @@ test('creating a recommendation saves once and immediately exposes feedback inst
 test('recruitment menus follow record state and permissions in all three modules', () => {
   const actions = recruitmentMethod('actionsForRecord')
   const vm = { kind: 'jobs', showModuleAction: (_, permission) => permission !== 'assign' }
-  let keys = actions.call(vm, { demandStatus: 'draft' }).map(action => action.key)
+  let keys = actions.call(vm, { status: 'draft', demandStatus: 'draft' }).map(action => action.key)
   assert.ok(keys.includes('demand') && keys.includes('remove') && keys.includes('copy'))
   assert.ok(!keys.includes('change') && !keys.includes('assign'))
   keys = actions.call(vm, { demandStatus: 'approved' }).map(action => action.key)
@@ -964,24 +1108,25 @@ test('interview dispatch rechecks feedback after the row menu was opened', async
   const latest = { id: 2, stage: 'feedback', feedbackStatus: 'pending', revision: 5 }
   const run = recruitmentMethod('runRecordAction', { recordPath: recruitmentPath, api: async () => ({ data: latest }) })
   const warnings = []; let dispatched = false
-  const vm = { kind: 'applications', actionLoadingId: null, showModuleAction: () => true, actionsForRecord: d => actions.call(vm, d), loadOptions: async () => {}, runAction: async () => { dispatched = true }, $message: { warning: message => warnings.push(message) } }
+  const vm = { kind: 'applications', actionLoadingId: null, showModuleAction: () => true, visibleActions: d => actions.call(vm, d), loadOptions: async () => {}, runAction: async () => { dispatched = true }, $message: { warning: message => warnings.push(message) } }
   await run.call(vm, 'interview', { id: 2, stage: 'feedback', feedbackStatus: 'interested' })
   assert.equal(dispatched, false)
   assert.equal(warnings.length, 1)
 })
 
-test('recruitment row menus ignore an earlier record response after switching rows', async () => {
-  const pending = new Map()
-  const prepare = recruitmentMethod('prepareRowActions', { api: path => new Promise(resolve => pending.set(path, resolve)), recordPath: recruitmentPath })
-  const vm = { kind: 'jobs', rowMenuRequest: 0 }
-  const first = prepare.call(vm, { id: 1 }, true)
-  const second = prepare.call(vm, { id: 2 }, true)
-  pending.get('/jobs/2')({ data: { id: 2, demandStatus: 'approved' } })
-  await second
-  pending.get('/jobs/1')({ data: { id: 1, demandStatus: 'draft' } })
+
+test('recruitment direct actions ignore duplicate clicks while rechecking the current record', async () => {
+  let release; let requests = 0
+  const run = recruitmentMethod('runRecordAction', { api: () => { requests++; return new Promise(resolve => { release = resolve }) }, recordPath: recruitmentPath })
+  const calls = []
+  const vm = { kind: 'jobs', actionLoadingId: null, visibleActions: () => [{ key: 'demand' }], loadOptions: async () => {}, runAction: async (action, row) => calls.push(row.id) }
+  const first = run.call(vm, 'demand', { id: 1 })
+  await run.call(vm, 'demand', { id: 1 })
+  assert.equal(requests, 1)
+  release({ data: { id: 1, revision: 4 } })
   await first
-  assert.equal(vm.rowMenuRecord.id, 2)
-  assert.equal(vm.rowMenuLoading, false)
+  assert.deepEqual(calls, [1])
+  assert.equal(vm.actionLoadingId, null)
 })
 
 test('recruitment row actions recheck current state and never use an unrelated open detail', async () => {
@@ -989,7 +1134,7 @@ test('recruitment row actions recheck current state and never use an unrelated o
   const execute = recruitmentMethod('runRecordAction', { api: async path => { assert.equal(path, '/jobs/2'); return { data: latest } }, recordPath: recruitmentPath })
   const actions = recruitmentMethod('actionsForRecord')
   const calls = []; const warnings = []
-  const vm = { kind: 'jobs', detail: { id: 1 }, actionLoadingId: null, showModuleAction: () => true, actionsForRecord: d => actions.call(vm, d), loadOptions: async () => {}, runAction: async (action, d) => calls.push([action.key, d]), $message: { warning: message => warnings.push(message) } }
+  const vm = { kind: 'jobs', detail: { id: 1 }, actionLoadingId: null, showModuleAction: () => true, visibleActions: d => actions.call(vm, d), loadOptions: async () => {}, runAction: async (action, d) => calls.push([action.key, d]), $message: { warning: message => warnings.push(message) } }
   await execute.call(vm, 'demand', { id: 2 })
   assert.equal(calls[0][1], latest)
   assert.equal(vm.detail.id, 1)
@@ -1032,20 +1177,34 @@ test('unsuitable feedback only exposes correction and explicit finish without a 
   assert.equal(recruitmentFields.applicationSubstate({ stage: 'ended' }), '已确认不再推进')
 })
 
-test('detail corrections stay out of row menus and terminal records hide an empty more menu', () => {
-  const actions = recruitmentMethod('actionsForRecord')
-  const more = recruitmentMethod('rowMoreActions')
-  const has = recruitmentMethod('hasRowActions')
-  const inlineResult = recruitmentMethod('hasInterviewResultAction')
+
+test('stage corrections and exceptions stay in more while the current next step remains direct', () => {
+  const vm = recruitmentActionsVm('applications')
   const row = { id: 7, stage: 'interview', availableOperations: ['interviewResult', 'feedback', 'candidateWithdraw', 'customerCancel'] }
-  const vm = { kind: 'applications', rowMenuId: 7, rowMenuRecord: row, showModuleAction: () => true }
-  vm.actionsForRecord = record => actions.call(vm, record)
-  assert.deepEqual(more.call(vm, row).map(action => action.key), [])
-  assert.equal(vm.actionsForRecord(row).filter(action => action.detailsOnly).length, 3)
-  assert.equal(has.call(vm, row), false)
-  assert.equal(inlineResult.call(vm, row), true)
-  for (const stage of ['ended', 'rejected', 'completed']) assert.equal(has.call(vm, { stage, availableOperations: [] }), false)
-  assert.equal(has.call(vm, { stage: 'ended', availableOperations: ['followupManage'] }), true)
+  const keys = vm.actionGroups(row).flatMap(group => group.actions.map(action => action.key))
+  for (const key of ['interviewResult', 'feedback', 'candidateWithdraw', 'customerCancel']) assert.ok(keys.includes(key))
+  const groups = vm.actionGroups(row)
+  assert.ok(groups.find(group => group.key === 'main').actions.some(action => action.key === 'interviewResult'))
+  for (const key of ['feedback', 'candidateWithdraw', 'customerCancel']) assert.ok(groups.find(group => group.key === 'more').actions.some(action => action.key === key))
+  assert.equal(vm.visibleActions(row).find(action => action.key === 'interviewResult').primary, true)
+  for (const stage of ['ended', 'rejected', 'completed']) assert.deepEqual(vm.visibleActions({ stage, availableOperations: [] }).map(action => action.key), ['detail'])
+  assert.ok(vm.visibleActions({ stage: 'ended', availableOperations: ['followupManage'] }).some(action => action.key === 'followupManage'))
+})
+
+test('recruitment rows show at most next step, one common action and detail with settings in more', () => {
+  const jobs = recruitmentActionsVm('jobs')
+  const row = { status: 'recruiting', demandStatus: 'approved', headcount: 10, hired: 0, recommendations: 0 }
+  const groups = jobs.actionGroups(row)
+  assert.deepEqual(groups[0].actions.map(action => action.key), ['recommendTalent', 'pipeline', 'detail'])
+  for (const key of ['change', 'assign', 'status', 'warning', 'copy']) assert.ok(groups[1].actions.some(action => action.key === key))
+  const applications = recruitmentActionsVm('applications')
+  const interview = { stage: 'interview', interviewStatus: 'completed', interviewResult: 'pass', availableOperations: ['feedback', 'interview', 'offer', 'candidateWithdraw', 'customerCancel'] }
+  const appGroups = applications.actionGroups(interview)
+  assert.equal(appGroups[0].actions[0].key, 'offer')
+  assert.ok(appGroups[0].actions.length <= 3)
+  for (const key of ['interview', 'candidateWithdraw', 'customerCancel']) assert.ok(appGroups[1].actions.some(action => action.key === key))
+  jobs.showModuleAction = (_, permission) => permission !== 'assign'
+  assert.ok(!jobs.actionGroups(row).flatMap(group => group.actions).some(action => action.key === 'assign'))
 })
 
 test('replacement creation checks both guarantee and add permissions', () => {
@@ -1115,40 +1274,30 @@ test('draft offer cancellation does not request a followup but issued offer with
   assert.ok(fields.some(field => field.key === 'followupRequired'))
 })
 
-test('interview menus directly record results and advance to Offer without a management step', () => {
-  const actions = recruitmentMethod('actionsForRecord')
-  const more = recruitmentMethod('rowMoreActions')
-  const inlineResult = recruitmentMethod('hasInterviewResultAction')
-  const vm = { kind: 'applications', showModuleAction: () => true, rowMenuId: 3 }
-  vm.actionsForRecord = record => actions.call(vm, record)
-  vm.rowMenuRecord = { id: 3, stage: 'interview', interviewStatus: 'scheduled', availableOperations: ['interviewResult'] }
-  assert.equal(inlineResult.call(vm, vm.rowMenuRecord), true)
-  assert.deepEqual(more.call(vm, vm.rowMenuRecord), [])
-  assert.equal(vm.actionsForRecord(vm.rowMenuRecord)[0].label, '登记面试结果')
-  vm.rowMenuRecord = { id: 3, stage: 'interview', interviewStatus: 'completed', interviewResult: 'pending', availableOperations: ['interviewResult'] }
-  assert.equal(inlineResult.call(vm, vm.rowMenuRecord), true)
-  assert.equal(vm.actionsForRecord(vm.rowMenuRecord)[0].label, '补充面试结果')
-  vm.rowMenuRecord = { id: 3, stage: 'interview', interviewStatus: 'completed', interviewResult: 'pass', availableOperations: ['interview', 'offer'] }
-  assert.deepEqual(more.call(vm, vm.rowMenuRecord).map(action => action.key), ['offer'])
-  assert.ok(vm.actionsForRecord(vm.rowMenuRecord).some(action => action.key === 'interview' && action.detailsOnly))
-  vm.rowMenuRecord = { id: 3, stage: 'interview', interviewStatus: 'cancelled', availableOperations: ['interview'] }
-  assert.deepEqual(more.call(vm, vm.rowMenuRecord).map(action => action.label), ['安排面试'])
+
+test('interview next actions distinguish scheduled, pending result, passed and cancelled rounds', () => {
+  const vm = recruitmentActionsVm('applications')
+  let row = { stage: 'interview', interviewStatus: 'scheduled', availableOperations: ['interviewResult'] }
+  assert.equal(vm.visibleActions(row)[0].label, '登记面试结果')
+  row = { ...row, interviewStatus: 'completed', interviewResult: 'pending' }
+  assert.equal(vm.visibleActions(row)[0].label, '补充面试结果')
+  row = { ...row, interviewResult: 'pass', availableOperations: ['interview', 'offer'] }
+  assert.equal(vm.visibleActions(row)[0].key, 'offer')
+  assert.ok(vm.visibleActions(row).some(action => action.key === 'interview'))
+  row = { ...row, interviewStatus: 'cancelled', availableOperations: ['interview'] }
+  assert.equal(vm.visibleActions(row)[0].label, '安排面试')
   assert.ok(!recruitmentFields.applicationActions({ availableOperations: ['interviewManage'] }).length)
 })
 
-test('inline result entry respects interview permissions and disappears after completion', () => {
-  const actions = recruitmentMethod('actionsForRecord')
-  const inlineResult = recruitmentMethod('hasInterviewResultAction')
+
+test('direct result entry respects interview permissions and server operation availability', () => {
+  const vm = recruitmentActionsVm('applications')
   const row = { stage: 'interview', availableOperations: ['interviewResult'] }
-  const vm = { kind: 'applications', showModuleAction: () => true }
-  vm.actionsForRecord = record => actions.call(vm, record)
-  assert.equal(inlineResult.call(vm, row), true)
+  assert.ok(vm.visibleActions(row).some(action => action.key === 'interviewResult'))
   vm.showModuleAction = (_, permission) => permission !== 'interview'
-  assert.equal(inlineResult.call(vm, row), false)
+  assert.ok(!vm.visibleActions(row).some(action => action.key === 'interviewResult'))
   vm.showModuleAction = () => true
-  assert.equal(inlineResult.call(vm, { stage: 'interview', availableOperations: ['offer'] }), false)
-  vm.kind = 'jobs'
-  assert.equal(inlineResult.call(vm, row), false)
+  assert.ok(!vm.visibleActions({ stage: 'interview', availableOperations: ['offer'] }).some(action => action.key === 'interviewResult'))
 })
 
 test('direct interview result selects an actionable round from the selected row without opening detail', async () => {

@@ -53,6 +53,7 @@ public class ModuleActionService {
     );
 
     private static final Set<Long> READ_ONLY_MODULES = Set.of(
+            341304L,
             340341L,
             340342L,
             340527L,

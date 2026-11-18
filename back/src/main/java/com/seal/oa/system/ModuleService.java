@@ -237,6 +237,7 @@ public class ModuleService {
     }
 
     public Long create(Map<String, Object> body, Long tenantId) {
+        validatePageComponent(body);
         Long moduleId = number(body.get("menuId"));
         if (moduleId == 0L) {
             moduleId = number(body.get("moduleId"));
@@ -254,7 +255,7 @@ public class ModuleService {
                 moduleId,
                 tenantId,
                 number(body.get("parentId")),
-                value(body.get("menuName"), body.get("moduleName"), "未命名模块"),
+                value(body.get("moduleName"), body.get("menuName"), "未命名模块"),
                 value(body.get("routeName"), body.get("name"), "Module" + moduleId),
                 value(body.get("path"), ""),
                 value(body.get("component"), ""),
@@ -280,6 +281,7 @@ public class ModuleService {
     }
 
     public void update(Map<String, Object> body) {
+        validatePageComponent(body);
         Long moduleId = number(body.get("menuId"), number(body.get("moduleId"), 0L));
         Map<String, Object> existing = module(moduleId);
         if (existing == null) {
@@ -299,7 +301,7 @@ public class ModuleService {
                 WHERE module_id = ?
                 """,
                 number(body.get("parentId"), 0L),
-                value(body.get("menuName"), body.get("moduleName"), ""),
+                value(body.get("moduleName"), body.get("menuName"), ""),
                 value(body.get("routeName"), body.get("name"), ""),
                 value(body.get("path"), ""),
                 value(body.get("component"), ""),
@@ -322,6 +324,13 @@ public class ModuleService {
                 value(body.get("perms"), ""),
                 value(body.get("component"), "")
         );
+    }
+
+    private void validatePageComponent(Map<String, Object> body) {
+        String component = value(body.get("component"), "");
+        if ("C".equals(body.get("menuType")) && (component.isBlank() || Set.of("Layout", "ParentView").contains(component))) {
+            throw new ApiException(400, "页面类型须填写实际页面组件路径，不能使用目录组件Layout或ParentView");
+        }
     }
 
     private String normalizeFlowConditions(Object value) {

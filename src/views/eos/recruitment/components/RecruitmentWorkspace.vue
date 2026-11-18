@@ -9,8 +9,9 @@
         <a-button v-if="showModuleAction(kind, 'add')" type="primary" icon="plus" @click="create">{{ kind === 'applications' ? '创建推荐' : kind === 'jobs' ? '新建职位' : '新建候选人' }}</a-button>
       </div>
       <div class="lifecycle">客户需求 → 职位确认 → 人才推荐 → 客户反馈 → 面试 → Offer → 入职 → 保证期结案</div>
-      <a-alert v-if="kind === 'jobs'" type="info" show-icon message="需求确认、职位变更沿用按钮级流程；只有流程已发布并启用才进入审批。职位名额与客户招聘统计由实际业务自动更新。" />
+      <a-alert v-if="kind === 'jobs'" type="info" show-icon message="先确认职位需求，再推荐人才。每行“下一步”会提示当前应做什么，点击右侧按钮即可办理。" />
       <a-alert v-if="kind === 'talents'" type="info" show-icon message="联系方式按权限脱敏；简历保留版本并单独授权预览和下载。建议先查重，再新建，重复档案可发起合并申请。" />
+      <a-alert v-if="kind === 'applications'" type="info" show-icon message="按“下一步”提示推进招聘。按钮随实际阶段变化；请在业务实际发生后登记反馈、面试、Offer和入职。" />
       <div v-if="kind === 'jobs'" class="metrics">
         <div v-for="item in metrics" :key="item.label">
           <small>{{ item.label }}</small
@@ -109,24 +110,23 @@
           >{{ row.recommendations }} / {{ row.interviews }} / {{ row.offers }} / {{ row.hired }}<small class="subline">入职完成率 {{ row.completionRate }}% · 招聘 {{ row.recruitingDays }} 天</small
           ><small class="subline">推荐转化：面试 {{ row.interviewRate }}% / Offer {{ row.offerRate }}% / 入职 {{ row.hireRate }}%</small></span
         >
-        <span slot="actions" slot-scope="_, row" class="row-actions">
-          <a-button type="link" size="small" @click="openDetail(row.id)">详情</a-button>
-          <a-button v-if="hasInterviewResultAction(row)" type="link" size="small" :loading="actionLoadingId === row.id" @click="runRecordAction('interviewResult', row)">{{
-            row.interviewStatus === 'completed' && row.interviewResult === 'pending' ? '补充结果' : '登记结果'
-          }}</a-button>
-          <a-button v-if="kind !== 'applications' && showModuleAction(kind, 'edit')" type="link" size="small" @click="edit(row.id)">修改</a-button>
-          <a-button v-if="kind === 'jobs' && showModuleAction(kind, 'copy')" type="link" size="small" @click="copy(row.id)">复制</a-button>
-          <a-dropdown v-if="hasRowActions(row)" :trigger="['click']" @visibleChange="prepareRowActions(row, $event)">
-            <a-button type="link" size="small" :loading="actionLoadingId === row.id" @click.stop>更多<a-icon type="down" /></a-button>
-            <a-menu slot="overlay" @click="({ key }) => runRecordAction(key, row)">
-              <a-menu-item v-if="rowMenuLoading && rowMenuId === row.id" key="loading" disabled>正在加载操作…</a-menu-item>
-              <template v-else>
-                <a-menu-item v-for="action in rowMoreActions(row)" :key="action.key" :class="{ 'danger-action': action.key === 'remove' }">{{ action.label }}</a-menu-item>
-                <a-menu-item v-if="!rowMoreActions(row).length" key="empty" disabled>{{ rowMenuError ? '加载失败，请重新打开' : '暂无可用操作' }}</a-menu-item>
-              </template>
-            </a-menu>
-          </a-dropdown>
-        </span>
+        <div slot="nextStep" slot-scope="_, row" class="next-step">
+          <strong>{{ guidance(row).title }}</strong>
+          <small>{{ guidance(row).description }}</small>
+        </div>
+        <div slot="actions" slot-scope="_, row" class="row-actions">
+          <div v-for="group in actionGroups(row)" :key="group.key" class="action-group" :class="{ 'main-actions': group.key === 'main' }">
+            <a-tooltip v-for="action in group.key === 'main' ? group.actions : []" :key="action.key" :title="action.disabledReason">
+              <span><a-button :type="action.primary ? 'primary' : 'link'" size="small" :class="{ 'danger-action': action.danger }" :disabled="!!action.disabledReason || actionLoadingId !== null" @click="runRecordAction(action.key, row)">{{ action.label }}</a-button></span>
+            </a-tooltip>
+            <a-dropdown v-if="group.key === 'more'" :trigger="['click']">
+              <a-button type="link" size="small" :disabled="actionLoadingId !== null">更多<a-icon type="down" /></a-button>
+              <a-menu slot="overlay" @click="({ key }) => runRecordAction(key, row)">
+                <a-menu-item v-for="action in group.actions" :key="action.key" :disabled="!!action.disabledReason" :class="{ 'danger-action': action.danger }"><a-tooltip :title="action.disabledReason">{{ action.label }}</a-tooltip></a-menu-item>
+              </a-menu>
+            </a-dropdown>
+          </div>
+        </div>
       </a-table>
     </a-card>
 
@@ -135,13 +135,19 @@
         <template v-if="detail.id">
           <a-alert v-if="kind === 'jobs' && detail.status === 'deleted'" type="info" show-icon message="职位已删除，当前仅供查阅历史资料。招聘流程和财务历史仍保留。" class="tw-mb-4" />
           <a-alert v-if="kind === 'applications' && detail.jobStatus === 'deleted'" type="info" show-icon message="原职位已删除，本条招聘流程仍可继续办理入职、保证期及历史事项，不能向原职位新增推荐。" class="tw-mb-4" />
-          <div v-if="detailActions.length" class="detail-actions">
-            <a-dropdown :trigger="['click']">
-              <a-button>更多操作<a-icon type="down" /></a-button>
-              <a-menu slot="overlay" @click="({ key }) => runRecordAction(key, detail)">
-                <a-menu-item v-for="action in detailActions" :key="action.key" :class="{ 'danger-action': action.key === 'remove' }">{{ action.label }}</a-menu-item>
-              </a-menu>
-            </a-dropdown>
+          <a-alert type="info" show-icon :message="guidance(detail).title" :description="guidance(detail).description" class="tw-mb-4" />
+          <div class="detail-actions">
+            <div v-for="group in actionGroups(detail)" :key="group.key" class="action-group">
+              <a-tooltip v-for="action in group.key === 'main' ? group.actions.filter(item => item.key !== 'detail') : []" :key="action.key" :title="action.disabledReason">
+                <span><a-button :type="action.primary ? 'primary' : 'default'" size="small" :class="{ 'danger-action': action.danger }" :disabled="!!action.disabledReason || actionLoadingId !== null" @click="runRecordAction(action.key, detail)">{{ action.label }}</a-button></span>
+              </a-tooltip>
+              <a-dropdown v-if="group.key === 'more'" :trigger="['click']">
+                <a-button size="small" :disabled="actionLoadingId !== null">更多操作<a-icon type="down" /></a-button>
+                <a-menu slot="overlay" @click="({ key }) => runRecordAction(key, detail)">
+                  <a-menu-item v-for="action in group.actions" :key="action.key" :disabled="!!action.disabledReason" :class="{ 'danger-action': action.danger }"><a-tooltip :title="action.disabledReason">{{ action.label }}</a-tooltip></a-menu-item>
+                </a-menu>
+              </a-dropdown>
+            </div>
           </div>
           <a-alert v-if="detail.warnings && detail.warnings.length" :message="detail.warnings.join('；')" type="warning" show-icon class="tw-my-4 tw-mx-0" />
           <a-alert v-if="kind === 'talents' && detail.recruitmentLocked" type="warning" show-icon class="tw-my-4 tw-mx-0"
@@ -270,7 +276,7 @@
               ></a-tab-pane
             >
             <a-tab-pane v-if="kind !== 'applications' && showModuleAction('applications')" key="related" tab="关联招聘流程"
-              ><a-button v-if="kind !== 'jobs' || detail.status !== 'deleted'" type="primary" @click="createRecommendation">为当前{{ kind === 'jobs' ? '职位' : '人才' }}创建推荐</a-button
+              ><a-button v-if="canRecommendRecord(detail)" type="primary" @click="createRecommendation()">为当前{{ kind === 'jobs' ? '职位' : '人才' }}创建推荐</a-button
               ><a-table :columns="relatedColumns" :data-source="related" row-key="id" :pagination="false" size="small" class="tw-mt-4"
                 ><span slot="relatedAction" slot-scope="_, row"><a @click="goPipeline(row.id)">进入招聘流程</a></span></a-table
               ></a-tab-pane
@@ -319,6 +325,7 @@ import {
   followupTypes,
   applicationSubstate,
   applicationActions,
+  recruitmentGuidance,
   label,
   choices,
   optionRows,
@@ -353,11 +360,6 @@ export default {
       detail: {},
       detailTab: 'overview',
       related: [],
-      rowMenuId: null,
-      rowMenuRecord: null,
-      rowMenuLoading: false,
-      rowMenuError: false,
-      rowMenuRequest: 0,
       actionLoadingId: null,
       formVisible: false,
       formKey: 0,
@@ -455,6 +457,7 @@ export default {
       if (this.kind === 'jobs')
         return [
           col('职位 / 编号', 'title', 'name', 220),
+          col('下一步', 'nextStep', 'nextStep', 250),
           col('客户', 'customerName', null, 160),
           col('状态', 'status', 'state', 100),
           col('需求确认', 'demandStatus', 'demand', 110),
@@ -462,12 +465,13 @@ export default {
           col('人数 / 剩余', 'headcount', 'quota', 100),
           col('推荐 / 面试 / Offer / 入职', 'progress', 'progress', 230),
           col('预警', 'warnings', 'warnings', 180),
-          { ...col('操作', 'actions', 'actions', 250), fixed: 'right' }
+          { ...col('操作', 'actions', 'actions', 300), fixed: 'right' }
         ]
       if (this.kind === 'talents')
         return [
           col('候选人 / 技能', 'name', 'name', 220),
           col('招聘占用', 'recruitmentAvailability', 'availability', 170),
+          col('下一步', 'nextStep', 'nextStep', 250),
           col('手机号', 'phone', null, 160),
           col('邮箱', 'email', null, 180),
           col('城市', 'city', null, 100),
@@ -476,19 +480,20 @@ export default {
           col('标签', 'tags', 'tags', 180),
           col('负责人', 'ownerName', null, 110),
           col('最近联系', 'lastContactTime', null, 175),
-          { ...col('操作', 'actions', 'actions', 190), fixed: 'right' }
+          { ...col('操作', 'actions', 'actions', 300), fixed: 'right' }
         ]
       return [
         col('候选人 / 职位', 'talentName', 'name', 240),
+        col('阶段', 'stage', 'applicationStage', 170),
+        col('下一步', 'nextStep', 'nextStep', 250),
         col('客户', 'customerName', null, 170),
         col('顾问', 'consultantName', null, 110),
-        col('阶段', 'stage', 'applicationStage', 170),
         col('推荐日期', 'submittedDate', null, 120),
         col('预计入职', 'expectedEntryDate', null, 120),
         col('实际入职', 'actualEntryDate', null, 120),
         col('保证期结束', 'guaranteeEnd', null, 120),
         col('提醒', 'warnings', 'warnings', 180),
-        { ...col('操作', 'actions', 'actions', 220), fixed: 'right' }
+        { ...col('操作', 'actions', 'actions', 340), fixed: 'right' }
       ]
     },
     detailFields() {
@@ -559,9 +564,6 @@ export default {
     },
     versionFields() {
       return jobFields(this.options).filter(f => !['collaborators', 'ownerUserId', 'customerId'].includes(f.key))
-    },
-    detailActions() {
-      return this.actionsForRecord(this.detail)
     }
   },
   watch: {
@@ -582,11 +584,66 @@ export default {
     async openCommission(id) {
       if (await this.checkModuleAction({ module: 'commission', label: '查看提成核算' })) this.$router.push({ path: '/finance/commission', query: { applicationId: String(id) } })
     },
-    hasInterviewResultAction(row) {
-      return this.kind === 'applications' && this.actionsForRecord(row).some(action => action.key === 'interviewResult')
+    guidance(row) {
+      return recruitmentGuidance(this.kind, row)
     },
-    hasRowActions(row) {
-      return this.kind !== 'applications' || this.actionsForRecord(row).some(action => !action.detailsOnly && action.key !== 'interviewResult')
+    canRecommendRecord(row) {
+      if (!this.showModuleAction('applications') || !this.showModuleAction('applications', 'add')) return false
+      if (this.kind === 'talents') return row.canRecommend === true
+      return this.kind === 'jobs' && row.status === 'recruiting' && row.demandStatus === 'approved' && Number(row.headcount) > Number(row.hired || 0)
+    },
+    visibleActions(row) {
+      const pending = row.demandStatus === 'pending' || Number(row.pendingApprovalCount) > 0 || (row.approvals || []).some(a => a.status === 'pending')
+      const actions = this.actionsForRecord(row).filter(action => !pending || ['withdraw', 'copy'].includes(action.key))
+      const add = (key, label, permission, module = this.kind) => {
+        if (this.showModuleAction(module) && this.showModuleAction(module, permission)) actions.push({ key, label, permission, module })
+      }
+      if (this.kind !== 'applications') {
+        if (this.canRecommendRecord(row)) add('recommendTalent', this.kind === 'jobs' ? '推荐人才' : '推荐到职位', 'add', 'applications')
+        add('pipeline', row.status === 'completed' ? '查看入职人员' : '招聘流程', 'view', 'applications')
+        if (pending) add('approvalProgress', '查看审批进度', 'view')
+        if (this.kind === 'jobs' && row.demandStatus === 'approved' && !pending && !['deleted', 'completed'].includes(row.status)) {
+          if (Number(row.hired || 0) >= Number(row.headcount)) add('completeJob', '完成职位', 'status')
+          else if (row.status !== 'recruiting') add('resume', row.status === 'paused' ? '恢复招聘' : '启动招聘', 'status')
+        }
+      } else {
+        if (row.stage === 'entry' && !row.contractId) add('linkContract', '关联服务合同', 'change', 'jobs')
+        if (['offer', 'entry', 'guarantee'].includes(row.stage) && (this.showModuleAction('applications', 'offer') || this.showModuleAction('applications', 'entry'))) {
+          actions.push({ key: 'evidence', label: row.stage === 'entry' ? '上传入职凭证' : '上传凭证' })
+        }
+        if (row.stage === 'interview') add('interviews', '面试轮次', 'view')
+        if (row.stage === 'entry' && !(row.availableOperations || []).includes('entry')) add('job', '查看职位', 'view', 'jobs')
+        if ((row.availableOperations || []).includes('completeGuarantee')) {
+          add('completeGuarantee', '办理期满结案', 'guarantee')
+        }
+      }
+      add('detail', '详情', 'view')
+      const next = this.guidance(row).action
+      return actions.map(action => ({
+        ...action,
+        primary: action.key === next,
+        danger: ['remove', 'candidateWithdraw', 'customerCancel', 'finishRecommendation', 'withdrawRecommendation', 'withdrawOffer', 'rejectOffer'].includes(action.key),
+        disabledReason: action.key === 'entry' && (!row.contractId || (Array.isArray(row.attachments) && !row.attachments.length))
+          ? (!row.contractId ? '请先关联服务合同' : '请先上传入职凭证') : ''
+      })).sort((a, b) => Number(b.primary) - Number(a.primary))
+    },
+    actionGroups(row) {
+      const actions = this.visibleActions(row)
+      const common = {
+        jobs: ['recommendTalent', 'edit', 'pipeline'],
+        talents: ['contact', 'recommendTalent', 'pipeline', 'edit'],
+        applications: ['feedback', 'interviewResult', 'offer', 'interview', 'evidence', 'expectedEntry', 'interviews', 'followupManage']
+      }[this.kind]
+      const direct = actions.filter(action => action.primary)
+      const secondary = common.map(key => actions.find(action => action.key === key && !action.primary && !action.detailsOnly && !action.danger)).find(Boolean)
+      if (secondary) direct.push(secondary)
+      const detail = actions.find(action => action.key === 'detail')
+      if (detail) direct.push(detail)
+      const inlineKeys = new Set(direct.map(action => action.key))
+      return [
+        { key: 'main', actions: direct },
+        { key: 'more', actions: actions.filter(action => !inlineKeys.has(action.key)) }
+      ].filter(group => group.actions.length)
     },
     hasInterviewOperation(interview, operation) {
       return (interview.availableOperations || []).includes(operation)
@@ -609,35 +666,32 @@ export default {
         { value: 'refund', label: '登记退费', operation: 'guaranteeRefund' }
       ].filter(option => allowed.has(option.operation))
     },
-    rowMoreActions(row) {
-      if (this.rowMenuId !== row.id || !this.rowMenuRecord) return []
-      return this.actionsForRecord(this.rowMenuRecord).filter(action => !action.detailsOnly && !['edit', 'copy', 'interviewResult'].includes(action.key))
-    },
-    async prepareRowActions(row, visible) {
-      const request = ++this.rowMenuRequest
-      if (!visible) return
-      this.rowMenuId = row.id
-      this.rowMenuRecord = null
-      this.rowMenuLoading = true
-      this.rowMenuError = false
-      try {
-        const r = await api(recordPath(this.kind, row.id))
-        if (request === this.rowMenuRequest) this.rowMenuRecord = r.data || null
-      } catch (e) {
-        if (request === this.rowMenuRequest) this.rowMenuError = true
-      } finally {
-        if (request === this.rowMenuRequest) this.rowMenuLoading = false
-      }
-    },
     async runRecordAction(key, row) {
-      if (this.actionLoadingId !== null || ['loading', 'empty'].includes(key)) return
+      if (this.actionLoadingId !== null) return
       this.actionLoadingId = row.id
       try {
         const r = await api(recordPath(this.kind, row.id))
         const d = r.data
         if (!d || d.id !== row.id) return this.$message.warning('记录已更新，请刷新列表后重试')
-        const action = this.actionsForRecord(d).find(item => item.key === key)
+        const action = this.visibleActions(d).find(item => item.key === key)
         if (!action) return this.$message.warning('当前状态或权限已变化，请刷新后重试')
+        if (action.disabledReason) return this.$message.warning(action.disabledReason)
+        if (key === 'detail') return await this.openDetail(d.id)
+        if (key === 'recommendTalent') return await this.createRecommendation(d)
+        if (key === 'pipeline') return await this.viewRecordPipeline(d)
+        if (['approvalProgress', 'interviews', 'evidence'].includes(key)) return await this.openDetail(d.id, { approvalProgress: 'approvals', interviews: 'interviews', evidence: 'attachments' }[key])
+        if (key === 'job') {
+          if (await this.allowedAction('view', 'jobs')) return this.$router.push({ name: 'RecruitmentJobs', query: { recordId: d.jobId } })
+          return
+        }
+        if (key === 'linkContract') {
+          if (!(await this.allowedAction('view', 'jobs')) || !(await this.allowedAction('change', 'jobs'))) return
+          const job = (await api(recordPath('jobs', d.jobId))).data
+          if (job.demandStatus !== 'approved' || (job.approvals || []).some(a => a.status === 'pending')) return this.$message.warning('职位存在待确认或审批中的需求，请先处理该申请')
+          await this.loadOptions()
+          return await this.runAction({ key: 'change', label: '关联服务合同', permission: 'change' }, job, 'jobs')
+        }
+        if (key === 'entry' && !(d.guaranteeTerms || []).length) return this.$message.warning('当前合同缺少保证期条款，请先核对已签署合同')
         await this.loadOptions()
         await this.runAction(action, d)
       } finally {
@@ -721,8 +775,10 @@ export default {
       }
     },
     async readRoute() {
+      if (this.$route.meta?.component !== recruitmentModules[this.kind].component) return
       this.query = { ...this.query, jobId: this.$route.query.jobId || undefined, talentId: this.$route.query.talentId || undefined, customerId: this.$route.query.customerId || undefined }
       await this.load()
+      if (this.$route.meta?.component !== recruitmentModules[this.kind].component) return
       const id = this.$route.query.recordId
       if (id) this.openDetail(id)
       if (this.$route.query.create === '1') {
@@ -772,11 +828,11 @@ export default {
       this.duplicateMode = !this.duplicateMode
       this.refresh()
     },
-    async openDetail(id) {
+    async openDetail(id, tab = 'overview') {
       if (!(await this.allowedAction('view'))) return
       this.detailVisible = true
       this.detailLoading = true
-      this.detailTab = 'overview'
+      this.detailTab = tab
       this.related = []
       try {
         const r = await api(recordPath(this.kind, id))
@@ -871,7 +927,7 @@ export default {
       if (!(await this.allowedAction('edit'))) return
       const r = await api(recordPath(this.kind, id))
       const d = r.data
-      if (this.kind === 'jobs' && !['draft', 'rejected', 'withdrawn'].includes(d.demandStatus)) return this.$message.warning('已确认需求请在“更多”中提交“职位变更”')
+      if (this.kind === 'jobs' && !['draft', 'rejected', 'withdrawn'].includes(d.demandStatus)) return this.$message.warning('已确认需求请点击“提交职位变更”修改')
       if (this.kind === 'talents' && !d.contactVisible) return this.$message.warning('修改档案需要查看联系方式权限')
       await this.loadOptions()
       const fields = (this.kind === 'jobs' ? jobFields(this.options) : talentFields(this.options, d.tags)).map(f => ({ ...f, disabled: f.key === (this.kind === 'jobs' ? 'customerId' : 'ownerUserId') }))
@@ -884,10 +940,9 @@ export default {
       await this.load()
       this.openDetail(r.data.id)
     },
-    async runAction(action, d = this.detail) {
-      if (!(await this.allowedAction(action.permission))) return
+    async runAction(action, d = this.detail, module = this.kind) {
+      if (!(await this.allowedAction(action.permission, module))) return
       const id = d.id
-      const module = this.kind
       const base = recordPath(module, id)
       const initial = { ...d, reason: '', ownerUserId: d.ownerUserId || d.consultantId, followupRequired: false, collaborators: d.collaborators || [] }
       const request = (name, payload) => this.submitConfiguredAction(name, { ...payload, entityId: id, title: '招聘申请：' + name + ' #' + id }, action.label, module)
@@ -907,11 +962,11 @@ export default {
           return simple([], post('demand', {}, true), '如按钮有已发布且启用的审批流程，将进入统一待办；否则直接确认需求并开始招聘。')
         case 'change':
           return this.form(
-            '申请职位变更',
+            action.label === '关联服务合同' ? '关联服务合同' : '申请职位变更',
             [...jobFields(this.options).filter(f => !['customerId', 'ownerUserId', 'collaborators', 'cycleDays', 'minRecommendations', 'feedbackDays'].includes(f.key)), reasonField],
             initial,
             b => request('change', { revision: d.revision, reason: b.reason, fields: b }),
-            '审批期间原需求继续生效；最终通过后保存新的需求版本。'
+            action.label === '关联服务合同' ? '请选择当前客户已签署的服务合同。沿用职位变更流程，生效后可继续确认入职。' : '审批期间原需求继续生效；最终通过后保存新的需求版本。'
           )
         case 'assign':
           return simple(
@@ -932,6 +987,9 @@ export default {
             ],
             post('warning')
           )
+        case 'resume':
+        case 'completeJob':
+          return simple([], post('status', { status: action.key === 'resume' ? 'recruiting' : 'completed' }), action.key === 'resume' ? '确认需求和招聘名额后，启动或恢复招聘。' : '请确认入职人数已达到需求，完成后停止新增推荐。')
         case 'contact':
           return simple([], post('contact'))
         case 'collaborators':
@@ -1047,6 +1105,8 @@ export default {
           return this.createReplacement(d)
         case 'postGuaranteeExit':
           return simple([field('exitDate', '实际离职日期', 'date', { required: true })], post('guarantee', { operation: 'exit' }), '仅释放人才在职占用，保留已完成的保证期、原职位结案和招聘成果；离职日期不能早于保证期结束。')
+        case 'completeGuarantee':
+          return simple([], post('guarantee', { operation: 'complete' }), '请核实保证期内履约情况，确认后办理期满结案。')
         case 'guarantee':
           return simple(
             [
@@ -1252,13 +1312,17 @@ export default {
       this.$router.push({ name: 'RecruitmentPipeline', query: { recordId: id } })
     },
     async viewTalentPipeline(row) {
-      if (!(await this.allowedAction('view', 'applications'))) return
-      this.$router.push({ name: 'RecruitmentPipeline', query: { talentId: row.id } })
+      return this.viewRecordPipeline(row)
     },
-    async createRecommendation() {
-      if (!(await this.allowedAction('add', 'applications'))) return
-      if (this.kind === 'talents' && this.detail.canRecommend !== true) return this.$message.warning(this.detail.recommendationBlockReason || '当前人才不可推荐，请刷新状态')
-      this.$router.push({ name: 'RecruitmentPipeline', query: { [this.kind === 'jobs' ? 'jobId' : 'talentId']: this.detail.id, create: '1' } })
+    async viewRecordPipeline(row) {
+      if (!(await this.allowedAction('view', 'applications'))) return
+      this.$router.push({ name: 'RecruitmentPipeline', query: { [this.kind === 'jobs' ? 'jobId' : 'talentId']: row.id } })
+    },
+    async createRecommendation(row = this.detail) {
+      if (!(await this.allowedAction('view', 'applications')) || !(await this.allowedAction('add', 'applications'))) return
+      if (this.kind === 'talents' && row.canRecommend !== true) return this.$message.warning(row.recommendationBlockReason || '当前人才不可推荐，请刷新状态')
+      if (this.kind === 'jobs' && (row.status !== 'recruiting' || row.demandStatus !== 'approved' || Number(row.hired || 0) >= Number(row.headcount))) return this.$message.warning('请先确认需求、启动招聘并核实剩余名额')
+      this.$router.push({ name: 'RecruitmentPipeline', query: { [this.kind === 'jobs' ? 'jobId' : 'talentId']: row.id, create: '1' } })
     },
     async saveSearch() {
       this.form('保存常用检索条件', [field('name', '搜索名称', 'text', { required: true })], {}, b => api('/searches', 'post', { ...b, query: this.query }))
@@ -1355,7 +1419,7 @@ export default {
         const data = (r.data || []).map(row => {
           const out = {}
           this.columns
-            .filter(c => !['actions', 'progress'].includes(c.dataIndex))
+            .filter(c => !['actions', 'progress', 'nextStep'].includes(c.dataIndex))
             .forEach(c => {
               out[c.title] = this.displayValue(c.dataIndex, row[c.dataIndex])
             })
@@ -1446,11 +1510,43 @@ export default {
   word-break: break-word;
 }
 .row-actions {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  white-space: nowrap;
+  gap: 8px;
+  white-space: normal;
 }
-.danger-action {
+.action-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  .ant-btn-link {
+    padding: 0 2px;
+    font-size: 12px;
+  }
+}
+.row-actions .action-group {
+  flex-wrap: nowrap;
+}
+.next-step {
+  white-space: normal;
+  line-height: 1.6;
+  strong {
+    color: #344054;
+    font-size: 13px;
+    font-weight: 500;
+  }
+  small {
+    display: block;
+    color: #667085;
+    margin-top: 4px;
+    font-size: 12px;
+  }
+}
+.action-group .ant-btn.danger-action:not([disabled]) {
+  color: #ff4d4f;
+}
+.ant-dropdown-menu-item.danger-action:not(.ant-dropdown-menu-item-disabled) {
   color: #ff4d4f;
 }
 @media (max-width: 800px) {

@@ -1,232 +1,302 @@
 <template>
   <page-header-wrapper :breadcrumb="$store.getters.breadcrumb">
-    <a-spin :spinning="loading">
-      <div class="sales-header">
+    <a-card :bordered="false" class="monitor">
+      <div class="heading">
         <div>
-          <h2>拓展经营</h2>
-          <p>
-            {{ department || '客户拓展部' }}<template v-if="manager"> · 负责人：{{ manager }}</template> · 查看销售过程、商机推进与签约回款
-          </p>
+          <h2>部门看板</h2>
+          <p>监控销售人员从客户接触、商机推进到合同签署的情况，点击数字可核对业务明细。</p>
         </div>
-        <div class="sales-controls">
-          <a-range-picker v-model="period" :allow-clear="false" :disabled-date="disabledDate" format="YYYY-MM-DD" />
-          <a-button type="primary" icon="search" :loading="loading" @click="load">查询</a-button>
-          <a-button v-if="canManageRules" icon="setting" @click="openRules">监管规则</a-button>
-        </div>
+        <div class="heading-actions"><a-button v-if="canManageRules" icon="setting" @click="openRules">监管规则</a-button><a-button icon="reload" :loading="loading" @click="refresh">刷新</a-button></div>
       </div>
-
-      <a-alert v-if="error" type="error" show-icon :message="error" />
-      <a-alert v-if="scope === 'self'" type="info" show-icon message="当前账号仅能查看本人数据。团队排名和部门汇总需要部门管理数据范围。" />
-      <a-alert v-if="!summary.salesCount" type="warning" show-icon message="当前没有纳入统计的在职拓展销售，请核对部门归属和成员状态。" />
-
-      <div class="sales-metrics">
-        <div v-for="metric in metrics" :key="metric.key" class="sales-metric">
-          <span>{{ metric.label }}</span>
-          <strong>{{ metric.money ? money(summary[metric.key]) : number(summary[metric.key]) }}</strong>
-        </div>
-      </div>
-
-      <section class="sales-section">
-        <div class="section-heading">
-          <h3>销售人员过程与结果</h3>
-          <span>按实际回款、签约金额、新增客户排序；可点击列标题排序</span>
-        </div>
-        <a-table size="middle" :columns="columns" :data-source="staff" :pagination="{ pageSize: 20, showTotal: total => '共 ' + total + ' 人' }" row-key="userId" :scroll="staffTableScroll">
-          <span slot="conversion" slot-scope="text, row">{{ rate(row.signedContracts, row.newCustomers) }}</span>
-          <span slot="pipeline" slot-scope="text">{{ money(text) }}</span>
-          <span slot="signed" slot-scope="text">{{ money(text) }}</span>
-          <span slot="received" slot-scope="text">{{ money(text) }}</span>
-          <span slot="attention" slot-scope="text, row">
-            <button v-if="row.overdueCustomers" type="button" class="attention-link" title="点击查看该销售的超期客户" @click="locateAttention(row, 'customer')">
-              <a-tag color="red">逾期跟进 {{ row.overdueCustomers }}</a-tag>
-            </button>
-            <button v-if="row.stagnantOpportunities" type="button" class="attention-link" title="点击查看该销售的停滞商机" @click="locateAttention(row, 'opportunity')">
-              <a-tag color="orange">停滞商机 {{ row.stagnantOpportunities }}</a-tag>
-            </button>
-            <span v-if="!row.overdueCustomers && !row.stagnantOpportunities" class="sales-muted">暂无</span>
-          </span>
-        </a-table>
-      </section>
-
-      <section ref="attentionSection" class="sales-section">
-        <div class="section-heading">
-          <h3>需要跟进</h3>
-          <span>{{ ruleSummary }}</span>
-        </div>
-        <div v-if="attentionOwnerId" class="attention-filter">
-          <span>当前查看：{{ attentionOwnerName }} · {{ attentionKind === 'customer' ? '超期客户' : '停滞商机' }}（{{ filteredAttention.length }} 项）</span>
-          <a-button type="link" size="small" @click="clearAttentionFilter">查看全部</a-button>
-        </div>
-        <a-table
-          size="small"
-          :columns="attentionColumns"
-          :data-source="filteredAttention"
-          :pagination="{ current: attentionPage, pageSize: 10, showTotal: total => '共 ' + total + ' 项' }"
-          row-key="attentionKey"
-          :scroll="attentionTableScroll"
-          @change="changeAttentionPage"
+      <div class="filters">
+        <a-select v-model="query.deptId" allow-clear placeholder="全部部门" @change="changeDepartment"
+          ><a-select-option v-for="item in options.departments || []" :key="item.id" :value="item.id">{{ item.name || '未分部门' }}</a-select-option></a-select
         >
-          <span slot="type" slot-scope="text">{{ attentionType(text) }}</span>
-          <span slot="customer" slot-scope="text, row"
-            ><a v-if="row.customerId" @click="openCustomer(row)">{{ text || '查看客户' }}</a
-            ><span v-else>{{ text || '未关联客户' }}</span></span
-          >
-          <span slot="matter" slot-scope="text, row"
-            >{{ text }}<small v-if="row.reason" class="attention-reason">{{ row.reason }}</small></span
-          >
-          <span slot="age" slot-scope="text, row">{{ row.updatedDays != null ? row.updatedDays + ' 天未更新' : '截止 ' + dateText(row.dueTime) }}</span>
-          <span slot="amount" slot-scope="text, row">{{ row.opportunityId ? money(text) : '—' }}</span>
-          <span slot="links" slot-scope="text, row">
-            <a v-if="row.customerId" @click="openCustomer(row)">查看并跟进</a>
-            <template v-if="row.opportunityId"><a-divider type="vertical" /><a @click="openOpportunity(row)">商机</a></template>
-          </span>
-        </a-table>
-        <a-empty v-if="!filteredAttention.length" description="当前没有符合条件的超期客户或停滞商机" />
-      </section>
-
-      <p class="sales-footnote">客户归属按当前负责人统计；商机统计当前开放阶段；合同金额按统计期内签署生效版本统计，回款按确认到账扣除退款及冲销。排名用于发现差异，不替代目标完成率或有效跟进质量复核。</p>
-    </a-spin>
-    <a-modal v-model="rulesVisible" title="拓展经营监管规则" :confirm-loading="savingRules" :mask-closable="false" @ok="saveRules">
-      <a-form-model layout="vertical">
-        <a-form-model-item label="分配后首次跟进时限（天）"><a-input-number v-model="ruleForm.firstFollowupDays" :min="1" :max="365" :precision="0" /></a-form-model-item>
-        <a-form-model-item label="未安排下次计划时的跟进间隔（天）"><a-input-number v-model="ruleForm.followupIntervalDays" :min="1" :max="365" :precision="0" /></a-form-model-item>
-        <a-form-model-item label="商机连续未更新时限（天）"><a-input-number v-model="ruleForm.stagnantOpportunityDays" :min="1" :max="365" :precision="0" /></a-form-model-item>
-      </a-form-model>
-      <a-alert
-        type="info"
-        show-icon
-        message="首次跟进从本次分配时间起算；本次分配后的有效客户跟进均参与超期判断，包括管理员或协作人员代录。已有下次跟进计划时以计划时间为准，否则按跟进间隔计算。重新分配后重新起算；保存后立即按新规则重新统计。"
-      />
-    </a-modal>
+        <a-select v-model="query.userId" allow-clear show-search option-filter-prop="children" placeholder="全部人员" @change="refresh"
+          ><a-select-option v-for="item in userOptions" :key="item.id" :value="item.id">{{ item.name }}</a-select-option></a-select
+        >
+        <a-select v-model="query.customerId" allow-clear show-search option-filter-prop="children" placeholder="全部客户" @change="refresh"
+          ><a-select-option v-for="item in options.customers || []" :key="item.id" :value="item.id">{{ item.name }}</a-select-option></a-select
+        >
+      </div>
+      <div class="period">
+        <span>成果统计时间</span
+        ><a-radio-group v-model="period" button-style="solid" @change="setPeriod"
+          ><a-radio-button value="week">本周</a-radio-button><a-radio-button value="month">本月</a-radio-button><a-radio-button value="custom">自定义</a-radio-button></a-radio-group
+        ><a-input v-model="query.startDate" type="date" aria-label="统计开始日期" @change="customPeriod" /><span>至</span><a-input v-model="query.endDate" type="date" aria-label="统计结束日期" @change="customPeriod" /><a-button
+          @click="reset"
+          >重置筛选</a-button
+        >
+      </div>
+      <a-alert v-if="error" type="error" show-icon :message="error" class="notice" />
+      <a-alert v-if="scope === 'self'" type="info" show-icon message="当前仅可查看本人数据；部门汇总和排行榜按账号的数据范围展示。" />
+      <a-spin :spinning="loading">
+        <div class="cards">
+          <button v-for="key in cards" :key="key" type="button" @click="openDetails(key)">
+            <span>{{ metrics[key] }}</span
+            ><strong :class="{ danger: key === 'overdue' && summary[key] > 0 }">{{ display(key, summary[key]) }}</strong
+            ><small>查看明细 <a-icon type="right" /></small>
+          </button>
+        </div>
+        <div class="scope-note">统计范围：拓展客户部及其下属部门，当前 {{ people.length }} 位在职人员（含零业绩）；客户与风险不受成果日期限制。客户连续 3 天（72 小时）未跟进提示停滞，商机按 {{ rules.stagnantOpportunityDays }} 天未推进提示。更新于 {{ asOf || '—' }}。</div>
+        <a-tabs v-model="tab">
+          <a-tab-pane key="people" tab="人员跟进情况">
+            <a-table row-key="userId" :data-source="people" :columns="peopleColumns" :scroll="{ x: 1915 }" :pagination="{ pageSize: 10, showSizeChanger: true }" size="middle">
+              <template slot="person" slot-scope="_, row"
+                ><strong>{{ row.userName }}</strong>
+                <div class="muted">{{ row.deptName || '未分部门' }}</div></template
+              >
+              <template v-for="key in personMetrics" :slot="key" slot-scope="value, row"
+                ><a v-if="Number(value) !== 0" :key="key" @click="openDetails(key, row)">{{ display(key, value) }}</a
+                ><span v-else :key="key">{{ display(key, 0) }}</span></template
+              >
+              <template slot="lastFollowupTime" slot-scope="value">{{ value ? formatTime(value) : '暂无有效跟进' }}</template>
+            </a-table>
+            <p class="muted">按当前负责人及所在部门归属，管理员或协作人员代录保留实际操作人。接触客户按期内有真实跟进的客户去重，跟进次数按记录计数；仅统计本次分配后的客户跟进。</p>
+          </a-tab-pane>
+          <a-tab-pane key="ranking" tab="销售节点排行榜">
+            <p class="muted ranking-period">{{ appliedQuery.startDate }} 至 {{ appliedQuery.endDate }} · 按数量从高到低排列，保留零业绩人员；并列数量显示相同名次。</p>
+            <div class="sales-rankings">
+              <section v-for="board in rankings" :key="board.metric" class="ranking-board" :data-metric="board.metric">
+                <h3>{{ board.title }}</h3>
+                <p class="muted">{{ board.description }}</p>
+                <a-table row-key="userId" :data-source="board.people" :pagination="{ pageSize: 10, hideOnSinglePage: true }" size="small" :scroll="{ x: 440 }">
+                  <a-table-column title="排名" data-index="rank" :width="60">
+                    <template slot-scope="value, row"><span :class="['rank', { medal: value <= 3 && row[board.metric] > 0 }]">{{ value }}</span></template>
+                  </a-table-column>
+                  <a-table-column title="人员 / 部门" :width="150">
+                    <template slot-scope="_, row"><strong>{{ row.userName }}</strong><div class="muted">{{ row.deptName || '未分部门' }}</div></template>
+                  </a-table-column>
+                  <a-table-column :title="board.countLabel" :width="100">
+                    <template slot-scope="_, row"><a @click="openDetails(board.metric, row)">{{ row[board.metric] || 0 }}</a></template>
+                  </a-table-column>
+                  <a-table-column title="相对数量" :width="130">
+                    <template slot-scope="_, row"><a-progress :percent="Math.round(Number(row[board.metric] || 0) * 100 / board.maximum)" :show-info="false" stroke-color="var(--umm-primary, #0eb3a2)" /></template>
+                  </a-table-column>
+                </a-table>
+              </section>
+            </div>
+            <p class="muted ranking-period">签约按合同首次实际签署日期统计，草稿不计入，后续改版不重复计数；独立续约合同单独计数。点击数量可查看对应档案或合同明细。</p>
+          </a-tab-pane>
+          <a-tab-pane key="risks" tab="停滞与超期监控">
+            <div class="ranking-filters">
+              <a-radio-group v-model="riskMetric" @change="changeRiskMetric"
+                ><a-radio-button value="stagnant">3 天未跟进客户（{{ summary.stagnant || 0 }}）</a-radio-button><a-radio-button value="overdue">跟进超期（{{ summary.overdue || 0 }}）</a-radio-button
+                ><a-radio-button value="stagnantOpportunities">停滞商机（{{ summary.stagnantOpportunities || 0 }}）</a-radio-button></a-radio-group
+              >
+            </div>
+            <p class="muted">首次跟进从本次分配起 {{ rules.firstFollowupDays }} 天；后续优先按下次计划，未安排计划按 {{ rules.followupIntervalDays }} 天。商机仅有效阶段记录重置停滞计时，普通编辑不算推进。展开行可核对内容。</p>
+            <monitor-records :rows="risks" :loading="riskLoading" :pagination="riskPagination" @change="changeRiskPage" />
+          </a-tab-pane>
+        </a-tabs>
+      </a-spin>
+      <a-drawer :visible="detailVisible" :title="detailTitle" width="min(1400px, 96vw)" @close="detailVisible = false" destroy-on-close
+        ><p class="muted">{{ detailPeriod }}；展开行查看统计依据、跟进内容与实际操作人。</p>
+        <a-alert v-if="detailError" type="error" :message="detailError" class="notice" /><monitor-records :rows="detailRows" :loading="detailLoading" :pagination="detailPagination" @change="changeDetailPage"
+      /></a-drawer>
+      <a-modal v-model="rulesVisible" title="拓展经营监管规则" :confirm-loading="savingRules" :mask-closable="false" @ok="saveRules">
+        <a-form-model layout="vertical"
+          ><a-form-model-item label="分配后首次跟进时限（天）"><a-input-number v-model="ruleForm.firstFollowupDays" :min="1" :max="365" :precision="0" /></a-form-model-item
+          ><a-form-model-item label="未安排下次计划时的跟进间隔（天）"><a-input-number v-model="ruleForm.followupIntervalDays" :min="1" :max="365" :precision="0" /></a-form-model-item
+          ><a-form-model-item label="商机连续未推进时限（天）"><a-input-number v-model="ruleForm.stagnantOpportunityDays" :min="1" :max="365" :precision="0" /></a-form-model-item
+        ></a-form-model>
+        <a-alert type="info" show-icon message="保存后立即重算超期与商机停滞。客户3天未跟进是独立的固定观察指标，不受本表时限修改影响；重新分配后重新起算。" />
+      </a-modal>
+    </a-card>
   </page-header-wrapper>
 </template>
 
 <script>
 import moment from 'moment'
-import { getSalesPerformance, saveSalesPerformanceRules } from '/src/api/eos/crm/index.js'
-
+import { getSalesMonitor, getSalesMonitorDetails, saveSalesPerformanceRules } from '/src/api/eos/crm/index.js'
+import MonitorRecords from './MonitorRecords.vue'
+import { metrics, salesRankings, moneyMetrics, currentMetrics, rankedPeople, formatTime, money } from './metrics.js'
+const dates = period => ({
+  startDate: moment()
+    .startOf(period === 'week' ? 'isoWeek' : 'month')
+    .format('YYYY-MM-DD'),
+  endDate: moment().format('YYYY-MM-DD')
+})
+const personMetrics = ['customers', 'newCustomers', 'contacted', 'followups', 'activeOpportunities', 'pendingContracts', 'signedContracts', 'signedAmount', 'receivedAmount', 'stagnant', 'overdue', 'stagnantOpportunities']
 export default {
   name: 'CrmSalesPerformance',
-  data() {
-    return {
-      loading: false,
-      error: '',
-      period: [moment().startOf('month'), moment()],
-      department: '',
-      manager: '',
-      windowWidth: typeof window === 'undefined' ? 1734 : window.innerWidth,
-      scope: '',
-      summary: {},
-      staff: [],
-      attention: [],
-      attentionOwnerId: null,
-      attentionOwnerName: '',
-      attentionKind: '',
-      attentionPage: 1,
-      rules: { firstFollowupDays: 3, followupIntervalDays: 7, stagnantOpportunityDays: 14 },
-      canManageRules: false,
-      rulesVisible: false,
-      savingRules: false,
-      ruleForm: {},
-      metrics: [
-        { key: 'salesCount', label: '在职拓展销售' },
-        { key: 'customers', label: '当前负责客户' },
-        { key: 'newCustomers', label: '本期新增客户' },
-        { key: 'followups', label: '本期客户跟进' },
-        { key: 'overdueCustomers', label: '跟进超期客户' },
-        { key: 'activeOpportunities', label: '开放商机' },
-        { key: 'stagnantOpportunities', label: '停滞商机' },
-        { key: 'signedAmount', label: '本期签约金额', money: true },
-        { key: 'receivedAmount', label: '本期净回款', money: true }
-      ],
-      columns: [
-        { title: '排名', key: 'rank', customRender: (text, row, index) => index + 1, width: 50 },
-        { title: '拓展销售', dataIndex: 'name', width: 130 },
-        { title: '当前客户', dataIndex: 'customerCount', sorter: (a, b) => a.customerCount - b.customerCount },
-        { title: '本期新增', dataIndex: 'newCustomers', sorter: (a, b) => a.newCustomers - b.newCustomers },
-        { title: '有效跟进', dataIndex: 'followups', sorter: (a, b) => a.followups - b.followups },
-        { title: '有效商机', dataIndex: 'activeOpportunities', sorter: (a, b) => a.activeOpportunities - b.activeOpportunities },
-        { title: '停滞商机', dataIndex: 'stagnantOpportunities', sorter: (a, b) => a.stagnantOpportunities - b.stagnantOpportunities },
-        { title: '商机金额', dataIndex: 'pipelineAmount', scopedSlots: { customRender: 'pipeline' }, sorter: (a, b) => Number(a.pipelineAmount) - Number(b.pipelineAmount) },
-        { title: '签约合同', dataIndex: 'signedContracts', sorter: (a, b) => a.signedContracts - b.signedContracts },
-        { title: '签约金额', dataIndex: 'signedAmount', scopedSlots: { customRender: 'signed' }, sorter: (a, b) => Number(a.signedAmount) - Number(b.signedAmount) },
-        { title: '净回款', dataIndex: 'receivedAmount', scopedSlots: { customRender: 'received' }, sorter: (a, b) => Number(a.receivedAmount) - Number(b.receivedAmount) },
-        { title: '需关注', key: 'attention', scopedSlots: { customRender: 'attention' } }
-      ],
-      attentionColumns: [
-        { title: '类型', dataIndex: 'type', scopedSlots: { customRender: 'type' }, width: 140 },
-        { title: '客户', dataIndex: 'customerName', scopedSlots: { customRender: 'customer' } },
-        { title: '事项 / 商机', dataIndex: 'name', scopedSlots: { customRender: 'matter' } },
-        { title: '阶段', dataIndex: 'stage', customRender: text => text || '—' },
-        { title: '负责人', dataIndex: 'ownerName' },
-        { title: '跟进 / 停滞时间', key: 'age', scopedSlots: { customRender: 'age' } },
-        { title: '商机金额', dataIndex: 'amount', scopedSlots: { customRender: 'amount' } },
-        { title: '入口', key: 'links', scopedSlots: { customRender: 'links' } }
+  components: { MonitorRecords },
+  data: () => ({
+    metrics,
+    personMetrics,
+    cards: ['customers', 'contacted', 'activeOpportunities', 'signedContracts', 'signedAmount', 'overdue'],
+    query: { ...dates('month'), deptId: undefined, userId: undefined, customerId: undefined },
+    appliedQuery: {},
+    period: 'month',
+    loading: false,
+    error: '',
+    people: [],
+    options: {},
+    summary: {},
+    scope: '',
+    asOf: '',
+    tab: 'people',
+    rules: { firstFollowupDays: 3, followupIntervalDays: 7, stagnantOpportunityDays: 14 },
+    canManageRules: false,
+    rulesVisible: false,
+    savingRules: false,
+    ruleForm: {},
+    riskMetric: 'stagnant',
+    risks: [],
+    riskLoading: false,
+    riskPage: 1,
+    riskSize: 10,
+    riskTotal: 0,
+    detailVisible: false,
+    detailLoading: false,
+    detailError: '',
+    detailRows: [],
+    detailTitle: '',
+    detailQuery: {},
+    detailPeriod: '',
+    detailPage: 1,
+    detailSize: 10,
+    detailTotal: 0
+  }),
+  computed: {
+    userOptions() {
+      return (this.options.users || []).filter(u => !this.query.deptId || u.deptId === this.query.deptId)
+    },
+    rankings() {
+      return salesRankings.map(board => ({ ...board, people: rankedPeople(this.people, board.metric), maximum: Math.max(1, ...this.people.map(p => Number(p[board.metric] || 0))) }))
+    },
+    peopleColumns() {
+      return [
+        { title: '人员 / 部门', key: 'person', scopedSlots: { customRender: 'person' }, width: 150, fixed: 'left' },
+        ...personMetrics.map(key => ({ title: this.metrics[key], dataIndex: key, width: moneyMetrics.includes(key) ? 150 : 115, scopedSlots: { customRender: key }, sorter: (a, b) => Number(a[key]) - Number(b[key]) })),
+        { title: '最近客户跟进', dataIndex: 'lastFollowupTime', width: 185, scopedSlots: { customRender: 'lastFollowupTime' } }
       ]
+    },
+    riskPagination() {
+      return { current: this.riskPage, pageSize: this.riskSize, total: this.riskTotal, showSizeChanger: true, showTotal: n => '共 ' + n + ' 项' }
+    },
+    detailPagination() {
+      return { current: this.detailPage, pageSize: this.detailSize, total: this.detailTotal, showSizeChanger: true, showTotal: n => '共 ' + n + ' 条' }
     }
   },
-  computed: {
-    filteredAttention() {
-      return this.attention.filter(
-        row => !this.attentionOwnerId || (Number(row.ownerUserId) === this.attentionOwnerId && (this.attentionKind === 'opportunity' ? row.type === 'Stagnant opportunity' : row.type !== 'Stagnant opportunity'))
-      )
-    },
-    ruleSummary() {
-      return `首次跟进：分配后 ${this.rules.firstFollowupDays} 天；后续优先按计划，无计划间隔 ${this.rules.followupIntervalDays} 天；商机 ${this.rules.stagnantOpportunityDays} 天未更新`
-    },
-    staffTableScroll() {
-      return this.windowWidth - 256 < 1410 ? { x: 1410 } : undefined
-    },
-    attentionTableScroll() {
-      return this.windowWidth - 256 < 1476 ? { x: 1476 } : undefined
+  watch: {
+    tab(value) {
+      if (value === 'risks') this.loadRisks()
     }
   },
   mounted() {
-    window.addEventListener('resize', this.updateWindowWidth)
-    this.load()
-  },
-  beforeDestroy() {
-    window.removeEventListener('resize', this.updateWindowWidth)
+    this.refresh()
   },
   methods: {
-    locateAttention(row, kind) {
-      this.attentionOwnerId = Number(row.userId)
-      this.attentionOwnerName = row.name
-      this.attentionKind = kind
-      this.attentionPage = 1
-      this.$nextTick(() => this.$refs.attentionSection?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+    formatTime,
+    display(key, value) {
+      return moneyMetrics.includes(key) ? money(value) : Number(value || 0).toLocaleString('zh-CN')
     },
-    clearAttentionFilter() {
-      this.attentionOwnerId = null
-      this.attentionOwnerName = ''
-      this.attentionKind = ''
-      this.attentionPage = 1
-    },
-    changeAttentionPage(pagination) {
-      this.attentionPage = pagination.current
-    },
-    updateWindowWidth() {
-      this.windowWidth = window.innerWidth
-    },
-    async load() {
+    async refresh() {
+      if (!this.query.startDate || !this.query.endDate || this.query.endDate < this.query.startDate) {
+        this.error = '请选择完整的统计日期，结束日期不能早于开始日期'
+        return
+      }
+      const requestId = (this._overviewRequest = (this._overviewRequest || 0) + 1)
       this.loading = true
       this.error = ''
+      const query = { ...this.query }
       try {
-        const { data } = await getSalesPerformance({ from: this.period[0].format('YYYY-MM-DD'), to: this.period[1].format('YYYY-MM-DD') })
-        this.department = data.department || ''
-        this.manager = data.manager || ''
-        this.scope = data.scope || ''
+        const { data } = await getSalesMonitor(query)
+        if (requestId !== this._overviewRequest) return
+        this.people = data.people || []
         this.summary = data.summary || {}
-        this.rules = data.rules || this.rules
+        this.options = data.options || {}
+        this.rules = data.rules
         this.canManageRules = !!data.canManageRules
-        this.staff = (data.staff || []).map((row, index) => ({ ...row, rank: index + 1 }))
-        this.attention = (data.attention || []).map((row, index) => ({ ...row, attentionKey: row.type + ':' + (row.opportunityId || row.customerId || index) }))
-        this.attentionPage = 1
+        this.scope = data.scope
+        this.asOf = formatTime(data.asOf)
+        this.appliedQuery = query
+        this.riskPage = 1
+        if (this.tab === 'risks') this.loadRisks()
       } catch (error) {
-        this.error = error.message || '加载拓展经营数据失败'
+        if (requestId === this._overviewRequest) this.error = error.message || '统计加载失败，请重试'
       } finally {
-        this.loading = false
+        if (requestId === this._overviewRequest) this.loading = false
       }
+    },
+    changeDepartment() {
+      this.query.userId = undefined
+      this.refresh()
+    },
+    setPeriod() {
+      if (this.period !== 'custom') {
+        Object.assign(this.query, dates(this.period))
+        this.refresh()
+      }
+    },
+    customPeriod() {
+      this.period = 'custom'
+      this.refresh()
+    },
+    reset() {
+      this.period = 'month'
+      this.query = { ...dates('month'), deptId: undefined, userId: undefined, customerId: undefined }
+      this.refresh()
+    },
+    async loadRisks() {
+      const requestId = (this._riskRequest = (this._riskRequest || 0) + 1)
+      this.riskLoading = true
+      try {
+        const data = await getSalesMonitorDetails({ ...this.appliedQuery, metric: this.riskMetric, pageNum: this.riskPage, pageSize: this.riskSize })
+        if (requestId === this._riskRequest) {
+          this.risks = data.rows || []
+          this.riskTotal = data.total || 0
+        }
+      } catch (error) {
+        if (requestId === this._riskRequest) {
+          this.risks = []
+          this.riskTotal = 0
+          this.error = error.message || '风险明细加载失败'
+        }
+      } finally {
+        if (requestId === this._riskRequest) this.riskLoading = false
+      }
+    },
+    changeRiskPage(page) {
+      this.riskPage = page.current
+      this.riskSize = page.pageSize
+      this.loadRisks()
+    },
+    changeRiskMetric() {
+      this.riskPage = 1
+      this.loadRisks()
+    },
+    openDetails(metric, person) {
+      this.detailQuery = { ...this.appliedQuery, metric, ...(person ? { userId: person.userId } : {}) }
+      this.detailTitle = (person ? person.userName + ' · ' : '') + this.metrics[metric]
+      this.detailPeriod = currentMetrics.includes(metric) ? '当前状态，统计时点：' + this.asOf : this.appliedQuery.startDate + ' 至 ' + this.appliedQuery.endDate
+      this.detailPage = 1
+      this.detailRows = []
+      this.detailTotal = 0
+      this.detailVisible = true
+      this.loadDetails()
+    },
+    async loadDetails() {
+      const requestId = (this._detailRequest = (this._detailRequest || 0) + 1)
+      this.detailLoading = true
+      this.detailError = ''
+      try {
+        const data = await getSalesMonitorDetails({ ...this.detailQuery, pageNum: this.detailPage, pageSize: this.detailSize })
+        if (requestId === this._detailRequest) {
+          this.detailRows = data.rows || []
+          this.detailTotal = data.total || 0
+        }
+      } catch (error) {
+        if (requestId === this._detailRequest) this.detailError = error.message || '明细加载失败，请重试'
+      } finally {
+        if (requestId === this._detailRequest) this.detailLoading = false
+      }
+    },
+    changeDetailPage(page) {
+      this.detailPage = page.current
+      this.detailSize = page.pageSize
+      this.loadDetails()
     },
     openRules() {
       this.ruleForm = { ...this.rules }
@@ -240,151 +310,134 @@ export default {
         await saveSalesPerformanceRules(this.ruleForm)
         this.rulesVisible = false
         this.$message.success('监管规则已保存')
-        await this.load()
+        await this.refresh()
       } finally {
         this.savingRules = false
       }
-    },
-    disabledDate(current) {
-      return current && (current > moment().endOf('day') || current < moment().subtract(1, 'year').startOf('day'))
-    },
-    number(value) {
-      return Number(value || 0).toLocaleString('zh-CN')
-    },
-    money(value) {
-      return '￥' + Number(value || 0).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-    },
-    rate(numerator, denominator) {
-      return denominator ? Math.round((Number(numerator || 0) / Number(denominator)) * 100) + '%' : '—'
-    },
-    dateText(value) {
-      return value ? moment(value).format('YYYY-MM-DD') : '未安排下次跟进'
-    },
-    attentionType(value) {
-      return { 'No follow-up': '首次跟进超期', 'Follow-up overdue': '跟进已超期', 'Stagnant opportunity': '商机停滞' }[value] || value
-    },
-    openCustomer(row) {
-      this.$router.push({ path: '/crm/customers', query: { customerId: String(row.customerId), tab: 'followups' } })
-    },
-    openOpportunity(row) {
-      this.$router.push({ path: '/crm/opportunities', query: { businessId: String(row.opportunityId) } })
     }
   }
 }
 </script>
 
 <style lang="less" scoped>
-.sales-header {
+.heading {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   gap: 16px;
-  margin-bottom: 16px;
   h2 {
-    margin: 0 0 5px;
-    font-size: 22px;
+    font-size: 24px;
+    margin-bottom: 5px;
   }
   p {
-    margin: 0;
-    color: #667085;
+    color: #778491;
   }
 }
-.sales-controls {
+.filters,
+.period,
+.ranking-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin: 15px 0;
+}
+.filters .ant-select {
+  width: 195px;
+}
+.period .ant-input {
+  width: 155px;
+}
+.cards {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 14px;
+  margin: 22px 0 12px;
+}
+.cards button {
+  text-align: left;
+  border: 1px solid #e7edf0;
+  background: #f8fafb;
+  border-radius: 8px;
+  padding: 17px 18px;
+  cursor: pointer;
+  display: grid;
+  gap: 8px;
+  transition: border-color 0.2s;
+}
+.cards button:hover {
+  border-color: var(--umm-primary, #0eb3a2);
+}
+.cards span {
+  font-size: 13px;
+  color: #687787;
+}
+.cards strong {
+  font-size: clamp(20px, 1.65vw, 28px);
+  line-height: 1.2;
+  color: #263a4d;
+  overflow-wrap: anywhere;
+}
+.cards small {
+  font-size: 11px;
+  color: #84909e;
+}
+.cards .danger {
+  color: #d25b4e;
+}
+.scope-note,
+.muted {
+  color: #84909e;
+  font-size: 12px;
+  line-height: 1.8;
+}
+.notice {
+  margin: 14px 0;
+}
+.sales-rankings {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+.ranking-board {
+  min-width: 0;
+  border: 1px solid #e7edf0;
+  border-radius: 8px;
+  padding: 18px 16px;
+  h3 { font-size: 16px; margin: 0 0 6px; }
+}
+.ranking-period { margin: 16px 0; }
+.rank {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: #f0f3f5;
+}
+.medal {
+  color: #9d6b1d;
+  background: #fff3d8;
+  font-weight: 600;
+}
+@media (max-width: 1150px) {
+  .sales-rankings { grid-template-columns: 1fr; }
+  .cards {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 600px) {
+  .cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .filters .ant-select {
+    width: 100%;
+  }
+}
+.heading-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-}
-.sales-metrics {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  margin: 16px 0;
-}
-.sales-metric {
-  min-width: 0;
-  padding: 13px 16px;
-  border: 1px solid #e5e9ee;
-  border-radius: 6px;
-  background: #fff;
-  span {
-    display: block;
-    color: #718096;
-    font-size: 12px;
-  }
-  strong {
-    display: block;
-    margin-top: 5px;
-    color: #17212b;
-    font-size: 21px;
-    overflow-wrap: anywhere;
-  }
-}
-.sales-section {
-  padding: 16px 0;
-  border-top: 1px solid #e8edf3;
-}
-.sales-section {
-  scroll-margin-top: 90px;
-}
-.attention-link {
-  padding: 0;
-  border: 0;
-  background: transparent;
-  cursor: pointer;
-  .ant-tag {
-    cursor: pointer;
-  }
-}
-.attention-link:focus-visible {
-  outline: 2px solid #13a89e;
-  outline-offset: 2px;
-}
-.attention-filter {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 10px;
-  padding: 8px 12px;
-  background: #e6f7f5;
-  border-radius: 4px;
-}
-.attention-reason {
-  display: block;
-  margin-top: 4px;
-  color: #718096;
-  white-space: normal;
-}
-.section-heading {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 12px;
-  margin-bottom: 12px;
-  h3 {
-    margin: 0;
-    font-size: 16px;
-  }
-  span,
-  .sales-muted {
-    color: #718096;
-    font-size: 12px;
-  }
-}
-.sales-footnote {
-  margin: 8px 0 0;
-  color: #718096;
-  font-size: 12px;
-}
-@media (max-width: 900px) {
-  .sales-header {
-    flex-direction: column;
-  }
-  .sales-metrics {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .section-heading {
-    align-items: flex-start;
-    flex-direction: column;
-  }
 }
 </style>

@@ -3,7 +3,7 @@ INSERT INTO sys_module (
     module_id, tenant_id, parent_id, module_name, route_name, path, component,
     icon, module_sort, hidden, perms, has_flow, no_cache, status
 )
-SELECT 341112, 1, 340310, '拓展经营', 'CrmSalesPerformance', 'sales-performance',
+SELECT 341112, 1, 340310, '部门看板', 'CrmSalesPerformance', 'sales-performance',
        'eos/crm/salesPerformance/index', 'iconfont-chengbenfenxi-', 6, 0,
        'project:salesPerformance:list', 0, 0, '0'
 FROM DUAL

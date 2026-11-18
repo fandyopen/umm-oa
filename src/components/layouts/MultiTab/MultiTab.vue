@@ -139,7 +139,17 @@ export default {
       this.$router.push({ path: newPathKey })
     }
   },
-  computed: {},
+  computed: {
+    moduleTitles() {
+      const titles = {}
+      const collect = routes => (routes || []).forEach(route => {
+        if (route.meta && route.meta.moduleId) titles[route.meta.moduleId] = route.meta.title
+        collect(route.children)
+      })
+      collect(this.$store.getters.addRouters)
+      return titles
+    }
+  },
   render() {
     const {
       onEdit,
@@ -149,7 +159,7 @@ export default {
       return (
         <a-tab-pane
           class="tw-h-0"
-          tab={this.renderTabPane(page.meta.customTitle || page.meta.title, page.fullPath)}
+          tab={this.renderTabPane(page.meta.customTitle || this.moduleTitles[page.meta.moduleId] || page.meta.title, page.fullPath)}
           key={page.fullPath}
           closable={pages.length > 1 && (page.path === this.activeKey || page.path === '/processDesign')}
         ></a-tab-pane>
