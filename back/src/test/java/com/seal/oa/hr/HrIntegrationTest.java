@@ -1555,6 +1555,89 @@ class HrIntegrationTest {
     }
 
     @Test
+    void memberExportsUseDirectoryMenusAndDepartmentsWithTheSameArchiveColumns() {
+        String keyword = "directory-export-" + user;
+        jdbc.update("UPDATE sys_user SET nick_name=?,dept_id=326 WHERE user_id=?", keyword, user);
+        var original = reports.employees(Map.of("keyword", keyword)).get(0);
+        var active = reports.employees(Map.of("memberScope", "active", "deptId", "326", "keyword", keyword));
+        assertEquals(1, active.size());
+        assertEquals(original, active.get(0));
+        assertEquals("TEST-ACCOUNT", active.get(0).get("bankAccount"));
+        assertTrue(reports.employees(Map.of("memberScope", "active", "deptId", "327", "keyword", keyword)).isEmpty());
+        assertTrue(reports.employees(Map.of("memberScope", "departed", "keyword", keyword)).isEmpty());
+        // Directory membership follows account removal, not a guessed employment-status label.
+        jdbc.update("UPDATE sys_user SET del_flag='2' WHERE user_id=?", user);
+        assertTrue(reports.employees(Map.of("memberScope", "active", "keyword", keyword)).isEmpty());
+        var departed = reports.employees(Map.of("memberScope", "departed", "keyword", keyword));
+        assertEquals(1, departed.size());
+        assertEquals(user, id(departed.get(0).get("userId")));
+        assertEquals(original.keySet(), departed.get(0).keySet());
+        assertEquals(400, assertThrows(ApiException.class, () -> reports.employees(Map.of("memberScope", "invalid"))).code());
+    }
+
+    @Test
+    void memberExportsApplyCreationDateBoundariesAndExportAllMatchesAcrossPages() {
+        String employeeNo = "directory-date-" + user;
+        jdbc.update("UPDATE oa_hr_employee SET employee_no=? WHERE user_id=?", employeeNo, user);
+        var filters = Map.of("memberScope", "active", "keyword", employeeNo, "beginTime", "2026-11-19", "endTime", "2026-11-19", "pageNum", "99", "pageSize", "1");
+        for (String timestamp : List.of("2026-11-19 00:00:00", "2026-11-19 23:59:59")) {
+            jdbc.update("UPDATE sys_user SET create_time=? WHERE user_id=?", java.sql.Timestamp.valueOf(timestamp), user);
+            assertEquals(1, reports.employees(filters).size(), timestamp);
+        }
+        for (String timestamp : List.of("2026-11-18 23:59:59", "2026-11-20 00:00:00")) {
+            jdbc.update("UPDATE sys_user SET create_time=? WHERE user_id=?", java.sql.Timestamp.valueOf(timestamp), user);
+            assertTrue(reports.employees(filters).isEmpty(), timestamp);
+        }
+    }
+
+    @Test
+    void memberExportKeepsDataScopeAndSensitiveAccountPermissions() {
+        jdbc.update("INSERT INTO sys_role(role_id,role_name,role_key,data_scope) VALUES(99402,'成员导出测试','member_export_test','5')");
+        jdbc.update("DELETE FROM sys_user_role WHERE user_id=?", user);
+        jdbc.update("INSERT INTO sys_user_role(user_id,role_id) VALUES(?,99402)", user);
+        jdbc.update("INSERT INTO sys_role_module(role_id,module_id) VALUES(99402,341002)");
+        jdbc.update("INSERT INTO sys_role_module_action(role_id,module_id,action_code) VALUES(99402,341002,'export')");
+        AuthContext.set(new AuthContext.CurrentUser(user, "test"));
+        var rows = reports.employees(Map.of("memberScope", "active"));
+        assertEquals(1, rows.size());
+        assertEquals(user, id(rows.get(0).get("userId")));
+        for (String field : List.of("accountName", "bankName", "bankAccount")) assertFalse(rows.get(0).containsKey(field));
+        jdbc.update("DELETE FROM sys_role_module_action WHERE role_id=99402 AND action_code='export'");
+        assertEquals(403, assertThrows(ApiException.class, () -> reports.employees(Map.of("memberScope", "active"))).code());
+    }
+
+    @Test
+    void organizationUpgradePreservesHrManagerEmailAndMaintainedProfile() {
+        jdbc.update("UPDATE sys_user SET email='hr-manager@example.com',nick_name='实际人事负责人',dept_id=326,status='1' WHERE user_id=35");
+        var before = jdbc.queryForMap("SELECT email,nick_name,dept_id,status,password FROM sys_user WHERE user_id=35");
+        for (int i = 0; i < 2; i++) {
+            jdbc.execute((org.springframework.jdbc.core.ConnectionCallback<Void>) connection -> {
+                new org.springframework.jdbc.datasource.init.ResourceDatabasePopulator(
+                        new org.springframework.core.io.ClassPathResource("organization-permission.sql")).populate(connection);
+                return null;
+            });
+            assertEquals(before, jdbc.queryForMap("SELECT email,nick_name,dept_id,status,password FROM sys_user WHERE user_id=35"));
+        }
+        assertEquals("hr-manager@example.com", employees.detail(35).get("email"));
+        assertEquals("hr-manager@example.com", reports.employees(Map.of()).stream()
+                .filter(row -> id(row.get("userId")) == 35).findFirst().orElseThrow().get("email"));
+    }
+
+    @Test
+    void organizationUpgradeStillCreatesMissingHrManagerAndPreservesIntentionallyBlankEmail() {
+        jdbc.update("DELETE FROM sys_user WHERE user_id=35");
+        for (int i = 0; i < 2; i++) {
+            jdbc.execute((org.springframework.jdbc.core.ConnectionCallback<Void>) connection -> {
+                new org.springframework.jdbc.datasource.init.ResourceDatabasePopulator(
+                        new org.springframework.core.io.ClassPathResource("organization-permission.sql")).populate(connection);
+                return null;
+            });
+            assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM sys_user WHERE user_id=35 AND user_name='17600000001'", Integer.class));
+            assertEquals("", employees.detail(35).get("email"));
+        }
+    }
+
+    @Test
     void profileAccountExportAndImportRespectReadWritePermissionsAndPreserveBlankValues() {
         employees.importProfiles(Map.of("rows", List.of(profileImportRow(Map.of("accountName", "实际收款人", "bankName", "实际银行", "bankAccount", "001234567890123456789")))));
         var exported = reports.employees(Map.of()).stream().filter(r -> id(r.get("userId")) == user).findFirst().orElseThrow();

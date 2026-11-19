@@ -42,7 +42,7 @@ import DepartmentTree from '/src/components/DepartmentTree/index.vue'
 import { getTreeMenu } from '/src/api/enterprise/index.js'
 
 export default {
-  mixins: [withModuleContexts({ members: { component: 'enterprise/hr/index', label: '人事成员' } })],
+  mixins: [withModuleContexts({ members: { component: 'enterprise/hr/index', label: '人事成员' }, employees: { component: 'enterprise/hr/employees', label: '员工档案' } })],
   name: 'HrMembers',
   components: { MemberElement, DepartmentTree },
   data() {

@@ -49,7 +49,8 @@
       </div>
     </div>
     <div class="member-btn-pane">
-      <div class="btn-group" v-if="title === '离职成员' ? false : true">
+      <div class="btn-group">
+        <template v-if="title !== '离职成员'">
         <a-button ghost type="primary" @click="inviteMembers" v-hasModuleAction="{ ...moduleMeta, actionCode: 'invite', allowUnresolved: !!moduleActionGuard }" :loading="!!moduleActionBusy.inviteMembers"> 邀请成员 </a-button>
         <a-popover placement="bottom" :trigger="[]" :visible="adjusDepVisible">
           <template slot="content">
@@ -66,6 +67,9 @@
           >
         </a-popover>
         <a-button ghost type="primary" @click="mitosis" v-hasModuleAction="{ ...moduleMeta, actionCode: 'dismiss', allowUnresolved: !!moduleActionGuard }" :loading="!!moduleActionBusy.mitosis"> 转为离职 </a-button>
+        </template>
+        <a-button v-if="moduleActionVisible && moduleActionVisible('employees', 'export')" icon="export" :loading="exportingEmployees" @click="exportEmployees">导出员工信息</a-button>
+        <a-button v-if="moduleActionVisible && moduleActionVisible('employees', 'edit')" icon="import" @click="openEmployeeImport">导入员工信息</a-button>
       </div>
           <a-button v-if="canAssignRoles" icon="team" :disabled="!selectedRows.length" @click="openRoleAssignment()">批量设置角色{{ selectedRows.length ? '（' + selectedRows.length + '人）' : '' }}</a-button>
           <a-button v-if="canDeleteMembers" type="danger" icon="delete" :disabled="!selectedRowKeys.length" @click="deleteMembers()">删除员工</a-button>
@@ -157,6 +161,7 @@
         </div>
       </div>
     </a-modal>
+    <hr-excel-import v-if="employeeImportVisible" :visible="employeeImportVisible" type="employee" :commit-api="commitEmployeeImport" @close="employeeImportVisible = false" @done="$refs.table.refresh()" />
   </div>
 </template>
 
@@ -174,6 +179,10 @@ import SelectDepartmentElement from '../selectDepartmentElement/index.vue'
 import countryCodeSelector from '/src/components/CountryCodeSelector/index.vue'
 import Details from './details.vue'
 import { hasModuleAction } from '/src/utils/modulePermission.js'
+import { hr } from '/src/api/enterprise/hr.js'
+import { employeeRecords } from '../../hr/reports.js'
+import { exportTemplate } from '../../hr/templates.js'
+import HrExcelImport from '/src/components/HrExcelImport/index.vue'
 
 export default {
   mixins: [
@@ -200,7 +209,7 @@ export default {
       }
     })
   ],
-  components: { STable, SelectDepartmentElement, countryCodeSelector },
+  components: { STable, SelectDepartmentElement, countryCodeSelector, HrExcelImport },
   props: {
     configuredActionSubmitter: { type: Function, default: null },
     moduleActionGuard: { type: Function, default: null },
@@ -237,6 +246,8 @@ export default {
   },
   data() {
     return {
+      exportingEmployees: false,
+      employeeImportVisible: false,
       selectedRowKeys: [],
       selectedRows: [],
       roleAssignmentVisible: false,
@@ -418,6 +429,32 @@ export default {
     }
   },
   methods: {
+    async openEmployeeImport() {
+      if (!(await this.checkModuleAction({ module: 'employees', action: 'edit', label: '导入员工信息' }))) return
+      this.employeeImportVisible = true
+    },
+    async commitEmployeeImport(payload) {
+      if (!(await this.checkModuleAction({ module: 'employees', action: 'edit', label: '导入员工信息' }))) throw new Error('没有导入员工信息的权限')
+      return hr('/employees/import', 'post', payload)
+    },
+    async exportEmployees() {
+      if (this.exportingEmployees) return
+      if (this.$refs.table?.localLoading) return this.$message.info('成员列表加载中，请稍后导出')
+      const expectedCount = this.memberCount
+      this.exportingEmployees = true
+      try {
+        if (!(await this.checkModuleAction({ module: 'employees', action: 'export', label: '导出员工信息' }))) return
+        const { pageNum, pageSize, ...filters } = this.UserListParams
+        const query = { ...filters, memberScope: this.title === '离职成员' ? 'departed' : 'active' }
+        const { data } = await hr('/reports/employees', 'get', query)
+        if (!Array.isArray(data) || data.length !== expectedCount) return this.$message.error('导出人数与列表总人数不一致，请刷新列表后重试')
+        if (!data?.length) return this.$message.info('当前筛选条件下没有可导出的员工')
+        await exportTemplate('employeeReport', employeeRecords(data), '员工信息-' + (this.userTitle || '全部成员'))
+        this.$message.success('已导出当前筛选的全部 ' + data.length + ' 名员工信息')
+      } finally {
+        this.exportingEmployees = false
+      }
+    },
     async checkModuleAction(check) {
       if (!this.moduleActionGuard) {
         this.$message.warning(check.label + '暂不可用：成员模块未配置，请联系管理员。')

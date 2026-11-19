@@ -54,13 +54,13 @@ SET user_name = '17694407532', nick_name = '金么算', dept_id = 327,
     email = '17694407532@seals.com', phonenumber = '17694407532', remark = '参考站演示成员'
 WHERE user_id = 10 AND user_name = '17600000001';
 
-INSERT INTO sys_user
+-- Preserve maintained employee information when the initialization is repeated.
+INSERT IGNORE INTO sys_user
     (user_id, tenant_id, dept_id, user_name, nick_name, password, email, phonenumber, sex, avatar, status, del_flag, is_admin, is_owner, create_by, remark)
 VALUES
 (35, 1, 324, '17600000001', '人事经理',
  '$2b$12$nopR.IbdlsiAu1H9PE9MbeCgKM2Px8B87NDujHm1Fst/VYPwl6Ivy',
- '', '17600000001', '0', '', '0', '0', '0', '0', 'system', '人事经理演示账号')
-ON DUPLICATE KEY UPDATE nick_name = '人事经理', dept_id = 324;
+ '', '17600000001', '0', '', '0', '0', '0', '0', 'system', '人事经理演示账号');
 
 INSERT IGNORE INTO sys_user_role (user_id, role_id) VALUES (35, 19);
 

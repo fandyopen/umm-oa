@@ -153,7 +153,7 @@ import { delDept } from '/src/api/system/dept.js'
 import { delSaasRole, delRoleGroup } from '/src/api/system/role.js'
 
 export default {
-  mixins: [withModuleContexts({ members: { component: 'enterprise/Contacts/contactsOp', label: '组织机构' } })],
+  mixins: [withModuleContexts({ members: { component: 'enterprise/Contacts/contactsOp', label: '组织机构' }, employees: { component: 'enterprise/hr/employees', label: '员工档案' } })],
   name: 'ContactsOp',
   components: { MemberElement, DepartmentTree, RoleElement, AdminElement },
   data() {

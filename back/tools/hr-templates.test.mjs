@@ -63,11 +63,11 @@ test('salary exports can be imported with the same headers and raw pay types',()
 })
 
 test('employee roster exports workplace, contacts and payroll accounts for archive reimport',()=>{
-  const record={employeeNo:'000012',revision:3,email:'employee@example.com',emergencyContact:'测试联系人',emergencyPhone:'01001234567',workProvince:'广东省',workCity:'广州市',accountName:'测试开户人',bankName:'测试开户银行',bankAccount:'001234567890123456789'}
+  const record={employeeNo:'000012',revision:3,email:'employee@example.com',emergencyContact:'测试联系人',emergencyPhone:'01001234567',workProvince:'广东省',workCity:'广州市',contractStart:'2026-11-01',contractEnd:'2027-10-31',accountName:'测试开户人',bankName:'测试开户银行',bankAccount:'001234567890123456789'}
   const book=buildWorkbook([{type:'employeeReport',records:[record]}])
   const restored=XLSX.read(XLSX.write(book,{type:'buffer',bookType:'xlsx'}),{type:'buffer',cellNF:true})
   const matrix=XLSX.utils.sheet_to_json(restored.Sheets['数据'],{header:1})
-  for(const key of ['email','emergencyContact','emergencyPhone','workProvince','workCity','accountName','bankName','bankAccount']) {
+  for(const key of ['email','emergencyContact','emergencyPhone','workProvince','workCity','contractStart','contractEnd','accountName','bankName','bankAccount']) {
     const field=templates.employee.fields.find(field=>field.key===key)
     const header=suggestColumn(matrix[0],field)
     assert.equal(header,field.label)
@@ -77,6 +77,18 @@ test('employee roster exports workplace, contacts and payroll accounts for archi
   assert.equal(convertCell(' employee@example.com ',email),'employee@example.com')
   assert.equal(convertCell('',email),'')
   assert.throws(()=>convertCell('invalid-email',email),/邮箱格式/)
+})
+
+test('employee contract dates match import labels and previous roster headers without mixing start and end',()=>{
+  const cases=[['contractStart',['合同开始日期','劳动合同开始','劳动合同开始日期']],['contractEnd',['合同结束日期','劳动合同结束','劳动合同结束日期']]]
+  for(const [key,headers] of cases){
+    const field=templates.employee.fields.find(field=>field.key===key)
+    assert.equal(templates.employeeReport.fields.find(field=>field.key===key).label,field.label)
+    for(const header of [...headers,key])assert.equal(suggestColumn([header],field),header)
+    const unrelated=key==='contractStart'?['入职日期','劳动合同结束']:['转正日期','劳动合同开始']
+    assert.equal(suggestColumn(unrelated,field),'')
+    assert.equal(convertCell('',field),'')
+  }
 })
 
 test('payroll exports default tax as numeric zero and allows blank tax imports',()=>{

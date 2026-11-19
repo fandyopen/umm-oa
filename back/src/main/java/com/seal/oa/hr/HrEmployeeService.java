@@ -125,10 +125,29 @@ public class HrEmployeeService {
         d.require(EMPLOYEES, "access");
         List<Object> args = new ArrayList<>();
         String filter = d.scope.userFilter(AuthContext.userId(), args);
+        // Directory exports use account membership, exactly as the member menus do.
+        if (!text(q.get("memberScope")).isEmpty()) {
+            if (!Set.of("active", "departed").contains(q.get("memberScope")))
+                throw new ApiException(400, "成员范围无效");
+            filter += " AND u.del_flag=?";
+            args.add("departed".equals(q.get("memberScope")) ? "2" : "0");
+        }
+        if (!text(q.get("deptId")).isEmpty()) {
+            filter += " AND u.dept_id=?";
+            args.add(id(q.get("deptId")));
+        }
+        if (!text(q.get("beginTime")).isEmpty()) {
+            filter += " AND u.create_time>=?";
+            args.add(date(q.get("beginTime")).atStartOfDay());
+        }
+        if (!text(q.get("endTime")).isEmpty()) {
+            filter += " AND u.create_time<?";
+            args.add(date(q.get("endTime")).plusDays(1).atStartOfDay());
+        }
         return d
                 .rows(
                         "SELECT"
-                            + " u.user_id,u.nick_name,u.phonenumber,u.dept_id,d.dept_name,e.employee_no,e.entry_date,e.exit_date,e.regular_date,e.employment_status,e.work_province,e.work_city,e.revision"
+                            + " u.user_id,u.user_name,u.nick_name,u.phonenumber,u.dept_id,d.dept_name,e.employee_no,e.entry_date,e.exit_date,e.regular_date,e.employment_status,e.work_province,e.work_city,e.revision"
                             + " FROM sys_user u JOIN oa_hr_employee e ON e.user_id=u.user_id LEFT"
                             + " JOIN sys_dept d ON d.dept_id=u.dept_id WHERE u.del_flag IN"
                             + " ('0','2') AND " + d.memberCondition("u")
@@ -139,7 +158,8 @@ public class HrEmployeeService {
                 .filter(
                         r ->
                                 text(q.get("keyword")).isEmpty()
-                                || (text(r.get("nickName")) + " " + text(r.get("employeeNo")) + " " + text(r.get("phonenumber")))
+                                || (text(r.get("nickName")) + " " + text(r.get("employeeNo")) + " " + text(r.get("phonenumber"))
+                                            + (text(q.get("memberScope")).isEmpty() ? "" : " " + text(r.get("userName"))))
                                                 .toLowerCase(Locale.ROOT).contains(text(q.get("keyword")).trim().toLowerCase(Locale.ROOT)))
                 .filter(
                         r ->

@@ -7,8 +7,7 @@
           <p>统一维护任职资料，薪资按生效日期留存版本。</p>
         </div>
         <a-space
-          ><hr-template-downloads /><a-button v-if="showModuleAction('employees', 'edit')" icon="import" @click="openImport('employee')">批量导入档案</a-button
-          ><a-button v-if="showModuleAction('employees', 'salary_manage')" @click="openImport('salary')">导入薪资标准</a-button
+          ><hr-template-downloads /><a-button v-if="showModuleAction('employees', 'salary_manage')" @click="openImport('salary')">导入薪资标准</a-button
           ></a-space
         >
       </div>
@@ -17,7 +16,7 @@
           ><a-select-option value="active">在职</a-select-option><a-select-option value="leaving">待离职</a-select-option><a-select-option value="departed">已离职</a-select-option></a-select
         ><a-button icon="reload" @click="load">刷新</a-button>
         <a-button v-if="showModuleAction('employees', 'export') && (showModuleAction('employees', 'salary_view') || showModuleAction('employees', 'salary_manage'))" icon="export" @click="exportSalaries">导出薪资标准</a-button>
-        <a-button v-if="showModuleAction('employees', 'export')" icon="export" @click="exportEmployees">导出档案</a-button>
+        <a-button v-if="showModuleAction('employees', 'export')" icon="export" @click="exportEmployees">导出员工信息</a-button>
       </div>
       <a-table :loading="loading" :data-source="rows" row-key="userId" :pagination="{ pageSize: 15 }"
         ><a-table-column title="员工编号" data-index="employeeNo" /><a-table-column title="姓名" data-index="nickName" /><a-table-column title="部门" data-index="deptName" /><a-table-column
@@ -194,8 +193,8 @@ export default {
       { key: 'workCity', label: '工作地 · 城市' },
       { key: 'emergencyContact', label: '紧急联系人' },
       { key: 'emergencyPhone', label: '紧急联系电话', max: 32 },
-      { key: 'contractStart', label: '劳动合同开始', date: true },
-      { key: 'contractEnd', label: '劳动合同结束', date: true }
+      { key: 'contractStart', label: '合同开始日期', date: true },
+      { key: 'contractEnd', label: '合同结束日期', date: true }
     ]
   }),
   computed: {
@@ -299,7 +298,7 @@ export default {
       this.$message.success('已按审批配置提交或生效')
     },
     async openImport(type) {
-      if (!(await this.checkModuleAction({ module: 'employees', action: type === 'salary' ? 'salary_manage' : 'edit', label: type === 'salary' ? '导入薪资标准' : '批量导入档案' }))) return
+      if (!(await this.checkModuleAction({ module: 'employees', action: type === 'salary' ? 'salary_manage' : 'edit', label: type === 'salary' ? '导入薪资标准' : '导入员工信息' }))) return
       this.importType = type
     },
     commitImport(payload) {
@@ -309,7 +308,7 @@ export default {
       exportTemplate('salary')
     },
     async exportEmployees() {
-      if (!(await this.checkModuleAction({ module: 'employees', action: 'export', label: '导出档案' }))) return
+      if (!(await this.checkModuleAction({ module: 'employees', action: 'export', label: '导出员工信息' }))) return
       const response = await hr('/reports/employees', 'get', this.query)
       await exportTemplate('employeeReport', employeeRecords(response.data || []))
     },
