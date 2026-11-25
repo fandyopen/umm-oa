@@ -4,7 +4,7 @@ import test from 'node:test'
 import Vue from 'vue'
 import compiler from 'vue-template-compiler'
 
-const source = fs.readFileSync(new URL('../../src/views/system/specialFunctions/index.vue', import.meta.url), 'utf8')
+const source = fs.readFileSync(new URL('../../src/views/system/customerCleanup/index.vue', import.meta.url), 'utf8')
 const parsed = compiler.parseComponent(source)
 const preview = total => ({ customer: { id: 25, name: '清理测试客户' }, signature: 'scope-' + total, total, tables: [], amounts: { netReceipts: 50 }, payroll: { items: [], sharedBatches: 0 } })
 function page(overrides = {}) {

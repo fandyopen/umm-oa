@@ -297,8 +297,8 @@ export const moduleGroups = [
     audience: '超级管理员、被授权的系统管理员、流程管理员',
     prerequisites: ['使用具有相应管理权限的账号；先确定组织职责、业务分工与数据可见范围。'],
     flow: ['组织与成员', '角色及数据权限', '基础数据', '模块与按钮维护', '动作审批配置', '业务运行', '通知与审计'],
-    pages: ['组织机构', '角色权限', '基础数据', '模块管理', '按钮流程配置', '流程设计器', '按钮管理', '参数设置', '通知公告', '操作日志', '登录日志', '使用文档'],
-    permissions: ['sys:module', 'system:dict:list', 'system:config:list', 'system:notice:list', 'monitor:operlog:list', 'monitor:logininfor:list', 'system:docs:list'],
+    pages: ['组织机构', '角色权限', '基础数据', '模块管理', '按钮流程配置', '流程设计器', '按钮管理', '参数设置', '通知公告', '操作日志', '登录日志'],
+    permissions: ['sys:module', 'system:dict:list', 'system:config:list', 'system:notice:list', 'monitor:operlog:list', 'monitor:logininfor:list'],
     backend: ['SystemController', 'ModuleController', 'MetadataController', 'OrganizationPermissionService', 'LowCodeController', 'ModuleActionService'],
     data: ['sys_dept', 'sys_role', 'sys_user_role', 'sys_module', 'sys_module_action', 'sys_role_module', 'sys_role_module_action', 'sys_config', 'sys_dict_type', 'sys_dict_data', 'sys_notice', 'sys_oper_log', 'sys_logininfor'],
     workflows: [
@@ -431,10 +431,10 @@ export const moduleGroups = [
         steps: [
           { title: '按参数键定位', description: '查询需要调整的系统参数，核对参数含义、当前值和用途。' },
           { title: '修改并保存', description: '按业务需要填写有效参数值并保存，避免创建含义重复的键。' },
-          { title: '回到使用入口核验', description: '刷新或重新登录后查看使用该参数的页面，例如顶部使用文档入口和标题。' }
+          { title: '回到使用入口核验', description: '刷新或重新登录后查看使用该参数的页面；使用文档的名称、显示与授权统一在模块管理和角色权限中配置。' }
         ],
         outcome: '系统按实际读取到的参数值显示或运行。',
-        tips: ['sys.docs.enabled 控制顶部文档入口，sys.docs.title 控制文档标题；入口显示不等于拥有文档访问权限。']
+        tips: ['旧 sys.docs.enabled、sys.docs.title 参数仅保留兼容，使用文档的入口及标题以模块管理配置为准。']
       },
       {
         name: '通知公告',
@@ -496,21 +496,30 @@ export const moduleGroups = [
           '列表为当前企业的原始来源数据，业务页面可能另外按日期、批次、生效状态或员工身份过滤。',
           '需要强制清理整个客户业务链时，使用系统 → 特殊功能，不逐张删除已入账数据。'
         ]
-      },
-      {
-        name: '使用文档',
-        entry: '顶部“使用文档” → 业务模块说明',
-        roles: '所有已获文档访问权限的成员',
-        steps: [
-          { title: '先查业务流程', description: '在业务模块说明中选择模块，阅读适用人员、前置准备、操作步骤和完成结果；可搜索业务词或页面名称。' },
-          { title: '按需查询技术入口', description: '需要定位实现时，切换“路由地图”查组件和后端入口，或切换“API 文档”查接口概览。' },
-          { title: '返回实际业务办理', description: '按说明到对应菜单操作；看不到入口或按钮时，联系管理员核对权限和数据范围。' }
-        ],
-        outcome: '业务人员能按流程办理，维护人员能按需定位实现入口。',
-        tips: ['文档用于指导操作，实际业务状态、权限和校验以当前业务页面为准。']
       }
     ],
     note: '推荐初始化顺序：组织及成员 → 角色权限 → 基础数据 → 动作与流程 → 业务验证。'
+  },
+  {
+    id: 'docs', name: '使用文档', icon: 'book',
+    purpose: '作为独立顶部模块，先通过思维导图理解业务闭环，再按需查阅办理规则和技术入口。',
+    audience: '已获相应文档页面权限的成员',
+    prerequisites: ['管理员在模块管理维护使用文档及子页面，在角色权限中按需勾选；可只开放业务规则，无需开放 API 和路由地图。'],
+    flow: ['选择文档', '查看思维导图', '阅读办理规则', '返回业务操作'],
+    pages: ['路由地图', 'API 文档', '模块说明', '提成核算规则', '招聘流程规则', '客户与合同规则'],
+    permissions: ['docs:route:list', 'docs:api:list', 'docs:module:list', 'docs:commission:list', 'docs:recruitment:list', 'docs:customerContract:list'],
+    backend: ['ModuleService', 'ModuleController'], data: ['sys_module', 'sys_role_module'],
+    workflows: [{
+      name: '文档查询与授权', entry: '顶部使用文档 → 对应文档页面', roles: '已授权成员、模块及权限管理员',
+      steps: [
+        { title: '按业务查阅', description: '先看模块说明或对应规则的思维导图，再查操作入口与闭环结果；技术维护人员按授权查看路由地图和 API 文档。' },
+        { title: '配置页面', description: '在系统 → 模块管理 → 使用文档，维护名称、排序、显示和启停；在角色权限中分别勾选所需页面。' },
+        { title: '返回业务办理', description: '按说明到实际业务页面操作，核对状态、审批和结果。文档授权不额外授予业务操作权限。' }
+      ],
+      outcome: '用户看到被授权的文档，能够理解完整业务流程并找到实际办理入口。',
+      tips: ['原文档链接自动转入独立模块；升级保留原文档角色的访问授权，后续可按页面收窄。']
+    }],
+    note: '使用文档与系统并列；菜单配置和角色授权使用平台统一机制，不再维护页面内的固定导航。'
   },
   {
     id: 'finance',

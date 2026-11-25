@@ -2,7 +2,7 @@
   <div class="commission-workspace">
     <div class="commission-heading">
       <div><h2>提成核算</h2><p>销售回款后可结算；招聘交付按入职或服务验收结算，共用合同预算。</p></div>
-      <a-space><a-button icon="book" @click="$router.push('/system/docs?tab=commission-rules')">核算规则与流程</a-button><a-button icon="reload" :loading="loading" @click="load">刷新</a-button></a-space>
+      <a-space><a-button v-if="commissionDocsTarget" icon="book" @click="$router.push(commissionDocsTarget)">核算规则与流程</a-button><a-button icon="reload" :loading="loading" @click="load">刷新</a-button></a-space>
     </div>
     <a-alert type="info" show-icon class="tw-mb-4" message="先在合同业绩中绑定规则并确认销售归属。销售按合同净回款自动核算；交付确认入职或验收后分摊回款。比例由公司填写，历史原方式归属继续沿用。" />
     <a-tabs v-model="tab">
@@ -158,6 +158,7 @@ import { commission } from '/src/api/eos/crm/commission.js'
 import { money } from '/src/views/enterprise/hr/hrShared.js'
 import * as XLSX from 'xlsx'
 import ContractCommission from './ContractCommission.vue'
+import { docsLocation } from '/src/utils/docsNavigation.js'
 
 const today = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Shanghai' })
 const emptyAttribution = () => ({ participants: [], reason: '', businessKind: 'first' })
@@ -171,6 +172,7 @@ export default {
     allocationVisible: false, allocationForm: { rows: [] }, generateVisible: false, generateForm: {}
   }),
   computed: {
+    commissionDocsTarget() { return docsLocation(this.$store.getters.addRouters, 'commission-rules') },
     contractRows() { return (this.options.contracts || []).filter(c => (!this.$route.query.customerId || String(c.customerId) === String(this.$route.query.customerId)) && (!this.$route.query.contractId || String(c.id) === String(this.$route.query.contractId)) && (!this.keyword || [c.name, c.customerName, c.code].some(v => String(v || '').includes(this.keyword)))) },
     applicationRows() {
       return (this.options.applications || []).filter(a => (!this.$route.query.applicationId || String(a.id) === String(this.$route.query.applicationId)) && (!this.$route.query.customerId || String(a.customerId) === String(this.$route.query.customerId)) && (!this.$route.query.contractId || String(a.contractId) === String(this.$route.query.contractId)) && this.matches(a))

@@ -53,12 +53,14 @@ public class ModuleService {
                 """, tenantId));
 
         Set<Long> expandedAllowedIds = expandAncestors(rows, allowedModuleIds);
+        boolean documentationEnabled = rows.stream().anyMatch(row -> number(row.get("moduleId")) == 341100L);
         Map<Long, Map<String, Object>> nodes = new LinkedHashMap<>();
         for (Map<String, Object> row : rows) {
+            if (!documentationEnabled && number(row.get("parentId")) == 341100L) continue;
             row.put("flowConditions", normalizeFlowConditions(row.get("flowConditions")));
             Long moduleId = number(row.get("moduleId"));
             if (!admin && Long.valueOf(341500L).equals(moduleId)) continue;
-            if (Long.valueOf(341510L).equals(moduleId) && (!admin || jdbc.queryForObject(
+            if (Set.of(341510L, 341511L, 341512L).contains(moduleId) && (!admin || jdbc.queryForObject(
                     "SELECT COUNT(*) FROM sys_admin_identity a JOIN sys_user u ON u.user_name=a.user_name WHERE u.user_id=? AND u.del_flag='0'",
                     Long.class, com.seal.oa.auth.AuthContext.userId()) == 0)) continue;
             if (!admin && !isModuleAllowed(row, moduleId, permissions, expandedAllowedIds)) {
@@ -120,6 +122,9 @@ public class ModuleService {
             });
         }
         sortTree(roots);
+        // A documentation directory alone grants no page access.
+        if (!admin) roots.removeIf(node -> number(node.get("moduleId")) == 341100L
+                && ((List<?>) node.get("children")).isEmpty());
         return roots;
     }
 

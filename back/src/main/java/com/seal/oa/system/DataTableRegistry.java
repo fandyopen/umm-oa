@@ -46,6 +46,7 @@ final class DataTableRegistry {
             sys_permission_migration|权限升级标记|系统
             sys_data_table_history|数据维护记录|系统
             sys_customer_cleanup_history|客户数据清理记录|系统
+            sys_junk_cleanup_history|垃圾数据清理记录|系统
             oa_merchant|客户主档|客户与合同|客户档案
             oa_merchant_contact|客户联系人|客户与合同
             oa_merchant_account|客户银行账户|客户与合同

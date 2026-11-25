@@ -10,10 +10,8 @@
     </div>
     <div class="header-right-content" :class="{ 'header-msg-bkc': layout !== 'sidemenu' }">
       <theme-switcher />
-      <a-tooltip v-if="canOpenDocs" :title="docsTitle">
-        <a class="docs-entry" @click="openDocs"
-          ><a-icon type="book" /><span v-if="!isMobile">{{ docsTitle }}</span></a
-        >
+      <a-tooltip v-if="docsEntry" :title="docsTitle">
+        <a class="docs-entry" @click="openDocs"><a-icon type="book" /><span v-if="!isMobile">{{ docsTitle }}</span></a>
       </a-tooltip>
       <a-badge :count="todoTotal" class="badge" @click="gotodo"><a-icon type="bell" class="icon" /></a-badge>
       <div class="selectBox">
@@ -48,6 +46,7 @@ import Ellipsis from '/src/components/Ellipsis/Ellipsis.vue'
 import { mapState, mapGetters, mapActions } from 'vuex'
 import { IconFont } from '/src/components/IconFont/index.js'
 import ThemeSwitcher from './ThemeSwitcher.vue'
+import { docsLocation } from '/src/utils/docsNavigation.js'
 
 export default {
   name: 'RightContent',
@@ -71,7 +70,7 @@ export default {
     }
   },
   computed: {
-    ...mapGetters(['todoTotal', 'addRouters', 'layout', 'permissions', 'roles', 'defaultCompany', 'docsEnabled', 'docsTitle', 'nickname', 'currentFirstLevelMenu']),
+    ...mapGetters(['todoTotal', 'addRouters', 'layout', 'defaultCompany', 'nickname', 'currentFirstLevelMenu']),
     ...mapState({
       showFirstLevelMenu: state => state.app.showFirstLevelMenu,
       menuIconHorizontal: state => state.app.menuIconHorizontal
@@ -88,8 +87,19 @@ export default {
       const root = this.addRouters[0]
       return ((root && root.children) || []).filter(item => item.hidden !== true)
     },
-    canOpenDocs() {
-      return this.docsEnabled && (this.roles.includes('admin') || this.permissions.includes('*:*:*') || this.permissions.includes('system:docs:list'))
+    docsEntry() {
+      return docsLocation(this.addRouters)
+    },
+    docsTitle() {
+      const find = nodes => {
+        for (const node of nodes || []) {
+          if (Number(node.meta?.moduleId) === 341100) return node.meta.title
+          const child = find(node.children)
+          if (child) return child
+        }
+        return ''
+      }
+      return find(this.addRouters) || '使用文档'
     }
   },
   watch: {
@@ -110,7 +120,7 @@ export default {
       this.$router.push('/todoItem/todo')
     },
     openDocs() {
-      this.$router.push('/system/docs').catch(() => {})
+      if (this.docsEntry) this.$router.push(this.docsEntry).catch(() => {})
     },
     handleCompanyDropdown(visible) {
       if (!visible || this.companyLoaded || this.companyLoading) return

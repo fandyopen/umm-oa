@@ -47,6 +47,7 @@ public class LocalDatabaseBootstrap implements ApplicationRunner {
             "approval-inbox.sql",
             "module-management.sql",
             "docs-config.sql",
+            "docs-module.sql",
             "crm-upgrade.sql",
             "crm-menu.sql",
             "sales-performance-menu.sql",
@@ -66,6 +67,7 @@ public class LocalDatabaseBootstrap implements ApplicationRunner {
             "commission-contract.sql",
             "data-table-management.sql",
             "customer-cleanup.sql",
+            "junk-cleanup.sql",
             "mobile.sql"
     );
 

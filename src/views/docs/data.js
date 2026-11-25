@@ -220,13 +220,13 @@ export const routeMapEntries = [
     related: ['src/views/docs/components/RouteMap.vue', 'src/views/docs/components/ApiDocs.vue', 'src/views/docs/components/ModuleDocs.vue'],
     api: ['src/api/system/config.js'],
     backend: ['Frontend-only', 'MetadataController'],
-    note: '隐藏路由，由 system:docs:list 授权，顶部入口受 sys.docs.enabled 控制',
-    group: '系统',
-    menu: '使用文档',
-    route: '/system/docs',
-    component: 'docs/index',
-    file: 'src/views/docs/index.vue',
-    permission: 'system:docs:list'
+    note: '独立顶部模块，六个子页面分别配置显隐、排序及角色授权',
+    group: '使用文档',
+    menu: '模块说明',
+    route: '/docs/module-docs',
+    component: 'docs/pages/ModuleDocs',
+    file: 'src/views/docs/pages/ModuleDocs.vue',
+    permission: 'docs:module:list'
   },
   {
     related: ['src/views/system/module/modules/ModuleForm.vue', 'src/views/system/moduleAction/index.vue'],

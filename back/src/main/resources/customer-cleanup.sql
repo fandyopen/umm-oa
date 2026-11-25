@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS sys_customer_cleanup_history (
     create_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 INSERT INTO sys_module(module_id,tenant_id,parent_id,module_name,route_name,path,component,icon,module_sort,hidden,perms,has_flow,no_cache,status)
-SELECT 341510,1,340309,'特殊功能','SystemSpecialFunctions','specialFunctions','system/specialFunctions/index','iconfont-mokuai',100,0,'system:specialFunctions:list',0,1,'0'
+SELECT 341510,1,340309,'特殊功能','SystemSpecialFunctions','specialFunctions','Layout','iconfont-mokuai',100,0,'system:specialFunctions:list',0,1,'0'
 WHERE NOT EXISTS(SELECT 1 FROM sys_module WHERE module_id=341510);
 INSERT INTO sys_module_action(module_id,action_code,action_name,builtin,status)
 SELECT 341510,'cleanup','清理关联数据',0,'0'

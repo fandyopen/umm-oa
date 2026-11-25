@@ -87,6 +87,8 @@ public class ModuleActionInterceptor implements HandlerInterceptor {
     }
 
     private boolean isAllowed(Long userId, long moduleId, String action) {
+        if ((moduleId == 341511L || moduleId == 341512L)
+                && systemService.isSuperAdminIdentity(userId)) return true;
         if ("write".equals(action)) {
             return systemService.hasModuleAction(userId, moduleId, "add")
                     || systemService.hasModuleAction(userId, moduleId, "edit")

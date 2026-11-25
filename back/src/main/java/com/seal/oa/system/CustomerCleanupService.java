@@ -24,7 +24,7 @@ import java.util.zip.ZipOutputStream;
 /** Explicit customer ownership graph. Never infers ownership using names, LIKE or bare business IDs. */
 @Service
 public class CustomerCleanupService {
-    public static final long MODULE = 341510L;
+    public static final long MODULE = 341511L;
     private final JdbcTemplate jdbc;
     private final ObjectMapper json;
     private final SystemService system;

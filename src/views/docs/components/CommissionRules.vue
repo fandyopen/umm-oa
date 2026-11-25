@@ -3,6 +3,7 @@
     <h1>提成核算规则</h1>
     <p class="lead">适用于客户拓展部与招聘交付部。合同确认销售归属，实际净回款后销售可结算；交付按入职及保证期，或服务验收结算。两部门共享一个提成池，最终通过工资批次核税、审批和发放。</p>
     <a-alert type="info" show-icon message="入口：顶部「财务与回款管理」→「提成核算」。首次使用先配置真实公司比例；下面数字仅演示计算，不是默认制度。" />
+    <rule-mind-map kind="commission" />
     <a-tabs>
       <a-tab-pane key="rules" tab="核算规则">
         <h2>1. 两个部门如何分配</h2>
@@ -71,8 +72,11 @@
   </article>
 </template>
 <script>
+import RuleMindMap from './RuleMindMap.vue'
+
 export default {
   name: 'CommissionRules',
+  components: { RuleMindMap },
   data: () => ({
     conditionColumns: [{ title: '条件', dataIndex: 'state' }, { title: '处理', dataIndex: 'result' }],
     conditions: [

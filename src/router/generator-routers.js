@@ -3,6 +3,7 @@ import { getRouters } from '/src/api/user/module.js'
 import { UserLayout, BasicLayout, BlankLayout, PageView, RouteView } from '/src/components/layouts/index.js'
 import { indexRouterMap, personalTaskRouterMap } from '/src/config/router.config.js'
 import { validURL } from '/src/utils/common/validate.js'
+import { docsLocation } from '/src/utils/docsNavigation.js'
 
 const modules = import.meta.glob('../views/**/*.vue')
 
@@ -54,6 +55,8 @@ const rootRouter = {
 }
 
 function menuRoutes(routes) {
+  const docs = routes.find(route => Number(route.moduleId) === 341100)
+  if (docs) docs.redirect = docsLocation([docs]) || '/docs/access-denied'
   const paths = new Set()
   const collect = (items, parentPath = '') => {
     items.forEach(item => {
@@ -64,7 +67,11 @@ function menuRoutes(routes) {
   }
   collect(routes)
   // Keep database menu metadata authoritative and avoid duplicate route paths.
-  return indexRouterMap.concat(routes, personalTaskRouterMap.filter(route => !paths.has(route.path)))
+  return indexRouterMap.concat(routes, personalTaskRouterMap.filter(route => !paths.has(route.path)), [{
+    path: '/system/docs', name: 'LegacyDocs', component: 'RouteView', hidden: true,
+    meta: { title: '使用文档' },
+    redirect: to => docsLocation(routes, to.query.tab) || '/docs/access-denied'
+  }])
 }
 
 /**

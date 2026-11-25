@@ -59,6 +59,7 @@ public class ModuleActionService {
             340527L,
             340785L,
             341100L,
+            341701L, 341702L, 341703L, 341704L, 341705L, 341706L,
             340644L,
             341101L
     );

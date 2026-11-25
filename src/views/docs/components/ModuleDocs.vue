@@ -8,6 +8,8 @@
       <a-tag color="blue">{{ moduleGroups.length }} 个模块 · {{ workflowCount }} 项功能流程</a-tag>
     </header>
 
+    <platform-business-map />
+
     <a-input-search v-model="keyword" class="module-search" placeholder="搜索业务流程，例如：客户交接、合同审批、回款、邀请成员" allow-clear />
     <nav class="module-navigation" aria-label="业务模块筛选">
       <a-button :type="activeGroup === 'all' ? 'primary' : 'default'" size="small" @click="activeGroup = 'all'">全部模块</a-button>
@@ -79,12 +81,14 @@
 
 <script>
 import { moduleGroups } from '../moduleGuides.js'
+import PlatformBusinessMap from './PlatformBusinessMap.vue'
 
 const searchable = value => typeof value === 'string' ? value : JSON.stringify(value)
 const matches = (values, keyword) => values.map(searchable).join(' ').toLowerCase().includes(keyword)
 
 export default {
   name: 'ModuleDocs',
+  components: { PlatformBusinessMap },
   data() {
     return {
       moduleGroups,

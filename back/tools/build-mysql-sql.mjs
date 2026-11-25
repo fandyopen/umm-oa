@@ -15,6 +15,7 @@ const salesPerformanceMenu = fs.readFileSync(path.join(projectDir, 'src/main/res
 const hrSchema = fs.readFileSync(path.join(projectDir, 'src/main/resources/hr-schema.sql'), 'utf8')
 const hrMenu = fs.readFileSync(path.join(projectDir, 'src/main/resources/hr-menu.sql'), 'utf8')
 const customerCleanup = fs.readFileSync(path.join(projectDir, 'src/main/resources/customer-cleanup.sql'), 'utf8')
+const junkCleanup = fs.readFileSync(path.join(projectDir, 'src/main/resources/junk-cleanup.sql'), 'utf8')
 const commissionSchema = fs.readFileSync(path.join(projectDir, 'src/main/resources/commission.sql'), 'utf8')
   .replace(/CREATE INDEX IF NOT EXISTS (\w+) ON (\w+)([^;]+);/g, (_, index, table, columns) => `SET @commission_sql = (SELECT IF(COUNT(*)=0,'CREATE INDEX ${index} ON ${table}${columns}','SELECT 1') FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='${table}' AND index_name='${index}');
 PREPARE commission_stmt FROM @commission_sql;
@@ -142,6 +143,8 @@ ${commissionContract}
 
 ${customerCleanup}
 
+${junkCleanup}
+
 ${mysqlContractLifecycle}
 
 ${approvalInbox}
@@ -155,6 +158,7 @@ fs.writeFileSync(path.join(outputDir, 'commission-contract-upgrade.sql'), '-- Co
 fs.writeFileSync(path.join(outputDir, 'upgrade-approval-inbox.sql'), '-- Approval inbox and actual decision actors; preserves business data and existing grants.\n' + approvalInbox)
 fs.writeFileSync(path.join(outputDir, 'contract-lifecycle-upgrade.sql'), '-- Contract retirement upgrade; preserves existing business data.\n' + mysqlContractLifecycle)
 fs.writeFileSync(path.join(outputDir, 'customer-cleanup-upgrade.sql'), '-- Customer cleanup menu and audit table; does not delete business data.\n' + customerCleanup)
+fs.writeFileSync(path.join(outputDir, 'junk-cleanup-upgrade.sql'), '-- Special functions split and junk cleanup; bounded file candidates only, never removes database data.\n' + junkCleanup)
 fs.writeFileSync(path.join(outputDir, 'umm_oa.sql'), output)
 fs.writeFileSync(path.join(outputDir, 'recruitment-upgrade.sql'), '-- Existing MySQL 8 databases: recruitment upgrade; preserves business data.\n' + recruitmentSchema + '\n' + recruitmentMenu)
 fs.writeFileSync(path.join(outputDir, 'customer-finance-upgrade.sql'), '-- Existing MySQL 8 databases: customer finance upgrade; preserves business data.\n' + customerFinanceSchema + '\n' + customerFinanceMenu)

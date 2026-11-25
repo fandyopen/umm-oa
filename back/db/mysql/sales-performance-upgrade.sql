@@ -1,4 +1,4 @@
--- Existing MySQL 8 databases: add the independent sales performance menu.
+-- Existing MySQL 8 databases: customer sales performance menu upgrade.
 INSERT INTO sys_module (
     module_id, tenant_id, parent_id, module_name, route_name, path, component,
     icon, module_sort, hidden, perms, has_flow, no_cache, status
@@ -6,7 +6,6 @@ INSERT INTO sys_module (
 SELECT 341112, 1, 340310, '部门看板', 'CrmSalesPerformance', 'sales-performance',
        'eos/crm/salesPerformance/index', 'iconfont-chengbenfenxi-', 6, 0,
        'project:salesPerformance:list', 0, 0, '0'
-FROM DUAL
 WHERE NOT EXISTS (SELECT 1 FROM sys_module WHERE module_id=341112);
 
 INSERT INTO sys_role_module(role_id,module_id)

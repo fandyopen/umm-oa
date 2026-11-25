@@ -6,6 +6,10 @@ import UserLayout from '/src/components/layouts/UserLayout.vue'
  */
 export const indexRouterMap = [
   {
+    path: '/docs/access-denied', name: 'DocsAccessDenied', component: 'docs/index',
+    hidden: true, meta: { title: '没有文档访问权限' }
+  },
+  {
     path: '/index',
     name: 'index',
     component: 'Index',

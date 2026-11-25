@@ -1,13 +1,4 @@
-MERGE INTO sys_module (
-    module_id, tenant_id, parent_id, module_name, route_name, path, component,
-    icon, module_sort, hidden, perms, has_flow, flow_conditions, no_cache,
-    is_app, is_frame, query, redirect, status
-) KEY (module_id) VALUES (
-    341100, 1, 340309, '使用文档', 'Docs', 'docs', 'docs/index',
-    'iconfont-bangzhu', 99, 1, 'system:docs:list', 0, '', 0,
-    '', '', '', '', '0'
-);
-
+-- Legacy configuration values remain readable for older clients.
 INSERT INTO sys_config (
     config_id, config_name, config_key, config_value, config_type, create_time, remark
 ) SELECT

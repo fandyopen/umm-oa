@@ -13,8 +13,7 @@ CREATE TABLE IF NOT EXISTS oa_approval_decision (
     decision VARCHAR(16) NOT NULL,
     comment VARCHAR(2000),
     delegated INT NOT NULL DEFAULT 0,
-    complete_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_approval_decision_instance (instance_id)
+    complete_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 INSERT INTO sys_module (
     module_id, tenant_id, parent_id, module_name, route_name, path, component,

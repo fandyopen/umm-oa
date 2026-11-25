@@ -2,7 +2,7 @@
   <article class="recruitment-rules">
     <h1>招聘流程规则</h1>
     <p class="lead">从职位需求到保证期交付，按实际业务发生顺序登记。部门看板用于了解跟进和节点成果，统计不代替业务凭证，也不自动认定提成。</p>
-    <div class="flow"><template v-for="(step, index) in guide.flow"><a-icon v-if="index" :key="index + '-arrow'" type="right"/><span :key="step">{{ step }}</span></template></div>
+    <rule-mind-map kind="recruitment" />
     <a-tabs>
       <a-tab-pane key="workflow" tab="办理流程与业务规则">
         <h2>办理前准备</h2><ul><li v-for="item in guide.prerequisites" :key="item">{{ item }}</li></ul>
@@ -38,8 +38,10 @@
 
 <script>
 import { recruitmentGuide } from '../recruitmentGuide.js'
+import RuleMindMap from './RuleMindMap.vue'
 export default {
   name: 'RecruitmentRules',
+  components: { RuleMindMap },
   data: () => ({
     guide: recruitmentGuide,
     metrics: [
@@ -59,8 +61,6 @@ export default {
 .recruitment-rules { max-width: 1200px; margin: 0 auto; color: #344455; line-height: 1.85; }
 h1 { font-size: 26px; } h2 { font-size: 18px; margin: 25px 0 10px; }
 .lead, .muted { color: #7b8794; }
-.flow { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 16px; margin: 18px 0; background: #f5f9fa; border-radius: 6px; }
-.flow span { font-size: 12px; } .flow .anticon { color: #9ba7b0; font-size: 10px; }
 ol { padding-left: 22px; } ol li { padding: 5px 0; } ol p { margin: 4px 0; }
 .entry { color: #168b83; } .tips { margin-top: 15px; }
 </style>
