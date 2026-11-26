@@ -43,7 +43,6 @@ node tools/build-organization-data.mjs
 node tools/build-parity-data.mjs
 node tools/build-system-reference-data.mjs
 node tools/build-todo-parity-data.mjs
-node tools/build-workflow-parity-data.mjs
 node tools/build-mysql-sql.mjs
 ```
 
@@ -54,7 +53,6 @@ node tools/build-mysql-sql.mjs
 ## 参考数据采集与比对
 
 - `capture-reference-page-api.mjs`
-- `capture-reference-workflow.mjs`
 - `probe-reference-accounts.mjs`
 - `compare-module-parity.mjs`
 - `mobile-audit.mjs extract`：抓取 H5 页面和接口清单

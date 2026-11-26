@@ -26,7 +26,6 @@
 ## H2 构建与部署辅助文件
 
 - `h2/capability.sql`、`h2/module.sql`：远程部署脚本仍会导入。
-- `h2/workflow.sql`：工作流校验数据构建源。
 
 `src/main/resources` 下的 SQL 是 Spring Boot 本地 H2 运行时使用的最终版本；
 `db/mysql` 下的拆分 SQL 是 MySQL 方言构建源，两者用途不同。

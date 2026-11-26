@@ -10,7 +10,6 @@
 - `reference-departments.json`、`reference-users.json`：组织架构和演示账号
 - `reference-system-settings.json`：字典和参数
 - `reference-page-api.json`、`page-parity.json`：页面接口与页面差异
-- `reference-workflow-2575064.json`：工作流样例
 - `reference-todo-13686621113.json`：待办样例
 - `mobile-api-parity.json`、`reference-mobile-inventory.json`：移动端接口证据
 - `db/source/remote-routers.json`：线上模块路由原始快照
@@ -25,7 +24,7 @@
 - 组织参考数据生成：`tools/build-organization-data.mjs`
 - 模块与页面数据生成：`tools/build-module-sql.mjs`
 - 业务页面兼容数据生成：`tools/build-parity-data.mjs`
-- 工作流和待办数据生成：`tools/build-workflow-parity-data.mjs`、`tools/build-todo-parity-data.mjs`
+- 待办数据生成：`tools/build-todo-parity-data.mjs`
 - 系统字典与参数生成：`tools/build-system-reference-data.mjs`
 
 参考数据的采集时间、远端地址和抓取参数以各 JSON 文件内字段为准。
