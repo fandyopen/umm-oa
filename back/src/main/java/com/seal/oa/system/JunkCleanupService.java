@@ -18,6 +18,7 @@ public class JunkCleanupService {
     private final JdbcTemplate jdbc;
     private final SystemService system;
     private static final long ACTIVE_LOG_WINDOW_MS = 30L * 60 * 1000;
+    private static final Set<String> DEPENDENCY_DIRECTORIES = Set.of("node_modules", ".vite", ".pnpm", ".yarn", ".m2", ".gradle");
 
     public JunkCleanupService(JdbcTemplate jdbc, SystemService system,
             @Value("${app.junk-cleanup-project-root:}") String projectRoot) {
@@ -98,7 +99,6 @@ public class JunkCleanupService {
 
     private List<Map<String, Object>> candidates() {
         List<Map<String, Object>> rows = new ArrayList<>();
-        addDirectory(rows, "frontend-vite-cache", "前端", "Vite 依赖缓存", "node_modules/.vite", false);
         addDirectory(rows, "frontend-dist", "前端", "前端构建产物", "dist", false);
         addDirectory(rows, "backend-target", "后端", "后端构建产物", "back/target", false);
         addOldLogs(rows, "back", 1); addOldLogs(rows, "back/logs"); addOldLogs(rows, "back/data"); addOldLogs(rows, "logs");
@@ -129,6 +129,7 @@ public class JunkCleanupService {
         if (!Files.isDirectory(dir, LinkOption.NOFOLLOW_LINKS) || Files.isSymbolicLink(dir)) return;
         try (Stream<Path> paths = Files.walk(dir, maxDepth)) {
             paths.filter(path -> Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS) && !Files.isSymbolicLink(path))
+                    .filter(path -> !isDependencyPath(path))
                     .filter(path -> path.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".log"))
                     .filter(path -> oldEnough(path))
                     .forEach(path -> {
@@ -153,9 +154,17 @@ public class JunkCleanupService {
     private Path safePath(String relative) {
         Path target = project.resolve(relative).normalize();
         if (!target.startsWith(project) || relative.contains("..")) throw new ApiException(400, "非法清理路径");
+        if (isDependencyPath(target)) throw new ApiException(400, "依赖库及依赖缓存不参与垃圾清理");
         Path current = project;
         for (Path part : project.relativize(target)) { current = current.resolve(part); if (Files.isSymbolicLink(current)) throw new ApiException(400, "不支持清理符号链接"); }
         return target;
+    }
+
+    private boolean isDependencyPath(Path path) {
+        for (Path part : project.relativize(path.toAbsolutePath().normalize())) {
+            if (DEPENDENCY_DIRECTORIES.contains(part.toString().toLowerCase(Locale.ROOT))) return true;
+        }
+        return false;
     }
 
     private Size measure(Path path, boolean oldLog) throws IOException { return measure(path, oldLog, null); }
@@ -169,7 +178,7 @@ public class JunkCleanupService {
                 return FileVisitResult.CONTINUE;
             }
             @Override public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
-                if (Files.isSymbolicLink(dir)) return FileVisitResult.SKIP_SUBTREE;
+                if (Files.isSymbolicLink(dir) || isDependencyPath(dir)) return FileVisitResult.SKIP_SUBTREE;
                 return FileVisitResult.CONTINUE;
             }
         });
@@ -178,7 +187,12 @@ public class JunkCleanupService {
 
     private void remove(Path target, Path preserve) throws IOException {
         if (!Files.exists(target, LinkOption.NOFOLLOW_LINKS)) return;
+        List<Path> dependencyRoots = new ArrayList<>();
         Files.walkFileTree(target, new SimpleFileVisitor<>() {
+            @Override public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
+                if (isDependencyPath(dir)) { dependencyRoots.add(dir); return FileVisitResult.SKIP_SUBTREE; }
+                return FileVisitResult.CONTINUE;
+            }
             @Override public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
                 if (preserve != null && file.toAbsolutePath().normalize().equals(preserve)) return FileVisitResult.CONTINUE;
                 if (Files.isSymbolicLink(file)) throw new IOException("发现符号链接"); Files.delete(file); return FileVisitResult.CONTINUE;
@@ -186,6 +200,7 @@ public class JunkCleanupService {
             @Override public FileVisitResult postVisitDirectory(Path dir, IOException error) throws IOException {
                 if (error != null) throw error;
                 if (preserve != null && preserve.startsWith(dir.toAbsolutePath().normalize())) return FileVisitResult.CONTINUE;
+                if (dependencyRoots.stream().anyMatch(dependency -> dependency.startsWith(dir))) return FileVisitResult.CONTINUE;
                 Files.delete(dir); return FileVisitResult.CONTINUE;
             }
         });

@@ -1,6 +1,6 @@
 <template>
   <a-card :bordered="false" class="junk-cleanup">
-    <div class="heading"><div><h2>垃圾数据清理</h2><p>仅扫描本项目中可再生成的缓存、构建文件和过期日志。清理前会复核清单，数据库业务数据不会被自动删除。</p></div><a-button type="primary" icon="search" :loading="scanning" @click="scan">扫描可清理内容</a-button></div>
+    <div class="heading"><div><h2>垃圾数据清理</h2><p>仅扫描本项目的构建文件和过期日志，依赖库及依赖缓存不参与清理。清理前会复核清单，数据库业务数据不会被自动删除。</p></div><a-button type="primary" icon="search" :loading="scanning" @click="scan">扫描可清理内容</a-button></div>
     <a-alert v-if="report" type="info" show-icon class="summary" :message="'发现 ' + report.fileCount + ' 个文件，共 ' + formatBytes(report.totalBytes) + ' 可清理'" description="过期日志按最近修改时间判断；30 分钟内有更新的日志自动跳过。删除 dist 或 target 后需要重新构建应用。" />
     <a-alert v-if="report && report.protectedFiles && report.protectedFiles.length" class="protected-files" type="warning" show-icon message="有正在使用的后端文件，在线清理会保留它们" :description="protectedDescription" />
     <a-tabs v-model="activeTab">

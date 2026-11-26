@@ -7,6 +7,7 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Dependency libraries and their caches stay local; junk cleanup must preserve them.
 node_modules
 dist
 dist-ssr
