@@ -154,6 +154,17 @@ SET FOREIGN_KEY_CHECKS = 1;
 
 const outputDir = path.join(projectDir, 'db/mysql')
 fs.mkdirSync(outputDir, { recursive: true })
+const noticeColumns = [
+  ['tenant_id', 'BIGINT NOT NULL DEFAULT 1'],
+  ['publish_status', "VARCHAR(16) NOT NULL DEFAULT 'draft'"],
+  ['published_by', 'VARCHAR(100)'], ['published_time', 'DATETIME'],
+  ['update_by', 'VARCHAR(100)'], ['update_time', 'DATETIME']
+]
+const noticeUpgrade = noticeColumns.map(([column, definition]) => `SET @notice_sql = (SELECT IF(COUNT(*)=0,'ALTER TABLE sys_notice ADD COLUMN ${column} ${definition.replaceAll("'", "''")}','SELECT 1') FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='sys_notice' AND column_name='${column}');
+PREPARE notice_stmt FROM @notice_sql;
+EXECUTE notice_stmt;
+DEALLOCATE PREPARE notice_stmt;`).join('\n')
+fs.writeFileSync(path.join(outputDir, 'notice-publication-upgrade.sql'), '-- Additive notice upgrade. Existing notices stay drafts; application startup also adds these columns.\n' + noticeUpgrade + '\n')
 fs.writeFileSync(path.join(outputDir, 'commission-contract-upgrade.sql'), '-- Contract sales settle after actual cash; preserves existing attribution and batch history.\n' + commissionSchema + '\n' + commissionContract)
 fs.writeFileSync(path.join(outputDir, 'upgrade-approval-inbox.sql'), '-- Approval inbox and actual decision actors; preserves business data and existing grants.\n' + approvalInbox)
 fs.writeFileSync(path.join(outputDir, 'contract-lifecycle-upgrade.sql'), '-- Contract retirement upgrade; preserves existing business data.\n' + mysqlContractLifecycle)

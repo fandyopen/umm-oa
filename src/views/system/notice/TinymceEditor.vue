@@ -90,7 +90,7 @@ export default {
   data() {
     return {
       //初始化配置
-      tinymceHtml: '请输入内容',
+      tinymceHtml: this.value || '',
       tinymceId: 'tinymce',
       myValue: this.value,
       mytinymce: tinymce

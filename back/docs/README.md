@@ -2,6 +2,8 @@
 
 ## 当前维护文档
 
+- notice-publication.md：通知管理、直接发布及 PC/H5/小程序员工阅读入口
+
 - recruitment-lifecycle.md：招聘管理闭环、权限、简历隐私、部署及验证说明
 
 - source-cleanup.md：全系统源码清理范围、保留理由与验证结果

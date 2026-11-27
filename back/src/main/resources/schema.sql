@@ -263,12 +263,18 @@ CREATE TABLE sys_config (
 
 CREATE TABLE sys_notice (
     notice_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    tenant_id BIGINT NOT NULL DEFAULT 1,
     notice_title VARCHAR(200) NOT NULL,
     notice_type VARCHAR(1) NOT NULL DEFAULT '1',
     notice_content TEXT,
     status VARCHAR(1) NOT NULL DEFAULT '0',
     create_by VARCHAR(64),
-    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    publish_status VARCHAR(16) NOT NULL DEFAULT 'draft',
+    published_by VARCHAR(100),
+    published_time DATETIME,
+    update_by VARCHAR(100),
+    update_time DATETIME
 );
 
 CREATE TABLE sys_logininfor (

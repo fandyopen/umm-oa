@@ -171,8 +171,8 @@ export const routeMapEntries = [
   {
     related: ['src/views/system/notice/CreateForm.vue', 'src/views/system/notice/TinymceEditor.vue'],
     api: ['src/api/system/notice.js'],
-    backend: ['MetadataController'],
-    note: '公告列表、编辑和消息发送',
+    backend: ['NoticeController', 'NoticeService'],
+    note: '通知管理、授权人员直接发布及 PC/H5/小程序阅读',
     group: '系统',
     menu: '通知公告',
     route: '/system/notice',

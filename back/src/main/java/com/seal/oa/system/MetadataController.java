@@ -288,57 +288,6 @@ public class MetadataController {
         return ApiResult.ok();
     }
 
-    @GetMapping("/system/notice/list")
-    @RequiresModuleAction(moduleId = 340316L)
-    public Map<String, Object> notices() {
-        List<Map<String, Object>> rows = JdbcMaps.camelCase(jdbc.queryForList("""
-                SELECT notice_id, notice_title, notice_type, notice_content, status, create_by, create_time
-                FROM sys_notice ORDER BY create_time DESC,notice_id DESC
-                """));
-        return ApiResult.page(rows, rows.size());
-    }
-
-    @GetMapping("/system/notice/{noticeId}")
-    @RequiresModuleAction(moduleId = 340316L)
-    public Map<String, Object> notice(@PathVariable Long noticeId) {
-        List<Map<String, Object>> rows = JdbcMaps.camelCase(jdbc.queryForList(
-                "SELECT * FROM sys_notice WHERE notice_id = ?", noticeId));
-        return ApiResult.ok(rows.isEmpty() ? null : rows.get(0));
-    }
-
-    @PostMapping({"/system/notice", "/system/message"})
-    @RequiresModuleAction(moduleId = 340316L)
-    public Map<String, Object> addNotice(@RequestBody Map<String, Object> body) {
-        jdbc.update("""
-                INSERT INTO sys_notice (notice_title, notice_type, notice_content, status, create_by)
-                VALUES (?, ?, ?, ?, ?)
-                """,
-                string(body.get("noticeTitle")), string(body.get("noticeType")),
-                string(body.get("noticeContent")), string(body.get("status")), "admin");
-        return ApiResult.ok();
-    }
-
-    @PutMapping("/system/notice")
-    @RequiresModuleAction(moduleId = 340316L)
-    public Map<String, Object> updateNotice(@RequestBody Map<String, Object> body) {
-        jdbc.update("""
-                UPDATE sys_notice SET notice_title = ?, notice_type = ?, notice_content = ?, status = ?
-                WHERE notice_id = ?
-                """,
-                string(body.get("noticeTitle")), string(body.get("noticeType")),
-                string(body.get("noticeContent")), string(body.get("status")),
-                number(body.get("noticeId"), 0L));
-        return ApiResult.ok();
-    }
-
-    @DeleteMapping("/system/notice/{noticeId}")
-    @RequiresModuleAction(moduleId = 340316L)
-    public Map<String, Object> deleteNotice(@PathVariable Long noticeId) {
-        jdbc.update("DELETE FROM sys_notice WHERE notice_id = ?", noticeId);
-        return ApiResult.ok();
-    }
-
-
     @GetMapping("/system/post/list/all")
     public Map<String, Object> postsAll() {
         List<Map<String, Object>> rows = JdbcMaps.camelCase(jdbc.queryForList("""

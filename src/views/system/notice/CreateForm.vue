@@ -1,151 +1,53 @@
 <template>
-  <page-header-wrapper :breadcrumb="$store.getters.breadcrumb" @back="back">
-    <template v-slot:breadcrumb>
-      {{ formTitle }}
-    </template>
-    <template v-slot:title>
-      {{ formTitle }}
-    </template>
-    <template v-slot:content> </template>
-    <template v-slot:extraContent> </template>
-    <a-card :bordered="false" class="tw-mb-5">
-      <a-form-model ref="form" :model="form" :rules="rules" :label-col="labelCol" :wrapper-col="wrapperCol">
-        <a-form-model-item label="公告标题" prop="noticeTitle">
-          <a-input v-model="form.noticeTitle" placeholder="请输入" />
-        </a-form-model-item>
-        <a-form-model-item label="公告类型" prop="noticeType">
-          <a-select placeholder="请选择" v-model="form.noticeType">
-            <a-select-option v-for="(d, index) in typeOptions" :key="index" :value="d.dictValue">{{ d.dictLabel }}</a-select-option>
-          </a-select>
-        </a-form-model-item>
-        <a-form-model-item label="状态" prop="status">
-          <a-radio-group v-model="form.status" button-style="solid">
-            <a-radio-button v-for="(d, index) in statusOptions" :key="index" :value="d.dictValue">{{ d.dictLabel }}</a-radio-button>
-          </a-radio-group>
-        </a-form-model-item>
-        <a-form-model-item label="内容" prop="noticeContent"> </a-form-model-item>
-        <TinymceEditor ref="tinymceEditor" />
-        <footer-tool-bar>
-          <a-space>
-            <a-button type="primary" @click="submitForm"> 保存 </a-button>
-            <a-button type="dashed" @click="back"> 取消 </a-button>
-          </a-space>
-        </footer-tool-bar>
-      </a-form-model>
+  <page-header-wrapper @back="back">
+    <a-card :bordered="false">
+      <h2>{{ noticeId ? '修改通知' : '新增通知' }}</h2>
+      <a-alert v-if="error" type="error" :message="error" show-icon />
+      <a-alert type="info" message="点击发布通知后员工即可查看，无需审批。也可以先保存草稿；将已发布通知保存为草稿后会暂时停止展示。" class="tip" />
+      <a-spin :spinning="loading">
+        <a-form-model ref="form" :model="form" :rules="rules" layout="vertical">
+          <a-form-model-item label="公告标题" prop="noticeTitle"><a-input v-model="form.noticeTitle" :max-length="200" placeholder="请输入标题" /></a-form-model-item>
+          <a-form-model-item label="公告类型" prop="noticeType"><a-select v-model="form.noticeType"><a-select-option value="1">通知</a-select-option><a-select-option value="2">公告</a-select-option></a-select></a-form-model-item>
+          <a-form-model-item label="正文"><tinymce-editor v-if="!loading && !error" ref="editor" :value="form.noticeContent" /></a-form-model-item>
+          <a-space><a-button v-if="showModuleAction('notices', 'edit')" type="primary" :loading="saving" :disabled="loading || !!error" @click="save(true)">发布通知</a-button><a-button :loading="saving" :disabled="loading || !!error" @click="save(false)">保存草稿</a-button><a-button @click="back">返回列表</a-button></a-space>
+        </a-form-model>
+      </a-spin>
     </a-card>
   </page-header-wrapper>
 </template>
-
 <script>
 import { getNotice, addNotice, updateNotice } from '/src/api/system/notice.js'
+import { withModuleContexts } from '/src/utils/moduleContext.js'
 import TinymceEditor from './TinymceEditor.vue'
-
 export default {
-  name: 'CreateForm',
-  components: {
-    TinymceEditor
-  },
-  data() {
-    return {
-      labelCol: { span: 4 },
-      wrapperCol: { span: 14 },
-      loading: false,
-      total: 0,
-      id: undefined,
-      formTitle: '',
-      contentEditor: '',
-      // 状态数据字典
-      statusOptions: [],
-      typeOptions: [],
-      // 表单参数
-      form: {
-        noticeId: undefined,
-        noticeTitle: undefined,
-        noticeType: undefined,
-        noticeContent: '',
-        status: '0'
-      },
-      rules: {
-        noticeTitle: [{ required: true, message: '公告标题不能为空', trigger: 'blur' }],
-        noticeType: [{ required: true, message: '公告类型不能为空', trigger: 'change' }]
-      }
-    }
-  },
-  filters: {},
-  created() {
-    this.getDicts('sys_notice_status').then(response => {
-      this.statusOptions = response.data
-    })
-    this.getDicts('sys_notice_type').then(response => {
-      this.typeOptions = response.data
-    })
-  },
-  computed: {},
-  watch: {},
-  mounted() {
-    this.id = this.$route.params.id
-    this.formTitle = this.$route.params.formTitle
-    if (this.id) {
-      this.handleUpdate(this.id)
-    } else {
-      this.handleAdd()
-    }
-  },
+  components: { TinymceEditor },
+  mixins: [withModuleContexts({ notices: { component: 'system/notice/index', label: '通知公告' } })],
+  data: () => ({ loading: true, saving: false, error: '', form: { noticeTitle: '', noticeType: '1', noticeContent: '' },
+    rules: { noticeTitle: [{ required: true, message: '请填写标题', trigger: 'blur' }], noticeType: [{ required: true, message: '请选择类型', trigger: 'change' }] } }),
+  computed: { noticeId() { return this.$route.query.id || this.$route.params.id || null } },
+  watch: { noticeId: { immediate: true, handler() { this.load() } } },
   methods: {
-    // 表单重置
-    reset() {
-      this.form = {
-        noticeId: undefined,
-        noticeTitle: undefined,
-        noticeType: undefined,
-        noticeContent: '',
-        status: '0'
-      }
+    async load() {
+      this.loading = true; this.error = ''; this.form = { noticeTitle: '', noticeType: '1', noticeContent: '' }
+      try { if (this.noticeId) this.form = (await getNotice(this.noticeId)).data }
+      catch (error) { this.error = error.message || '加载失败' }
+      finally { this.loading = false }
     },
-    /** 新增按钮操作 */
-    handleAdd() {
-      this.reset()
-      this.formTitle = '添加公告'
+    async save(publish) {
+      if (this.saving) return
+      const valid = await new Promise(resolve => this.$refs.form.validate(resolve))
+      if (!valid || !(await this.checkModuleAction({ module: 'notices', action: this.noticeId ? 'edit' : 'add', label: '保存通知' }))) return
+      if (publish && !(await this.checkModuleAction({ module: 'notices', action: 'edit', label: '发布通知' }))) return
+      this.saving = true
+      try {
+        const payload = { ...this.form, publish, noticeContent: this.$refs.editor.tinymceHtml }
+        if (this.noticeId) await updateNotice({ ...payload, noticeId: this.noticeId })
+        else await addNotice(payload)
+        this.$message.success(publish ? '通知已发布' : '已保存草稿'); this.back()
+      } finally { this.saving = false }
     },
-    /** 修改按钮操作 */
-    handleUpdate(id) {
-      this.reset()
-      const noticeId = id
-      getNotice(noticeId).then(response => {
-        this.form = response.data
-        this.formTitle = '修改公告'
-        this.$refs.tinymceEditor.tinymceHtml = response.data.noticeContent
-      })
-    },
-    /** 提交按钮 */
-    submitForm: function () {
-      this.form.noticeContent = this.$refs.tinymceEditor.tinymceHtml
-      this.$refs.form.validate(valid => {
-        if (valid) {
-          if (this.form.noticeId !== undefined) {
-            updateNotice(this.form).then(response => {
-              this.$message.success('修改成功', 3)
-              this.back()
-            })
-          } else {
-            addNotice(this.form).then(response => {
-              this.$message.success('新增成功', 3)
-              this.back()
-            })
-          }
-        } else {
-          return false
-        }
-      })
-    },
-    back() {
-      this.$router.push('/system/notice')
-    }
+    back() { this.$router.push('/system/notice') }
   }
 }
 </script>
-<style lang="less" scoped>
-#vditor {
-  margin: 0 5% 5% 5%;
-}
-</style>
+<style scoped>.tip { margin: 16px 0; }</style>

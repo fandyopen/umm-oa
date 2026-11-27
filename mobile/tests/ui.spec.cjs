@@ -39,6 +39,8 @@ async function fixture(page) {
     if (path === '/captchaImage') body = { code: 200, captchaEnabled: false }
     else if (path === '/login') body = { code: 200, token: 'fixture-token' }
     else if (path === '/auth/session') body = session
+    else if (path === '/notices') body = { code: 200, rows: [{ noticeId: 81, noticeTitle: '企业招聘协作通知', publishedBy: '人事经理', publishedTime: '2026-11-27 10:00:00' }], total: 1 }
+    else if (path === '/notices/81') body = { code: 200, data: { noticeId: 81, noticeTitle: '企业招聘协作通知', publishedBy: '人事经理', publishedTime: '2026-11-27 10:00:00', noticeContent: '<p>请及时跟进候选人</p><script>window.noticeExecuted=true</script>' } }
     else if (path === '/system/module-context') body = { code: 200, data: { 'eos/crm/customer/index': meta } }
     else if (path === '/mobile/tasks/todo') body = { code: 200, rows: [task], total: 1 }
     else if (path === '/mobile/tasks/todo/' + key) body = { code: 200, data: task }
@@ -109,4 +111,19 @@ test('approval shows the frozen content and submits the task identifiers and opi
   await expect.poll(() => mutations.filter((r) => r.path === '/activiti/process/complete').length).toBe(1)
   const completion = mutations.find((r) => r.path === '/activiti/process/complete')
   expect(completion.data).toEqual({ taskId: 'task-1', instanceId: 'instance-1', variables: { pass: true, comment: '资料完整，同意' } })
+})
+
+
+test('employees open notices from home and messages without management permissions', async ({ page }) => {
+  const mutations = await fixture(page)
+  await page.locator('.card').filter({ hasText: '查看企业发布的重要通知' }).click()
+  await expect(page.getByText('企业招聘协作通知', { exact: true })).toBeVisible()
+  await page.getByText('企业招聘协作通知', { exact: true }).click()
+  await expect(page.getByText('请及时跟进候选人', { exact: true })).toBeVisible()
+  await expect(page.getByText('发布人：人事经理', { exact: false })).toBeVisible()
+  expect(await page.evaluate(() => window.noticeExecuted)).toBeUndefined()
+  await page.goto('./#/pages/messages/index')
+  await page.getByText('查看企业已发布通知', { exact: true }).click()
+  await expect(page.getByText('企业招聘协作通知', { exact: true })).toBeVisible()
+  expect(mutations.filter(row => /notice|message/.test(row.path))).toEqual([])
 })

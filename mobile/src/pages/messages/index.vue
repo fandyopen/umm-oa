@@ -3,6 +3,7 @@
     <view class="h2">与你有关的工作动态</view>
     <view class="muted">待办提醒与抄送通知 · 阅读状态按账号保存</view>
     <view class="spacer" />
+    <view class="card row" @click="$go('notices')"><view><view class="h3">通知公告</view><view class="muted">查看企业已发布通知</view></view><text class="link">查看 →</text></view>
     <view class="tabs">
       <text v-for="t in tabs" :key="t.key" class="pill" :class="{ active: kind === t.key }" @click="change(t.key)">{{ t.title }}</text>
     </view>

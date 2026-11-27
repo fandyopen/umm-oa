@@ -1,13 +1,8 @@
 import request from '/src/utils/axios/request.js'
-
-// 发布消息
-export function saveMessage(data) {
-  return request({
-    url: '/system/message',
-    method: 'post',
-    data
-  })
-}
+export const listPublishedNotices = params => request({ url: '/notices', method: 'get', params })
+export const getPublishedNotice = id => request({ url: '/notices/' + id, method: 'get' })
+export const publishNotice = id => request({ url: '/system/notice/' + id + '/publish', method: 'put' })
+export const withdrawNotice = id => request({ url: '/system/notice/' + id + '/withdraw', method: 'put' })
 
 // 查询公告列表
 export function listNotice(query) {

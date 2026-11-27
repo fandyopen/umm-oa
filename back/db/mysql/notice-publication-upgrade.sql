@@ -1,0 +1,25 @@
+-- Additive notice upgrade. Existing notices stay drafts; application startup also adds these columns.
+SET @notice_sql = (SELECT IF(COUNT(*)=0,'ALTER TABLE sys_notice ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1','SELECT 1') FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='sys_notice' AND column_name='tenant_id');
+PREPARE notice_stmt FROM @notice_sql;
+EXECUTE notice_stmt;
+DEALLOCATE PREPARE notice_stmt;
+SET @notice_sql = (SELECT IF(COUNT(*)=0,'ALTER TABLE sys_notice ADD COLUMN publish_status VARCHAR(16) NOT NULL DEFAULT ''draft''','SELECT 1') FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='sys_notice' AND column_name='publish_status');
+PREPARE notice_stmt FROM @notice_sql;
+EXECUTE notice_stmt;
+DEALLOCATE PREPARE notice_stmt;
+SET @notice_sql = (SELECT IF(COUNT(*)=0,'ALTER TABLE sys_notice ADD COLUMN published_by VARCHAR(100)','SELECT 1') FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='sys_notice' AND column_name='published_by');
+PREPARE notice_stmt FROM @notice_sql;
+EXECUTE notice_stmt;
+DEALLOCATE PREPARE notice_stmt;
+SET @notice_sql = (SELECT IF(COUNT(*)=0,'ALTER TABLE sys_notice ADD COLUMN published_time DATETIME','SELECT 1') FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='sys_notice' AND column_name='published_time');
+PREPARE notice_stmt FROM @notice_sql;
+EXECUTE notice_stmt;
+DEALLOCATE PREPARE notice_stmt;
+SET @notice_sql = (SELECT IF(COUNT(*)=0,'ALTER TABLE sys_notice ADD COLUMN update_by VARCHAR(100)','SELECT 1') FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='sys_notice' AND column_name='update_by');
+PREPARE notice_stmt FROM @notice_sql;
+EXECUTE notice_stmt;
+DEALLOCATE PREPARE notice_stmt;
+SET @notice_sql = (SELECT IF(COUNT(*)=0,'ALTER TABLE sys_notice ADD COLUMN update_time DATETIME','SELECT 1') FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='sys_notice' AND column_name='update_time');
+PREPARE notice_stmt FROM @notice_sql;
+EXECUTE notice_stmt;
+DEALLOCATE PREPARE notice_stmt;

@@ -25,6 +25,7 @@ const constantRouterComponents = {
   SecuritySettings: () => import('/src/views/user/account/settings/Security.vue'),
   // 公告新增修改
   NoticeForm: () => import('/src/views/system/notice/CreateForm'),
+  PublishedNotices: () => import('/src/views/system/notice/Published.vue'),
   // 应用中心
   AppCenter: () => import('/src/views/enterprise/saasIndex/index.vue'),
   // 流程设计器

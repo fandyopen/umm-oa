@@ -22,6 +22,7 @@
         </view>
       </view>
     </view>
+    <view class="card row" @click="$go('notices')"><view><view class="h3">通知公告</view><view class="muted">查看企业发布的重要通知</view></view><text class="link">查看 →</text></view>
     <view class="section">
       <text class="h2">常用应用</text>
       <text class="link" @click="$go('apps')">全部应用 →</text>

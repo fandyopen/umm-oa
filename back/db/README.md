@@ -2,6 +2,8 @@
 
 ## 运行时
 
+- `mysql/notice-publication-upgrade.sql`：通知公告发布状态、企业归属及发布人/时间的增量升级，原记录保留为草稿。H2 和 MySQL 启动时也会自动补齐字段，不自动发布历史内容。
+
 - `mysql/commission-contract-upgrade.sql`：存量 MySQL 8 库启用合同销售按回款结算、交付按入职或验收结算；保留原招聘提成及工资历史。备份后执行并重启后端，使用方法见 [合同提成说明](../docs/contract-commission.md)。
 
 - `mysql/upgrade-approval-inbox.sql`：存量 MySQL 库新增“代审批”菜单和实际审批人记录表，并更新旧菜单名称；不自动授予普通角色权限。执行后重启后端，在角色管理中勾选页面和“代审批”按钮。

@@ -5,6 +5,7 @@ import UserLayout from '/src/components/layouts/UserLayout.vue'
  * 首页
  */
 export const indexRouterMap = [
+  { path: '/notices', name: 'PublishedNotices', component: 'PublishedNotices', hidden: true, meta: { title: '通知公告' } },
   {
     path: '/docs/access-denied', name: 'DocsAccessDenied', component: 'docs/index',
     hidden: true, meta: { title: '没有文档访问权限' }
@@ -71,7 +72,7 @@ export const indexRouterMap = [
     path: '/system/notice/form',
     name: 'NoticeForm',
     component: 'NoticeForm',
-    meta: { title: '公告编辑', keepAlive: true },
+    meta: { title: '公告编辑', keepAlive: false },
     hidden: true
   }
 ]
